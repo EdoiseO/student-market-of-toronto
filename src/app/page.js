@@ -13,12 +13,7 @@ export default function Home() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-zinc-50 dark:bg-black p-8">
 
-      {/* Input */}
-      <div className="w-full max-w-sm flex flex-col gap-1.5">
-        <Label htmlFor="demo">Label</Label>
-        <Input id="demo" placeholder="Input placeholder..." />
-      </div>
-      
+
     </div>
   );
 }
