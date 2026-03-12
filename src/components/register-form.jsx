@@ -58,7 +58,7 @@ export function RegisterForm({
               <Field>
                 <Button type="submit">Sign Up</Button>
                 <FieldDescription className="text-center">
-                  Already have an account? <a href="#">Login</a>
+                  Already have an account? <a href="/login">Login</a>
                 </FieldDescription>
               </Field>
             </FieldGroup>
