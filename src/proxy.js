@@ -1,10 +1,45 @@
-import { createClient } from "@/utils/supabase/middleware";
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 
 export async function proxy(request) {
-  const supabaseResponse = createClient(request);
+  let response = NextResponse.next({ request });
 
-  return supabaseResponse;
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options);
+          });
+        },
+      },
+    },
+  );
+
+  // Get the current logged-in user
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const path = request.nextUrl.pathname;
+
+  // Rule 1: Logged-in users should NOT visit /login or /register
+  if (user && (path === "/login" || path === "/register")) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  // Rule 2: Logged-out users should NOT visit protected pages
+  const protectedRoutes = ["/profile", "/listings"];
+  if (!user && protectedRoutes.includes(path)) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  return response;
 }
 
 export const config = {
