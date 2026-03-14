@@ -30,13 +30,23 @@ export async function proxy(request) {
 
   // Rule 1: Logged-in users should NOT visit /login or /register
   if (user && (path === "/login" || path === "/register")) {
-    return NextResponse.redirect(new URL("/", request.url));
+    const redirectResponse = NextResponse.redirect(new URL("/", request.url));
+    response.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
+    });
+    return redirectResponse;
   }
 
   // Rule 2: Logged-out users should NOT visit protected pages
   const protectedRoutes = ["/profile", "/listings"];
   if (!user && protectedRoutes.includes(path)) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    const redirectResponse = NextResponse.redirect(
+      new URL("/login", request.url),
+    );
+    response.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
+    });
+    return redirectResponse;
   }
 
   return response;
