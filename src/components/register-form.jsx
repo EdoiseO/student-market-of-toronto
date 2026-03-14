@@ -18,10 +18,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
-export function RegisterForm({
-  className,
-  ...props
-}) {
+export function RegisterForm({ className, ...props }) {
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -38,7 +35,6 @@ export function RegisterForm({
     setError("");
     setSuccess("");
 
-    // basic checks
     if (form.password !== form.confirmPassword) {
       setError("Passwords do not match.");
       return;
@@ -50,7 +46,7 @@ export function RegisterForm({
 
     const supabase = createClient();
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: form.email.trim(),
       password: form.password,
       options: {
@@ -62,8 +58,11 @@ export function RegisterForm({
       },
     });
 
-    if (error) setError(error.message);
-    else setSuccess("Account created. Check your email to verify.");
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setSuccess("Account created! Check your email to verify.");
   }
 
   return (
@@ -80,38 +79,86 @@ export function RegisterForm({
             <FieldGroup>
               <Field>
                 <FieldLabel htmlFor="firstName">First Name</FieldLabel>
-                <Input id="firstName" type="text" placeholder="John" required value={form.firstName}
-                  onChange={(e) => setForm({ ...form, firstName: e.target.value })}/>
+                <Input
+                  id="firstName"
+                  type="text"
+                  placeholder="John"
+                  required
+                  value={form.firstName}
+                  onChange={(e) =>
+                    setForm({ ...form, firstName: e.target.value })
+                  }
+                />
               </Field>
               <Field>
                 <FieldLabel htmlFor="lastName">Last Name</FieldLabel>
-                <Input id="lastName" type="text" placeholder="Doe" required value={form.lastName}
-                  onChange={(e) => setForm({ ...form, lastName: e.target.value })}/>
+                <Input
+                  id="lastName"
+                  type="text"
+                  placeholder="Doe"
+                  required
+                  value={form.lastName}
+                  onChange={(e) =>
+                    setForm({ ...form, lastName: e.target.value })
+                  }
+                />
               </Field>
               <Field>
-                <FieldLabel htmlFor="email">School Email (enter your Toronto school email)</FieldLabel>
-                <Input id="email" type="email" placeholder="john.doe@university.ca" required value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}/>
+                <FieldLabel htmlFor="email">
+                  School Email (enter your Toronto school email)
+                </FieldLabel>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="john.doe@university.ca"
+                  required
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                />
               </Field>
               <Field>
                 <FieldLabel htmlFor="password">Password</FieldLabel>
-                <Input id="password" type="password" required value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}/>
+                <Input
+                  id="password"
+                  type="password"
+                  required
+                  value={form.password}
+                  onChange={(e) =>
+                    setForm({ ...form, password: e.target.value })
+                  }
+                />
               </Field>
               <Field>
-                <FieldLabel htmlFor="confirmPassword">Confirm Password</FieldLabel>
-                <Input id="confirmPassword" type="password" required  value={form.confirmPassword}
-                  onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}/>
+                <FieldLabel htmlFor="confirmPassword">
+                  Confirm Password
+                </FieldLabel>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  required
+                  value={form.confirmPassword}
+                  onChange={(e) =>
+                    setForm({ ...form, confirmPassword: e.target.value })
+                  }
+                />
               </Field>
               <Field>
                 <FieldLabel htmlFor="school">School / Campus</FieldLabel>
-                <Input id="school" type="text" placeholder="e.g. University of Toronto" required value={form.school}
-                  onChange={(e) => setForm({ ...form, school: e.target.value })}/>
+                <Input
+                  id="school"
+                  type="text"
+                  placeholder="e.g. University of Toronto"
+                  required
+                  value={form.school}
+                  onChange={(e) => setForm({ ...form, school: e.target.value })}
+                />
               </Field>
               <Field>
                 <Button type="submit">Sign Up</Button>
                 {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-                {success && <p className="mt-2 text-sm text-green-600">{success}</p>}
+                {success && (
+                  <p className="mt-2 text-sm text-green-600">{success}</p>
+                )}
                 <FieldDescription className="text-center">
                   Already have an account? <a href="/login">Login</a>
                 </FieldDescription>
