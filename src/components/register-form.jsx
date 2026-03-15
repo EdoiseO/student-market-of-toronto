@@ -23,10 +23,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
-export function RegisterForm({
-  className,
-  ...props
-}) {
+export function RegisterForm({ className, ...props }) {
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -56,7 +53,6 @@ export function RegisterForm({
     setSuccess("");
     const email = normalizeEmail(form.email);
 
-    // basic checks
     if (form.password !== form.confirmPassword) {
       setError("Passwords do not match.");
       return;
@@ -80,8 +76,11 @@ export function RegisterForm({
       },
     });
 
-    if (error) setError(error.message);
-    else setSuccess("Account created. Check your email to verify.");
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setSuccess("Account created! Check your email to verify.");
   }
 
   return (
@@ -166,7 +165,9 @@ export function RegisterForm({
               <Field>
                 <Button type="submit">Sign Up</Button>
                 {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-                {success && <p className="mt-2 text-sm text-green-600">{success}</p>}
+                {success && (
+                  <p className="mt-2 text-sm text-green-600">{success}</p>
+                )}
                 <FieldDescription className="text-center">
                   Already have an account? <a href="/login">Login</a>
                 </FieldDescription>
