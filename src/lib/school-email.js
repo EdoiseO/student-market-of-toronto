@@ -1,19 +1,21 @@
-const TORONTO_SCHOOL_EMAIL_DOMAINS = [
-  "utoronto.ca",
-  "mail.utoronto.ca",
-  "torontomu.ca",
-  "yorku.ca",
-  "my.yorku.ca",
-  "georgebrown.ca",
-  "mail.georgebrown.ca",
-  "senecapolytechnic.ca",
-  "myseneca.ca",
-  "humber.ca",
-  "student.humber.ca",
-  "centennialcollege.ca",
-  "my.centennialcollege.ca",
-  "ocadu.ca",
-];
+const TORONTO_SCHOOL_EMAIL_DOMAIN_MAP = {
+  "utoronto.ca": "University of Toronto",
+  "mail.utoronto.ca": "University of Toronto",
+  "torontomu.ca": "Toronto Metropolitan University",
+  "yorku.ca": "York University",
+  "my.yorku.ca": "York University",
+  "georgebrown.ca": "George Brown College",
+  "mail.georgebrown.ca": "George Brown College",
+  "senecapolytechnic.ca": "Seneca Polytechnic",
+  "myseneca.ca": "Seneca Polytechnic",
+  "humber.ca": "Humber Polytechnic",
+  "student.humber.ca": "Humber Polytechnic",
+  "centennialcollege.ca": "Centennial College",
+  "my.centennialcollege.ca": "Centennial College",
+  "ocadu.ca": "OCAD University",
+};
+
+const TORONTO_SCHOOL_EMAIL_DOMAINS = Object.keys(TORONTO_SCHOOL_EMAIL_DOMAIN_MAP);
 
 export function normalizeEmail(email = "") {
   return email.trim().toLowerCase();
@@ -32,6 +34,12 @@ export function isValidTorontoSchoolEmail(email = "") {
   return TORONTO_SCHOOL_EMAIL_DOMAINS.includes(domain);
 }
 
+export function getTorontoSchoolNameFromEmail(email = "") {
+  const domain = getEmailDomain(email);
+
+  return TORONTO_SCHOOL_EMAIL_DOMAIN_MAP[domain] ?? "";
+}
+
 export function getTorontoSchoolEmailError(email = "") {
   if (!normalizeEmail(email)) {
     return "Enter your Toronto school email.";
@@ -44,4 +52,4 @@ export function getTorontoSchoolEmailError(email = "") {
   return "";
 }
 
-export { TORONTO_SCHOOL_EMAIL_DOMAINS };
+export { TORONTO_SCHOOL_EMAIL_DOMAIN_MAP, TORONTO_SCHOOL_EMAIL_DOMAINS };

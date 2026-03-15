@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/client";
 import { cn } from "@/lib/utils";
 import {
   getTorontoSchoolEmailError,
+  getTorontoSchoolNameFromEmail,
   isValidTorontoSchoolEmail,
   normalizeEmail,
 } from "@/lib/school-email";
@@ -41,10 +42,20 @@ export function RegisterForm({ className, ...props }) {
     : "";
 
   function updateField(name, value) {
-    setForm((currentForm) => ({
-      ...currentForm,
-      [name]: value,
-    }));
+    setForm((currentForm) => {
+      if (name === "email") {
+        return {
+          ...currentForm,
+          email: value,
+          school: getTorontoSchoolNameFromEmail(value),
+        };
+      }
+
+      return {
+        ...currentForm,
+        [name]: value,
+      };
+    });
   }
 
   async function handleSubmit(e) {
@@ -52,12 +63,13 @@ export function RegisterForm({ className, ...props }) {
     setError("");
     setSuccess("");
     const email = normalizeEmail(form.email);
+    const school = getTorontoSchoolNameFromEmail(email);
 
     if (form.password !== form.confirmPassword) {
       setError("Passwords do not match.");
       return;
     }
-    if (!isValidTorontoSchoolEmail(email)) {
+    if (!isValidTorontoSchoolEmail(email) || !school) {
       setError(getTorontoSchoolEmailError(email));
       return;
     }
@@ -71,7 +83,7 @@ export function RegisterForm({ className, ...props }) {
         data: {
           first_name: form.firstName,
           last_name: form.lastName,
-          school: form.school,
+          school,
         },
       },
     });
@@ -156,11 +168,14 @@ export function RegisterForm({ className, ...props }) {
                 <Input
                   id="school"
                   type="text"
-                  placeholder="e.g. University of Toronto"
+                  placeholder="Auto-filled from your school email"
                   required
                   value={form.school}
-                  onChange={(e) => updateField("school", e.target.value)}
+                  readOnly
                 />
+                <FieldDescription>
+                  This field is filled automatically from your school email.
+                </FieldDescription>
               </Field>
               <Field>
                 <Button type="submit">Sign Up</Button>
