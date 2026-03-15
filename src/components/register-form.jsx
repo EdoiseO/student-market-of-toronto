@@ -2,6 +2,11 @@
 import { useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { cn } from "@/lib/utils";
+import {
+  getTorontoSchoolEmailError,
+  isValidTorontoSchoolEmail,
+  normalizeEmail,
+} from "@/lib/school-email";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -32,26 +37,39 @@ export function RegisterForm({
   });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const normalizedEmail = normalizeEmail(form.email);
+  const showSchoolEmailHint = normalizedEmail.length > 0;
+  const schoolEmailError = showSchoolEmailHint
+    ? getTorontoSchoolEmailError(form.email)
+    : "";
+
+  function updateField(name, value) {
+    setForm((currentForm) => ({
+      ...currentForm,
+      [name]: value,
+    }));
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
     setSuccess("");
+    const email = normalizeEmail(form.email);
 
     // basic checks
     if (form.password !== form.confirmPassword) {
       setError("Passwords do not match.");
       return;
     }
-    if (!form.email.trim().toLowerCase().endsWith(".ca")) {
-      setError("Use a valid Toronto school email (.ca).");
+    if (!isValidTorontoSchoolEmail(email)) {
+      setError(getTorontoSchoolEmailError(email));
       return;
     }
 
     const supabase = createClient();
 
     const { error } = await supabase.auth.signUp({
-      email: form.email.trim(),
+      email,
       password: form.password,
       options: {
         data: {
@@ -80,33 +98,70 @@ export function RegisterForm({
             <FieldGroup>
               <Field>
                 <FieldLabel htmlFor="firstName">First Name</FieldLabel>
-                <Input id="firstName" type="text" placeholder="John" required value={form.firstName}
-                  onChange={(e) => setForm({ ...form, firstName: e.target.value })}/>
+                <Input
+                  id="firstName"
+                  type="text"
+                  placeholder="John"
+                  required
+                  value={form.firstName}
+                  onChange={(e) => updateField("firstName", e.target.value)}
+                />
               </Field>
               <Field>
                 <FieldLabel htmlFor="lastName">Last Name</FieldLabel>
-                <Input id="lastName" type="text" placeholder="Doe" required value={form.lastName}
-                  onChange={(e) => setForm({ ...form, lastName: e.target.value })}/>
+                <Input
+                  id="lastName"
+                  type="text"
+                  placeholder="Doe"
+                  required
+                  value={form.lastName}
+                  onChange={(e) => updateField("lastName", e.target.value)}
+                />
               </Field>
               <Field>
                 <FieldLabel htmlFor="email">School Email (enter your Toronto school email)</FieldLabel>
-                <Input id="email" type="email" placeholder="john.doe@university.ca" required value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}/>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="john.doe@mail.utoronto.ca"
+                  required
+                  value={form.email}
+                  onChange={(e) => updateField("email", e.target.value)}
+                />
+                {schoolEmailError && (
+                  <p className="text-sm text-red-600">{schoolEmailError}</p>
+                )}
               </Field>
               <Field>
                 <FieldLabel htmlFor="password">Password</FieldLabel>
-                <Input id="password" type="password" required value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}/>
+                <Input
+                  id="password"
+                  type="password"
+                  required
+                  value={form.password}
+                  onChange={(e) => updateField("password", e.target.value)}
+                />
               </Field>
               <Field>
                 <FieldLabel htmlFor="confirmPassword">Confirm Password</FieldLabel>
-                <Input id="confirmPassword" type="password" required  value={form.confirmPassword}
-                  onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}/>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  required
+                  value={form.confirmPassword}
+                  onChange={(e) => updateField("confirmPassword", e.target.value)}
+                />
               </Field>
               <Field>
                 <FieldLabel htmlFor="school">School / Campus</FieldLabel>
-                <Input id="school" type="text" placeholder="e.g. University of Toronto" required value={form.school}
-                  onChange={(e) => setForm({ ...form, school: e.target.value })}/>
+                <Input
+                  id="school"
+                  type="text"
+                  placeholder="e.g. University of Toronto"
+                  required
+                  value={form.school}
+                  onChange={(e) => updateField("school", e.target.value)}
+                />
               </Field>
               <Field>
                 <Button type="submit">Sign Up</Button>
