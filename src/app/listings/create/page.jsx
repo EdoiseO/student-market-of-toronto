@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import { useState } from "react";
@@ -36,6 +34,13 @@ export default function CreateListingPage() {
   async function handleSubmit(e) {
     e.preventDefault();
 
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData?.user;
+    if (!user) {
+      alert("You must be logged in to create a listings.");
+      return;
+    }
+
     const { error } = await supabase.from("listings").insert([
       {
         title: formData.title,
@@ -45,13 +50,13 @@ export default function CreateListingPage() {
         condition: formData.condition,
         location: formData.location,
         status: formData.status,
+        user_id: user.id,
       },
     ]);
 
     if (error) {
       console.error("Error creating listing:", error);
       alert(error.message);
-
       return;
     }
 
