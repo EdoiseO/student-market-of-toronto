@@ -1,56 +1,18 @@
 "use client";
-import { useEffect, useState } from "react";
-import { createClient } from "@/utils/supabase/client";
-import Link from "next/link";
 
-const mockListings = [
-  {
-    id: 1,
-    title: "Calculus Textbook",
-    price: 40,
-    category: "Books",
-    condition: "Used",
-    location: "Toronto",
-    status: "Available",
-  },
-  {
-    id: 2,
-    title: "MacBook Air M1",
-    price: 750,
-    category: "Electronics",
-    condition: "Like New",
-    location: "North York",
-    status: "Available",
-  },
-  {
-    id: 3,
-    title: "Desk Chair",
-    price: 60,
-    category: "Furniture",
-    condition: "Good",
-    location: "Scarborough",
-    status: "Sold",
-  },
-  {
-    id: 4,
-    title: "TI-84 Calculator",
-    price: 55,
-    category: "School Supplies",
-    condition: "Used",
-    location: "Etobicoke",
-    status: "Available",
-  },
-];
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { createClient } from "@/utils/supabase/client";
 
 export default function ListingsPage() {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const supabase = createClient();
+
   useEffect(() => {
     async function fetchListings() {
-      const supabase = createClient();
-
       const { data, error } = await supabase
         .from("listings")
         .select("*")
@@ -58,20 +20,17 @@ export default function ListingsPage() {
         .order("created_at", { ascending: false });
 
       if (error) {
-        console.log(error);
+        console.error("Error fetching listings:", error);
         setError("Could not load listings right now.");
-        setListings(mockListings);
-      } else if (!data || data.length === 0) {
-        setListings([]);
       } else {
-        setListings(data);
+        setListings(data || []);
       }
 
       setLoading(false);
     }
 
     fetchListings();
-  }, []);
+  }, [supabase]);
 
   return (
     <main className="min-h-screen bg-zinc-100 p-6 md:p-10">
@@ -84,12 +43,28 @@ export default function ListingsPage() {
             </p>
           </div>
 
-          <a
-            href="/"
-            className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-          >
-            Back Home
-          </a>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/listings/create"
+              className="rounded-md bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+            >
+              Create Listing
+            </Link>
+
+            <Link
+              href="/my-listings"
+              className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+            >
+              My Listings
+            </Link>
+
+            <Link
+              href="/"
+              className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+            >
+              Back Home
+            </Link>
+          </div>
         </div>
 
         {loading && (

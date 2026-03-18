@@ -39,6 +39,25 @@ export default function MyListingsPage() {
     fetchMyListings();
   }, [supabase]);
 
+  async function handleDelete(listingId) {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this listing?",
+    );
+    if (!confirmed) return;
+
+    const { error } = await supabase
+      .from("listings")
+      .delete()
+      .eq("id", listingId);
+    if (error) {
+      console.error("Error deleting listing:", error);
+      alert(error.message);
+      return;
+    }
+
+    setListings((prev) => prev.filter((listing) => listing.id !== listingId));
+  }
+
   return (
     <main className="min-h-screen bg-zinc-100 p-6 md:p-10">
       <div className="mx-auto max-w-6xl">
@@ -124,12 +143,19 @@ export default function MyListingsPage() {
                   >
                     View
                   </Link>
-
-                  <button
-                    type="button"
-                    className="flex-1 rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+                  
+                  <Link
+                    href={`/listings/edit/${listing.id}`}
+                    className="flex-1 rounded-md border border-zinc-300 bg-white px-4 py-2 text-center text-sm font-medium text-zinc-700 hover:bg-zinc-50"
                   >
                     Edit
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(listing.id)}
+                    className="flex-1 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+                  >
+                    Delete
                   </button>
                 </div>
               </div>
