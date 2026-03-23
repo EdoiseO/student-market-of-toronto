@@ -28,6 +28,15 @@ export async function proxy(request) {
 
   const path = request.nextUrl.pathname;
 
+  function isProtectedRoute(pathname) {
+    return (
+      pathname === "/profile" ||
+      pathname === "/dashboard" ||
+      pathname === "/listings/create" ||
+      /^\/listings\/[^/]+\/edit$/.test(pathname)
+    );
+  }
+
   // Rule 1: Logged-in users should NOT visit /login or /register
   if (user && (path === "/login" || path === "/register")) {
     const redirectResponse = NextResponse.redirect(new URL("/", request.url));
@@ -38,8 +47,7 @@ export async function proxy(request) {
   }
 
   // Rule 2: Logged-out users should NOT visit protected pages
-  const protectedRoutes = ["/profile", "/listings"];
-  if (!user && protectedRoutes.includes(path)) {
+  if (!user && isProtectedRoute(path)) {
     const redirectResponse = NextResponse.redirect(
       new URL("/login", request.url),
     );
