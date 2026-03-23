@@ -25,7 +25,7 @@ export function DashboardListingActions({ id, slug, status }) {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const canMarkAsSold = status !== "sold"
+  const canMarkAsSold = status === "active"
 
   async function handleMarkAsSold() {
     setIsUpdatingStatus(true)

@@ -403,9 +403,15 @@ export function EditListingForm({ listing }) {
                       accept="image/*"
                       multiple
                       className="hidden"
-                      onChange={(event) =>
-                        setNewPhotos(Array.from(event.target.files ?? []))
-                      }
+                      onChange={(event) => {
+                        const selectedFiles = Array.from(event.target.files ?? [])
+                        if (selectedFiles.length === 0) return
+                        setNewPhotos((currentPhotos) => [
+                          ...currentPhotos,
+                          ...selectedFiles,
+                        ])
+                        event.target.value = ""
+                      }}
                     />
 
                     {photos.length > 0 ? (

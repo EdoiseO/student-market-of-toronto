@@ -372,9 +372,15 @@ export function CreateListingForm() {
                       accept="image/*"
                       multiple
                       className="hidden"
-                      onChange={(event) =>
-                        setPhotos(Array.from(event.target.files ?? []))
-                      }
+                      onChange={(event) => {
+                        const selectedFiles = Array.from(event.target.files ?? [])
+                        if (selectedFiles.length === 0) return
+                        setPhotos((currentPhotos) => [
+                          ...currentPhotos,
+                          ...selectedFiles,
+                        ])
+                        event.target.value = ""
+                      }}
                     />
                   </CardContent>
                 </Card>
