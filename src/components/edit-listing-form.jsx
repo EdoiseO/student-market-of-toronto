@@ -76,9 +76,9 @@ function ListingCombobox({
   );
 }
 
-function ExistingPhotoChip({ index, onRemove }) {
+function ExistingPhotoChip({ index, imageUrl, onRemove }) {
   return (
-    <div className="relative h-22 w-22 rounded-[1.4rem] border border-zinc-300 bg-zinc-100 text-zinc-600 shadow-[0_0_0_1px_rgba(24,24,27,0.03)]">
+    <div className="relative h-22 w-22 overflow-hidden rounded-[1.4rem] border border-zinc-300 bg-zinc-100 text-zinc-600 shadow-[0_0_0_1px_rgba(24,24,27,0.03)]">
       <button
         type="button"
         onClick={onRemove}
@@ -87,9 +87,17 @@ function ExistingPhotoChip({ index, onRemove }) {
       >
         <X className="size-3.5" />
       </button>
-      <div className="flex h-full items-center justify-center text-2xl font-semibold">
-        {index + 1}
-      </div>
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt={`Existing photo ${index + 1}`}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <div className="flex h-full items-center justify-center text-2xl font-semibold">
+          {index + 1}
+        </div>
+      )}
     </div>
   );
 }
@@ -420,6 +428,7 @@ export function EditListingForm({ listing }) {
                           <ExistingPhotoChip
                             key={photo.id}
                             index={index}
+                            imageUrl={photo.image_url}
                             onRemove={() => {
                               setRemovedPhotos((currentPhotos) => [...currentPhotos, photo]);
                               setPhotos((currentPhotos) =>

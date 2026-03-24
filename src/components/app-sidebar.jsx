@@ -91,6 +91,7 @@ export function AppSidebar({
 }) {
   const pathname = usePathname();
   const categoriesOpen = pathname?.startsWith("/categories/") ?? false;
+  const showAccountSection = Boolean(user);
 
   return (
     <Sidebar
@@ -169,27 +170,29 @@ export function AppSidebar({
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel>My Account</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {accountItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    tooltip={item.title}
-                    className="min-h-11 rounded-xl px-3 text-sm"
-                  >
-                    <Link href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {showAccountSection ? (
+          <SidebarGroup>
+            <SidebarGroupLabel>My Account</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {accountItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      tooltip={item.title}
+                      className="min-h-11 rounded-xl px-3 text-sm"
+                    >
+                      <Link href={item.url}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : null}
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={user} />

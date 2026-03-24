@@ -268,7 +268,7 @@ export function CreateListingForm() {
       setSuccess(
         status === "draft"
           ? "Draft saved successfully."
-          : "Listing submitted and is pending approval.",
+          : "Listing published successfully.",
       );
     } catch (submitError) {
       setError(submitError.message || "Something went wrong while creating the listing.");
@@ -461,7 +461,7 @@ export function CreateListingForm() {
               <Button
                 type="button"
                 disabled={isSubmitting}
-                onClick={() => handleSubmit("inactive")}
+                onClick={() => handleSubmit("active")}
               >
                 {isSubmitting ? "Saving..." : "Publish Listing"}
               </Button>

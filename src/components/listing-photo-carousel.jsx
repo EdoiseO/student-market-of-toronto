@@ -47,7 +47,7 @@ export function ListingPhotoCarousel({ photos, title }) {
                     <img
                       src={photo.imageUrl}
                       alt={`${title} photo ${index + 1}`}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-contain"
                     />
                   ) : (
                     <span className="text-7xl font-semibold text-zinc-500 md:text-8xl">

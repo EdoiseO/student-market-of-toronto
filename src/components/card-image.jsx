@@ -21,18 +21,18 @@ export function CardImage({
   href = "#",
 }) {
   return (
-    <Card className="w-full max-w-none gap-0 overflow-hidden border-zinc-200 bg-white pt-0 shadow-sm ring-1 ring-zinc-200/80 transition-transform hover:-translate-y-0.5">
-      <div className="relative">
+    <Card className="flex h-full w-full max-w-none flex-col gap-0 overflow-hidden border-zinc-200 bg-white pt-0 shadow-sm ring-1 ring-zinc-200/80 transition-transform hover:-translate-y-0.5">
+      <div className="relative h-56 overflow-hidden bg-zinc-200 sm:h-64 lg:h-72">
         {imageUrl ? (
           <img
             src={imageUrl}
             alt={imageAlt}
-            className="aspect-[4/3] w-full object-cover grayscale"
+            className="h-full w-full object-cover"
           />
         ) : (
           <div
             aria-label={imageAlt}
-            className="aspect-[4/3] w-full bg-zinc-200"
+            className="h-full w-full bg-zinc-200"
           />
         )}
         {badge ? (
@@ -43,7 +43,7 @@ export function CardImage({
           </div>
         ) : null}
       </div>
-      <CardContent className="space-y-2 p-4">
+      <CardContent className="flex-1 space-y-2 p-4">
         <CardTitle className="text-lg font-semibold text-zinc-950">
           {title}
         </CardTitle>
