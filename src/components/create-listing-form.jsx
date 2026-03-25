@@ -29,20 +29,11 @@ import {
   FieldTitle,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { ListingPhotoChip, useLocalPhotoPreviews } from "@/components/listing-photo-chip";
 import { Textarea } from "@/components/ui/textarea";
+import { TORONTO_CAMPUS_OPTIONS } from "@/lib/campuses";
 import { CATEGORY_OPTIONS } from "@/lib/categories";
 import { createClient } from "@/utils/supabase/client";
-
-const campusOptions = [
-  "Toronto Metropolitan University",
-  "University of Toronto",
-  "York University",
-  "George Brown College",
-  "Humber Polytechnic",
-  "OCAD University",
-  "Seneca Polytechnic",
-  "Centennial College",
-];
 
 const conditionOptions = ["New", "Like New", "Used"];
 
@@ -120,6 +111,7 @@ export function CreateListingForm() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const fileInputRef = React.useRef(null);
+  const photoPreviews = useLocalPhotoPreviews(photos);
 
   function resetForm() {
     setTitle("");
@@ -268,7 +260,7 @@ export function CreateListingForm() {
       setSuccess(
         status === "draft"
           ? "Draft saved successfully."
-          : "Listing submitted and is pending approval.",
+          : "Listing published successfully.",
       );
     } catch (submitError) {
       setError(submitError.message || "Something went wrong while creating the listing.");
@@ -348,7 +340,7 @@ export function CreateListingForm() {
 
               <div className="flex flex-col gap-6">
                 <Card className="rounded-[1.75rem] border border-dashed border-zinc-300 bg-zinc-50 py-0 shadow-none">
-                  <CardContent className="p-6">
+                  <CardContent className="space-y-5 p-6">
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
@@ -382,6 +374,24 @@ export function CreateListingForm() {
                         event.target.value = ""
                       }}
                     />
+
+                    {photoPreviews.length > 0 ? (
+                      <div className="flex flex-wrap gap-4">
+                        {photoPreviews.map((photo, index) => (
+                          <ListingPhotoChip
+                            key={photo.id}
+                            index={index}
+                            imageUrl={photo.imageUrl}
+                            alt={photo.alt}
+                            onRemove={() => {
+                              setPhotos((currentPhotos) =>
+                                currentPhotos.filter((_, photoIndex) => photoIndex !== index),
+                              );
+                            }}
+                          />
+                        ))}
+                      </div>
+                    ) : null}
                   </CardContent>
                 </Card>
 
@@ -392,7 +402,7 @@ export function CreateListingForm() {
                       placeholder="Choose a meetup campus"
                       value={campus}
                       onValueChange={setCampus}
-                      options={campusOptions}
+                      options={TORONTO_CAMPUS_OPTIONS}
                     />
 
                     <Field orientation="horizontal" className="items-start rounded-2xl border border-zinc-200 bg-white p-4">
@@ -461,7 +471,7 @@ export function CreateListingForm() {
               <Button
                 type="button"
                 disabled={isSubmitting}
-                onClick={() => handleSubmit("inactive")}
+                onClick={() => handleSubmit("active")}
               >
                 {isSubmitting ? "Saving..." : "Publish Listing"}
               </Button>

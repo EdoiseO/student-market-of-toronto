@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { CheckIcon, LoaderCircleIcon } from "lucide-react";
+import { CheckIcon } from "lucide-react";
 
 import { createClient } from "@/utils/supabase/server";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +30,7 @@ const statusBadgeClasses = {
 
 const statusLabels = {
   active: "Live",
-  inactive: "Pending Approval",
+  inactive: "Inactive",
   draft: "Draft",
   sold: "Sold",
   favourite: "Favourite",
@@ -51,8 +51,8 @@ function buildDashboardPageHref(tab, page, rows) {
   return query ? `/dashboard?${query}` : "/dashboard";
 }
 
-const readOnlyTabs = new Set(["favourite", "sold"]);
-const editableStatuses = new Set(["active", "inactive", "draft"]);
+const readOnlyTabs = new Set(["favourite"]);
+const editableStatuses = new Set(["active", "inactive", "draft", "sold"]);
 
 function DashboardStatusBadge({ status }) {
   if (status === "active") {
@@ -61,15 +61,6 @@ function DashboardStatusBadge({ status }) {
         <span className="mr-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-white">
           <CheckIcon className="size-3" />
         </span>
-        {statusLabels[status]}
-      </Badge>
-    );
-  }
-
-  if (status === "inactive") {
-    return (
-      <Badge variant="outline" className={statusBadgeClasses[status]}>
-        <LoaderCircleIcon className="mr-1.5 size-3.5 animate-spin text-zinc-500" />
         {statusLabels[status]}
       </Badge>
     );
@@ -202,7 +193,7 @@ export default async function DashboardPage({ searchParams }) {
               Dashboard
             </CardTitle>
             <p className="max-w-2xl text-base text-zinc-600">
-              Track live listings, pending approvals, sold items, drafts, and
+              Track live listings, inactive listings, sold items, drafts, and
               saved items in one place.
             </p>
           </CardHeader>

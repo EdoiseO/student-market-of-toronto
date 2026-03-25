@@ -110,7 +110,22 @@ export default async function ListingDetailPage({ params }) {
   const { data: similarRows = [] } = await supabase
     .from("listings")
     .select(
-      "id, seller_id, slug, title, price, category, location, status, created_at, previous_price, is_featured, is_negotiable"
+      `id,
+      seller_id,
+      slug,
+      title,
+      price,
+      category,
+      location,
+      status,
+      created_at,
+      previous_price,
+      is_featured,
+      is_negotiable,
+      listing_images (
+        image_url,
+        position
+      )`
     )
     .eq("category", listing.category)
     .eq("status", "active")
@@ -160,6 +175,10 @@ export default async function ListingDetailPage({ params }) {
     price: formatPrice(item.price),
     meta: schoolBySellerId.get(item.seller_id) || item.location || "Toronto meetup",
     badge: getListingBadge(item),
+    imageUrl: (item.listing_images ?? [])
+      .slice()
+      .sort((firstImage, secondImage) => firstImage.position - secondImage.position)[0]
+      ?.image_url,
   }));
 
   return (
@@ -316,6 +335,7 @@ export default async function ListingDetailPage({ params }) {
                 title={item.title}
                 price={item.price}
                 meta={item.meta}
+                imageUrl={item.imageUrl}
                 href={`/listings/${item.slug}`}
                 imageAlt={item.title}
               />

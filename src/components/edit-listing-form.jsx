@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { ImagePlus, Info, Sparkles, X } from "lucide-react";
+import { ImagePlus, Info, Sparkles } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 
 import { Badge } from "@/components/ui/badge";
@@ -31,19 +31,10 @@ import {
   FieldTitle,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { ListingPhotoChip, useLocalPhotoPreviews } from "@/components/listing-photo-chip";
 import { Textarea } from "@/components/ui/textarea";
+import { TORONTO_CAMPUS_OPTIONS } from "@/lib/campuses";
 import { CATEGORY_OPTIONS, normalizeCategoryValue } from "@/lib/categories";
-
-const campusOptions = [
-  "Toronto Metropolitan University",
-  "University of Toronto",
-  "York University",
-  "George Brown College",
-  "Humber Polytechnic",
-  "OCAD University",
-  "Seneca Polytechnic",
-  "Centennial College",
-];
 
 const conditionOptions = ["New", "Like New", "Used"];
 
@@ -76,24 +67,6 @@ function ListingCombobox({
   );
 }
 
-function ExistingPhotoChip({ index, onRemove }) {
-  return (
-    <div className="relative h-22 w-22 rounded-[1.4rem] border border-zinc-300 bg-zinc-100 text-zinc-600 shadow-[0_0_0_1px_rgba(24,24,27,0.03)]">
-      <button
-        type="button"
-        onClick={onRemove}
-        className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-white/95 text-zinc-700 shadow-sm transition hover:bg-zinc-950 hover:text-white"
-        aria-label={`Delete photo ${index + 1}`}
-      >
-        <X className="size-3.5" />
-      </button>
-      <div className="flex h-full items-center justify-center text-2xl font-semibold">
-        {index + 1}
-      </div>
-    </div>
-  );
-}
-
 export function EditListingForm({ listing }) {
   const router = useRouter();
   const supabase = React.useMemo(() => createClient(), []);
@@ -115,6 +88,7 @@ export function EditListingForm({ listing }) {
 
   const fileInputRef = React.useRef(null);
   const originalPrice = Number(listing.price ?? 0);
+  const newPhotoPreviews = useLocalPhotoPreviews(newPhotos);
 
   const tagPreview = [];
   if (isNegotiable) {
@@ -414,15 +388,30 @@ export function EditListingForm({ listing }) {
                       }}
                     />
 
-                    {photos.length > 0 ? (
+                    {photos.length > 0 || newPhotoPreviews.length > 0 ? (
                       <div className="flex flex-wrap gap-4">
                         {photos.map((photo, index) => (
-                          <ExistingPhotoChip
+                          <ListingPhotoChip
                             key={photo.id}
                             index={index}
+                            imageUrl={photo.image_url}
+                            alt={`Existing photo ${index + 1}`}
                             onRemove={() => {
                               setRemovedPhotos((currentPhotos) => [...currentPhotos, photo]);
                               setPhotos((currentPhotos) =>
+                                currentPhotos.filter((_, photoIndex) => photoIndex !== index),
+                              );
+                            }}
+                          />
+                        ))}
+                        {newPhotoPreviews.map((photo, index) => (
+                          <ListingPhotoChip
+                            key={photo.id}
+                            index={photos.length + index}
+                            imageUrl={photo.imageUrl}
+                            alt={photo.alt}
+                            onRemove={() => {
+                              setNewPhotos((currentPhotos) =>
                                 currentPhotos.filter((_, photoIndex) => photoIndex !== index),
                               );
                             }}
@@ -440,7 +429,7 @@ export function EditListingForm({ listing }) {
                       placeholder="Choose a meetup campus"
                       value={campus}
                       onValueChange={setCampus}
-                      options={campusOptions}
+                      options={TORONTO_CAMPUS_OPTIONS}
                     />
 
                     <Field

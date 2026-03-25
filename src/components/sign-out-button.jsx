@@ -30,7 +30,7 @@ export function SignOutButton() {
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="outline" className="mb-3 w-full justify-start rounded-xl">
+        <Button variant="outline" className="w-full justify-start rounded-xl">
           <LogOutIcon />
           <span>Sign Out</span>
         </Button>
