@@ -1,69 +1,39 @@
 # Student Market of Toronto
 
-Student Market of Toronto is a marketplace web app for Toronto students to browse, create, manage, and favourite listings in one place.
+This README is focused on one thing: getting the project running locally.
 
-It is built with Next.js, Supabase, and a component system based on `shadcn` UI patterns.
+## What You Need
 
-## Current Status
+Before starting the app, make sure you have:
 
-### Implemented
-- Student registration and login with Supabase Auth
-- Toronto school email validation during registration
-- Public listing browsing on the home page and category pages
-- Listing detail pages with image carousel and similar listings
-- Listing creation with photo uploads
-- Listing editing with photo management and previews
-- Dashboard listing management for active, inactive, draft, sold, and favourite states
-- Reversible sold flow (`Mark as Sold` and `Reopen Listing`)
-- Logged-in sidebar navigation grouped by marketplace, selling, buying, and account tasks
+- `Node.js`
+- `npm`
+- A `Supabase` project
 
-### Placeholder / Not Fully Built Yet
-- Search
-- Messages
-- Profile
+## Supabase Requirements
 
-Those features may appear in the UI, but they are not fully implemented yet.
+This project depends on Supabase for:
 
-## Feature Highlights
+- authentication
+- database reads and writes
+- image storage
 
-### Authentication
-- Email/password login with Supabase
-- Registration restricted to supported Toronto school email domains
-- School name auto-filled from email domain where supported
-- Route protection for dashboard and listing management pages
+Your Supabase project should already have the resources this app expects.
 
-### Listings
-- Create listings with title, category, price, description, condition, campus, and negotiable state
-- Upload multiple listing photos
-- Preview and remove selected images before saving
-- Edit existing listings and manage both current and newly added photos
-- Browse active listings by category
-- View similar listings on detail pages
+### Database tables used by the app
 
-### Dashboard
-- View listings by status: all, active, inactive, sold, draft, and favourite
-- Mark active listings as sold
-- Reopen sold listings back to active
-- Delete listings and associated uploaded images
+- `profiles`
+- `listings`
+- `listing_images`
+- `listing_favourites`
 
-## Tech Stack
+### Storage bucket used by the app
 
-- `Next.js 16` with the App Router
-- `React 19`
-- `Supabase` for auth, database, and storage
-- `Tailwind CSS 4`
-- `lucide-react`
-- `Embla Carousel`
+- `listing-images`
 
-## Getting Started
+If those tables or the storage bucket do not exist in your Supabase project, parts of the app will not work correctly.
 
-### 1. Install dependencies
-
-```bash
-npm install
-```
-
-### 2. Configure environment variables
+## Environment Variables
 
 Copy the example env file:
 
@@ -71,90 +41,98 @@ Copy the example env file:
 cp .env.example .env.local
 ```
 
-Add your Supabase values to `.env.local`:
+Then add your Supabase values to `.env.local`:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=
 ```
 
-### 3. Run the development server
+These values come from your Supabase project settings.
+
+## Install Dependencies
+
+```bash
+npm install
+```
+
+## Run the Project in Development
+
+Start the dev server:
 
 ```bash
 npm run dev
 ```
 
-Open `http://localhost:3000` in your browser.
+Then open:
 
-## Available Scripts
+```text
+http://localhost:3000
+```
+
+## Other Useful Commands
+
+Run lint:
 
 ```bash
-npm run dev
-npm run build
-npm run start
 npm run lint
 ```
 
+Create a production build:
+
+```bash
+npm run build
+```
+
+Run the production build locally:
+
+```bash
+npm run start
+```
+
+## What Works Right Now
+
+- registration
+- login
+- browsing listings
+- category pages
+- listing detail pages
+- create listing
+- edit listing
+- dashboard listing management
+
+## Features Not Fully Implemented Yet
+
+- search
+- messages
+- profile
+
+Those features may still appear in the UI, but they are not fully built yet.
+
 ## Main Routes
 
-- `/` — browse listings across marketplace sections
-- `/categories/[slug]` — browse listings within a category
-- `/listings/[slug]` — view a listing
-- `/listings/create` — create a new listing
-- `/listings/[slug]/edit` — edit an existing listing
-- `/dashboard` — manage your listings and favourites
-- `/login` — sign in
-- `/register` — create an account
-
-## Supported School Email Domains
-
-Registration currently recognizes Toronto school domains for institutions such as:
-
-- University of Toronto
-- Toronto Metropolitan University
-- York University
-- George Brown College
-- Humber Polytechnic
-- Seneca Polytechnic
-- Centennial College
-- OCAD University
-
-The email-domain validation logic lives in `src/lib/school-email.js`.
+- `/`
+- `/categories/[slug]`
+- `/listings/[slug]`
+- `/listings/create`
+- `/listings/[slug]/edit`
+- `/dashboard`
+- `/login`
+- `/register`
 
 ## Project Structure
 
 ```text
-src/app                 App routes and pages
-src/components          Shared UI and feature components
-src/lib                 Helpers, category data, mock data, school email rules
-src/utils/supabase      Client/server Supabase helpers
+src/app                 Routes and pages
+src/components          Shared and feature components
+src/lib                 Helpers and app data
+src/utils/supabase      Supabase client/server setup
 public                  Static assets
 ```
 
-## Development Notes
+## Notes
 
-- This project is currently focused on auth and listing management workflows
-- Search, messages, and profile are intentionally not complete yet
-- UI for unfinished features should feel intentional, not broken
+- This app is built with `Next.js`, `React`, `Tailwind CSS`, and `Supabase`.
+- Registration includes Toronto school email validation.
+- Listing image uploads use Supabase Storage.
 
-## Validation
-
-Before pushing changes, the most useful checks are:
-
-```bash
-npm run lint
-npm run build
-```
-
-## Roadmap Ideas
-
-- Real search experience
-- Messaging between buyers and sellers
-- User profile page
-- Better seller identity and trust signals
-- More advanced listing filters and sorting
-- Saved search and notifications
-
-## License
-
-This project currently does not include a license file.
