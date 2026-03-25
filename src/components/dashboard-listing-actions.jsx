@@ -25,6 +25,7 @@ export function DashboardListingActions({ id, slug, status }) {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const canPostListing = status === "draft"
   const canMarkAsSold = status === "active"
   const canReopenListing = status === "sold"
 
@@ -125,6 +126,18 @@ export function DashboardListingActions({ id, slug, status }) {
       >
         <Link href={`/listings/${slug}/edit`}>Edit</Link>
       </Button>
+      {canPostListing ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-9 rounded-xl bg-white px-4"
+          onClick={() => handleUpdateStatus("active")}
+          disabled={isUpdatingStatus}
+        >
+          {isUpdatingStatus ? "Saving..." : "Post Listing"}
+        </Button>
+      ) : null}
       {canMarkAsSold ? (
         <Button
           type="button"
