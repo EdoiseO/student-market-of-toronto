@@ -19,6 +19,9 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 
+const actionButtonClassName =
+  "h-9 rounded-xl bg-white px-4 dark:bg-zinc-900"
+
 export function DashboardListingActions({ id, slug, status }) {
   const router = useRouter()
   const supabase = createClient()
@@ -122,7 +125,7 @@ export function DashboardListingActions({ id, slug, status }) {
         asChild
         variant="outline"
         size="sm"
-        className="h-9 rounded-xl bg-white px-4"
+        className={actionButtonClassName}
       >
         <Link href={`/listings/${slug}/edit`}>Edit</Link>
       </Button>
@@ -131,7 +134,7 @@ export function DashboardListingActions({ id, slug, status }) {
           type="button"
           variant="outline"
           size="sm"
-          className="h-9 rounded-xl bg-white px-4"
+          className={actionButtonClassName}
           onClick={() => handleUpdateStatus("active")}
           disabled={isUpdatingStatus}
         >
@@ -143,7 +146,7 @@ export function DashboardListingActions({ id, slug, status }) {
           type="button"
           variant="outline"
           size="sm"
-          className="h-9 rounded-xl bg-white px-4"
+          className={actionButtonClassName}
           onClick={() => handleUpdateStatus("sold")}
           disabled={isUpdatingStatus}
         >
@@ -155,7 +158,7 @@ export function DashboardListingActions({ id, slug, status }) {
           type="button"
           variant="outline"
           size="sm"
-          className="h-9 rounded-xl bg-white px-4"
+          className={actionButtonClassName}
           onClick={() => handleUpdateStatus("active")}
           disabled={isUpdatingStatus}
         >
@@ -168,7 +171,7 @@ export function DashboardListingActions({ id, slug, status }) {
             type="button"
             variant="outline"
             size="sm"
-            className="h-9 rounded-xl border-rose-200 bg-rose-50 px-4 text-rose-700 hover:bg-rose-100"
+            className="h-9 rounded-xl border-rose-200 bg-rose-50 px-4 text-rose-700 hover:bg-rose-100 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-950/60"
           >
             Delete
           </Button>

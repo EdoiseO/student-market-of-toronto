@@ -41,8 +41,8 @@ export function ListingPhotoCarousel({ photos, title }) {
         <CarouselContent>
           {photos.map((photo, index) => (
             <CarouselItem key={`${photo.label}-${index}`}>
-              <div className="overflow-hidden rounded-[2rem] border border-zinc-200 bg-zinc-100">
-                <div className="relative flex aspect-[16/9] items-center justify-center overflow-hidden bg-zinc-200">
+              <div className="overflow-hidden rounded-[2rem] border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="relative flex aspect-[16/9] items-center justify-center overflow-hidden bg-zinc-200 dark:bg-zinc-950">
                   {photo.imageUrl ? (
                     <img
                       src={photo.imageUrl}
@@ -50,12 +50,12 @@ export function ListingPhotoCarousel({ photos, title }) {
                       className="h-full w-full object-contain"
                     />
                   ) : (
-                    <span className="text-7xl font-semibold text-zinc-500 md:text-8xl">
+                    <span className="text-7xl font-semibold text-zinc-500 dark:text-zinc-400 md:text-8xl">
                       {index + 1}
                     </span>
                   )}
                   <div className="absolute left-5 top-5">
-                    <Badge variant="secondary" className="bg-white/90 text-zinc-950">
+                    <Badge variant="secondary" className="bg-white/90 text-zinc-950 dark:bg-zinc-900/90 dark:text-zinc-50">
                       {photo.label}
                     </Badge>
                   </div>
@@ -65,8 +65,8 @@ export function ListingPhotoCarousel({ photos, title }) {
           ))}
         </CarouselContent>
 
-        <CarouselPrevious className="left-4 top-1/2 size-11 -translate-y-1/2 bg-white/90 text-zinc-900 shadow-sm hover:bg-white" />
-        <CarouselNext className="right-4 top-1/2 size-11 -translate-y-1/2 bg-white/90 text-zinc-900 shadow-sm hover:bg-white" />
+        <CarouselPrevious className="left-4 top-1/2 size-11 -translate-y-1/2 bg-white/90 text-zinc-900 shadow-sm hover:bg-white dark:bg-zinc-900/90 dark:text-zinc-50 dark:hover:bg-zinc-900" />
+        <CarouselNext className="right-4 top-1/2 size-11 -translate-y-1/2 bg-white/90 text-zinc-900 shadow-sm hover:bg-white dark:bg-zinc-900/90 dark:text-zinc-50 dark:hover:bg-zinc-900" />
       </Carousel>
 
       <div className="flex flex-wrap items-center justify-center gap-2.5">
@@ -76,10 +76,10 @@ export function ListingPhotoCarousel({ photos, title }) {
             type="button"
             onClick={() => api?.scrollTo(index)}
             className={cn(
-              "h-14 w-18 overflow-hidden rounded-xl border bg-zinc-100 transition sm:h-16 sm:w-20",
+              "h-14 w-18 overflow-hidden rounded-xl border bg-zinc-100 transition sm:h-16 sm:w-20 dark:bg-zinc-900",
               activeIndex === index
-                ? "border-zinc-900 ring-2 ring-zinc-900/10"
-                : "border-zinc-200 hover:border-zinc-400"
+                ? "border-zinc-900 ring-2 ring-zinc-900/10 dark:border-zinc-100 dark:ring-zinc-100/10"
+                : "border-zinc-200 hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600"
             )}
           >
             {photo.imageUrl ? (
@@ -89,7 +89,7 @@ export function ListingPhotoCarousel({ photos, title }) {
                 className="h-full w-full object-cover"
               />
             ) : (
-              <span className="flex h-full w-full items-center justify-center text-lg font-semibold text-zinc-500 sm:text-xl">
+              <span className="flex h-full w-full items-center justify-center text-lg font-semibold text-zinc-500 dark:text-zinc-400 sm:text-xl">
                 {index + 1}
               </span>
             )}

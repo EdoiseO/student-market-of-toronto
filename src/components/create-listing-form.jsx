@@ -275,14 +275,14 @@ export function CreateListingForm() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-100 p-6 md:p-8">
+    <main className="min-h-screen bg-zinc-100 p-6 dark:bg-zinc-950 md:p-8">
       <div className="mx-auto flex w-full max-w-[1800px] flex-col gap-8">
-        <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm">
-          <CardHeader className="border-b border-zinc-200 px-8 py-7">
-            <CardTitle className="text-4xl font-bold tracking-tight text-zinc-950">
+        <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <CardHeader className="border-b border-zinc-200 px-8 py-7 dark:border-zinc-800">
+            <CardTitle className="text-4xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50">
               Create Listing
             </CardTitle>
-            <CardDescription className="max-w-2xl text-base text-zinc-600">
+            <CardDescription className="max-w-2xl text-base text-zinc-600 dark:text-zinc-300">
               Add the main item details first. Photos, campus, condition, and
               tag preview are included here so the page reflects how the listing
               will look later in the marketplace.
@@ -339,21 +339,21 @@ export function CreateListingForm() {
               </FieldGroup>
 
               <div className="flex flex-col gap-6">
-                <Card className="rounded-[1.75rem] border border-dashed border-zinc-300 bg-zinc-50 py-0 shadow-none">
+                <Card className="rounded-[1.75rem] border border-dashed border-zinc-300 bg-zinc-50 py-0 shadow-none dark:border-zinc-700 dark:bg-zinc-900/60">
                   <CardContent className="space-y-5 p-6">
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="flex min-h-56 w-full flex-col items-center justify-center rounded-[1.5rem] border border-zinc-200 bg-white px-6 py-10 text-center transition hover:border-zinc-400"
+                      className="flex min-h-56 w-full flex-col items-center justify-center rounded-[1.5rem] border border-zinc-200 bg-white px-6 py-10 text-center transition hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-600"
                     >
                       <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-950 text-white">
                         <ImagePlus className="size-6" />
                       </div>
-                      <p className="text-lg font-semibold text-zinc-950">
+                      <p className="text-lg font-semibold text-zinc-950 dark:text-zinc-50">
                         Add Listing Photos
                       </p>
                       {photos.length > 0 ? (
-                        <p className="mt-4 text-sm font-medium text-zinc-700">
+                        <p className="mt-4 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                           {photos.length} file{photos.length === 1 ? "" : "s"} selected
                         </p>
                       ) : null}
@@ -395,7 +395,7 @@ export function CreateListingForm() {
                   </CardContent>
                 </Card>
 
-                <Card className="rounded-[1.75rem] border-zinc-200 bg-zinc-50 py-0 shadow-none">
+                <Card className="rounded-[1.75rem] border-zinc-200 bg-zinc-50 py-0 shadow-none dark:border-zinc-800 dark:bg-zinc-900/60">
                   <CardContent className="space-y-5 p-6">
                     <ListingCombobox
                       label="Campus"
@@ -405,7 +405,7 @@ export function CreateListingForm() {
                       options={TORONTO_CAMPUS_OPTIONS}
                     />
 
-                    <Field orientation="horizontal" className="items-start rounded-2xl border border-zinc-200 bg-white p-4">
+                    <Field orientation="horizontal" className="items-start rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
                       <Checkbox
                         id="negotiable"
                         checked={isNegotiable}
@@ -419,8 +419,8 @@ export function CreateListingForm() {
                       </div>
                     </Field>
 
-                    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                      <div className="mb-3 flex items-center gap-2 text-zinc-900">
+                    <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                      <div className="mb-3 flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
                         <Sparkles className="size-4" />
                         <p className="text-sm font-semibold uppercase tracking-[0.18em]">
                           Tag Preview
@@ -428,20 +428,20 @@ export function CreateListingForm() {
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {tagPreview.map((tag) => (
-                          <Badge key={tag} variant="secondary" className="bg-zinc-100 text-zinc-800">
+                          <Badge key={tag} variant="secondary" className="bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-100">
                             {tag}
                           </Badge>
                         ))}
                       </div>
-                      <p className="mt-3 text-sm text-zinc-500">
+                      <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
                         `New` is automatic. `Popular`, `Hot`, `Price Drop`, and
                         `Sold` should be derived later from listing activity or
                         edits.
                       </p>
                     </div>
 
-                    <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-500">
-                      <div className="mb-2 flex items-center gap-2 text-zinc-900">
+                    <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
+                      <div className="mb-2 flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
                         <Info className="size-4" />
                         <span className="font-medium">Recommendation</span>
                       </div>

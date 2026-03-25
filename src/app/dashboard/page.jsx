@@ -21,11 +21,11 @@ const dashboardTabs = [
 const rowsPerPageOptions = [7, 10, 15];
 
 const statusBadgeClasses = {
-  active: "border-zinc-200 bg-white text-zinc-700",
-  inactive: "border-zinc-200 bg-white text-zinc-700",
-  draft: "border-zinc-200 bg-zinc-100 text-zinc-700",
-  sold: "border-zinc-200 bg-zinc-100 text-zinc-700",
-  favourite: "border-rose-200 bg-rose-50 text-rose-700",
+  active: "border-zinc-200 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200",
+  inactive: "border-zinc-200 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200",
+  draft: "border-zinc-200 bg-zinc-100 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200",
+  sold: "border-zinc-200 bg-zinc-100 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200",
+  favourite: "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300",
 };
 
 const statusLabels = {
@@ -185,14 +185,14 @@ export default async function DashboardPage({ searchParams }) {
   const showManagementActions = !readOnlyTabs.has(currentTab);
 
   return (
-    <main className="min-h-screen bg-zinc-100 p-6 md:p-8">
+    <main className="min-h-screen bg-zinc-100 p-6 dark:bg-zinc-950 md:p-8">
       <div className="mx-auto flex w-full max-w-[1800px] flex-col gap-8">
-        <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm">
-          <CardHeader className="border-b border-zinc-200 px-8 py-6">
-            <CardTitle className="text-4xl font-bold tracking-tight text-zinc-950">
+        <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <CardHeader className="border-b border-zinc-200 px-8 py-6 dark:border-zinc-800">
+            <CardTitle className="text-4xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50">
               Dashboard
             </CardTitle>
-            <p className="max-w-2xl text-base text-zinc-600">
+            <p className="max-w-2xl text-base text-zinc-600 dark:text-zinc-300">
               Track live listings, inactive listings, sold items, drafts, and
               saved items in one place.
             </p>
@@ -212,7 +212,7 @@ export default async function DashboardPage({ searchParams }) {
                       className={
                         isActive
                           ? "h-10 rounded-xl px-4"
-                          : "h-10 rounded-xl bg-white px-4"
+                          : "h-10 rounded-xl bg-white px-4 dark:bg-zinc-900"
                       }
                     >
                       <Link href={buildDashboardHref(tab.key)}>
@@ -221,7 +221,7 @@ export default async function DashboardPage({ searchParams }) {
                           className={`ml-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
                             isActive
                               ? "bg-white/20 text-white"
-                              : "bg-black/10 text-zinc-700"
+                              : "bg-black/10 text-zinc-700 dark:bg-white/10 dark:text-zinc-200"
                           }`}
                         >
                           {counts[tab.key]}
@@ -239,11 +239,11 @@ export default async function DashboardPage({ searchParams }) {
               ) : null}
             </div>
 
-            <div className="overflow-hidden rounded-[1.75rem] border border-zinc-200 bg-white">
+            <div className="overflow-hidden rounded-[1.75rem] border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
               <div className="overflow-x-auto">
                 <table className="min-w-full text-left">
-                  <thead className="bg-zinc-50">
-                    <tr className="border-b border-zinc-200 text-sm text-zinc-500">
+                  <thead className="bg-zinc-50 dark:bg-zinc-900">
+                    <tr className="border-b border-zinc-200 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
                       <th className="px-6 py-4 font-medium">Listing</th>
                       <th className="px-6 py-4 font-medium">Status</th>
                       <th className="px-6 py-4 font-medium">Price</th>
@@ -260,18 +260,18 @@ export default async function DashboardPage({ searchParams }) {
                     {paginatedItems.map((item) => (
                       <tr
                         key={`${item.dashboardStatus}-${item.id}`}
-                        className="border-b border-zinc-200 last:border-b-0"
+                        className="border-b border-zinc-200 last:border-b-0 dark:border-zinc-800"
                       >
                         <td className="px-6 py-5">
                           <Link
                             href={`/listings/${item.slug}`}
-                            className="block rounded-xl transition hover:bg-zinc-50"
+                            className="block rounded-xl transition hover:bg-zinc-50 dark:hover:bg-zinc-900"
                           >
                             <div className="py-1">
-                              <p className="font-semibold text-zinc-950">
+                              <p className="font-semibold text-zinc-950 dark:text-zinc-50">
                                 {item.title}
                               </p>
-                              <p className="mt-1 text-sm text-zinc-500">
+                              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                                 {item.meta}
                               </p>
                             </div>
@@ -280,15 +280,15 @@ export default async function DashboardPage({ searchParams }) {
                         <td className="px-6 py-5">
                           <DashboardStatusBadge status={item.dashboardStatus} />
                         </td>
-                        <td className="px-6 py-5 font-medium text-zinc-900">
+                        <td className="px-6 py-5 font-medium text-zinc-900 dark:text-zinc-100">
                           {item.price}
                         </td>
-                        <td className="px-6 py-5 text-zinc-700">
+                        <td className="px-6 py-5 text-zinc-700 dark:text-zinc-300">
                           {item.messageCount > 0
                             ? `${item.messageCount}+`
                             : "0"}
                         </td>
-                        <td className="px-6 py-5 text-zinc-700">
+                        <td className="px-6 py-5 text-zinc-700 dark:text-zinc-300">
                           {item.category}
                         </td>
                         {showManagementActions ? (
@@ -300,7 +300,7 @@ export default async function DashboardPage({ searchParams }) {
                                 status={item.dashboardStatus}
                               />
                             ) : (
-                              <span className="text-sm text-zinc-400">-</span>
+                              <span className="text-sm text-zinc-400 dark:text-zinc-500">-</span>
                             )}
                           </td>
                         ) : null}
@@ -311,17 +311,17 @@ export default async function DashboardPage({ searchParams }) {
               </div>
 
               {filteredItems.length === 0 ? (
-                <div className="px-6 py-12 text-center text-sm text-zinc-500">
+                <div className="px-6 py-12 text-center text-sm text-zinc-500 dark:text-zinc-400">
                   No listings found for this section yet.
                 </div>
               ) : null}
 
               {filteredItems.length > 7 ? (
-                <div className="flex flex-col gap-4 border-t border-zinc-200 px-6 py-4 text-sm text-zinc-500 md:flex-row md:items-center md:justify-between">
+                <div className="flex flex-col gap-4 border-t border-zinc-200 px-6 py-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400 md:flex-row md:items-center md:justify-between">
                   <p>0 of {filteredItems.length} row(s) selected.</p>
                   <div className="flex flex-col gap-4 md:flex-row md:items-center">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-zinc-700">
+                      <span className="font-medium text-zinc-700 dark:text-zinc-300">
                         Rows per page
                       </span>
                       <div className="flex items-center gap-2">
@@ -335,7 +335,7 @@ export default async function DashboardPage({ searchParams }) {
                             size="sm"
                             className={
                               rowsPerPage === option
-                                ? "h-9 rounded-xl bg-white px-3"
+                                ? "h-9 rounded-xl bg-white px-3 dark:bg-zinc-900"
                                 : "h-9 rounded-xl px-3"
                             }
                           >
@@ -353,7 +353,7 @@ export default async function DashboardPage({ searchParams }) {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="font-medium text-zinc-700">
+                      <span className="font-medium text-zinc-700 dark:text-zinc-300">
                         Page {currentPage} of {totalPages}
                       </span>
                       <div className="flex items-center gap-2">

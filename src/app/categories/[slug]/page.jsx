@@ -105,23 +105,23 @@ export default async function CategoryPage({ params, searchParams }) {
   const paginatedItems = listings.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   return (
-    <main className="min-h-screen bg-zinc-100 p-6 md:p-8">
+    <main className="min-h-screen bg-zinc-100 p-6 dark:bg-zinc-950 md:p-8">
       <div className="mx-auto flex w-full max-w-[1800px] flex-col gap-8">
-        <section className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-zinc-200">
-          <h1 className="text-4xl font-bold tracking-tight text-zinc-950">
+        <section className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
+          <h1 className="text-4xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50">
             {section.title}
           </h1>
-          <p className="mt-3 max-w-2xl text-base text-zinc-600">
+          <p className="mt-3 max-w-2xl text-base text-zinc-600 dark:text-zinc-300">
             Browse student listings in this category, check out featured picks,
             spot newly added items, and explore everything currently available.
           </p>
         </section>
 
         {featuredItems.length > 0 ? (
-          <section className="rounded-3xl bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 md:p-8">
+          <section className="rounded-3xl bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900/60 dark:ring-zinc-800 md:p-8">
             <div className="mb-5">
-              <h2 className="text-2xl font-bold text-zinc-950">Featured Items</h2>
-              <p className="mt-1 text-sm text-zinc-500">
+              <h2 className="text-2xl font-bold text-zinc-950 dark:text-zinc-50">Featured Items</h2>
+              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                 Highlighted listings students are likely to notice first.
               </p>
             </div>
@@ -130,10 +130,10 @@ export default async function CategoryPage({ params, searchParams }) {
         ) : null}
 
         {newItems.length > 0 ? (
-          <section className="rounded-3xl bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 md:p-8">
+          <section className="rounded-3xl bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900/60 dark:ring-zinc-800 md:p-8">
             <div className="mb-5">
-              <h2 className="text-2xl font-bold text-zinc-950">New Items</h2>
-              <p className="mt-1 text-sm text-zinc-500">
+              <h2 className="text-2xl font-bold text-zinc-950 dark:text-zinc-50">New Items</h2>
+              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                 Recently added listings in {section.title.toLowerCase()}.
               </p>
             </div>
@@ -141,10 +141,10 @@ export default async function CategoryPage({ params, searchParams }) {
           </section>
         ) : null}
 
-        <section className="rounded-3xl bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 md:p-8">
+        <section className="rounded-3xl bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900/60 dark:ring-zinc-800 md:p-8">
           <div className="mb-5">
-            <h2 className="text-2xl font-bold text-zinc-950">All Available Items</h2>
-            <p className="mt-1 text-sm text-zinc-500">
+            <h2 className="text-2xl font-bold text-zinc-950 dark:text-zinc-50">All Available Items</h2>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
               Every listing currently shown in this category.
             </p>
           </div>
@@ -152,7 +152,7 @@ export default async function CategoryPage({ params, searchParams }) {
           {paginatedItems.length > 0 ? (
             <CategoryListingGrid items={paginatedItems} />
           ) : (
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
               No listings available in this category yet.
             </p>
           )}

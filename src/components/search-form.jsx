@@ -21,7 +21,7 @@ export function SearchForm({
         />
         <SearchIcon
           className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 opacity-50 select-none" />
-        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-zinc-100 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500">
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-zinc-100 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500 dark:bg-zinc-800 dark:text-zinc-300">
           Soon
         </span>
       </div>

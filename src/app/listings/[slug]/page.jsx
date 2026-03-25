@@ -182,36 +182,36 @@ export default async function ListingDetailPage({ params }) {
   }));
 
   return (
-    <main className="min-h-screen bg-zinc-100 p-6 md:p-8">
+    <main className="min-h-screen bg-zinc-100 p-6 dark:bg-zinc-950 md:p-8">
       <div className="mx-auto flex w-full max-w-[1800px] flex-col gap-8">
-        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 md:p-8">
+        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800 md:p-8">
           <div className="grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.95fr)]">
             <div className="flex flex-col gap-5">
               <ListingPhotoCarousel photos={photos} title={listing.title} />
 
-              <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-none">
-                <CardHeader className="border-b border-zinc-200 px-6 py-5 md:px-7">
-                  <CardTitle className="text-2xl text-zinc-950">Description</CardTitle>
+              <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-none dark:border-zinc-800 dark:bg-zinc-900">
+                <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-zinc-800 md:px-7">
+                  <CardTitle className="text-2xl text-zinc-950 dark:text-zinc-50">Description</CardTitle>
                 </CardHeader>
-                <CardContent className="px-6 py-6 text-base leading-8 text-zinc-600 md:px-7">
+                <CardContent className="px-6 py-6 text-base leading-8 text-zinc-600 dark:text-zinc-300 md:px-7">
                   {listing.description}
                 </CardContent>
               </Card>
             </div>
 
             <div className="flex flex-col gap-5">
-              <Card className="rounded-[2rem] border-zinc-200 bg-zinc-50 py-0 shadow-none">
+              <Card className="rounded-[2rem] border-zinc-200 bg-zinc-50 py-0 shadow-none dark:border-zinc-800 dark:bg-zinc-900/60">
                 <CardContent className="space-y-6 p-6 md:p-7">
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-3">
-                      <Badge variant="outline" className="w-fit border-zinc-300 bg-white text-zinc-700">
+                      <Badge variant="outline" className="w-fit border-zinc-300 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
                         {badge}
                       </Badge>
                       <div className="space-y-2">
-                        <h1 className="text-3xl font-bold tracking-tight text-zinc-950 md:text-4xl">
+                        <h1 className="text-3xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50 md:text-4xl">
                           {listing.title}
                         </h1>
-                        <p className="text-3xl font-bold text-zinc-900">{formatPrice(listing.price)}</p>
+                        <p className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">{formatPrice(listing.price)}</p>
                       </div>
                     </div>
 
@@ -221,20 +221,20 @@ export default async function ListingDetailPage({ params }) {
                     />
                   </div>
 
-                    <div className="grid gap-3 text-sm text-zinc-600 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                    <div className="grid gap-3 text-sm text-zinc-600 dark:text-zinc-300 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">
                         Campus
                       </p>
-                      <p className="mt-2 text-base font-medium text-zinc-900">
+                      <p className="mt-2 text-base font-medium text-zinc-900 dark:text-zinc-100">
                         {campusLabel}
                       </p>
                     </div>
-                    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                    <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">
                         Condition
                       </p>
-                      <p className="mt-2 text-base font-medium text-zinc-900">
+                      <p className="mt-2 text-base font-medium text-zinc-900 dark:text-zinc-100">
                         {listing.condition}
                       </p>
                     </div>
@@ -247,39 +247,39 @@ export default async function ListingDetailPage({ params }) {
                 </CardContent>
               </Card>
 
-              <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-none">
+              <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-none dark:border-zinc-800 dark:bg-zinc-900">
                 <CardContent className="space-y-5 p-6 md:p-7">
                   <div className="flex items-center gap-4">
                     <Avatar className="h-14 w-14 rounded-2xl">
-                      <AvatarFallback className="rounded-2xl bg-zinc-200 text-zinc-900">
+                      <AvatarFallback className="rounded-2xl bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
                         {initials}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="text-xl font-semibold text-zinc-950">
+                      <p className="text-xl font-semibold text-zinc-950 dark:text-zinc-50">
                         {sellerName}
                       </p>
-                      <p className="text-sm text-zinc-500">{seller?.school || "Toronto student"}</p>
+                      <p className="text-sm text-zinc-500 dark:text-zinc-400">{seller?.school || "Toronto student"}</p>
                     </div>
                   </div>
 
-                  <div className="grid gap-3 text-sm text-zinc-600 sm:grid-cols-2">
-                    <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                      <Clock3 className="size-4 text-zinc-500" />
+                  <div className="grid gap-3 text-sm text-zinc-600 dark:text-zinc-300 sm:grid-cols-2">
+                    <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                      <Clock3 className="size-4 text-zinc-500 dark:text-zinc-400" />
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">
                           Created
                         </p>
-                        <p className="mt-1 text-zinc-900">{formatDate(listing.created_at)}</p>
+                        <p className="mt-1 text-zinc-900 dark:text-zinc-100">{formatDate(listing.created_at)}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                      <Tag className="size-4 text-zinc-500" />
+                    <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                      <Tag className="size-4 text-zinc-500 dark:text-zinc-400" />
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">
                           Updated
                         </p>
-                        <p className="mt-1 text-zinc-900">{formatDate(listing.updated_at)}</p>
+                        <p className="mt-1 text-zinc-900 dark:text-zinc-100">{formatDate(listing.updated_at)}</p>
                       </div>
                     </div>
                   </div>
@@ -289,18 +289,18 @@ export default async function ListingDetailPage({ params }) {
           </div>
         </section>
 
-        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 md:p-8">
+        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800 md:p-8">
           <div className="mb-5 flex items-center gap-3">
-            <MapPin className="size-5 text-zinc-500" />
+            <MapPin className="size-5 text-zinc-500 dark:text-zinc-400" />
             <div>
-              <h2 className="text-2xl font-bold text-zinc-950">Meetup Location</h2>
-              <p className="text-sm text-zinc-500">
+              <h2 className="text-2xl font-bold text-zinc-950 dark:text-zinc-50">Meetup Location</h2>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
                 Campus meetup spot based on the listing location.
               </p>
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-[2rem] border border-zinc-200 bg-zinc-100">
+          <div className="overflow-hidden rounded-[2rem] border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-950">
             <iframe
               title={`${campusLabel} map`}
               src={`https://www.google.com/maps?q=${encodeURIComponent(
@@ -313,15 +313,15 @@ export default async function ListingDetailPage({ params }) {
           </div>
         </section>
 
-        <section className="rounded-3xl bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 md:p-8">
+        <section className="rounded-3xl bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900/60 dark:ring-zinc-800 md:p-8">
           <div className="mb-5 flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-bold text-zinc-950">Similar Listings</h2>
-              <p className="mt-1 text-sm text-zinc-500">
+              <h2 className="text-2xl font-bold text-zinc-950 dark:text-zinc-50">Similar Listings</h2>
+              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                 More options from the same category.
               </p>
             </div>
-            <div className="hidden items-center gap-2 text-sm font-medium text-zinc-500 md:flex">
+            <div className="hidden items-center gap-2 text-sm font-medium text-zinc-500 dark:text-zinc-400 md:flex">
               <UserRound className="size-4" />
               <span>Student marketplace picks</span>
             </div>

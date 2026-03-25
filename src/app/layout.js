@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { AppLayoutShell } from "@/components/app-layout-shell";
+import { ThemeProvider } from "@/components/theme-provider";
 import { createClient } from "@/utils/supabase/server";
 import "./globals.css";
 
@@ -48,12 +49,14 @@ export default async function RootLayout({ children }) {
     : null;
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
-        <AppLayoutShell user={sidebarUser}>{children}</AppLayoutShell>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <AppLayoutShell user={sidebarUser}>{children}</AppLayoutShell>
+        </ThemeProvider>
       </body>
     </html>
   );

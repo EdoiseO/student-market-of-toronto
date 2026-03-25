@@ -65,9 +65,9 @@ export function FavouriteButton({ listingId, initialIsFavourited = false }) {
       disabled={loading}
       aria-label={isFavourited ? "Remove from favourites" : "Add to favourites"}
       className={cn(
-        "size-11 rounded-full border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-100",
+        "size-11 rounded-full border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800",
         isFavourited &&
-          "border-rose-300 bg-rose-50 text-rose-500 hover:bg-rose-100",
+          "border-rose-300 bg-rose-50 text-rose-500 hover:bg-rose-100 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-950/60",
         loading && "cursor-not-allowed opacity-50",
       )}
     >

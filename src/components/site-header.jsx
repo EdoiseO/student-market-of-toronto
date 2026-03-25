@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 
 import { SearchForm } from "@/components/search-form"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { useSidebar } from "@/components/ui/sidebar"
@@ -44,6 +45,9 @@ export function SiteHeader() {
             <p className="hidden text-sm text-muted-foreground xl:block">
               Buy, sell, and discover listings from Toronto students.
             </p>
+          </div>
+          <div className="ml-auto shrink-0">
+            <ThemeToggle />
           </div>
         </div>
         <div className="flex min-w-0 justify-center">
