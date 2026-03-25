@@ -31,8 +31,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { ListingPhotoChip, useLocalPhotoPreviews } from "@/components/listing-photo-chip";
 import { Textarea } from "@/components/ui/textarea";
+import { useFileDropzone } from "@/hooks/use-file-dropzone";
 import { TORONTO_CAMPUS_OPTIONS } from "@/lib/campuses";
 import { CATEGORY_OPTIONS } from "@/lib/categories";
+import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
 
 const conditionOptions = ["New", "Like New", "Used"];
@@ -112,6 +114,19 @@ export function CreateListingForm() {
 
   const fileInputRef = React.useRef(null);
   const photoPreviews = useLocalPhotoPreviews(photos);
+
+  const appendPhotos = React.useCallback((selectedFiles) => {
+    if (selectedFiles.length === 0) {
+      return;
+    }
+
+    setPhotos((currentPhotos) => [
+      ...currentPhotos,
+      ...selectedFiles,
+    ]);
+  }, []);
+
+  const { isDragActive, dropzoneProps } = useFileDropzone(appendPhotos);
 
   function resetForm() {
     setTitle("");
@@ -344,13 +359,22 @@ export function CreateListingForm() {
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="flex min-h-56 w-full flex-col items-center justify-center rounded-[1.5rem] border border-zinc-200 bg-white px-6 py-10 text-center transition hover:border-zinc-400"
+                      className={cn(
+                        "flex min-h-56 w-full flex-col items-center justify-center rounded-[1.5rem] border bg-white px-6 py-10 text-center transition",
+                        isDragActive
+                          ? "border-zinc-950 ring-2 ring-zinc-950/10"
+                          : "border-zinc-200 hover:border-zinc-400"
+                      )}
+                      {...dropzoneProps}
                     >
                       <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-950 text-white">
                         <ImagePlus className="size-6" />
                       </div>
                       <p className="text-lg font-semibold text-zinc-950">
                         Add Listing Photos
+                      </p>
+                      <p className="mt-2 text-sm text-zinc-500">
+                        {isDragActive ? "Drop images here" : "Drag and drop images here, or click to browse"}
                       </p>
                       {photos.length > 0 ? (
                         <p className="mt-4 text-sm font-medium text-zinc-700">
@@ -367,10 +391,7 @@ export function CreateListingForm() {
                       onChange={(event) => {
                         const selectedFiles = Array.from(event.target.files ?? [])
                         if (selectedFiles.length === 0) return
-                        setPhotos((currentPhotos) => [
-                          ...currentPhotos,
-                          ...selectedFiles,
-                        ])
+                        appendPhotos(selectedFiles)
                         event.target.value = ""
                       }}
                     />
