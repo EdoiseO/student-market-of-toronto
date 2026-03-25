@@ -65,8 +65,12 @@ export function ListingPhotoCarousel({ photos, title }) {
           ))}
         </CarouselContent>
 
-        <CarouselPrevious className="left-4 top-1/2 size-11 -translate-y-1/2 bg-white/90 text-zinc-900 shadow-sm hover:bg-white dark:bg-zinc-900/90 dark:text-zinc-50 dark:hover:bg-zinc-900" />
-        <CarouselNext className="right-4 top-1/2 size-11 -translate-y-1/2 bg-white/90 text-zinc-900 shadow-sm hover:bg-white dark:bg-zinc-900/90 dark:text-zinc-50 dark:hover:bg-zinc-900" />
+        {photos.length > 1 ? (
+          <>
+            <CarouselPrevious className="left-4 top-1/2 z-10 size-11 -translate-y-1/2 bg-white/90 text-zinc-900 shadow-sm backdrop-blur-sm transition-opacity hover:bg-white disabled:opacity-0 dark:bg-zinc-900/90 dark:text-zinc-50 dark:hover:bg-zinc-900" />
+            <CarouselNext className="right-4 top-1/2 z-10 size-11 -translate-y-1/2 bg-white/90 text-zinc-900 shadow-sm backdrop-blur-sm transition-opacity hover:bg-white disabled:opacity-0 dark:bg-zinc-900/90 dark:text-zinc-50 dark:hover:bg-zinc-900" />
+          </>
+        ) : null}
       </Carousel>
 
       <div className="flex flex-wrap items-center justify-center gap-2.5">
