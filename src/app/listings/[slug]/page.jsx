@@ -175,6 +175,10 @@ export default async function ListingDetailPage({ params }) {
     price: formatPrice(item.price),
     meta: schoolBySellerId.get(item.seller_id) || item.location || "Toronto meetup",
     badge: getListingBadge(item),
+    imageUrls: (item.listing_images ?? [])
+      .slice()
+      .sort((firstImage, secondImage) => firstImage.position - secondImage.position)
+      .map((image) => image.image_url),
     imageUrl: (item.listing_images ?? [])
       .slice()
       .sort((firstImage, secondImage) => firstImage.position - secondImage.position)[0]
@@ -335,6 +339,7 @@ export default async function ListingDetailPage({ params }) {
                 title={item.title}
                 price={item.price}
                 meta={item.meta}
+                imageUrls={item.imageUrls}
                 imageUrl={item.imageUrl}
                 href={`/listings/${item.slug}`}
                 imageAlt={item.title}

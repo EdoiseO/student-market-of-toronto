@@ -45,6 +45,7 @@ function CategoryListingGrid({ items }) {
           title={item.title}
           price={`$${Number(item.price).toFixed(2)}`}
           meta={item.location ?? ""}
+          imageUrls={(item.listing_images ?? []).map((image) => image.image_url)}
           imageUrl={item.listing_images?.[0]?.image_url ?? null}
           href={`/listings/${item.slug}`}
           imageAlt={item.title}
