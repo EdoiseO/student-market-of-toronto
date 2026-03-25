@@ -11,7 +11,6 @@ import {
   CardFooter,
   CardTitle,
 } from "@/components/ui/card"
-import { cn } from "@/lib/utils";
 
 const HOVER_IMAGE_CYCLE_MS = 900;
 
@@ -38,6 +37,7 @@ export function CardImage({
 
   const [activeImageIndex, setActiveImageIndex] = React.useState(0);
   const [isCycling, setIsCycling] = React.useState(false);
+  const [shouldPreloadGallery, setShouldPreloadGallery] = React.useState(false);
   const hasMultipleImages = images.length > 1;
 
   React.useEffect(() => {
@@ -51,6 +51,7 @@ export function CardImage({
       return;
     }
 
+    setShouldPreloadGallery(true);
     setIsCycling(true);
     setActiveImageIndex(0);
   }
@@ -59,6 +60,22 @@ export function CardImage({
     setIsCycling(false);
     setActiveImageIndex(0);
   }
+
+  React.useEffect(() => {
+    if (!hasMultipleImages || !shouldPreloadGallery) {
+      return;
+    }
+
+    const preloadedImages = images.slice(1).map((currentImageUrl) => {
+      const preloadedImage = new window.Image();
+      preloadedImage.src = currentImageUrl;
+      return preloadedImage;
+    });
+
+    return () => {
+      preloadedImages.length = 0;
+    };
+  }, [hasMultipleImages, images, shouldPreloadGallery]);
 
   React.useEffect(() => {
     if (!hasMultipleImages || !isCycling) {
@@ -87,17 +104,12 @@ export function CardImage({
       <Card className="flex h-full w-full max-w-none flex-col gap-0 overflow-hidden border-zinc-200 bg-white pt-0 shadow-sm ring-1 ring-zinc-200/80 transition-transform group-hover:-translate-y-0.5 group-focus-visible:-translate-y-0.5 group-focus-visible:ring-2 group-focus-visible:ring-zinc-900/15">
         <div className="relative aspect-[4/3] overflow-hidden bg-zinc-200">
           {images.length > 0 ? (
-            images.map((currentImageUrl, index) => (
-              <img
-                key={`${currentImageUrl}-${index}`}
-                src={currentImageUrl}
-                alt={imageAlt}
-                className={cn(
-                  "absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ease-out",
-                  activeImageIndex === index ? "opacity-100" : "opacity-0"
-                )}
-              />
-            ))
+            <img
+              key={`${images[activeImageIndex]}-${activeImageIndex}`}
+              src={images[activeImageIndex]}
+              alt={imageAlt}
+              className="h-full w-full object-cover animate-in fade-in duration-500 ease-out"
+            />
           ) : (
             <div
               aria-label={imageAlt}
