@@ -8,19 +8,23 @@ export function SearchForm({
   ...props
 }) {
   return (
-    <form {...props}>
+    <div {...props} aria-disabled="true">
       <div className="relative">
-        <Label htmlFor="search" className="sr-only">
-          Search
+        <Label htmlFor="search-coming-soon" className="sr-only">
+          Search coming soon
         </Label>
         <SidebarInput
-          id="search"
-          placeholder="Type to search..."
-          className="h-10 rounded-xl pl-9 text-sm"
+          id="search-coming-soon"
+          placeholder="Search coming soon"
+          disabled
+          className="h-10 rounded-xl pl-9 pr-28 text-sm disabled:cursor-default disabled:opacity-100"
         />
         <SearchIcon
           className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 opacity-50 select-none" />
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-zinc-100 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500">
+          Soon
+        </span>
       </div>
-    </form>
+    </div>
   );
 }

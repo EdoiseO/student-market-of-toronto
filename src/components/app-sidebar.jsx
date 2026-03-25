@@ -1,6 +1,7 @@
 "use client"
 
 import { NavUser } from "@/components/nav-user"
+import { SignOutButton } from "@/components/sign-out-button";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -47,21 +48,11 @@ const navigationItems = [
   },
 ];
 
-const accountItems = [
-  {
-    title: "Profile",
-    url: "#",
-    icon: UserIcon,
-  },
+const sellingItems = [
   {
     title: "Dashboard",
     url: "/dashboard",
     icon: LayoutDashboardIcon,
-  },
-  {
-    title: "My Listings",
-    url: "/dashboard?tab=all",
-    icon: ListIcon,
   },
   {
     title: "Create Listing",
@@ -69,19 +60,35 @@ const accountItems = [
     icon: PlusSquareIcon,
   },
   {
-    title: "Messages",
-    url: "#",
-    icon: MessageSquareIcon,
+    title: "My Listings",
+    url: "/dashboard?tab=all",
+    icon: ListIcon,
   },
   {
     title: "Drafts",
     url: "/dashboard?tab=draft",
     icon: FileTextIcon,
   },
+];
+
+const buyingItems = [
   {
     title: "Favourites",
     url: "/dashboard?tab=favourite",
     icon: StarIcon,
+  },
+  {
+    title: "Messages",
+    url: "#",
+    icon: MessageSquareIcon,
+  },
+];
+
+const accountItems = [
+  {
+    title: "Profile",
+    url: "#",
+    icon: UserIcon,
   },
 ];
 
@@ -91,7 +98,7 @@ export function AppSidebar({
 }) {
   const pathname = usePathname();
   const categoriesOpen = pathname?.startsWith("/categories/") ?? false;
-  const showAccountSection = Boolean(user);
+  const showLoggedInSections = Boolean(user);
 
   return (
     <Sidebar
@@ -170,9 +177,55 @@ export function AppSidebar({
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        {showAccountSection ? (
+        {showLoggedInSections ? (
           <SidebarGroup>
-            <SidebarGroupLabel>My Account</SidebarGroupLabel>
+            <SidebarGroupLabel>Selling</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {sellingItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      tooltip={item.title}
+                      className="min-h-11 rounded-xl px-3 text-sm"
+                    >
+                      <Link href={item.url}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : null}
+        {showLoggedInSections ? (
+          <SidebarGroup>
+            <SidebarGroupLabel>Buying</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {buyingItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      tooltip={item.title}
+                      className="min-h-11 rounded-xl px-3 text-sm"
+                    >
+                      <Link href={item.url}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : null}
+        {showLoggedInSections ? (
+          <SidebarGroup>
+            <SidebarGroupLabel>Account</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {accountItems.map((item) => (
@@ -189,6 +242,9 @@ export function AppSidebar({
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
+                <SidebarMenuItem>
+                  <SignOutButton />
+                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
