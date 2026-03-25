@@ -51,8 +51,8 @@ function buildDashboardPageHref(tab, page, rows) {
   return query ? `/dashboard?${query}` : "/dashboard";
 }
 
-const readOnlyTabs = new Set(["favourite", "sold"]);
-const editableStatuses = new Set(["active", "inactive", "draft"]);
+const readOnlyTabs = new Set(["favourite"]);
+const editableStatuses = new Set(["active", "inactive", "draft", "sold"]);
 
 function DashboardStatusBadge({ status }) {
   if (status === "active") {

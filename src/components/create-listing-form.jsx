@@ -29,6 +29,7 @@ import {
   FieldTitle,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { ListingPhotoChip, useLocalPhotoPreviews } from "@/components/listing-photo-chip";
 import { Textarea } from "@/components/ui/textarea";
 import { CATEGORY_OPTIONS } from "@/lib/categories";
 import { createClient } from "@/utils/supabase/client";
@@ -120,6 +121,7 @@ export function CreateListingForm() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const fileInputRef = React.useRef(null);
+  const photoPreviews = useLocalPhotoPreviews(photos);
 
   function resetForm() {
     setTitle("");
@@ -348,7 +350,7 @@ export function CreateListingForm() {
 
               <div className="flex flex-col gap-6">
                 <Card className="rounded-[1.75rem] border border-dashed border-zinc-300 bg-zinc-50 py-0 shadow-none">
-                  <CardContent className="p-6">
+                  <CardContent className="space-y-5 p-6">
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
@@ -382,6 +384,24 @@ export function CreateListingForm() {
                         event.target.value = ""
                       }}
                     />
+
+                    {photoPreviews.length > 0 ? (
+                      <div className="flex flex-wrap gap-4">
+                        {photoPreviews.map((photo, index) => (
+                          <ListingPhotoChip
+                            key={photo.id}
+                            index={index}
+                            imageUrl={photo.imageUrl}
+                            alt={photo.alt}
+                            onRemove={() => {
+                              setPhotos((currentPhotos) =>
+                                currentPhotos.filter((_, photoIndex) => photoIndex !== index),
+                              );
+                            }}
+                          />
+                        ))}
+                      </div>
+                    ) : null}
                   </CardContent>
                 </Card>
 
