@@ -31,19 +31,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { ListingPhotoChip, useLocalPhotoPreviews } from "@/components/listing-photo-chip";
 import { Textarea } from "@/components/ui/textarea";
+import { TORONTO_CAMPUS_OPTIONS } from "@/lib/campuses";
 import { CATEGORY_OPTIONS } from "@/lib/categories";
 import { createClient } from "@/utils/supabase/client";
-
-const campusOptions = [
-  "Toronto Metropolitan University",
-  "University of Toronto",
-  "York University",
-  "George Brown College",
-  "Humber Polytechnic",
-  "OCAD University",
-  "Seneca Polytechnic",
-  "Centennial College",
-];
 
 const conditionOptions = ["New", "Like New", "Used"];
 
@@ -412,7 +402,7 @@ export function CreateListingForm() {
                       placeholder="Choose a meetup campus"
                       value={campus}
                       onValueChange={setCampus}
-                      options={campusOptions}
+                      options={TORONTO_CAMPUS_OPTIONS}
                     />
 
                     <Field orientation="horizontal" className="items-start rounded-2xl border border-zinc-200 bg-white p-4">
