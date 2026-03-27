@@ -1,6 +1,7 @@
 "use client"
 
 import { NavUser } from "@/components/nav-user"
+import { SearchSidebarFilters } from "@/components/search-sidebar-filters";
 import { SignOutButton } from "@/components/sign-out-button";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -123,6 +124,7 @@ export function AppSidebar({
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
+        <SearchSidebarFilters />
         <SidebarGroup>
           <SidebarGroupLabel>Marketplace</SidebarGroupLabel>
           <SidebarGroupContent>
