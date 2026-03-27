@@ -59,6 +59,7 @@ export default async function DashboardPage({ searchParams }) {
   const [
     { data: myListings, error: listingsError },
     { data: favourites, error: favouritesError },
+    { count: favouriteCount = 0, error: favouriteCountError },
   ] = await Promise.all([
     (() => {
       let listingsQuery = supabase
@@ -102,12 +103,17 @@ export default async function DashboardPage({ searchParams }) {
           `)
           .eq("user_id", user.id)
       : Promise.resolve({ data: [], error: null }),
+    supabase
+      .from("listing_favourites")
+      .select("listing_id", { count: "exact", head: true })
+      .eq("user_id", user.id),
   ]);
 
-  if (listingsError || favouritesError) {
+  if (listingsError || favouritesError || favouriteCountError) {
     console.error("Dashboard query failed", {
       listingsError,
       favouritesError,
+      favouriteCountError,
     });
   }
 
@@ -139,7 +145,12 @@ export default async function DashboardPage({ searchParams }) {
           </CardHeader>
 
           <CardContent className="space-y-5 p-8 pt-3">
-            <DashboardTableClient currentTab={currentTab} ownedItems={ownedItems} favouriteItems={favouriteItems} />
+            <DashboardTableClient
+              currentTab={currentTab}
+              ownedItems={ownedItems}
+              favouriteItems={favouriteItems}
+              favouriteCount={favouriteCount}
+            />
           </CardContent>
         </Card>
       </div>

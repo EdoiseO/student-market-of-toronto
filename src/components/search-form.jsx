@@ -41,11 +41,17 @@ export function SearchForm({
     event.preventDefault();
 
     const query = value.trim();
-    const params = new URLSearchParams();
+    const params = pathname.startsWith("/search")
+      ? new URLSearchParams(searchParams.toString())
+      : new URLSearchParams();
 
     if (query) {
       params.set("q", query);
+    } else {
+      params.delete("q");
     }
+
+    params.delete("page");
 
     router.push(params.toString() ? `/search?${params.toString()}` : "/search");
   }

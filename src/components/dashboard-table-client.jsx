@@ -63,7 +63,7 @@ function buildDashboardHref(tab) {
   return tab === "all" ? "/dashboard" : `/dashboard?tab=${tab}`;
 }
 
-export function DashboardTableClient({ currentTab, ownedItems, favouriteItems }) {
+export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, favouriteCount = 0 }) {
   const [dashboardSearch, setDashboardSearch] = React.useState("");
   const [rowsPerPage, setRowsPerPage] = React.useState(7);
   const [currentPage, setCurrentPage] = React.useState(1);
@@ -134,13 +134,15 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems })
         if (tab.key === "all") {
           acc[tab.key] = allItems.length;
         } else if (tab.key === "favourite") {
-          acc[tab.key] = filteredFavouriteItems.length;
+          acc[tab.key] = normalizedDashboardSearch
+            ? filteredFavouriteItems.length
+            : favouriteCount;
         } else {
           acc[tab.key] = statusCounts[tab.key] ?? 0;
         }
         return acc;
       }, {}),
-    [allItems.length, filteredFavouriteItems.length, statusCounts]
+    [allItems.length, favouriteCount, filteredFavouriteItems.length, normalizedDashboardSearch, statusCounts]
   );
 
   const showManagementActions = !readOnlyTabs.has(currentTab);

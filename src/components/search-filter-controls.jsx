@@ -60,6 +60,34 @@ export function SearchFilterControls({
   const [tag, setTag] = React.useState(initialFilters.tag ?? "");
   const [sortBy, setSortBy] = React.useState(initialFilters.sort ?? "new-old");
 
+  React.useEffect(() => {
+    setMinPrice(initialFilters.min ?? "");
+    setMaxPrice(initialFilters.max ?? "");
+    setCondition(initialFilters.condition ?? "");
+    setTag(initialFilters.tag ?? "");
+    setSortBy(initialFilters.sort ?? "new-old");
+  }, [
+    initialFilters.min,
+    initialFilters.max,
+    initialFilters.condition,
+    initialFilters.tag,
+    initialFilters.sort,
+  ]);
+
+  React.useEffect(() => {
+    setMinPrice(initialFilters.min ?? "");
+    setMaxPrice(initialFilters.max ?? "");
+    setCondition(initialFilters.condition ?? "");
+    setTag(initialFilters.tag ?? "");
+    setSortBy(initialFilters.sort ?? "new-old");
+  }, [
+    initialFilters.min,
+    initialFilters.max,
+    initialFilters.condition,
+    initialFilters.tag,
+    initialFilters.sort,
+  ]);
+
   function handleApply(event) {
     event.preventDefault();
 
