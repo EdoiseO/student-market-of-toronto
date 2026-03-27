@@ -27,10 +27,63 @@ export default async function RootLayout({ children }) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  let profile = null;
+
+  if (user) {
+    const metadataFirstName = user.user_metadata?.first_name?.trim() ?? null;
+    const metadataLastName = user.user_metadata?.last_name?.trim() ?? null;
+    const metadataSchool = user.user_metadata?.school?.trim() ?? null;
+
+    const { data: existingProfile, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, first_name, last_name, school")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error("Failed to load profile for layout sync:", profileError.message);
+    }
+
+    const syncedFirstName = metadataFirstName ?? existingProfile?.first_name ?? null;
+    const syncedLastName = metadataLastName ?? existingProfile?.last_name ?? null;
+    const syncedSchool = metadataSchool ?? existingProfile?.school ?? null;
+
+    const shouldSyncProfile =
+      !existingProfile ||
+      existingProfile.first_name !== syncedFirstName ||
+      existingProfile.last_name !== syncedLastName ||
+      existingProfile.school !== syncedSchool;
+
+    if (shouldSyncProfile) {
+      const { error: profileUpsertError } = await supabase
+        .from("profiles")
+        .upsert(
+          {
+            id: user.id,
+            first_name: syncedFirstName,
+            last_name: syncedLastName,
+            school: syncedSchool,
+          },
+          { onConflict: "id" },
+        );
+
+      if (profileUpsertError) {
+        console.error("Failed to sync profile from auth metadata:", profileUpsertError.message);
+      }
+    }
+
+    profile = {
+      id: user.id,
+      first_name: syncedFirstName,
+      last_name: syncedLastName,
+      school: syncedSchool,
+    };
+  }
+
   const displayName =
     [
-      user?.user_metadata?.first_name,
-      user?.user_metadata?.last_name,
+      profile?.first_name ?? user?.user_metadata?.first_name,
+      profile?.last_name ?? user?.user_metadata?.last_name,
     ]
       .filter(Boolean)
       .join(" ")
@@ -40,7 +93,7 @@ export default async function RootLayout({ children }) {
     ? {
         name: displayName,
         email: user.email ?? "",
-        school: user.user_metadata?.school ?? "Toronto student",
+        school: profile?.school ?? user.user_metadata?.school ?? "Toronto student",
         avatar: user.email
           ? `https://avatar.vercel.sh/${encodeURIComponent(user.email)}`
           : "",
