@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { AppLayoutShell } from "@/components/app-layout-shell";
+import { Toaster } from "@/components/ui/sonner";
 import { createClient } from "@/utils/supabase/server";
 import "./globals.css";
 
@@ -54,6 +55,7 @@ export default async function RootLayout({ children }) {
         suppressHydrationWarning
       >
         <AppLayoutShell user={sidebarUser}>{children}</AppLayoutShell>
+        <Toaster position="top-right" />
       </body>
     </html>
   );
