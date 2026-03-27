@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { CheckIcon } from "lucide-react";
 
+import { DashboardSearchInput } from "@/components/dashboard-search-input";
 import { createClient } from "@/utils/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,19 +37,47 @@ const statusLabels = {
   favourite: "Favourite",
 };
 
-function buildDashboardHref(tab) {
-  return tab === "all" ? "/dashboard" : `/dashboard?tab=${tab}`;
+function normalizeDashboardListing(listing, dashboardStatus = listing.status) {
+  return {
+    id: listing.id,
+    slug: listing.slug,
+    title: listing.title,
+    meta: listing.location ?? "",
+    imageUrl: getPrimaryImageUrl(listing.listing_images),
+    price: `$${Number(listing.price).toFixed(2)}`,
+    category: listing.category,
+    dashboardStatus,
+    messageCount: 0,
+  };
 }
 
-function buildDashboardPageHref(tab, page, rows) {
+function getPrimaryImageUrl(listingImages) {
+  return (listingImages ?? [])
+    .slice()
+    .sort((firstImage, secondImage) => firstImage.position - secondImage.position)[0]
+    ?.image_url;
+}
+
+function buildDashboardHref(tab, query) {
   const params = new URLSearchParams();
 
   if (tab !== "all") params.set("tab", tab);
+  if (query) params.set("q", query);
+
+  const queryString = params.toString();
+  return queryString ? `/dashboard?${queryString}` : "/dashboard";
+}
+
+function buildDashboardPageHref(tab, page, rows, query) {
+  const params = new URLSearchParams();
+
+  if (tab !== "all") params.set("tab", tab);
+  if (query) params.set("q", query);
   if (page > 1) params.set("page", String(page));
   if (rows !== 7) params.set("rows", String(rows));
 
-  const query = params.toString();
-  return query ? `/dashboard?${query}` : "/dashboard";
+  const queryString = params.toString();
+  return queryString ? `/dashboard?${queryString}` : "/dashboard";
 }
 
 const readOnlyTabs = new Set(["favourite"]);
@@ -76,6 +105,8 @@ function DashboardStatusBadge({ status }) {
 export default async function DashboardPage({ searchParams }) {
   const resolvedSearchParams = await searchParams;
   const requestedTab = resolvedSearchParams?.tab ?? "all";
+  const searchQuery = resolvedSearchParams?.q?.trim() ?? "";
+  const normalizedSearchQuery = searchQuery.toLowerCase();
   const currentTab = dashboardTabs.some((tab) => tab.key === requestedTab)
     ? requestedTab
     : "all";
@@ -91,21 +122,60 @@ export default async function DashboardPage({ searchParams }) {
     redirect("/login");
   }
 
+  const shouldLoadFavourites = currentTab === "favourite" || requestedTab === "favourite";
+
   const [
     { data: myListings, error: listingsError },
     { data: favourites, error: favouritesError },
   ] = await Promise.all([
-    supabase
+    (() => {
+      let listingsQuery = supabase
       .from("listings")
-      .select("id, slug, title, price, category, status, location, created_at")
-      .eq("seller_id", user.id)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("listing_favourites")
-      .select(
-        "listing_id, listings(id, slug, title, price, category, status, location)",
-      )
-      .eq("user_id", user.id),
+      .select(`
+        id,
+        slug,
+        title,
+        price,
+        category,
+        status,
+        location,
+        created_at,
+        listing_images (
+          image_url,
+          position
+        )
+      `)
+      .eq("seller_id", user.id);
+
+      if (searchQuery) {
+        listingsQuery = listingsQuery.or(
+          `title.ilike.%${searchQuery}%,location.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%`
+        );
+      }
+
+      return listingsQuery.order("created_at", { ascending: false });
+    })(),
+    shouldLoadFavourites
+      ? supabase
+          .from("listing_favourites")
+          .select(`
+            listing_id,
+            listings (
+              id,
+              slug,
+              title,
+              price,
+              category,
+              status,
+              location,
+              listing_images (
+                image_url,
+                position
+              )
+            )
+          `)
+          .eq("user_id", user.id)
+      : Promise.resolve({ data: [], error: null }),
   ]);
 
   if (listingsError || favouritesError) {
@@ -115,43 +185,37 @@ export default async function DashboardPage({ searchParams }) {
     });
   }
 
-  const ownedItems = (myListings ?? []).map((listing) => ({
-    id: listing.id,
-    slug: listing.slug,
-    title: listing.title,
-    meta: listing.location ?? "",
-    price: `$${Number(listing.price).toFixed(2)}`,
-    category: listing.category,
-    dashboardStatus: listing.status,
-    messageCount: 0,
-  }));
+  const ownedItems = (myListings ?? []).map((listing) => normalizeDashboardListing(listing));
 
-  const favouriteItems = (favourites ?? [])
+  const favouriteItems = shouldLoadFavourites
+    ? (favourites ?? [])
     .map((favourite) =>
       Array.isArray(favourite.listings)
         ? favourite.listings[0]
         : favourite.listings,
     )
     .filter(Boolean)
-    .map((listing) => ({
-      id: listing.id,
-      slug: listing.slug,
-      title: listing.title,
-      meta: listing.location ?? "",
-      price: `$${Number(listing.price).toFixed(2)}`,
-      category: listing.category,
-      dashboardStatus: "favourite",
-      messageCount: 0,
-    }));
+    .map((listing) => normalizeDashboardListing(listing, "favourite"))
+    : [];
 
-  const allItems = ownedItems;
+  const matchesDashboardQuery = (item) =>
+    [item.title, item.meta, item.category]
+      .filter(Boolean)
+      .some((value) => value.toLowerCase().includes(normalizedSearchQuery));
+
+  const filteredOwnedItems = ownedItems;
+  const filteredFavouriteItems = normalizedSearchQuery
+    ? favouriteItems.filter(matchesDashboardQuery)
+    : favouriteItems;
+
+  const allItems = filteredOwnedItems;
 
   const filteredItems =
     currentTab === "all"
       ? allItems
       : currentTab === "favourite"
-        ? favouriteItems
-        : ownedItems.filter((item) => item.dashboardStatus === currentTab);
+        ? filteredFavouriteItems
+        : filteredOwnedItems.filter((item) => item.dashboardStatus === currentTab);
 
   const requestedRows = Number.parseInt(resolvedSearchParams?.rows ?? "7", 10);
   const rowsPerPage = rowsPerPageOptions.includes(requestedRows)
@@ -169,15 +233,18 @@ export default async function DashboardPage({ searchParams }) {
     currentPage * rowsPerPage,
   );
 
+  const statusCounts = filteredOwnedItems.reduce((acc, item) => {
+    acc[item.dashboardStatus] = (acc[item.dashboardStatus] ?? 0) + 1;
+    return acc;
+  }, {});
+
   const counts = dashboardTabs.reduce((acc, tab) => {
     if (tab.key === "all") {
       acc[tab.key] = allItems.length;
     } else if (tab.key === "favourite") {
-      acc[tab.key] = favouriteItems.length;
+      acc[tab.key] = filteredFavouriteItems.length;
     } else {
-      acc[tab.key] = ownedItems.filter(
-        (item) => item.dashboardStatus === tab.key,
-        ).length;
+      acc[tab.key] = statusCounts[tab.key] ?? 0;
     }
     return acc;
   }, {});
@@ -215,7 +282,7 @@ export default async function DashboardPage({ searchParams }) {
                           : "h-10 rounded-xl bg-white px-4"
                       }
                     >
-                      <Link href={buildDashboardHref(tab.key)}>
+                      <Link href={buildDashboardHref(tab.key, searchQuery)}>
                         <span>{tab.label}</span>
                         <span
                           className={`ml-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
@@ -232,11 +299,14 @@ export default async function DashboardPage({ searchParams }) {
                 })}
               </div>
 
-              {showManagementActions ? (
-                <Button asChild className="h-10 rounded-xl px-4">
-                  <Link href="/listings/create">Add Listing</Link>
-                </Button>
-              ) : null}
+              <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row md:items-center">
+                <DashboardSearchInput />
+                {showManagementActions ? (
+                  <Button asChild className="h-10 rounded-xl px-4">
+                    <Link href="/listings/create">Add Listing</Link>
+                  </Button>
+                ) : null}
+              </div>
             </div>
 
             <div className="overflow-hidden rounded-[1.75rem] border border-zinc-200 bg-white">
@@ -267,13 +337,26 @@ export default async function DashboardPage({ searchParams }) {
                             href={`/listings/${item.slug}`}
                             className="block rounded-xl transition hover:bg-zinc-50"
                           >
-                            <div className="py-1">
-                              <p className="font-semibold text-zinc-950">
-                                {item.title}
-                              </p>
-                              <p className="mt-1 text-sm text-zinc-500">
-                                {item.meta}
-                              </p>
+                            <div className="flex items-center gap-4 py-1">
+                              <div className="h-12 w-16 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100">
+                                {item.imageUrl ? (
+                                  <img
+                                    src={item.imageUrl}
+                                    alt={item.title}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="h-full w-full bg-zinc-100" />
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-semibold text-zinc-950">
+                                  {item.title}
+                                </p>
+                                <p className="mt-1 truncate text-sm text-zinc-500">
+                                  {item.meta}
+                                </p>
+                              </div>
                             </div>
                           </Link>
                         </td>
@@ -344,6 +427,7 @@ export default async function DashboardPage({ searchParams }) {
                                 currentTab,
                                 1,
                                 option,
+                                searchQuery,
                               )}
                             >
                               {option}
@@ -372,6 +456,7 @@ export default async function DashboardPage({ searchParams }) {
                               currentTab,
                               1,
                               rowsPerPage,
+                              searchQuery,
                             )}
                           >
                             <span aria-hidden="true">«</span>
@@ -392,6 +477,7 @@ export default async function DashboardPage({ searchParams }) {
                               currentTab,
                               Math.max(1, currentPage - 1),
                               rowsPerPage,
+                              searchQuery,
                             )}
                           >
                             <span aria-hidden="true">‹</span>
@@ -412,6 +498,7 @@ export default async function DashboardPage({ searchParams }) {
                               currentTab,
                               Math.min(totalPages, currentPage + 1),
                               rowsPerPage,
+                              searchQuery,
                             )}
                           >
                             <span aria-hidden="true">›</span>
@@ -432,6 +519,7 @@ export default async function DashboardPage({ searchParams }) {
                               currentTab,
                               totalPages,
                               rowsPerPage,
+                              searchQuery,
                             )}
                           >
                             <span aria-hidden="true">»</span>

@@ -15,6 +15,8 @@ export function SiteHeader() {
   const pageTitle =
     pathname === "/"
       ? "Browse Listings"
+      : pathname.startsWith("/search")
+        ? "Search & Filter"
       : pathname.startsWith("/dashboard")
         ? "Dashboard"
         : pathname.endsWith("/edit")
