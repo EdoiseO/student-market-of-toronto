@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { ImagePlus, Info, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 
 import { Badge } from "@/components/ui/badge";
@@ -298,6 +299,7 @@ export function EditListingForm({ listing }) {
     }
 
     setLoading(false);
+    toast.success("Listing updated successfully.");
     router.push(`/listings/${listing.slug}`);
     router.refresh();
   }

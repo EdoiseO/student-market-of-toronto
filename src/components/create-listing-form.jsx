@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { ImagePlus, Info, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -109,7 +110,6 @@ export function CreateListingForm() {
   const [isNegotiable, setIsNegotiable] = React.useState(false);
   const [photos, setPhotos] = React.useState([]);
   const [error, setError] = React.useState("");
-  const [success, setSuccess] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const fileInputRef = React.useRef(null);
@@ -210,7 +210,6 @@ export function CreateListingForm() {
 
   async function handleSubmit(status) {
     setError("");
-    setSuccess("");
 
     const numericPrice = Number.parseFloat(
       price.replaceAll("$", "").replaceAll(",", "").trim(),
@@ -272,7 +271,7 @@ export function CreateListingForm() {
       }
 
       resetForm();
-      setSuccess(
+      toast.success(
         status === "draft"
           ? "Draft saved successfully."
           : "Listing published successfully.",
@@ -477,9 +476,6 @@ export function CreateListingForm() {
             <div className="mt-8 flex flex-wrap items-center justify-end gap-3">
               {error ? (
                 <p className="mr-auto text-sm text-red-600">{error}</p>
-              ) : null}
-              {success ? (
-                <p className="mr-auto text-sm text-green-600">{success}</p>
               ) : null}
               <Button
                 type="button"
