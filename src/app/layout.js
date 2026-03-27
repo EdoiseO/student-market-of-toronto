@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 
 import { AppLayoutShell } from "@/components/app-layout-shell";
 import { createClient } from "@/utils/supabase/server";
+import { LanguageProvider } from "@/context/LanguageContext";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -53,7 +54,11 @@ export default async function RootLayout({ children }) {
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
-        <AppLayoutShell user={sidebarUser}>{children}</AppLayoutShell>
+        <LanguageProvider>
+          <AppLayoutShell user={sidebarUser}>
+            {children}
+          </AppLayoutShell>
+        </LanguageProvider>
       </body>
     </html>
   );

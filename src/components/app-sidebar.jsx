@@ -1,7 +1,8 @@
-"use client"
+"use client";
 
-import { NavUser } from "@/components/nav-user"
+import { NavUser } from "@/components/nav-user";
 import { SignOutButton } from "@/components/sign-out-button";
+import { useLanguage } from "@/context/LanguageContext";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -25,7 +26,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 import {
   ChevronRightIcon,
   FolderIcon,
@@ -38,93 +39,115 @@ import {
   TerminalIcon,
   UserIcon,
   FileTextIcon,
-} from "lucide-react"
+} from "lucide-react";
 
-const navigationItems = [
-  {
-    title: "Browse Listings",
-    url: "/",
-    icon: LayoutGridIcon,
-  },
-];
-
-const sellingItems = [
-  {
-    title: "Dashboard",
-    url: "/dashboard",
-    icon: LayoutDashboardIcon,
-  },
-  {
-    title: "Create Listing",
-    url: "/listings/create",
-    icon: PlusSquareIcon,
-  },
-  {
-    title: "My Listings",
-    url: "/dashboard?tab=all",
-    icon: ListIcon,
-  },
-  {
-    title: "Drafts",
-    url: "/dashboard?tab=draft",
-    icon: FileTextIcon,
-  },
-];
-
-const buyingItems = [
-  {
-    title: "Favourites",
-    url: "/dashboard?tab=favourite",
-    icon: StarIcon,
-  },
-  {
-    title: "Messages",
-    url: "#",
-    icon: MessageSquareIcon,
-  },
-];
-
-const accountItems = [
-  {
-    title: "Profile",
-    url: "#",
-    icon: UserIcon,
-  },
-];
-
-export function AppSidebar({
-  user,
-  ...props
-}) {
+export function AppSidebar({ user, ...props }) {
   const pathname = usePathname();
   const categoriesOpen = pathname?.startsWith("/categories/") ?? false;
   const showLoggedInSections = Boolean(user);
+  const { t, language } = useLanguage();
+
+  const navigationItems = [
+    {
+      title: t.browseListings,
+      url: "/",
+      icon: LayoutGridIcon,
+    },
+  ];
+
+  const sellingItems = [
+    {
+      title: t.dashboard,
+      url: "/dashboard",
+      icon: LayoutDashboardIcon,
+    },
+    {
+      title: t.createListing,
+      url: "/listings/create",
+      icon: PlusSquareIcon,
+    },
+    {
+      title: t.myListings,
+      url: "/dashboard?tab=all",
+      icon: ListIcon,
+    },
+    {
+      title: t.drafts,
+      url: "/dashboard?tab=draft",
+      icon: FileTextIcon,
+    },
+  ];
+
+  const buyingItems = [
+    {
+      title: t.favourites,
+      url: "/dashboard?tab=favourite",
+      icon: StarIcon,
+    },
+    {
+      title: t.messages,
+      url: "#",
+      icon: MessageSquareIcon,
+    },
+  ];
+
+  const accountItems = [
+    {
+      title: t.profile,
+      url: "#",
+      icon: UserIcon,
+    },
+  ];
+
+  const categoryTitles = {
+    en: {
+      electronics: "Electronics",
+      books: "Books",
+      furniture: "Furniture",
+      clothing: "Clothing",
+      housing: "Housing",
+      other: "Other",
+    },
+    fr: {
+      electronics: "Électronique",
+      books: "Livres",
+      furniture: "Meubles",
+      clothing: "Vêtements",
+      housing: "Logement",
+      other: "Autre",
+    },
+  };
 
   return (
     <Sidebar
       className="top-(--header-height) h-[calc(100svh-var(--header-height))]!"
-      {...props}>
+      {...props}
+    >
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/">
-                <div
-                  className="flex aspect-square size-10 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground">
+                <div className="flex aspect-square size-10 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground">
                   <TerminalIcon className="size-5" />
                 </div>
                 <div className="grid flex-1 text-left text-base leading-tight">
-                  <span className="truncate font-semibold">Student Market</span>
-                  <span className="truncate text-sm text-sidebar-foreground/70">Toronto</span>
+                  <span className="truncate font-semibold">
+                    {t.studentMarket}
+                  </span>
+                  <span className="truncate text-sm text-sidebar-foreground/70">
+                    {t.toronto}
+                  </span>
                 </div>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
+
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Marketplace</SidebarGroupLabel>
+          <SidebarGroupLabel>{t.marketplace}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationItems.map((item) => (
@@ -141,31 +164,37 @@ export function AppSidebar({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+
               <Collapsible asChild defaultOpen={categoriesOpen}>
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     size="lg"
-                    tooltip="Categories"
+                    tooltip={t.categories}
                     className="rounded-xl px-3 text-sm"
                   >
                     <>
                       <FolderIcon />
-                      <span>Categories</span>
+                      <span>{t.categories}</span>
                     </>
                   </SidebarMenuButton>
+
                   <CollapsibleTrigger asChild>
                     <SidebarMenuAction className="data-[state=open]:rotate-90">
                       <ChevronRightIcon />
-                      <span className="sr-only">Toggle categories</span>
+                      <span className="sr-only">{t.toggleCategories}</span>
                     </SidebarMenuAction>
                   </CollapsibleTrigger>
+
                   <CollapsibleContent>
                     <SidebarMenuSub>
                       {CATEGORIES.map((category) => (
                         <SidebarMenuSubItem key={category.slug}>
                           <SidebarMenuSubButton asChild>
                             <Link href={`/categories/${category.slug}`}>
-                              <span>{category.title}</span>
+                              <span>
+                                {categoryTitles[language]?.[category.slug] ??
+                                  category.title}
+                              </span>
                             </Link>
                           </SidebarMenuSubButton>
                         </SidebarMenuSubItem>
@@ -177,9 +206,10 @@ export function AppSidebar({
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
         {showLoggedInSections ? (
           <SidebarGroup>
-            <SidebarGroupLabel>Selling</SidebarGroupLabel>
+            <SidebarGroupLabel>{t.selling}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {sellingItems.map((item) => (
@@ -200,9 +230,10 @@ export function AppSidebar({
             </SidebarGroupContent>
           </SidebarGroup>
         ) : null}
+
         {showLoggedInSections ? (
           <SidebarGroup>
-            <SidebarGroupLabel>Buying</SidebarGroupLabel>
+            <SidebarGroupLabel>{t.buying}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {buyingItems.map((item) => (
@@ -223,9 +254,10 @@ export function AppSidebar({
             </SidebarGroupContent>
           </SidebarGroup>
         ) : null}
+
         {showLoggedInSections ? (
           <SidebarGroup>
-            <SidebarGroupLabel>Account</SidebarGroupLabel>
+            <SidebarGroupLabel>{t.account}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {accountItems.map((item) => (
@@ -250,6 +282,7 @@ export function AppSidebar({
           </SidebarGroup>
         ) : null}
       </SidebarContent>
+
       <SidebarFooter>
         <NavUser user={user} />
       </SidebarFooter>

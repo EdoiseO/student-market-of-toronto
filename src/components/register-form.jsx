@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/context/LanguageContext";
 import {
   getTorontoSchoolEmailError,
   getTorontoSchoolNameFromEmail,
@@ -25,6 +26,7 @@ import {
 import { Input } from "@/components/ui/input";
 
 export function RegisterForm({ className, ...props }) {
+  const { t } = useLanguage();
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -66,9 +68,10 @@ export function RegisterForm({ className, ...props }) {
     const school = getTorontoSchoolNameFromEmail(email);
 
     if (form.password !== form.confirmPassword) {
-      setError("Passwords do not match.");
+      setError(t.passwordsDoNotMatch);
       return;
     }
+
     if (!isValidTorontoSchoolEmail(email) || !school) {
       setError(getTorontoSchoolEmailError(email));
       return;
@@ -92,23 +95,22 @@ export function RegisterForm({ className, ...props }) {
       setError(error.message);
       return;
     }
-    setSuccess("Account created! Check your email to verify.");
+
+    setSuccess(t.accountCreatedSuccess);
   }
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader>
-          <CardTitle className="text-center">Create an account</CardTitle>
-          <CardDescription>
-            Fill in your details below to sign up
-          </CardDescription>
+          <CardTitle className="text-center">{t.createAccount}</CardTitle>
+          <CardDescription>{t.registerDescription}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit}>
             <FieldGroup>
               <Field>
-                <FieldLabel htmlFor="firstName">First Name</FieldLabel>
+                <FieldLabel htmlFor="firstName">{t.firstName}</FieldLabel>
                 <Input
                   id="firstName"
                   type="text"
@@ -118,8 +120,9 @@ export function RegisterForm({ className, ...props }) {
                   onChange={(e) => updateField("firstName", e.target.value)}
                 />
               </Field>
+
               <Field>
-                <FieldLabel htmlFor="lastName">Last Name</FieldLabel>
+                <FieldLabel htmlFor="lastName">{t.lastName}</FieldLabel>
                 <Input
                   id="lastName"
                   type="text"
@@ -129,8 +132,9 @@ export function RegisterForm({ className, ...props }) {
                   onChange={(e) => updateField("lastName", e.target.value)}
                 />
               </Field>
+
               <Field>
-                <FieldLabel htmlFor="email">School Email (enter your Toronto school email)</FieldLabel>
+                <FieldLabel htmlFor="email">{t.schoolEmail}</FieldLabel>
                 <Input
                   id="email"
                   type="email"
@@ -143,8 +147,9 @@ export function RegisterForm({ className, ...props }) {
                   <p className="text-sm text-red-600">{schoolEmailError}</p>
                 )}
               </Field>
+
               <Field>
-                <FieldLabel htmlFor="password">Password</FieldLabel>
+                <FieldLabel htmlFor="password">{t.password}</FieldLabel>
                 <Input
                   id="password"
                   type="password"
@@ -153,38 +158,45 @@ export function RegisterForm({ className, ...props }) {
                   onChange={(e) => updateField("password", e.target.value)}
                 />
               </Field>
+
               <Field>
-                <FieldLabel htmlFor="confirmPassword">Confirm Password</FieldLabel>
+                <FieldLabel htmlFor="confirmPassword">
+                  {t.confirmPassword}
+                </FieldLabel>
                 <Input
                   id="confirmPassword"
                   type="password"
                   required
                   value={form.confirmPassword}
-                  onChange={(e) => updateField("confirmPassword", e.target.value)}
+                  onChange={(e) =>
+                    updateField("confirmPassword", e.target.value)
+                  }
                 />
               </Field>
+
               <Field>
-                <FieldLabel htmlFor="school">School / Campus</FieldLabel>
+                <FieldLabel htmlFor="school">{t.schoolCampus}</FieldLabel>
                 <Input
                   id="school"
                   type="text"
-                  placeholder="Auto-filled from your school email"
+                  placeholder={t.schoolAutoFilledPlaceholder}
                   required
                   value={form.school}
                   readOnly
                 />
                 <FieldDescription>
-                  This field is filled automatically from your school email.
+                  {t.schoolAutoFilledDescription}
                 </FieldDescription>
               </Field>
+
               <Field>
-                <Button type="submit">Sign Up</Button>
+                <Button type="submit">{t.signUp}</Button>
                 {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
                 {success && (
                   <p className="mt-2 text-sm text-green-600">{success}</p>
                 )}
                 <FieldDescription className="text-center">
-                  Already have an account? <a href="/login">Login</a>
+                  {t.alreadyHaveAccount} <a href="/login">{t.login}</a>
                 </FieldDescription>
               </Field>
             </FieldGroup>

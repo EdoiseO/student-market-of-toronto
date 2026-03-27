@@ -14,18 +14,19 @@ import {
 import { CardImage } from "@/components/card-image";
 import { FavouriteButton } from "@/components/favourite-button";
 import { ListingPhotoCarousel } from "@/components/listing-photo-carousel";
+import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
-function formatDate(dateString) {
-  return new Intl.DateTimeFormat("en-CA", {
+function formatDate(dateString, language) {
+  return new Intl.DateTimeFormat(language === "fr" ? "fr-CA" : "en-CA", {
     month: "short",
     day: "numeric",
     year: "numeric",
   }).format(new Date(dateString));
 }
 
-function formatPrice(price) {
-  return new Intl.NumberFormat("en-CA", {
+function formatPrice(price, language) {
+  return new Intl.NumberFormat(language === "fr" ? "fr-CA" : "en-CA", {
     style: "currency",
     currency: "CAD",
     maximumFractionDigits: 0,
@@ -38,13 +39,13 @@ function isNewListing(createdAt) {
   return Date.now() - createdTime <= sevenDaysInMs;
 }
 
-function getListingBadge(listing) {
+function getListingBadge(listing, t) {
   if (listing.status === "sold") {
-    return "Sold";
+    return t.sold;
   }
 
   if (listing.is_featured) {
-    return "Featured";
+    return t.featured;
   }
 
   if (
@@ -52,24 +53,27 @@ function getListingBadge(listing) {
     listing.previous_price !== undefined &&
     Number(listing.previous_price) > Number(listing.price ?? 0)
   ) {
-    return "Price Drop";
+    return t.priceDrop;
   }
 
   if (listing.is_negotiable) {
-    return "Negotiable";
+    return t.negotiable;
   }
 
   if (listing.created_at && isNewListing(listing.created_at)) {
-    return "New";
+    return t.new;
   }
 
-  return "Listing";
+  return t.listing;
 }
 
 export default async function ListingDetailPage({ params }) {
   const resolvedParams = await params;
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
+  const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
+  const t = translations[language];
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -86,26 +90,27 @@ export default async function ListingDetailPage({ params }) {
     notFound();
   }
 
-  const [{ data: listingImages = [] }, { data: seller }, { data: favourite }] = await Promise.all([
-    supabase
-      .from("listing_images")
-      .select("image_url, storage_path, position, created_at")
-      .eq("listing_id", listing.id)
-      .order("position", { ascending: true }),
-    supabase
-      .from("profiles")
-      .select("id, first_name, last_name, school")
-      .eq("id", listing.seller_id)
-      .single(),
-    user
-      ? supabase
-          .from("listing_favourites")
-          .select("listing_id")
-          .eq("user_id", user.id)
-          .eq("listing_id", listing.id)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
-  ]);
+  const [{ data: listingImages = [] }, { data: seller }, { data: favourite }] =
+    await Promise.all([
+      supabase
+        .from("listing_images")
+        .select("image_url, storage_path, position, created_at")
+        .eq("listing_id", listing.id)
+        .order("position", { ascending: true }),
+      supabase
+        .from("profiles")
+        .select("id, first_name, last_name, school")
+        .eq("id", listing.seller_id)
+        .single(),
+      user
+        ? supabase
+            .from("listing_favourites")
+            .select("listing_id")
+            .eq("user_id", user.id)
+            .eq("listing_id", listing.id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
 
   const { data: similarRows = [] } = await supabase
     .from("listings")
@@ -149,40 +154,48 @@ export default async function ListingDetailPage({ params }) {
 
   const sellerName =
     [seller?.first_name, seller?.last_name].filter(Boolean).join(" ").trim() ||
-    "Student Seller";
+    t.studentSeller;
 
-  const initials = sellerName
-    .split(" ")
-    .map((part) => part[0] ?? "")
-    .join("")
-    .slice(0, 2)
-    .toUpperCase() || "SM";
+  const initials =
+    sellerName
+      .split(" ")
+      .map((part) => part[0] ?? "")
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "SM";
 
   const photos = listingImages.length
     ? listingImages.map((image, index) => ({
-        label: `Photo ${index + 1}`,
+        label: `${t.photo} ${index + 1}`,
         imageUrl: image.image_url,
         storagePath: image.storage_path,
       }))
-    : [{ label: "Photo 1" }];
+    : [{ label: `${t.photo} 1` }];
 
-  const campusLabel = listing.location || seller?.school || "Toronto meetup";
-  const badge = getListingBadge(listing);
+  const campusLabel = listing.location || seller?.school || t.torontoMeetup;
+  const badge = getListingBadge(listing, t);
   const initialIsFavourited = Boolean(favourite);
+
   const similarListings = similarRows.map((item) => ({
     slug: item.slug,
     title: item.title,
-    price: formatPrice(item.price),
-    meta: schoolBySellerId.get(item.seller_id) || item.location || "Toronto meetup",
-    badge: getListingBadge(item),
+    price: formatPrice(item.price, language),
+    meta:
+      schoolBySellerId.get(item.seller_id) || item.location || t.torontoMeetup,
+    badge: getListingBadge(item, t),
     imageUrls: (item.listing_images ?? [])
       .slice()
-      .sort((firstImage, secondImage) => firstImage.position - secondImage.position)
+      .sort(
+        (firstImage, secondImage) =>
+          firstImage.position - secondImage.position
+      )
       .map((image) => image.image_url),
     imageUrl: (item.listing_images ?? [])
       .slice()
-      .sort((firstImage, secondImage) => firstImage.position - secondImage.position)[0]
-      ?.image_url,
+      .sort(
+        (firstImage, secondImage) =>
+          firstImage.position - secondImage.position
+      )[0]?.image_url,
   }));
 
   return (
@@ -195,7 +208,9 @@ export default async function ListingDetailPage({ params }) {
 
               <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-none">
                 <CardHeader className="border-b border-zinc-200 px-6 py-5 md:px-7">
-                  <CardTitle className="text-2xl text-zinc-950">Description</CardTitle>
+                  <CardTitle className="text-2xl text-zinc-950">
+                    {t.description}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="px-6 py-6 text-base leading-8 text-zinc-600 md:px-7">
                   {listing.description}
@@ -208,14 +223,19 @@ export default async function ListingDetailPage({ params }) {
                 <CardContent className="space-y-6 p-6 md:p-7">
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-3">
-                      <Badge variant="outline" className="w-fit border-zinc-300 bg-white text-zinc-700">
+                      <Badge
+                        variant="outline"
+                        className="w-fit border-zinc-300 bg-white text-zinc-700"
+                      >
                         {badge}
                       </Badge>
                       <div className="space-y-2">
                         <h1 className="text-3xl font-bold tracking-tight text-zinc-950 md:text-4xl">
                           {listing.title}
                         </h1>
-                        <p className="text-3xl font-bold text-zinc-900">{formatPrice(listing.price)}</p>
+                        <p className="text-3xl font-bold text-zinc-900">
+                          {formatPrice(listing.price, language)}
+                        </p>
                       </div>
                     </div>
 
@@ -225,10 +245,10 @@ export default async function ListingDetailPage({ params }) {
                     />
                   </div>
 
-                    <div className="grid gap-3 text-sm text-zinc-600 sm:grid-cols-2">
+                  <div className="grid gap-3 text-sm text-zinc-600 sm:grid-cols-2">
                     <div className="rounded-2xl border border-zinc-200 bg-white p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                        Campus
+                        {t.campus}
                       </p>
                       <p className="mt-2 text-base font-medium text-zinc-900">
                         {campusLabel}
@@ -236,7 +256,7 @@ export default async function ListingDetailPage({ params }) {
                     </div>
                     <div className="rounded-2xl border border-zinc-200 bg-white p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                        Condition
+                        {t.condition}
                       </p>
                       <p className="mt-2 text-base font-medium text-zinc-900">
                         {listing.condition}
@@ -246,7 +266,7 @@ export default async function ListingDetailPage({ params }) {
 
                   <Button type="button" className="w-full sm:w-auto">
                     <MessageCircle className="size-4" />
-                    <span>Chat with Seller</span>
+                    <span>{t.chatWithSeller}</span>
                   </Button>
                 </CardContent>
               </Card>
@@ -263,7 +283,9 @@ export default async function ListingDetailPage({ params }) {
                       <p className="text-xl font-semibold text-zinc-950">
                         {sellerName}
                       </p>
-                      <p className="text-sm text-zinc-500">{seller?.school || "Toronto student"}</p>
+                      <p className="text-sm text-zinc-500">
+                        {seller?.school || t.torontoStudent}
+                      </p>
                     </div>
                   </div>
 
@@ -272,18 +294,22 @@ export default async function ListingDetailPage({ params }) {
                       <Clock3 className="size-4 text-zinc-500" />
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                          Created
+                          {t.created}
                         </p>
-                        <p className="mt-1 text-zinc-900">{formatDate(listing.created_at)}</p>
+                        <p className="mt-1 text-zinc-900">
+                          {formatDate(listing.created_at, language)}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
                       <Tag className="size-4 text-zinc-500" />
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                          Updated
+                          {t.updated}
                         </p>
-                        <p className="mt-1 text-zinc-900">{formatDate(listing.updated_at)}</p>
+                        <p className="mt-1 text-zinc-900">
+                          {formatDate(listing.updated_at, language)}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -297,10 +323,10 @@ export default async function ListingDetailPage({ params }) {
           <div className="mb-5 flex items-center gap-3">
             <MapPin className="size-5 text-zinc-500" />
             <div>
-              <h2 className="text-2xl font-bold text-zinc-950">Meetup Location</h2>
-              <p className="text-sm text-zinc-500">
-                Campus meetup spot based on the listing location.
-              </p>
+              <h2 className="text-2xl font-bold text-zinc-950">
+                {t.meetupLocation}
+              </h2>
+              <p className="text-sm text-zinc-500">{t.meetupLocationDesc}</p>
             </div>
           </div>
 
@@ -320,14 +346,16 @@ export default async function ListingDetailPage({ params }) {
         <section className="rounded-3xl bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 md:p-8">
           <div className="mb-5 flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-bold text-zinc-950">Similar Listings</h2>
+              <h2 className="text-2xl font-bold text-zinc-950">
+                {t.similarListings}
+              </h2>
               <p className="mt-1 text-sm text-zinc-500">
-                More options from the same category.
+                {t.similarListingsDesc}
               </p>
             </div>
             <div className="hidden items-center gap-2 text-sm font-medium text-zinc-500 md:flex">
               <UserRound className="size-4" />
-              <span>Student marketplace picks</span>
+              <span>{t.marketplacePicks}</span>
             </div>
           </div>
 
