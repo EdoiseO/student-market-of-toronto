@@ -1,17 +1,105 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 
 export default function ResetPasswordPage() {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
+  const searchParams = useSearchParams();
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [sessionReady, setSessionReady] = useState(false);
+
+  useEffect(() => {
+    async function setResetSession() {
+      const code = searchParams.get("code");
+      const tokenHash = searchParams.get("token_hash");
+      const type = searchParams.get("type");
+
+      const hashParams = new URLSearchParams(window.location.hash.replace("#", ""));
+      const accessToken = hashParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token");
+      const hashType = hashParams.get("type");
+
+      if (accessToken && refreshToken && hashType === "recovery") {
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+
+        if (error) {
+          setMessage(error.message);
+          setSessionReady(false);
+        } else {
+          setSessionReady(true);
+        }
+
+        setLoading(false);
+        return;
+      }
+
+      if (code) {
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+
+        if (error) {
+          setMessage(error.message);
+          setSessionReady(false);
+        } else {
+          setSessionReady(Boolean(data?.session));
+        }
+
+        setLoading(false);
+        return;
+      }
+
+      if (tokenHash && type === "recovery") {
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: "recovery",
+        });
+
+        if (error) {
+          setMessage(error.message);
+          setSessionReady(false);
+        } else {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          setSessionReady(Boolean(session));
+        }
+
+        setLoading(false);
+        return;
+      }
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session) {
+        setSessionReady(true);
+      } else {
+        setMessage("Invalid or expired reset link.");
+        setSessionReady(false);
+      }
+
+      setLoading(false);
+    }
+
+    setResetSession();
+  }, [searchParams, supabase]);
 
   async function handleSubmit(e) {
     e.preventDefault();
+
+    if (loading || !sessionReady) {
+      setMessage("Reset session is not ready. Please open the reset link from your email again.");
+      return;
+    }
 
     if (password !== confirmPassword) {
       setMessage("Passwords do not match.");
@@ -27,6 +115,16 @@ export default function ResetPasswordPage() {
     } else {
       setMessage("Password updated successfully.");
     }
+  }
+
+  if (loading) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-zinc-100">
+        <div className="bg-white p-8 rounded-xl shadow-md w-full max-w-md text-center">
+          <p className="text-sm text-zinc-600">Preparing reset session...</p>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -55,7 +153,11 @@ export default function ResetPasswordPage() {
           required
         />
 
-        <button className="w-full bg-black text-white py-2 rounded-md">
+        <button
+          type="submit"
+          disabled={loading || !sessionReady}
+          className="w-full bg-black text-white py-2 rounded-md disabled:opacity-60"
+        >
           Update Password
         </button>
 
