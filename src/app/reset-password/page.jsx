@@ -1,4 +1,5 @@
 "use client";
+export const dynamic = "force-dynamic";
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -43,15 +44,10 @@ export default function ResetPasswordPage() {
       }
 
       if (code) {
-        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-
-        if (error) {
-          setMessage(error.message);
-          setSessionReady(false);
-        } else {
-          setSessionReady(Boolean(data?.session));
-        }
-
+        setMessage(
+          "For security reasons, this link format is not supported. Please request a new reset email. (Developers: Update the Supabase 'Reset Password' email template to use {{ .TokenHash }} instead of {{ .ConfirmationURL }})."
+        );
+        setSessionReady(false);
         setLoading(false);
         return;
       }
@@ -113,7 +109,10 @@ export default function ResetPasswordPage() {
     if (error) {
       setMessage(error.message);
     } else {
-      setMessage("Password updated successfully.");
+      setMessage("Password updated successfully. Redirecting to login...");
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 1500);
     }
   }
 
