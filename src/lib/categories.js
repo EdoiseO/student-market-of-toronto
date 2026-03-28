@@ -29,6 +29,31 @@ const CATEGORY_SLUG_ALIASES = {
 
 export const CATEGORY_OPTIONS = CATEGORIES.map((category) => category.value);
 
+export function getTranslatedCategoryTitle(slug, t, language = "en", fallbackTitle = "") {
+  const canonicalSlug = getCanonicalCategorySlug(slug);
+
+  const translationMap = {
+    electronics: t.electronics ?? "Electronics",
+    books: t.books ?? "Books",
+    clothing: t.clothing ?? (language === "fr" ? "Vêtements" : "Clothing"),
+    furniture: t.furniture ?? "Furniture",
+    "school-supplies":
+      t.schoolSupplies ??
+      (language === "fr" ? "Fournitures scolaires" : "School Supplies"),
+    "sports-fitness":
+      t.sportsAndFitness ??
+      (language === "fr" ? "Sports et fitness" : "Sports & Fitness"),
+    "games-entertainment":
+      t.gamesAndEntertainment ??
+      (language === "fr" ? "Jeux et divertissement" : "Games & Entertainment"),
+    housing: t.housing ?? "Housing",
+    services: t.services ?? "Services",
+    other: t.other ?? "Other",
+  };
+
+  return translationMap[canonicalSlug] ?? fallbackTitle;
+}
+
 export function getCanonicalCategorySlug(slug) {
   return CATEGORY_SLUG_ALIASES[slug] ?? slug;
 }

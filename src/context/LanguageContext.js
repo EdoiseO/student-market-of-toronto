@@ -8,20 +8,39 @@ export function LanguageProvider({ children }) {
   const [language, setLanguage] = useState("en");
 
   useEffect(() => {
+    const cookieLanguage = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("language="))
+      ?.split("=")[1];
+
     const savedLanguage = localStorage.getItem("language");
-    if (savedLanguage === "en" || savedLanguage === "fr") {
-      setLanguage(savedLanguage);
-    }
+
+    const nextLanguage =
+      cookieLanguage === "en" || cookieLanguage === "fr"
+        ? cookieLanguage
+        : savedLanguage === "en" || savedLanguage === "fr"
+        ? savedLanguage
+        : "en";
+
+    setLanguage(nextLanguage);
   }, []);
 
   useEffect(() => {
     localStorage.setItem("language", language);
+    document.cookie = `language=${language}; path=/; max-age=31536000`;
   }, [language]);
 
-  const t = translations[language];
+  function updateLanguage(nextLanguage) {
+    if (nextLanguage !== "en" && nextLanguage !== "fr") return;
+    setLanguage(nextLanguage);
+  }
+
+  const t = translations[language] || translations.en;
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider
+      value={{ language, setLanguage: updateLanguage, t }}
+    >
       {children}
     </LanguageContext.Provider>
   );

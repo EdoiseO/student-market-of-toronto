@@ -23,6 +23,8 @@ export const metadata = {
 
 export default async function RootLayout({ children }) {
   const cookieStore = await cookies();
+  const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
+
   const supabase = createClient(cookieStore);
   const {
     data: { user },
@@ -35,13 +37,15 @@ export default async function RootLayout({ children }) {
     ]
       .filter(Boolean)
       .join(" ")
-      .trim() || "Student";
+      .trim() || (language === "fr" ? "Étudiant" : "Student");
 
   const sidebarUser = user
     ? {
         name: displayName,
         email: user.email ?? "",
-        school: user.user_metadata?.school ?? "Toronto student",
+        school:
+          user.user_metadata?.school ??
+          (language === "fr" ? "Étudiant de Toronto" : "Toronto student"),
         avatar: user.email
           ? `https://avatar.vercel.sh/${encodeURIComponent(user.email)}`
           : "",
@@ -49,12 +53,12 @@ export default async function RootLayout({ children }) {
     : null;
 
   return (
-    <html lang="en">
+    <html lang={language}>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
-        <LanguageProvider>
+        <LanguageProvider initialLanguage={language}>
           <AppLayoutShell user={sidebarUser}>
             {children}
           </AppLayoutShell>

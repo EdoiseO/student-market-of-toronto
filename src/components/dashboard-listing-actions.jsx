@@ -18,10 +18,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
+import { useLanguage } from "@/context/LanguageContext"
+import { translations } from "@/lib/translations"
 
 export function DashboardListingActions({ id, slug, status }) {
   const router = useRouter()
   const supabase = createClient()
+  const { language } = useLanguage()
+  const t = translations[language]
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -124,7 +128,7 @@ export function DashboardListingActions({ id, slug, status }) {
         size="sm"
         className="h-9 rounded-xl bg-white px-4"
       >
-        <Link href={`/listings/${slug}/edit`}>Edit</Link>
+        <Link href={`/listings/${slug}/edit`}>{t.editListing}</Link>
       </Button>
       {canPostListing ? (
         <Button
@@ -135,7 +139,7 @@ export function DashboardListingActions({ id, slug, status }) {
           onClick={() => handleUpdateStatus("active")}
           disabled={isUpdatingStatus}
         >
-          {isUpdatingStatus ? "Saving..." : "Post Listing"}
+          {isUpdatingStatus ? t.saving : t.postListing}
         </Button>
       ) : null}
       {canMarkAsSold ? (
@@ -147,7 +151,7 @@ export function DashboardListingActions({ id, slug, status }) {
           onClick={() => handleUpdateStatus("sold")}
           disabled={isUpdatingStatus}
         >
-          {isUpdatingStatus ? "Saving..." : "Mark as Sold"}
+          {isUpdatingStatus ? t.saving : t.markAsSold}
         </Button>
       ) : null}
       {canReopenListing ? (
@@ -159,7 +163,7 @@ export function DashboardListingActions({ id, slug, status }) {
           onClick={() => handleUpdateStatus("active")}
           disabled={isUpdatingStatus}
         >
-          {isUpdatingStatus ? "Saving..." : "Reopen Listing"}
+          {isUpdatingStatus ? t.saving : t.reopenListing}
         </Button>
       ) : null}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
@@ -170,20 +174,20 @@ export function DashboardListingActions({ id, slug, status }) {
             size="sm"
             className="h-9 rounded-xl border-rose-200 bg-rose-50 px-4 text-rose-700 hover:bg-rose-100"
           >
-            Delete
+            {t.delete}
           </Button>
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this listing?</AlertDialogTitle>
+            <AlertDialogTitle>{t.deleteThisListing}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove the listing and its uploaded images.
+              {t.deleteListingDescription}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>{t.cancel}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} disabled={isDeleting}>
-              {isDeleting ? "Deleting..." : "Delete Listing"}
+              {isDeleting ? t.deleting : t.deleteListing}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

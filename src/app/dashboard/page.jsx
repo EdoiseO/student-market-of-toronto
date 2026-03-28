@@ -8,15 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardListingActions } from "@/components/dashboard-listing-actions";
-
-const dashboardTabs = [
-  { key: "all", label: "All" },
-  { key: "active", label: "Active" },
-  { key: "inactive", label: "Inactive" },
-  { key: "sold", label: "Sold" },
-  { key: "draft", label: "Draft" },
-  { key: "favourite", label: "Favourite" },
-];
+import { translations } from "@/lib/translations";
 
 const rowsPerPageOptions = [7, 10, 15];
 
@@ -28,13 +20,20 @@ const statusBadgeClasses = {
   favourite: "border-rose-200 bg-rose-50 text-rose-700",
 };
 
-const statusLabels = {
-  active: "Live",
-  inactive: "Inactive",
-  draft: "Draft",
-  sold: "Sold",
-  favourite: "Favourite",
-};
+function getCategoryTranslationKey(category) {
+  return String(category ?? "")
+    .trim()
+    .replace(/&/g, "and")
+    .replace(/[^a-zA-Z0-9]+/g, " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((word, index) =>
+      index === 0
+        ? word.toLowerCase()
+        : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
+    )
+    .join("");
+}
 
 function buildDashboardHref(tab) {
   return tab === "all" ? "/dashboard" : `/dashboard?tab=${tab}`;
@@ -54,33 +53,67 @@ function buildDashboardPageHref(tab, page, rows) {
 const readOnlyTabs = new Set(["favourite"]);
 const editableStatuses = new Set(["active", "inactive", "draft", "sold"]);
 
-function DashboardStatusBadge({ status }) {
+function DashboardStatusBadge({ status, labels }) {
   if (status === "active") {
     return (
       <Badge variant="outline" className={statusBadgeClasses[status]}>
         <span className="mr-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-white">
           <CheckIcon className="size-3" />
         </span>
-        {statusLabels[status]}
+        <span className="whitespace-nowrap">{labels[status]}</span>
       </Badge>
     );
   }
 
   return (
     <Badge variant="outline" className={statusBadgeClasses[status]}>
-      {statusLabels[status]}
+      <span className="whitespace-nowrap">{labels[status]}</span>
     </Badge>
   );
 }
 
 export default async function DashboardPage({ searchParams }) {
   const resolvedSearchParams = await searchParams;
+  const cookieStore = await cookies();
+  const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
+  const t = translations[language];
+
+  const dashboardTabs = [
+    { key: "all", label: t.all ?? "All" },
+    { key: "active", label: t.active ?? "Active" },
+    { key: "inactive", label: t.inactive ?? "Inactive" },
+    { key: "sold", label: t.sold ?? "Sold" },
+    { key: "draft", label: t.draft ?? (language === "fr" ? "Brouillon" : "Draft") },
+    { key: "favourite", label: t.favourite ?? t.favourites ?? (language === "fr" ? "Favori" : "Favourite") },
+  ];
+
+  const statusLabels = {
+    active: t.live ?? (language === "fr" ? "En ligne" : "Live"),
+    inactive: t.inactive ?? "Inactive",
+    draft: t.draft ?? (language === "fr" ? "Brouillon" : "Draft"),
+    sold: t.sold ?? "Sold",
+    favourite: t.favourite ?? t.favourites ?? (language === "fr" ? "Favori" : "Favourite"),
+  };
+
+  const categoryLabels = {
+    services: t.services ?? "Services",
+    housing: t.housing ?? "Housing",
+    schoolSupplies: t.schoolSupplies ?? "School Supplies",
+    furniture: t.furniture ?? "Furniture",
+    electronics: t.electronics ?? "Electronics",
+    books: t.books ?? "Books",
+    sportsAndFitness: t.sportsAndFitness ?? "Sports & Fitness",
+    gamesAndEntertainment: t.gamesAndEntertainment ?? "Games & Entertainment",
+    clothingAndAccessories: t.clothingAndAccessories ?? "Clothing & Accessories",
+    homeAndKitchen: t.homeAndKitchen ?? "Home & Kitchen",
+    other: t.other ?? "Other",
+  };
+
   const requestedTab = resolvedSearchParams?.tab ?? "all";
   const currentTab = dashboardTabs.some((tab) => tab.key === requestedTab)
     ? requestedTab
     : "all";
 
-  const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
   const {
@@ -177,7 +210,7 @@ export default async function DashboardPage({ searchParams }) {
     } else {
       acc[tab.key] = ownedItems.filter(
         (item) => item.dashboardStatus === tab.key,
-        ).length;
+      ).length;
     }
     return acc;
   }, {});
@@ -190,11 +223,13 @@ export default async function DashboardPage({ searchParams }) {
         <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm">
           <CardHeader className="border-b border-zinc-200 px-8 py-6">
             <CardTitle className="text-4xl font-bold tracking-tight text-zinc-950">
-              Dashboard
+              {t.dashboard}
             </CardTitle>
             <p className="max-w-2xl text-base text-zinc-600">
-              Track live listings, inactive listings, sold items, drafts, and
-              saved items in one place.
+              {t.dashboardDescription ??
+                (language === "fr"
+                  ? "Suivez les annonces en ligne, inactives, vendues, les brouillons et les favoris au même endroit."
+                  : "Track live listings, inactive listings, sold items, drafts, and saved items in one place.")}
             </p>
           </CardHeader>
 
@@ -234,7 +269,7 @@ export default async function DashboardPage({ searchParams }) {
 
               {showManagementActions ? (
                 <Button asChild className="h-10 rounded-xl px-4">
-                  <Link href="/listings/create">Add Listing</Link>
+                  <Link href="/listings/create">{t.addListing ?? t.createListing}</Link>
                 </Button>
               ) : null}
             </div>
@@ -244,14 +279,14 @@ export default async function DashboardPage({ searchParams }) {
                 <table className="min-w-full text-left">
                   <thead className="bg-zinc-50">
                     <tr className="border-b border-zinc-200 text-sm text-zinc-500">
-                      <th className="px-6 py-4 font-medium">Listing</th>
-                      <th className="px-6 py-4 font-medium">Status</th>
-                      <th className="px-6 py-4 font-medium">Price</th>
-                      <th className="px-6 py-4 font-medium">Messages</th>
-                      <th className="px-6 py-4 font-medium">Category</th>
+                      <th className="px-6 py-4 font-medium">{t.listing}</th>
+                      <th className="px-6 py-4 font-medium">{t.status}</th>
+                      <th className="px-6 py-4 font-medium">{t.price}</th>
+                      <th className="px-6 py-4 font-medium">{t.messages}</th>
+                      <th className="px-6 py-4 font-medium">{t.category}</th>
                       {showManagementActions ? (
                         <th className="px-6 py-4 text-right font-medium">
-                          Actions
+                          {t.actions}
                         </th>
                       ) : null}
                     </tr>
@@ -278,18 +313,19 @@ export default async function DashboardPage({ searchParams }) {
                           </Link>
                         </td>
                         <td className="px-6 py-5">
-                          <DashboardStatusBadge status={item.dashboardStatus} />
+                          <DashboardStatusBadge
+                            status={item.dashboardStatus}
+                            labels={statusLabels}
+                          />
                         </td>
                         <td className="px-6 py-5 font-medium text-zinc-900">
                           {item.price}
                         </td>
                         <td className="px-6 py-5 text-zinc-700">
-                          {item.messageCount > 0
-                            ? `${item.messageCount}+`
-                            : "0"}
+                          {item.messageCount > 0 ? `${item.messageCount}+` : "0"}
                         </td>
                         <td className="px-6 py-5 text-zinc-700">
-                          {item.category}
+                          {categoryLabels[getCategoryTranslationKey(item.category)] ?? item.category}
                         </td>
                         {showManagementActions ? (
                           <td className="px-6 py-5 text-right">
@@ -312,26 +348,31 @@ export default async function DashboardPage({ searchParams }) {
 
               {filteredItems.length === 0 ? (
                 <div className="px-6 py-12 text-center text-sm text-zinc-500">
-                  No listings found for this section yet.
+                  {t.noListingsInSection ??
+                    (language === "fr"
+                      ? "Aucune annonce trouvée pour cette section pour le moment."
+                      : "No listings found for this section yet.")}
                 </div>
               ) : null}
 
               {filteredItems.length > 7 ? (
                 <div className="flex flex-col gap-4 border-t border-zinc-200 px-6 py-4 text-sm text-zinc-500 md:flex-row md:items-center md:justify-between">
-                  <p>0 of {filteredItems.length} row(s) selected.</p>
+                  <p>
+                    {language === "fr"
+                      ? `0 sur ${filteredItems.length} ligne(s) sélectionnée(s).`
+                      : `0 of ${filteredItems.length} row(s) selected.`}
+                  </p>
                   <div className="flex flex-col gap-4 md:flex-row md:items-center">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-zinc-700">
-                        Rows per page
+                        {t.rowsPerPage ?? (language === "fr" ? "Lignes par page" : "Rows per page")}
                       </span>
                       <div className="flex items-center gap-2">
                         {rowsPerPageOptions.map((option) => (
                           <Button
                             key={option}
                             asChild
-                            variant={
-                              rowsPerPage === option ? "outline" : "ghost"
-                            }
+                            variant={rowsPerPage === option ? "outline" : "ghost"}
                             size="sm"
                             className={
                               rowsPerPage === option
@@ -354,7 +395,9 @@ export default async function DashboardPage({ searchParams }) {
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="font-medium text-zinc-700">
-                        Page {currentPage} of {totalPages}
+                        {language === "fr"
+                          ? `Page ${currentPage} sur ${totalPages}`
+                          : `Page ${currentPage} of ${totalPages}`}
                       </span>
                       <div className="flex items-center gap-2">
                         <Button

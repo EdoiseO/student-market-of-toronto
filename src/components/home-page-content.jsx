@@ -5,9 +5,10 @@ import Link from "next/link";
 import { CardImage } from "@/components/card-image";
 import { useLanguage } from "@/context/LanguageContext";
 import LanguageSwitcher from "@/components/language-switcher";
+import { getTranslatedCategoryTitle } from "@/lib/categories";
 
 export default function HomePageContent({ listingSections }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   return (
     <main className="min-h-screen bg-zinc-100 p-6 md:p-8">
@@ -42,13 +43,7 @@ export default function HomePageContent({ listingSections }) {
                   href={section.href}
                   className="inline-flex items-center gap-2 text-2xl font-bold text-zinc-950 transition-colors hover:text-zinc-700"
                 >
-                  <span>
-                    {section.slug === "electronics"
-                      ? t.electronics
-                      : section.slug === "books"
-                      ? t.books
-                      : section.title}
-                  </span>
+                  <span>{getTranslatedCategoryTitle(section.slug, t, language, section.title)}</span>
                   <span aria-hidden="true">➔</span>
                 </Link>
                 <p className="mt-1 text-sm text-zinc-500">
