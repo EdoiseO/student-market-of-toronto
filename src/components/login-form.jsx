@@ -41,6 +41,7 @@ export function LoginForm({ className, ...props }) {
       window.location.href = "/";
     }
   }
+
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
@@ -66,6 +67,7 @@ export function LoginForm({ className, ...props }) {
                   }
                 />
               </Field>
+
               <Field>
                 <div className="flex items-center">
                   <FieldLabel htmlFor="password">Password</FieldLabel>
@@ -86,6 +88,7 @@ export function LoginForm({ className, ...props }) {
                   }
                 />
               </Field>
+
               <Field>
                 <Button type="submit">Login</Button>
                 {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
@@ -93,7 +96,7 @@ export function LoginForm({ className, ...props }) {
                   <p className="mt-2 text-sm text-green-600">{success}</p>
                 )}
                 <FieldDescription className="text-center">
-                  Don&apos;t have an account? <a href="/register">Sign up</a>
+                  Don&apos;t have an account? <Link href="/register">Sign up</Link>
                 </FieldDescription>
               </Field>
             </FieldGroup>
