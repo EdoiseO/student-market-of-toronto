@@ -2,11 +2,29 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { createClient } from "@/utils/supabase/client";
 
 export default function ResetPasswordPage() {
   const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
   const searchParams = useSearchParams();
 
   const [password, setPassword] = useState("");
@@ -44,10 +62,15 @@ export default function ResetPasswordPage() {
       }
 
       if (code) {
-        setMessage(
-          "For security reasons, this link format is not supported. Please request a new reset email. (Developers: Update the Supabase 'Reset Password' email template to use {{ .TokenHash }} instead of {{ .ConfirmationURL }})."
-        );
-        setSessionReady(false);
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+
+        if (error) {
+          setMessage(error.message);
+          setSessionReady(false);
+        } else {
+          setSessionReady(Boolean(data?.session));
+        }
+
         setLoading(false);
         return;
       }
@@ -111,59 +134,78 @@ export default function ResetPasswordPage() {
     } else {
       setMessage("Password updated successfully. Redirecting to login...");
       setTimeout(() => {
-        window.location.href = "/login";
+        router.push("/login");
       }, 1500);
     }
   }
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-zinc-100">
-        <div className="bg-white p-8 rounded-xl shadow-md w-full max-w-md text-center">
-          <p className="text-sm text-zinc-600">Preparing reset session...</p>
+      <main className="flex min-h-svh w-full items-center justify-center bg-zinc-100 p-6 md:p-10">
+        <div className="w-full max-w-sm">
+          <Card>
+            <CardContent className="p-8 text-center">
+              <p className="text-sm text-zinc-600">Preparing reset session...</p>
+            </CardContent>
+          </Card>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-zinc-100">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-8 rounded-xl shadow-md w-full max-w-md"
-      >
-        <h1 className="text-2xl font-bold mb-4">Reset Password</h1>
+    <main className="flex min-h-svh w-full items-center justify-center bg-zinc-100 p-6 md:p-10">
+      <div className="w-full max-w-sm">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-center">Reset Password</CardTitle>
+            <CardDescription>
+              Enter and confirm your new password.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit}>
+              <FieldGroup>
+                <Field>
+                  <FieldLabel htmlFor="password">New Password</FieldLabel>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="New password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </Field>
 
-        <input
-          type="password"
-          placeholder="New password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full border px-4 py-2 rounded-md mb-4"
-          required
-        />
+                <Field>
+                  <FieldLabel htmlFor="confirmPassword">Confirm Password</FieldLabel>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    placeholder="Confirm new password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                  />
+                </Field>
 
-        <input
-          type="password"
-          placeholder="Confirm new password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          className="w-full border px-4 py-2 rounded-md mb-4"
-          required
-        />
-
-        <button
-          type="submit"
-          disabled={loading || !sessionReady}
-          className="w-full bg-black text-white py-2 rounded-md disabled:opacity-60"
-        >
-          Update Password
-        </button>
-
-        {message && (
-          <p className="mt-4 text-sm text-center text-zinc-600">{message}</p>
-        )}
-      </form>
+                <Field>
+                  <Button type="submit" disabled={loading || !sessionReady}>
+                    Update Password
+                  </Button>
+                  {message ? (
+                    <p className="mt-2 text-sm text-center text-zinc-600">{message}</p>
+                  ) : null}
+                  <FieldDescription className="text-center">
+                    Need a fresh link? <Link href="/forget-password">Request another reset email</Link>
+                  </FieldDescription>
+                </Field>
+              </FieldGroup>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </main>
   );
 }

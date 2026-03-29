@@ -1,6 +1,23 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { createClient } from "@/utils/supabase/client";
 
 export default function ForgotPasswordPage() {
@@ -14,7 +31,7 @@ export default function ForgotPasswordPage() {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${appUrl}/reset-password`,
+      redirectTo: `${appUrl}/auth/callback?next=/reset-password`,
     });
 
     if (error) {
@@ -25,30 +42,44 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-zinc-100">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-8 rounded-xl shadow-md w-full max-w-md"
-      >
-        <h1 className="text-2xl font-bold mb-4">Forgot Password</h1>
+    <main className="flex min-h-svh w-full items-center justify-center bg-zinc-100 p-6 md:p-10">
+      <div className="w-full max-w-sm">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-center">Forgot Password</CardTitle>
+            <CardDescription>
+              Enter your email below and we&apos;ll send you a password reset link.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit}>
+              <FieldGroup>
+                <Field>
+                  <FieldLabel htmlFor="email">Email</FieldLabel>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="m@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </Field>
 
-        <input
-          type="email"
-          placeholder="Enter your email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full border px-4 py-2 rounded-md mb-4"
-          required
-        />
-
-        <button className="w-full bg-black text-white py-2 rounded-md">
-          Send Reset Link
-        </button>
-
-        {message && (
-          <p className="mt-4 text-sm text-center text-zinc-600">{message}</p>
-        )}
-      </form>
+                <Field>
+                  <Button type="submit">Send Reset Link</Button>
+                  {message ? (
+                    <p className="mt-2 text-sm text-center text-zinc-600">{message}</p>
+                  ) : null}
+                  <FieldDescription className="text-center">
+                    Remembered your password? <Link href="/login">Back to login</Link>
+                  </FieldDescription>
+                </Field>
+              </FieldGroup>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </main>
   );
 }
