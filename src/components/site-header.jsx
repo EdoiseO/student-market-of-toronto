@@ -2,28 +2,34 @@
 
 import { usePathname } from "next/navigation";
 
+import LanguageSwitcher from "@/components/language-switcher";
 import { SearchForm } from "@/components/search-form"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { useSidebar } from "@/components/ui/sidebar"
 import { PanelLeftIcon } from "lucide-react"
 
+import { useLanguage } from "@/context/LanguageContext";
+import { translations } from "@/lib/translations";
+
 export function SiteHeader() {
   const { toggleSidebar } = useSidebar()
   const pathname = usePathname();
+  const { language } = useLanguage();
+  const t = translations[language];
 
   const pageTitle =
     pathname === "/"
-      ? "Browse Listings"
+      ? t.browseListings
       : pathname.startsWith("/search")
         ? "Search & Filter"
       : pathname.startsWith("/dashboard")
-        ? "Dashboard"
+        ? t.dashboard
         : pathname.endsWith("/edit")
-          ? "Edit Listing"
-        : pathname.startsWith("/listings/create")
-          ? "Create Listing"
-          : "Student Market";
+          ? t.editListing
+          : pathname.startsWith("/listings/create")
+            ? t.createListing
+            : t.studentMarket;
 
   return (
     <header
@@ -44,14 +50,16 @@ export function SiteHeader() {
           <div className="min-w-0">
             <p className="truncate text-base font-semibold text-foreground">{pageTitle}</p>
             <p className="hidden text-sm text-muted-foreground xl:block">
-              Buy, sell, and discover listings from Toronto students.
+              {t.browseListingsSubtitle}
             </p>
           </div>
         </div>
         <div className="flex min-w-0 justify-center">
           <SearchForm className="w-full max-w-2xl xl:max-w-4xl" />
         </div>
-        <div className="hidden xl:block" />
+        <div className="hidden items-center justify-end xl:flex">
+          <LanguageSwitcher />
+        </div>
       </div>
     </header>
   );

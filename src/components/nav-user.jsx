@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import Link from "next/link";
 
@@ -6,19 +6,20 @@ import {
   Avatar,
   AvatarFallback,
   AvatarImage,
-} from "@/components/ui/avatar"
+} from "@/components/ui/avatar";
 import {
   SidebarMenu,
   SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { LogInIcon } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
-export function NavUser({
-  user
-}) {
+export function NavUser({ user }) {
+  const { t } = useLanguage();
+
   const initials = user?.name
     ?.split(" ")
     .map((part) => part[0])
@@ -33,7 +34,7 @@ export function NavUser({
           <Button asChild variant="outline" className="mb-3 w-full justify-start rounded-xl">
             <Link href="/login">
               <LogInIcon />
-              <span>Sign In</span>
+              <span>{t.signIn}</span>
             </Link>
           </Button>
         </SidebarMenuItem>
@@ -43,13 +44,13 @@ export function NavUser({
               <AvatarFallback className="rounded-xl">{initials}</AvatarFallback>
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-semibold">Guest</span>
-              <span className="truncate text-xs">Browse public listings</span>
+              <span className="truncate font-semibold">{t.guest}</span>
+              <span className="truncate text-xs">{t.browsePublicListings}</span>
             </div>
           </div>
           <SidebarMenuSub className="mt-2">
             <SidebarMenuSubItem className="text-xs text-sidebar-foreground/70">
-              Sign in to create and manage listings
+              {t.signInToCreate}
             </SidebarMenuSubItem>
           </SidebarMenuSub>
         </SidebarMenuItem>
@@ -66,13 +67,13 @@ export function NavUser({
             <AvatarFallback className="rounded-xl">{initials}</AvatarFallback>
           </Avatar>
           <div className="grid flex-1 text-left text-sm leading-tight">
-            <span className="truncate font-semibold">{user?.name ?? "Student"}</span>
+            <span className="truncate font-semibold">{user?.name ?? t.student}</span>
             <span className="truncate text-xs">{user?.email ?? ""}</span>
           </div>
         </div>
         <SidebarMenuSub className="mt-2">
           <SidebarMenuSubItem className="text-xs text-sidebar-foreground/70">
-            {user?.school ?? "Toronto student"}
+            {user?.school ?? t.torontoStudent}
           </SidebarMenuSubItem>
         </SidebarMenuSub>
       </SidebarMenuItem>

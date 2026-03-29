@@ -37,8 +37,8 @@ export async function proxy(request) {
     );
   }
 
-  // Rule 1: Logged-in users should NOT visit /login or /register
-  if (user && (path === "/login" || path === "/register")) {
+  // Rule 1: Logged-in users should NOT visit auth-entry pages
+  if (user && (path === "/login" || path === "/register" || path === "/forget-password")) {
     const redirectResponse = NextResponse.redirect(new URL("/", request.url));
     response.cookies.getAll().forEach((cookie) => {
       redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
