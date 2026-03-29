@@ -47,7 +47,7 @@ export function ListingPhotoCarousel({ photos, title }) {
                     <img
                       src={photo.imageUrl}
                       alt={`${title} photo ${index + 1}`}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-contain"
                     />
                   ) : (
                     <span className="text-7xl font-semibold text-zinc-500 md:text-8xl">
@@ -65,8 +65,12 @@ export function ListingPhotoCarousel({ photos, title }) {
           ))}
         </CarouselContent>
 
-        <CarouselPrevious className="left-4 top-1/2 size-11 -translate-y-1/2 bg-white/90 text-zinc-900 shadow-sm hover:bg-white" />
-        <CarouselNext className="right-4 top-1/2 size-11 -translate-y-1/2 bg-white/90 text-zinc-900 shadow-sm hover:bg-white" />
+        {photos.length > 1 ? (
+          <>
+            <CarouselPrevious className="left-4 top-1/2 z-10 size-11 -translate-y-1/2 bg-white/90 text-zinc-900 shadow-sm backdrop-blur-sm transition-opacity hover:bg-white disabled:opacity-0" />
+            <CarouselNext className="right-4 top-1/2 z-10 size-11 -translate-y-1/2 bg-white/90 text-zinc-900 shadow-sm backdrop-blur-sm transition-opacity hover:bg-white disabled:opacity-0" />
+          </>
+        ) : null}
       </Carousel>
 
       <div className="flex flex-wrap items-center justify-center gap-2.5">

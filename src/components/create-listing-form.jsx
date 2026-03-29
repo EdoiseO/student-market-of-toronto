@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { ImagePlus, Info, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,20 +30,13 @@ import {
   FieldTitle,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { ListingPhotoChip, useLocalPhotoPreviews } from "@/components/listing-photo-chip";
 import { Textarea } from "@/components/ui/textarea";
+import { useFileDropzone } from "@/hooks/use-file-dropzone";
+import { TORONTO_CAMPUS_OPTIONS } from "@/lib/campuses";
 import { CATEGORY_OPTIONS } from "@/lib/categories";
+import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
-
-const campusOptions = [
-  "Toronto Metropolitan University",
-  "University of Toronto",
-  "York University",
-  "George Brown College",
-  "Humber Polytechnic",
-  "OCAD University",
-  "Seneca Polytechnic",
-  "Centennial College",
-];
 
 const conditionOptions = ["New", "Like New", "Used"];
 
@@ -116,10 +110,23 @@ export function CreateListingForm() {
   const [isNegotiable, setIsNegotiable] = React.useState(false);
   const [photos, setPhotos] = React.useState([]);
   const [error, setError] = React.useState("");
-  const [success, setSuccess] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const fileInputRef = React.useRef(null);
+  const photoPreviews = useLocalPhotoPreviews(photos);
+
+  const appendPhotos = React.useCallback((selectedFiles) => {
+    if (selectedFiles.length === 0) {
+      return;
+    }
+
+    setPhotos((currentPhotos) => [
+      ...currentPhotos,
+      ...selectedFiles,
+    ]);
+  }, []);
+
+  const { isDragActive, dropzoneProps } = useFileDropzone(appendPhotos);
 
   function resetForm() {
     setTitle("");
@@ -203,7 +210,6 @@ export function CreateListingForm() {
 
   async function handleSubmit(status) {
     setError("");
-    setSuccess("");
 
     const numericPrice = Number.parseFloat(
       price.replaceAll("$", "").replaceAll(",", "").trim(),
@@ -265,10 +271,10 @@ export function CreateListingForm() {
       }
 
       resetForm();
-      setSuccess(
+      toast.success(
         status === "draft"
           ? "Draft saved successfully."
-          : "Listing submitted and is pending approval.",
+          : "Listing published successfully.",
       );
     } catch (submitError) {
       setError(submitError.message || "Something went wrong while creating the listing.");
@@ -348,17 +354,26 @@ export function CreateListingForm() {
 
               <div className="flex flex-col gap-6">
                 <Card className="rounded-[1.75rem] border border-dashed border-zinc-300 bg-zinc-50 py-0 shadow-none">
-                  <CardContent className="p-6">
+                  <CardContent className="space-y-5 p-6">
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="flex min-h-56 w-full flex-col items-center justify-center rounded-[1.5rem] border border-zinc-200 bg-white px-6 py-10 text-center transition hover:border-zinc-400"
+                      className={cn(
+                        "flex min-h-56 w-full flex-col items-center justify-center rounded-[1.5rem] border bg-white px-6 py-10 text-center transition",
+                        isDragActive
+                          ? "border-zinc-950 ring-2 ring-zinc-950/10"
+                          : "border-zinc-200 hover:border-zinc-400"
+                      )}
+                      {...dropzoneProps}
                     >
                       <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-950 text-white">
                         <ImagePlus className="size-6" />
                       </div>
                       <p className="text-lg font-semibold text-zinc-950">
                         Add Listing Photos
+                      </p>
+                      <p className="mt-2 text-sm text-zinc-500">
+                        {isDragActive ? "Drop images here" : "Drag and drop images here, or click to browse"}
                       </p>
                       {photos.length > 0 ? (
                         <p className="mt-4 text-sm font-medium text-zinc-700">
@@ -375,13 +390,28 @@ export function CreateListingForm() {
                       onChange={(event) => {
                         const selectedFiles = Array.from(event.target.files ?? [])
                         if (selectedFiles.length === 0) return
-                        setPhotos((currentPhotos) => [
-                          ...currentPhotos,
-                          ...selectedFiles,
-                        ])
+                        appendPhotos(selectedFiles)
                         event.target.value = ""
                       }}
                     />
+
+                    {photoPreviews.length > 0 ? (
+                      <div className="flex flex-wrap gap-4">
+                        {photoPreviews.map((photo, index) => (
+                          <ListingPhotoChip
+                            key={photo.id}
+                            index={index}
+                            imageUrl={photo.imageUrl}
+                            alt={photo.alt}
+                            onRemove={() => {
+                              setPhotos((currentPhotos) =>
+                                currentPhotos.filter((_, photoIndex) => photoIndex !== index),
+                              );
+                            }}
+                          />
+                        ))}
+                      </div>
+                    ) : null}
                   </CardContent>
                 </Card>
 
@@ -392,7 +422,7 @@ export function CreateListingForm() {
                       placeholder="Choose a meetup campus"
                       value={campus}
                       onValueChange={setCampus}
-                      options={campusOptions}
+                      options={TORONTO_CAMPUS_OPTIONS}
                     />
 
                     <Field orientation="horizontal" className="items-start rounded-2xl border border-zinc-200 bg-white p-4">
@@ -447,9 +477,6 @@ export function CreateListingForm() {
               {error ? (
                 <p className="mr-auto text-sm text-red-600">{error}</p>
               ) : null}
-              {success ? (
-                <p className="mr-auto text-sm text-green-600">{success}</p>
-              ) : null}
               <Button
                 type="button"
                 variant="outline"
@@ -461,7 +488,7 @@ export function CreateListingForm() {
               <Button
                 type="button"
                 disabled={isSubmitting}
-                onClick={() => handleSubmit("inactive")}
+                onClick={() => handleSubmit("active")}
               >
                 {isSubmitting ? "Saving..." : "Publish Listing"}
               </Button>

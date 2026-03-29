@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { ImagePlus, Info, Sparkles, X } from "lucide-react";
+import { ImagePlus, Info, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 
 import { Badge } from "@/components/ui/badge";
@@ -31,19 +32,12 @@ import {
   FieldTitle,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { ListingPhotoChip, useLocalPhotoPreviews } from "@/components/listing-photo-chip";
 import { Textarea } from "@/components/ui/textarea";
+import { useFileDropzone } from "@/hooks/use-file-dropzone";
+import { TORONTO_CAMPUS_OPTIONS } from "@/lib/campuses";
 import { CATEGORY_OPTIONS, normalizeCategoryValue } from "@/lib/categories";
-
-const campusOptions = [
-  "Toronto Metropolitan University",
-  "University of Toronto",
-  "York University",
-  "George Brown College",
-  "Humber Polytechnic",
-  "OCAD University",
-  "Seneca Polytechnic",
-  "Centennial College",
-];
+import { cn } from "@/lib/utils";
 
 const conditionOptions = ["New", "Like New", "Used"];
 
@@ -76,24 +70,6 @@ function ListingCombobox({
   );
 }
 
-function ExistingPhotoChip({ index, onRemove }) {
-  return (
-    <div className="relative h-22 w-22 rounded-[1.4rem] border border-zinc-300 bg-zinc-100 text-zinc-600 shadow-[0_0_0_1px_rgba(24,24,27,0.03)]">
-      <button
-        type="button"
-        onClick={onRemove}
-        className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-white/95 text-zinc-700 shadow-sm transition hover:bg-zinc-950 hover:text-white"
-        aria-label={`Delete photo ${index + 1}`}
-      >
-        <X className="size-3.5" />
-      </button>
-      <div className="flex h-full items-center justify-center text-2xl font-semibold">
-        {index + 1}
-      </div>
-    </div>
-  );
-}
-
 export function EditListingForm({ listing }) {
   const router = useRouter();
   const supabase = React.useMemo(() => createClient(), []);
@@ -115,6 +91,20 @@ export function EditListingForm({ listing }) {
 
   const fileInputRef = React.useRef(null);
   const originalPrice = Number(listing.price ?? 0);
+  const newPhotoPreviews = useLocalPhotoPreviews(newPhotos);
+
+  const appendNewPhotos = React.useCallback((selectedFiles) => {
+    if (selectedFiles.length === 0) {
+      return;
+    }
+
+    setNewPhotos((currentPhotos) => [
+      ...currentPhotos,
+      ...selectedFiles,
+    ]);
+  }, []);
+
+  const { isDragActive, dropzoneProps } = useFileDropzone(appendNewPhotos);
 
   const tagPreview = [];
   if (isNegotiable) {
@@ -309,6 +299,7 @@ export function EditListingForm({ listing }) {
     }
 
     setLoading(false);
+    toast.success("Listing updated successfully.");
     router.push(`/listings/${listing.slug}`);
     router.refresh();
   }
@@ -382,13 +373,22 @@ export function EditListingForm({ listing }) {
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="flex min-h-56 w-full flex-col items-center justify-center rounded-[1.5rem] border border-zinc-200 bg-white px-6 py-10 text-center transition hover:border-zinc-400"
+                      className={cn(
+                        "flex min-h-56 w-full flex-col items-center justify-center rounded-[1.5rem] border bg-white px-6 py-10 text-center transition",
+                        isDragActive
+                          ? "border-zinc-950 ring-2 ring-zinc-950/10"
+                          : "border-zinc-200 hover:border-zinc-400"
+                      )}
+                      {...dropzoneProps}
                     >
                       <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-950 text-white">
                         <ImagePlus className="size-6" />
                       </div>
                       <p className="text-lg font-semibold text-zinc-950">
                         Add Listing Photos
+                      </p>
+                      <p className="mt-2 text-sm text-zinc-500">
+                        {isDragActive ? "Drop images here" : "Drag and drop images here, or click to browse"}
                       </p>
                       {photos.length + newPhotos.length > 0 ? (
                         <p className="mt-4 text-sm font-medium text-zinc-700">
@@ -406,23 +406,35 @@ export function EditListingForm({ listing }) {
                       onChange={(event) => {
                         const selectedFiles = Array.from(event.target.files ?? [])
                         if (selectedFiles.length === 0) return
-                        setNewPhotos((currentPhotos) => [
-                          ...currentPhotos,
-                          ...selectedFiles,
-                        ])
+                        appendNewPhotos(selectedFiles)
                         event.target.value = ""
                       }}
                     />
 
-                    {photos.length > 0 ? (
+                    {photos.length > 0 || newPhotoPreviews.length > 0 ? (
                       <div className="flex flex-wrap gap-4">
                         {photos.map((photo, index) => (
-                          <ExistingPhotoChip
+                          <ListingPhotoChip
                             key={photo.id}
                             index={index}
+                            imageUrl={photo.image_url}
+                            alt={`Existing photo ${index + 1}`}
                             onRemove={() => {
                               setRemovedPhotos((currentPhotos) => [...currentPhotos, photo]);
                               setPhotos((currentPhotos) =>
+                                currentPhotos.filter((_, photoIndex) => photoIndex !== index),
+                              );
+                            }}
+                          />
+                        ))}
+                        {newPhotoPreviews.map((photo, index) => (
+                          <ListingPhotoChip
+                            key={photo.id}
+                            index={photos.length + index}
+                            imageUrl={photo.imageUrl}
+                            alt={photo.alt}
+                            onRemove={() => {
+                              setNewPhotos((currentPhotos) =>
                                 currentPhotos.filter((_, photoIndex) => photoIndex !== index),
                               );
                             }}
@@ -440,7 +452,7 @@ export function EditListingForm({ listing }) {
                       placeholder="Choose a meetup campus"
                       value={campus}
                       onValueChange={setCampus}
-                      options={campusOptions}
+                      options={TORONTO_CAMPUS_OPTIONS}
                     />
 
                     <Field
