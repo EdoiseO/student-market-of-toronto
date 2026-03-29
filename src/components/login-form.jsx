@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/context/LanguageContext";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -19,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 
 export function LoginForm({ className, ...props }) {
+  const { t } = useLanguage();
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -36,24 +38,25 @@ export function LoginForm({ className, ...props }) {
 
     if (error) setError(error.message);
     else {
-      setSuccess("Logged in ✅");
+      setSuccess(t.loggedInSuccess);
       window.location.href = "/";
     }
   }
+
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader>
-          <CardTitle className="text-center">Login to your account</CardTitle>
+          <CardTitle className="text-center">{t.loginToYourAccount}</CardTitle>
           <CardDescription>
-            Enter your email below to login to your account
+            {t.loginDescription}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit}>
             <FieldGroup>
               <Field>
-                <FieldLabel htmlFor="email">Email</FieldLabel>
+                <FieldLabel htmlFor="email">{t.email}</FieldLabel>
                 <Input
                   id="email"
                   type="email"
@@ -67,12 +70,12 @@ export function LoginForm({ className, ...props }) {
               </Field>
               <Field>
                 <div className="flex items-center">
-                  <FieldLabel htmlFor="password">Password</FieldLabel>
+                  <FieldLabel htmlFor="password">{t.password}</FieldLabel>
                   <a
                     href="#"
                     className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
                   >
-                    Forgot your password?
+                    {t.forgotPassword}
                   </a>
                 </div>
                 <Input
@@ -86,13 +89,13 @@ export function LoginForm({ className, ...props }) {
                 />
               </Field>
               <Field>
-                <Button type="submit">Login</Button>
+                <Button type="submit">{t.login}</Button>
                 {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
                 {success && (
                   <p className="mt-2 text-sm text-green-600">{success}</p>
                 )}
                 <FieldDescription className="text-center">
-                  Don&apos;t have an account? <a href="/register">Sign up</a>
+                  {t.noAccount} <a href="/register">{t.signUp}</a>
                 </FieldDescription>
               </Field>
             </FieldGroup>

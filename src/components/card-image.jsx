@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 import * as React from "react";
 import Link from "next/link";
+import { useLanguage } from "@/context/LanguageContext";
 
 import { Badge } from "@/components/ui/badge"
 import {
@@ -22,9 +23,10 @@ export function CardImage({
   imageUrl,
   imageUrls,
   imageAlt = "Marketplace card",
-  actionLabel = "View Listing",
+  actionLabel,
   href = "#",
 }) {
+  const { t } = useLanguage();
   const images = React.useMemo(() => {
     const normalizedImages = (imageUrls ?? []).filter(Boolean);
 
@@ -99,7 +101,7 @@ export function CardImage({
       onMouseLeave={handlePointerLeave}
       onFocus={handlePointerEnter}
       onBlur={handlePointerLeave}
-      aria-label={`${actionLabel}: ${title}`}
+      aria-label={`${actionLabel ?? t.viewListing}: ${title}`}
     >
       <Card className="flex h-full w-full max-w-none flex-col gap-0 overflow-hidden border-zinc-200 bg-white pt-0 shadow-sm ring-1 ring-zinc-200/80 transition-transform group-hover:-translate-y-0.5 group-focus-visible:-translate-y-0.5 group-focus-visible:ring-2 group-focus-visible:ring-zinc-900/15">
         <div className="relative aspect-[4/3] overflow-hidden bg-zinc-200">
@@ -133,7 +135,7 @@ export function CardImage({
         </CardContent>
         <CardFooter className="border-t border-zinc-100 bg-zinc-50/70">
           <div className="w-full rounded-lg bg-zinc-950 px-2.5 py-1.5 text-center text-sm font-medium text-white transition-colors group-hover:bg-zinc-800 group-focus-visible:bg-zinc-800">
-            {actionLabel}
+            {actionLabel ?? t.viewListing}
           </div>
         </CardFooter>
       </Card>

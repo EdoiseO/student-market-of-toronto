@@ -16,10 +16,12 @@ import {
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/utils/supabase/client";
 import { LogOutIcon } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 export function SignOutButton() {
   const router = useRouter();
   const supabase = createClient();
+  const { t } = useLanguage();
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -32,21 +34,20 @@ export function SignOutButton() {
       <AlertDialogTrigger asChild>
         <Button variant="outline" className="w-full justify-start rounded-xl">
           <LogOutIcon />
-          <span>Sign Out</span>
+          <span>{t.signOut ?? (t.logout ?? (t.signOutLabel ?? (t.signOutText ?? "Sign Out")))}</span>
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Sign out of your account?</AlertDialogTitle>
+          <AlertDialogTitle>{t.signOutTitle ?? (t.signOutConfirm ?? (t.signOutQuestion ?? "Sign out of your account?"))}</AlertDialogTitle>
           <AlertDialogDescription>
-            You will be returned to the login page and need to sign in again
-            to access your dashboard.
+            {t.signOutDescription ?? (t.signOutDesc ?? "You will be returned to the login page and need to sign in again to access your dashboard.")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
           <AlertDialogAction onClick={handleSignOut}>
-            Sign Out
+            {t.signOut ?? (t.logout ?? (t.signOutLabel ?? (t.signOutText ?? "Sign Out")))}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

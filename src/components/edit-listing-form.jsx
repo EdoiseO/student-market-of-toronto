@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { ImagePlus, Info, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
+import { useLanguage } from "@/context/LanguageContext";
+import { translations } from "@/lib/translations";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,7 +34,10 @@ import {
   FieldTitle,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { ListingPhotoChip, useLocalPhotoPreviews } from "@/components/listing-photo-chip";
+import {
+  ListingPhotoChip,
+  useLocalPhotoPreviews,
+} from "@/components/listing-photo-chip";
 import { Textarea } from "@/components/ui/textarea";
 import { useFileDropzone } from "@/hooks/use-file-dropzone";
 import { TORONTO_CAMPUS_OPTIONS } from "@/lib/campuses";
@@ -73,6 +78,8 @@ function ListingCombobox({
 export function EditListingForm({ listing }) {
   const router = useRouter();
   const supabase = React.useMemo(() => createClient(), []);
+  const { language } = useLanguage();
+  const t = translations[language];
 
   const [title, setTitle] = React.useState(listing.title ?? "");
   const [category, setCategory] = React.useState(
@@ -82,7 +89,9 @@ export function EditListingForm({ listing }) {
   const [description, setDescription] = React.useState(listing.description ?? "");
   const [campus, setCampus] = React.useState(listing.location ?? "");
   const [condition, setCondition] = React.useState(listing.condition ?? "");
-  const [isNegotiable, setIsNegotiable] = React.useState(listing.is_negotiable ?? false);
+  const [isNegotiable, setIsNegotiable] = React.useState(
+    listing.is_negotiable ?? false
+  );
   const [photos, setPhotos] = React.useState(listing.listing_images ?? []);
   const [removedPhotos, setRemovedPhotos] = React.useState([]);
   const [newPhotos, setNewPhotos] = React.useState([]);
@@ -98,17 +107,14 @@ export function EditListingForm({ listing }) {
       return;
     }
 
-    setNewPhotos((currentPhotos) => [
-      ...currentPhotos,
-      ...selectedFiles,
-    ]);
+    setNewPhotos((currentPhotos) => [...currentPhotos, ...selectedFiles]);
   }, []);
 
   const { isDragActive, dropzoneProps } = useFileDropzone(appendNewPhotos);
 
   const tagPreview = [];
   if (isNegotiable) {
-    tagPreview.push("Negotiable");
+    tagPreview.push(t.negotiable);
   }
 
   async function cleanupNewUploads(uploadedPaths, insertedImageIds) {
@@ -148,7 +154,7 @@ export function EditListingForm({ listing }) {
       numericPrice < 0 ||
       !normalizedCondition
     ) {
-      setError("Please complete the required fields with a valid price.");
+      setError(t.fillFieldsValidPrice);
       return;
     }
 
@@ -161,16 +167,14 @@ export function EditListingForm({ listing }) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      setError(authError?.message ?? "You must be logged in to edit this listing.");
+      setError(authError?.message ?? t.mustLoginEdit);
       setLoading(false);
       return;
     }
 
     const nextPreviousPrice =
-      numericPrice !== originalPrice ? originalPrice : (listing.previous_price ?? null);
+      numericPrice !== originalPrice ? originalPrice : listing.previous_price ?? null;
 
-    // slug is intentionally excluded from this update.
-    // If slug ever becomes mutable, update the redirect below to match.
     const { error: updateError } = await supabase
       .from("listings")
       .update({
@@ -242,22 +246,18 @@ export function EditListingForm({ listing }) {
       insertedImageIds.push(insertedImage.id);
     }
 
-    // NOTE: This save flow is still not fully atomic because Storage and database
-    // writes are separate systems. Destructive photo deletion is deferred to the
-    // end to reduce partial-save risk, but a full fix requires server-side orchestration.
-    const finalPhotoOrder = [
-      ...photos.map((photo) => photo.id),
-      ...insertedImageIds,
-    ];
+    const finalPhotoOrder = [...photos.map((photo) => photo.id), ...insertedImageIds];
 
     if (finalPhotoOrder.length > 0) {
       const positionUpdates = await Promise.all(
         finalPhotoOrder.map((imageId, index) =>
-          supabase.from("listing_images").update({ position: index }).eq("id", imageId),
-        ),
+          supabase.from("listing_images").update({ position: index }).eq("id", imageId)
+        )
       );
 
-      const failedPositionUpdate = positionUpdates.find(({ error: positionError }) => positionError);
+      const failedPositionUpdate = positionUpdates.find(
+        ({ error: positionError }) => positionError
+      );
 
       if (failedPositionUpdate?.error) {
         await cleanupNewUploads(uploadedPaths, insertedImageIds);
@@ -310,11 +310,10 @@ export function EditListingForm({ listing }) {
         <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm">
           <CardHeader className="border-b border-zinc-200 px-8 py-7">
             <CardTitle className="text-4xl font-bold tracking-tight text-zinc-950">
-              Edit Listing
+              {t.editListing}
             </CardTitle>
             <CardDescription className="max-w-2xl text-base text-zinc-600">
-              Update the item details, manage the current photos, and adjust how
-              the listing will appear in the marketplace.
+              {t.editListingDesc}
             </CardDescription>
           </CardHeader>
 
@@ -322,24 +321,24 @@ export function EditListingForm({ listing }) {
             <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.85fr)]">
               <FieldGroup>
                 <Field>
-                  <FieldLabel>Title</FieldLabel>
+                  <FieldLabel>{t.title}</FieldLabel>
                   <Input
                     value={title}
                     onChange={(event) => setTitle(event.target.value)}
-                    placeholder="e.g. MacBook Air M1"
+                    placeholder={t.titlePlaceholder}
                   />
                 </Field>
 
                 <ListingCombobox
-                  label="Category"
-                  placeholder="Choose a category"
+                  label={t.category}
+                  placeholder={t.categoryPlaceholder}
                   value={category}
                   onValueChange={setCategory}
                   options={CATEGORY_OPTIONS}
                 />
 
                 <Field>
-                  <FieldLabel>Price</FieldLabel>
+                  <FieldLabel>{t.price}</FieldLabel>
                   <Input
                     value={price}
                     onChange={(event) => setPrice(event.target.value)}
@@ -349,18 +348,18 @@ export function EditListingForm({ listing }) {
                 </Field>
 
                 <Field>
-                  <FieldLabel>Description</FieldLabel>
+                  <FieldLabel>{t.description}</FieldLabel>
                   <Textarea
                     value={description}
                     onChange={(event) => setDescription(event.target.value)}
                     className="min-h-40 resize-none"
-                    placeholder="Describe the condition, included accessories, pickup details, and anything a student buyer should know."
+                    placeholder={t.descriptionPlaceholder}
                   />
                 </Field>
 
                 <ListingCombobox
-                  label="Condition"
-                  placeholder="Select condition"
+                  label={t.condition}
+                  placeholder={t.conditionPlaceholder}
                   value={condition}
                   onValueChange={setCondition}
                   options={conditionOptions}
@@ -385,15 +384,14 @@ export function EditListingForm({ listing }) {
                         <ImagePlus className="size-6" />
                       </div>
                       <p className="text-lg font-semibold text-zinc-950">
-                        Add Listing Photos
+                        {t.addPhotos}
                       </p>
                       <p className="mt-2 text-sm text-zinc-500">
-                        {isDragActive ? "Drop images here" : "Drag and drop images here, or click to browse"}
+                        {isDragActive ? t.dropImages : t.dragDrop}
                       </p>
                       {photos.length + newPhotos.length > 0 ? (
                         <p className="mt-4 text-sm font-medium text-zinc-700">
-                          {photos.length + newPhotos.length} file
-                          {photos.length + newPhotos.length === 1 ? "" : "s"} available
+                          {photos.length + newPhotos.length} {t.filesAvailableLabel}
                         </p>
                       ) : null}
                     </button>
@@ -404,10 +402,10 @@ export function EditListingForm({ listing }) {
                       multiple
                       className="hidden"
                       onChange={(event) => {
-                        const selectedFiles = Array.from(event.target.files ?? [])
-                        if (selectedFiles.length === 0) return
-                        appendNewPhotos(selectedFiles)
-                        event.target.value = ""
+                        const selectedFiles = Array.from(event.target.files ?? []);
+                        if (selectedFiles.length === 0) return;
+                        appendNewPhotos(selectedFiles);
+                        event.target.value = "";
                       }}
                     />
 
@@ -418,11 +416,11 @@ export function EditListingForm({ listing }) {
                             key={photo.id}
                             index={index}
                             imageUrl={photo.image_url}
-                            alt={`Existing photo ${index + 1}`}
+                            alt={`${t.existingPhoto} ${index + 1}`}
                             onRemove={() => {
                               setRemovedPhotos((currentPhotos) => [...currentPhotos, photo]);
                               setPhotos((currentPhotos) =>
-                                currentPhotos.filter((_, photoIndex) => photoIndex !== index),
+                                currentPhotos.filter((_, photoIndex) => photoIndex !== index)
                               );
                             }}
                           />
@@ -435,7 +433,7 @@ export function EditListingForm({ listing }) {
                             alt={photo.alt}
                             onRemove={() => {
                               setNewPhotos((currentPhotos) =>
-                                currentPhotos.filter((_, photoIndex) => photoIndex !== index),
+                                currentPhotos.filter((_, photoIndex) => photoIndex !== index)
                               );
                             }}
                           />
@@ -448,8 +446,8 @@ export function EditListingForm({ listing }) {
                 <Card className="rounded-[1.75rem] border-zinc-200 bg-zinc-50 py-0 shadow-none">
                   <CardContent className="space-y-5 p-6">
                     <ListingCombobox
-                      label="Campus"
-                      placeholder="Choose a meetup campus"
+                      label={t.campus}
+                      placeholder={t.campusPlaceholder}
                       value={campus}
                       onValueChange={setCampus}
                       options={TORONTO_CAMPUS_OPTIONS}
@@ -465,10 +463,8 @@ export function EditListingForm({ listing }) {
                         onCheckedChange={(checked) => setIsNegotiable(Boolean(checked))}
                       />
                       <div className="space-y-1">
-                        <FieldTitle>Negotiable</FieldTitle>
-                        <FieldDescription>
-                          Turn this on if the seller is open to offers.
-                        </FieldDescription>
+                        <FieldTitle>{t.negotiable}</FieldTitle>
+                        <FieldDescription>{t.negotiableDesc}</FieldDescription>
                       </div>
                     </Field>
 
@@ -476,29 +472,31 @@ export function EditListingForm({ listing }) {
                       <div className="mb-3 flex items-center gap-2 text-zinc-900">
                         <Sparkles className="size-4" />
                         <p className="text-sm font-semibold uppercase tracking-[0.18em]">
-                          Tag Preview
+                          {t.tagPreview}
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {tagPreview.map((tag) => (
-                          <Badge key={tag} variant="secondary" className="bg-zinc-100 text-zinc-800">
+                          <Badge
+                            key={tag}
+                            variant="secondary"
+                            className="bg-zinc-100 text-zinc-800"
+                          >
                             {tag}
                           </Badge>
                         ))}
                       </div>
                       <p className="mt-3 text-sm text-zinc-500">
-                        `Sold` and `Price Drop` should update later from real
-                        listing changes and dashboard actions.
+                        {t.editTagPreviewDesc}
                       </p>
                     </div>
 
                     <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-500">
                       <div className="mb-2 flex items-center gap-2 text-zinc-900">
                         <Info className="size-4" />
-                        <span className="font-medium">Recommendation</span>
+                        <span className="font-medium">{t.recommendation}</span>
                       </div>
-                      Keep the campus updated if the meetup spot changes after
-                      publishing.
+                      {t.editRecommendationDesc}
                     </div>
                   </CardContent>
                 </Card>
@@ -514,10 +512,10 @@ export function EditListingForm({ listing }) {
                 onClick={() => router.back()}
                 disabled={loading}
               >
-                Cancel
+                {t.cancel}
               </Button>
               <Button type="button" onClick={handleSave} disabled={loading}>
-                {loading ? "Saving..." : "Save Changes"}
+                {loading ? t.saving : t.saveChanges}
               </Button>
             </div>
           </CardContent>

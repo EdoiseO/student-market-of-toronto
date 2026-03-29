@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { AppLayoutShell } from "@/components/app-layout-shell";
 import { Toaster } from "@/components/ui/sonner";
 import { createClient } from "@/utils/supabase/server";
+import { LanguageProvider } from "@/context/LanguageContext";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -28,6 +29,8 @@ function normalizeMetadataText(value) {
 
 export default async function RootLayout({ children }) {
   const cookieStore = await cookies();
+  const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
+
   const supabase = createClient(cookieStore);
   const {
     data: { user },
@@ -93,13 +96,16 @@ export default async function RootLayout({ children }) {
     ]
       .filter(Boolean)
       .join(" ")
-      .trim() || "Student";
+      .trim() || (language === "fr" ? "Étudiant" : "Student");
 
   const sidebarUser = user
     ? {
         name: displayName,
         email: user.email ?? "",
-        school: profile?.school ?? user.user_metadata?.school ?? "Toronto student",
+        school:
+          profile?.school ??
+          user.user_metadata?.school ??
+          (language === "fr" ? "Étudiant de Toronto" : "Toronto student"),
         avatar: user.email
           ? `https://avatar.vercel.sh/${encodeURIComponent(user.email)}`
           : "",
@@ -107,13 +113,17 @@ export default async function RootLayout({ children }) {
     : null;
 
   return (
-    <html lang="en">
+    <html lang={language}>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
-        <AppLayoutShell user={sidebarUser}>{children}</AppLayoutShell>
+        <LanguageProvider initialLanguage={language}>
+          <AppLayoutShell user={sidebarUser}>
+            {children}
+          </AppLayoutShell>
         <Toaster position="top-right" />
+        </LanguageProvider>
       </body>
     </html>
   );
