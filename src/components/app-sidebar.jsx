@@ -1,6 +1,7 @@
 "use client";
 
 import { NavUser } from "@/components/nav-user";
+import { SearchSidebarFilters } from "@/components/search-sidebar-filters";
 import { SignOutButton } from "@/components/sign-out-button";
 import { useLanguage } from "@/context/LanguageContext";
 import Link from "next/link";
@@ -40,6 +41,7 @@ import {
   UserIcon,
   FileTextIcon,
 } from "lucide-react";
+import { getTranslatedCategoryTitle } from "@/lib/categories";
 
 export function AppSidebar({ user, ...props }) {
   const pathname = usePathname();
@@ -99,25 +101,6 @@ export function AppSidebar({ user, ...props }) {
     },
   ];
 
-  const categoryTitles = {
-    en: {
-      electronics: "Electronics",
-      books: "Books",
-      furniture: "Furniture",
-      clothing: "Clothing",
-      housing: "Housing",
-      other: "Other",
-    },
-    fr: {
-      electronics: "Électronique",
-      books: "Livres",
-      furniture: "Meubles",
-      clothing: "Vêtements",
-      housing: "Logement",
-      other: "Autre",
-    },
-  };
-
   return (
     <Sidebar
       className="top-(--header-height) h-[calc(100svh-var(--header-height))]!"
@@ -146,6 +129,7 @@ export function AppSidebar({ user, ...props }) {
       </SidebarHeader>
 
       <SidebarContent>
+        <SearchSidebarFilters />
         <SidebarGroup>
           <SidebarGroupLabel>{t.marketplace}</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -191,10 +175,7 @@ export function AppSidebar({ user, ...props }) {
                         <SidebarMenuSubItem key={category.slug}>
                           <SidebarMenuSubButton asChild>
                             <Link href={`/categories/${category.slug}`}>
-                              <span>
-                                {categoryTitles[language]?.[category.slug] ??
-                                  category.title}
-                              </span>
+                              <span>{getTranslatedCategoryTitle(category.slug, t, language, category.title)}</span>
                             </Link>
                           </SidebarMenuSubButton>
                         </SidebarMenuSubItem>

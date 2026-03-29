@@ -4,10 +4,12 @@ import { translations } from "@/lib/translations";
 
 const LanguageContext = createContext();
 
-export function LanguageProvider({ children }) {
-  const [language, setLanguage] = useState("en");
+export function LanguageProvider({ children, initialLanguage = "en" }) {
+  const [language, setLanguage] = useState(() => {
+    if (typeof window === "undefined") {
+      return initialLanguage;
+    }
 
-  useEffect(() => {
     const cookieLanguage = document.cookie
       .split("; ")
       .find((row) => row.startsWith("language="))
@@ -15,15 +17,16 @@ export function LanguageProvider({ children }) {
 
     const savedLanguage = localStorage.getItem("language");
 
-    const nextLanguage =
-      cookieLanguage === "en" || cookieLanguage === "fr"
-        ? cookieLanguage
-        : savedLanguage === "en" || savedLanguage === "fr"
-        ? savedLanguage
-        : "en";
+    if (cookieLanguage === "en" || cookieLanguage === "fr") {
+      return cookieLanguage;
+    }
 
-    setLanguage(nextLanguage);
-  }, []);
+    if (savedLanguage === "en" || savedLanguage === "fr") {
+      return savedLanguage;
+    }
+
+    return initialLanguage;
+  });
 
   useEffect(() => {
     localStorage.setItem("language", language);

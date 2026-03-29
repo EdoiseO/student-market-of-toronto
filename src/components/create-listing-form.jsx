@@ -2,9 +2,8 @@
 
 import * as React from "react";
 import { ImagePlus, Info, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 
-import { useLanguage } from "@/context/LanguageContext";
-import { translations } from "@/lib/translations";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -31,10 +30,7 @@ import {
   FieldTitle,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  ListingPhotoChip,
-  useLocalPhotoPreviews,
-} from "@/components/listing-photo-chip";
+import { ListingPhotoChip, useLocalPhotoPreviews } from "@/components/listing-photo-chip";
 import { Textarea } from "@/components/ui/textarea";
 import { useFileDropzone } from "@/hooks/use-file-dropzone";
 import { TORONTO_CAMPUS_OPTIONS } from "@/lib/campuses";
@@ -105,9 +101,6 @@ function ListingCombobox({
 
 export function CreateListingForm() {
   const supabase = React.useMemo(() => createClient(), []);
-  const { language } = useLanguage();
-  const t = translations[language];
-
   const [title, setTitle] = React.useState("");
   const [category, setCategory] = React.useState("");
   const [price, setPrice] = React.useState("");
@@ -117,7 +110,6 @@ export function CreateListingForm() {
   const [isNegotiable, setIsNegotiable] = React.useState(false);
   const [photos, setPhotos] = React.useState([]);
   const [error, setError] = React.useState("");
-  const [success, setSuccess] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const fileInputRef = React.useRef(null);
@@ -128,7 +120,10 @@ export function CreateListingForm() {
       return;
     }
 
-    setPhotos((currentPhotos) => [...currentPhotos, ...selectedFiles]);
+    setPhotos((currentPhotos) => [
+      ...currentPhotos,
+      ...selectedFiles,
+    ]);
   }, []);
 
   const { isDragActive, dropzoneProps } = useFileDropzone(appendPhotos);
@@ -215,19 +210,18 @@ export function CreateListingForm() {
 
   async function handleSubmit(status) {
     setError("");
-    setSuccess("");
 
     const numericPrice = Number.parseFloat(
-      price.replaceAll("$", "").replaceAll(",", "").trim()
+      price.replaceAll("$", "").replaceAll(",", "").trim(),
     );
 
     if (!title || !category || !price || !description || !campus || !condition) {
-      setError(t.fillFields);
+      setError("Fill in all required listing fields before continuing.");
       return;
     }
 
     if (!Number.isFinite(numericPrice) || numericPrice < 0) {
-      setError(t.validPrice);
+      setError("Enter a valid price.");
       return;
     }
 
@@ -240,7 +234,7 @@ export function CreateListingForm() {
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
-        throw new Error(t.mustLogin);
+        throw new Error("You must be logged in to create a listing.");
       }
 
       const createdListing = await createListingRecord(user.id, status, numericPrice);
@@ -258,7 +252,7 @@ export function CreateListingForm() {
                 image_url: image.imageUrl,
                 storage_path: image.storagePath,
                 position: index,
-              }))
+              })),
             );
 
           if (imageRowsError) {
@@ -277,9 +271,13 @@ export function CreateListingForm() {
       }
 
       resetForm();
-      setSuccess(status === "draft" ? t.draftSaved : t.listingPublished);
+      toast.success(
+        status === "draft"
+          ? "Draft saved successfully."
+          : "Listing published successfully.",
+      );
     } catch (submitError) {
-      setError(submitError.message || t.errorGeneric);
+      setError(submitError.message || "Something went wrong while creating the listing.");
     } finally {
       setIsSubmitting(false);
     }
@@ -296,10 +294,12 @@ export function CreateListingForm() {
         <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm">
           <CardHeader className="border-b border-zinc-200 px-8 py-7">
             <CardTitle className="text-4xl font-bold tracking-tight text-zinc-950">
-              {t.createListing}
+              Create Listing
             </CardTitle>
             <CardDescription className="max-w-2xl text-base text-zinc-600">
-              {t.createListingDesc}
+              Add the main item details first. Photos, campus, condition, and
+              tag preview are included here so the page reflects how the listing
+              will look later in the marketplace.
             </CardDescription>
           </CardHeader>
 
@@ -307,24 +307,24 @@ export function CreateListingForm() {
             <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.85fr)]">
               <FieldGroup>
                 <Field>
-                  <FieldLabel>{t.title}</FieldLabel>
+                  <FieldLabel>Title</FieldLabel>
                   <Input
                     value={title}
                     onChange={(event) => setTitle(event.target.value)}
-                    placeholder={t.titlePlaceholder}
+                    placeholder="e.g. MacBook Air M1"
                   />
                 </Field>
 
                 <ListingCombobox
-                  label={t.category}
-                  placeholder={t.categoryPlaceholder}
+                  label="Category"
+                  placeholder="Choose a category"
                   value={category}
                   onValueChange={setCategory}
                   options={CATEGORY_OPTIONS}
                 />
 
                 <Field>
-                  <FieldLabel>{t.price}</FieldLabel>
+                  <FieldLabel>Price</FieldLabel>
                   <Input
                     value={price}
                     onChange={(event) => setPrice(event.target.value)}
@@ -334,18 +334,18 @@ export function CreateListingForm() {
                 </Field>
 
                 <Field>
-                  <FieldLabel>{t.description}</FieldLabel>
+                  <FieldLabel>Description</FieldLabel>
                   <Textarea
                     value={description}
                     onChange={(event) => setDescription(event.target.value)}
                     className="min-h-40 resize-none"
-                    placeholder={t.descriptionPlaceholder}
+                    placeholder="Describe the condition, included accessories, pickup details, and anything a student buyer should know."
                   />
                 </Field>
 
                 <ListingCombobox
-                  label={t.condition}
-                  placeholder={t.conditionPlaceholder}
+                  label="Condition"
+                  placeholder="Select condition"
                   value={condition}
                   onValueChange={setCondition}
                   options={conditionOptions}
@@ -370,10 +370,10 @@ export function CreateListingForm() {
                         <ImagePlus className="size-6" />
                       </div>
                       <p className="text-lg font-semibold text-zinc-950">
-                        {t.addPhotos}
+                        Add Listing Photos
                       </p>
                       <p className="mt-2 text-sm text-zinc-500">
-                        {isDragActive ? t.dropImages : t.dragDrop}
+                        {isDragActive ? "Drop images here" : "Drag and drop images here, or click to browse"}
                       </p>
                       {photos.length > 0 ? (
                         <p className="mt-4 text-sm font-medium text-zinc-700">
@@ -381,7 +381,6 @@ export function CreateListingForm() {
                         </p>
                       ) : null}
                     </button>
-
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -389,10 +388,10 @@ export function CreateListingForm() {
                       multiple
                       className="hidden"
                       onChange={(event) => {
-                        const selectedFiles = Array.from(event.target.files ?? []);
-                        if (selectedFiles.length === 0) return;
-                        appendPhotos(selectedFiles);
-                        event.target.value = "";
+                        const selectedFiles = Array.from(event.target.files ?? [])
+                        if (selectedFiles.length === 0) return
+                        appendPhotos(selectedFiles)
+                        event.target.value = ""
                       }}
                     />
 
@@ -406,7 +405,7 @@ export function CreateListingForm() {
                             alt={photo.alt}
                             onRemove={() => {
                               setPhotos((currentPhotos) =>
-                                currentPhotos.filter((_, photoIndex) => photoIndex !== index)
+                                currentPhotos.filter((_, photoIndex) => photoIndex !== index),
                               );
                             }}
                           />
@@ -419,25 +418,24 @@ export function CreateListingForm() {
                 <Card className="rounded-[1.75rem] border-zinc-200 bg-zinc-50 py-0 shadow-none">
                   <CardContent className="space-y-5 p-6">
                     <ListingCombobox
-                      label={t.campus}
-                      placeholder={t.campusPlaceholder}
+                      label="Campus"
+                      placeholder="Choose a meetup campus"
                       value={campus}
                       onValueChange={setCampus}
                       options={TORONTO_CAMPUS_OPTIONS}
                     />
 
-                    <Field
-                      orientation="horizontal"
-                      className="items-start rounded-2xl border border-zinc-200 bg-white p-4"
-                    >
+                    <Field orientation="horizontal" className="items-start rounded-2xl border border-zinc-200 bg-white p-4">
                       <Checkbox
                         id="negotiable"
                         checked={isNegotiable}
                         onCheckedChange={(checked) => setIsNegotiable(Boolean(checked))}
                       />
                       <div className="space-y-1">
-                        <FieldTitle>{t.negotiable}</FieldTitle>
-                        <FieldDescription>{t.negotiableDesc}</FieldDescription>
+                        <FieldTitle>Negotiable</FieldTitle>
+                        <FieldDescription>
+                          Turn this on if the seller is open to offers.
+                        </FieldDescription>
                       </div>
                     </Field>
 
@@ -445,30 +443,27 @@ export function CreateListingForm() {
                       <div className="mb-3 flex items-center gap-2 text-zinc-900">
                         <Sparkles className="size-4" />
                         <p className="text-sm font-semibold uppercase tracking-[0.18em]">
-                          {t.tagPreview}
+                          Tag Preview
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {tagPreview.map((tag) => (
-                          <Badge
-                            key={tag}
-                            variant="secondary"
-                            className="bg-zinc-100 text-zinc-800"
-                          >
+                          <Badge key={tag} variant="secondary" className="bg-zinc-100 text-zinc-800">
                             {tag}
                           </Badge>
                         ))}
                       </div>
                       <p className="mt-3 text-sm text-zinc-500">
-                        `New` is automatic. `Popular`, `Hot`, `Price Drop`, and `Sold`
-                        should be derived later from listing activity or edits.
+                        `New` is automatic. `Popular`, `Hot`, `Price Drop`, and
+                        `Sold` should be derived later from listing activity or
+                        edits.
                       </p>
                     </div>
 
                     <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-500">
                       <div className="mb-2 flex items-center gap-2 text-zinc-900">
                         <Info className="size-4" />
-                        <span className="font-medium">{t.recommendation}</span>
+                        <span className="font-medium">Recommendation</span>
                       </div>
                       Add a `Location Details` field later if you want meetup
                       directions to be more specific than campus only.
@@ -479,9 +474,8 @@ export function CreateListingForm() {
             </div>
 
             <div className="mt-8 flex flex-wrap items-center justify-end gap-3">
-              {error ? <p className="mr-auto text-sm text-red-600">{error}</p> : null}
-              {success ? (
-                <p className="mr-auto text-sm text-green-600">{success}</p>
+              {error ? (
+                <p className="mr-auto text-sm text-red-600">{error}</p>
               ) : null}
               <Button
                 type="button"
@@ -489,14 +483,14 @@ export function CreateListingForm() {
                 disabled={isSubmitting}
                 onClick={() => handleSubmit("draft")}
               >
-                {t.saveDraft}
+                Save Draft
               </Button>
               <Button
                 type="button"
                 disabled={isSubmitting}
                 onClick={() => handleSubmit("active")}
               >
-                {isSubmitting ? t.saving : t.publish}
+                {isSubmitting ? "Saving..." : "Publish Listing"}
               </Button>
             </div>
           </CardContent>

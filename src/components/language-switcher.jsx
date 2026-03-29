@@ -1,28 +1,31 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/context/LanguageContext";
 
 export default function LanguageSwitcher() {
   const { language, setLanguage } = useLanguage();
 
   return (
-    <div className="flex gap-2">
-      <button
+    <div className="inline-flex items-center gap-1 rounded-xl border border-zinc-200 bg-white p-1 shadow-sm">
+      <Button
+        type="button"
+        size="sm"
+        variant={language === "en" ? "default" : "ghost"}
+        className="h-8 rounded-lg px-3"
         onClick={() => setLanguage("en")}
-        className={`rounded-md px-3 py-1 text-sm ${
-          language === "en" ? "bg-black text-white" : "bg-zinc-200 text-black"
-        }`}
       >
         EN
-      </button>
-      <button
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant={language === "fr" ? "default" : "ghost"}
+        className="h-8 rounded-lg px-3"
         onClick={() => setLanguage("fr")}
-        className={`rounded-md px-3 py-1 text-sm ${
-          language === "fr" ? "bg-black text-white" : "bg-zinc-200 text-black"
-        }`}
       >
         FR
-      </button>
+      </Button>
     </div>
   );
 }

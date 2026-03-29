@@ -4,7 +4,6 @@ import Link from "next/link";
 
 import { CardImage } from "@/components/card-image";
 import { useLanguage } from "@/context/LanguageContext";
-import LanguageSwitcher from "@/components/language-switcher";
 import { getTranslatedCategoryTitle } from "@/lib/categories";
 
 export default function HomePageContent({ listingSections }) {
@@ -14,20 +13,16 @@ export default function HomePageContent({ listingSections }) {
     <main className="min-h-screen bg-zinc-100 p-6 md:p-8">
       <div className="mx-auto flex w-full max-w-[1800px] flex-col gap-8">
         <section className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-zinc-200">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-medium uppercase tracking-[0.2em] text-zinc-500">
-                {t.studentMarket} {t.toronto}
-              </p>
-              <h1 className="mt-3 text-4xl font-bold tracking-tight text-zinc-950">
-                {t.buySell}
-              </h1>
-              <p className="mt-4 max-w-2xl text-base text-zinc-600">
-                {t.homeDescription}
-              </p>
-            </div>
-
-            <LanguageSwitcher />
+          <div>
+            <p className="text-sm font-medium uppercase tracking-[0.2em] text-zinc-500">
+              {t.studentMarket} {t.toronto}
+            </p>
+            <h1 className="mt-3 text-4xl font-bold tracking-tight text-zinc-950">
+              {t.buySell}
+            </h1>
+            <p className="mt-4 max-w-2xl text-base text-zinc-600">
+              {t.homeDescription}
+            </p>
           </div>
         </section>
 

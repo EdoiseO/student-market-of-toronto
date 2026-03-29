@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 
+import LanguageSwitcher from "@/components/language-switcher";
 import { SearchForm } from "@/components/search-form"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -20,6 +21,8 @@ export function SiteHeader() {
   const pageTitle =
     pathname === "/"
       ? t.browseListings
+      : pathname.startsWith("/search")
+        ? "Search & Filter"
       : pathname.startsWith("/dashboard")
         ? t.dashboard
         : pathname.endsWith("/edit")
@@ -54,7 +57,9 @@ export function SiteHeader() {
         <div className="flex min-w-0 justify-center">
           <SearchForm className="w-full max-w-2xl xl:max-w-4xl" />
         </div>
-        <div className="hidden xl:block" />
+        <div className="hidden items-center justify-end xl:flex">
+          <LanguageSwitcher />
+        </div>
       </div>
     </header>
   );
