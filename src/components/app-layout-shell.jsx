@@ -10,7 +10,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 export function AppLayoutShell({ children, user }) {
   const pathname = usePathname();
-  const isAuthPage = pathname === "/login" || pathname === "/register";
+  const isAuthPage =
+    pathname === "/login" ||
+    pathname === "/register" ||
+    pathname === "/forget-password" ||
+    pathname === "/reset-password";
   const showSidebar = !isAuthPage;
 
   return (
