@@ -14,7 +14,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 
-const ITEMS_PER_PAGE = 6;
+const ITEMS_PER_PAGE = 12;
 const NEW_LISTING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 function buildCategoryPageHref(slug, pageNumber) {
@@ -37,7 +37,7 @@ function getListingBadge(listing) {
 
 function CategoryListingGrid({ items }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
       {items.map((item) => (
         <CardImage
           key={item.id}
@@ -96,7 +96,7 @@ export default async function CategoryPage({ params, searchParams }) {
   const featuredItems = listings.filter((item) => item.is_featured);
   const newItems = listings
     .filter((item) => getListingBadge(item) === "New")
-    .slice(0, 5);
+    .slice(0, 6);
 
   const requestedPage = Number.parseInt(resolvedSearchParams?.page ?? "1", 10);
   const currentPage = Number.isNaN(requestedPage) || requestedPage < 1 ? 1 : requestedPage;
