@@ -37,7 +37,7 @@ function getListingBadge(listing) {
 
 function CategoryListingGrid({ items }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-6">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((item) => (
         <CardImage
           key={item.id}
