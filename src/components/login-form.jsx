@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/LanguageContext";
@@ -68,15 +69,16 @@ export function LoginForm({ className, ...props }) {
                   }
                 />
               </Field>
+
               <Field>
                 <div className="flex items-center">
                   <FieldLabel htmlFor="password">{t.password}</FieldLabel>
-                  <a
-                    href="#"
+                  <Link
+                    href="/forget-password"
                     className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
                   >
                     {t.forgotPassword}
-                  </a>
+                  </Link>
                 </div>
                 <Input
                   id="password"
@@ -88,6 +90,7 @@ export function LoginForm({ className, ...props }) {
                   }
                 />
               </Field>
+
               <Field>
                 <Button type="submit">{t.login}</Button>
                 {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
@@ -95,7 +98,7 @@ export function LoginForm({ className, ...props }) {
                   <p className="mt-2 text-sm text-green-600">{success}</p>
                 )}
                 <FieldDescription className="text-center">
-                  {t.noAccount} <a href="/register">{t.signUp}</a>
+                  {t.noAccount} <Link href="/register">{t.signUp}</Link>
                 </FieldDescription>
               </Field>
             </FieldGroup>
