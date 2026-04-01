@@ -1,25 +1,13 @@
+import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
-import { createClient } from "@/utils/supabase/server";
 
 import { CardImage } from "@/components/card-image";
+import { createClient } from "@/utils/supabase/server";
 import { getCategoryBySlug, getCategoryValuesBySlug } from "@/lib/categories";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 
-const ITEMS_PER_PAGE = 12;
+const SECTION_ITEM_LIMIT = 6;
 const NEW_LISTING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
-
-function buildCategoryPageHref(slug, pageNumber) {
-  return pageNumber === 1 ? `/categories/${slug}` : `/categories/${slug}?page=${pageNumber}`;
-}
 
 function getListingBadge(listing) {
   if (listing.is_featured) {
@@ -33,6 +21,68 @@ function getListingBadge(listing) {
   }
 
   return undefined;
+}
+
+function normalizeListings(rows = []) {
+  return rows.map((listing) => ({
+    ...listing,
+    listing_images: (listing.listing_images ?? []).sort(
+      (firstImage, secondImage) => firstImage.position - secondImage.position
+    ),
+    view_count: Number(listing.view_count ?? 0),
+  }));
+}
+
+function getHotScore(listing) {
+  const createdAt = new Date(listing.created_at).getTime();
+  const ageInDays = Number.isNaN(createdAt)
+    ? 365
+    : Math.max(1, (Date.now() - createdAt) / (1000 * 60 * 60 * 24));
+
+  return listing.view_count / ageInDays;
+}
+
+function pickUniqueListings(candidates, limit, usedIds) {
+  const selectedItems = [];
+
+  for (const listing of candidates) {
+    if (usedIds.has(listing.id)) {
+      continue;
+    }
+
+    usedIds.add(listing.id);
+    selectedItems.push(listing);
+
+    if (selectedItems.length === limit) {
+      break;
+    }
+  }
+
+  return selectedItems;
+}
+
+function getAllListingsPreview(listings, limit, usedIds) {
+  const previewItems = listings.filter((listing) => !usedIds.has(listing.id)).slice(0, limit);
+
+  if (previewItems.length === limit) {
+    return previewItems;
+  }
+
+  const previewIds = new Set(previewItems.map((listing) => listing.id));
+
+  for (const listing of listings) {
+    if (previewIds.has(listing.id)) {
+      continue;
+    }
+
+    previewItems.push(listing);
+
+    if (previewItems.length === limit) {
+      break;
+    }
+  }
+
+  return previewItems;
 }
 
 function CategoryListingGrid({ items }) {
@@ -55,9 +105,36 @@ function CategoryListingGrid({ items }) {
   );
 }
 
-export default async function CategoryPage({ params, searchParams }) {
+function CategorySection({ title, description, items, href }) {
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="rounded-3xl bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 md:p-8">
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <div>
+          {href ? (
+            <Link
+              href={href}
+              className="inline-flex items-center gap-2 text-2xl font-bold text-zinc-950 transition-colors hover:text-zinc-700"
+            >
+              <span>{title}</span>
+              <span aria-hidden="true">➔</span>
+            </Link>
+          ) : (
+            <h2 className="text-2xl font-bold text-zinc-950">{title}</h2>
+          )}
+          <p className="mt-1 text-sm text-zinc-500">{description}</p>
+        </div>
+      </div>
+      <CategoryListingGrid items={items} />
+    </section>
+  );
+}
+
+export default async function CategoryPage({ params }) {
   const resolvedParams = await params;
-  const resolvedSearchParams = await searchParams;
 
   const section = getCategoryBySlug(resolvedParams.slug);
   const categoryValues = getCategoryValuesBySlug(resolvedParams.slug);
@@ -78,6 +155,7 @@ export default async function CategoryPage({ params, searchParams }) {
       location,
       is_featured,
       created_at,
+      view_count,
       listing_images (
         image_url,
         position
@@ -87,23 +165,28 @@ export default async function CategoryPage({ params, searchParams }) {
     .eq("status", "active")
     .order("created_at", { ascending: false });
 
-  const listings = (allItems ?? []).map((listing) => ({
-    ...listing,
-    listing_images: (listing.listing_images ?? []).sort(
-      (firstImage, secondImage) => firstImage.position - secondImage.position
-    ),
-  }));
-  const featuredItems = listings.filter((item) => item.is_featured);
-  const newItems = listings
-    .filter((item) => getListingBadge(item) === "New")
-    .slice(0, 6);
+  const listings = normalizeListings(allItems);
+  const usedIds = new Set();
 
-  const requestedPage = Number.parseInt(resolvedSearchParams?.page ?? "1", 10);
-  const currentPage = Number.isNaN(requestedPage) || requestedPage < 1 ? 1 : requestedPage;
-  const totalPages = Math.max(1, Math.ceil(listings.length / ITEMS_PER_PAGE));
-  const safePage = Math.min(currentPage, totalPages);
-  const startIndex = (safePage - 1) * ITEMS_PER_PAGE;
-  const paginatedItems = listings.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const promotedItems = pickUniqueListings(
+    listings.filter((item) => item.is_featured),
+    SECTION_ITEM_LIMIT,
+    usedIds,
+  );
+
+  const trendingItems = pickUniqueListings(
+    [...listings].sort((firstItem, secondItem) => getHotScore(secondItem) - getHotScore(firstItem)),
+    SECTION_ITEM_LIMIT,
+    usedIds,
+  );
+
+  const recentlyAddedItems = pickUniqueListings(
+    listings,
+    SECTION_ITEM_LIMIT,
+    usedIds,
+  );
+
+  const allAvailablePreview = getAllListingsPreview(listings, SECTION_ITEM_LIMIT, usedIds);
 
   return (
     <main className="min-h-screen bg-zinc-100 p-6 md:p-8">
@@ -113,125 +196,46 @@ export default async function CategoryPage({ params, searchParams }) {
             {section.title}
           </h1>
           <p className="mt-3 max-w-2xl text-base text-zinc-600">
-            Browse student listings in this category, check out featured picks,
-            spot newly added items, and explore everything currently available.
+            Browse curated picks, trending listings, and everything currently available in this category.
           </p>
         </section>
 
-        {featuredItems.length > 0 ? (
+        {listings.length > 0 ? (
+          <>
+            <CategorySection
+              title="Promoted"
+              description={`Featured listings we want students to notice first in ${section.title.toLowerCase()}.`}
+              items={promotedItems}
+            />
+
+            <CategorySection
+              title="Trending"
+              description={`Listings gaining attention right now in ${section.title.toLowerCase()}.`}
+              items={trendingItems}
+            />
+
+            <CategorySection
+              title="Recently Added"
+              description={`Newest listings in ${section.title.toLowerCase()}.`}
+              items={recentlyAddedItems}
+            />
+
+            <CategorySection
+              title="All Listings"
+              description="Every listing currently shown in this category."
+              items={allAvailablePreview}
+              href={`/categories/${resolvedParams.slug}/all`}
+            />
+          </>
+        ) : (
           <section className="rounded-3xl bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 md:p-8">
-            <div className="mb-5">
-              <h2 className="text-2xl font-bold text-zinc-950">Featured Items</h2>
-              <p className="mt-1 text-sm text-zinc-500">
-                Highlighted listings students are likely to notice first.
-              </p>
-            </div>
-            <CategoryListingGrid items={featuredItems} />
-          </section>
-        ) : null}
-
-        {newItems.length > 0 ? (
-          <section className="rounded-3xl bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 md:p-8">
-            <div className="mb-5">
-              <h2 className="text-2xl font-bold text-zinc-950">New Items</h2>
-              <p className="mt-1 text-sm text-zinc-500">
-                Recently added listings in {section.title.toLowerCase()}.
-              </p>
-            </div>
-            <CategoryListingGrid items={newItems} />
-          </section>
-        ) : null}
-
-        <section className="rounded-3xl bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 md:p-8">
-          <div className="mb-5">
-            <h2 className="text-2xl font-bold text-zinc-950">All Available Items</h2>
-            <p className="mt-1 text-sm text-zinc-500">
-              Every listing currently shown in this category.
+            <h2 className="text-2xl font-bold text-zinc-950">No active listings yet</h2>
+            <p className="mt-2 max-w-2xl text-sm text-zinc-500">
+              There are no active listings in {section.title.toLowerCase()} right now. Check back
+              soon or explore another category.
             </p>
-          </div>
-
-          {paginatedItems.length > 0 ? (
-            <CategoryListingGrid items={paginatedItems} />
-          ) : (
-            <p className="text-sm text-zinc-500">
-              No listings available in this category yet.
-            </p>
-          )}
-
-          {totalPages > 1 ? (
-            <Pagination className="mt-8">
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href={buildCategoryPageHref(resolvedParams.slug, Math.max(safePage - 1, 1))}
-                    className={safePage === 1 ? "pointer-events-none opacity-50" : ""}
-                    aria-disabled={safePage === 1}
-                  />
-                </PaginationItem>
-
-                {safePage > 2 && totalPages > 3 ? (
-                  <>
-                    <PaginationItem>
-                      <PaginationLink href={buildCategoryPageHref(resolvedParams.slug, 1)}>
-                        1
-                      </PaginationLink>
-                    </PaginationItem>
-                    {safePage > 3 ? (
-                      <PaginationItem>
-                        <PaginationEllipsis />
-                      </PaginationItem>
-                    ) : null}
-                  </>
-                ) : null}
-
-                {Array.from({ length: totalPages }, (_, index) => index + 1)
-                  .filter((pageNumber) => {
-                    if (totalPages <= 3) {
-                      return true;
-                    }
-
-                    return Math.abs(pageNumber - safePage) <= 1;
-                  })
-                  .map((pageNumber) => (
-                    <PaginationItem key={pageNumber}>
-                      <PaginationLink
-                        href={buildCategoryPageHref(resolvedParams.slug, pageNumber)}
-                        isActive={pageNumber === safePage}
-                      >
-                        {pageNumber}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ))}
-
-                {safePage < totalPages - 1 && totalPages > 3 ? (
-                  <>
-                    {safePage < totalPages - 2 ? (
-                      <PaginationItem>
-                        <PaginationEllipsis />
-                      </PaginationItem>
-                    ) : null}
-                    <PaginationItem>
-                      <PaginationLink href={buildCategoryPageHref(resolvedParams.slug, totalPages)}>
-                        {totalPages}
-                      </PaginationLink>
-                    </PaginationItem>
-                  </>
-                ) : null}
-
-                <PaginationItem>
-                  <PaginationNext
-                    href={buildCategoryPageHref(
-                      resolvedParams.slug,
-                      Math.min(safePage + 1, totalPages)
-                    )}
-                    className={safePage === totalPages ? "pointer-events-none opacity-50" : ""}
-                    aria-disabled={safePage === totalPages}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          ) : null}
-        </section>
+          </section>
+        )}
       </div>
     </main>
   );
