@@ -2,7 +2,6 @@ import { MessageCircle, Clock3, MapPin, Tag, UserRound } from "lucide-react";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +13,7 @@ import {
 import { CardImage } from "@/components/card-image";
 import { FavouriteButton } from "@/components/favourite-button";
 import { ListingPhotoCarousel } from "@/components/listing-photo-carousel";
+import { ProfileAvatar } from "@/components/profile-avatar";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
@@ -99,7 +99,7 @@ export default async function ListingDetailPage({ params }) {
         .order("position", { ascending: true }),
       supabase
         .from("profiles")
-        .select("id, first_name, last_name, school")
+        .select("id, first_name, last_name, school, avatar_preset_id, avatar_url, bio, is_public")
         .eq("id", listing.seller_id)
         .single(),
       user
@@ -155,14 +155,6 @@ export default async function ListingDetailPage({ params }) {
   const sellerName =
     [seller?.first_name, seller?.last_name].filter(Boolean).join(" ").trim() ||
     t.studentSeller;
-
-  const initials =
-    sellerName
-      .split(" ")
-      .map((part) => part[0] ?? "")
-      .join("")
-      .slice(0, 2)
-      .toUpperCase() || "SM";
 
   const photos = listingImages.length
     ? listingImages.map((image, index) => ({
@@ -274,11 +266,14 @@ export default async function ListingDetailPage({ params }) {
               <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-none">
                 <CardContent className="space-y-5 p-6 md:p-7">
                   <div className="flex items-center gap-4">
-                    <Avatar className="h-14 w-14 rounded-2xl">
-                      <AvatarFallback className="rounded-2xl bg-zinc-200 text-zinc-900">
-                        {initials}
-                      </AvatarFallback>
-                    </Avatar>
+                    <ProfileAvatar
+                      email={null}
+                      name={sellerName}
+                      avatarPresetId={seller?.avatar_preset_id ?? null}
+                      avatarUrl={seller?.avatar_url ?? null}
+                      className="h-14 w-14 rounded-2xl"
+                      fallbackClassName="rounded-2xl"
+                    />
                     <div>
                       <p className="text-xl font-semibold text-zinc-950">
                         {sellerName}
@@ -288,6 +283,15 @@ export default async function ListingDetailPage({ params }) {
                       </p>
                     </div>
                   </div>
+
+                  {seller?.bio ? (
+                    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                        Profile
+                      </p>
+                      <p className="mt-2 text-sm leading-7 text-zinc-600">{seller.bio}</p>
+                    </div>
+                  ) : null}
 
                   <div className="grid gap-3 text-sm text-zinc-600 sm:grid-cols-2">
                     <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">

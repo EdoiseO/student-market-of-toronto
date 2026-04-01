@@ -57,6 +57,18 @@ export function ProfileSettingsForm({ initialProfile }) {
     .slice(0, 2)
     .toUpperCase() || "SM";
 
+  const initialNormalizedFirstName = normalizeProfileText(initialProfile.firstName ?? "");
+  const initialNormalizedLastName = normalizeProfileText(initialProfile.lastName ?? "");
+  const initialNormalizedBio = normalizeProfileText(initialProfile.bio ?? "");
+  const currentNormalizedFirstName = normalizeProfileText(firstName);
+  const currentNormalizedLastName = normalizeProfileText(lastName);
+  const currentNormalizedBio = normalizeProfileText(bio);
+
+  const hasProfileChanges =
+    currentNormalizedFirstName !== initialNormalizedFirstName ||
+    currentNormalizedLastName !== initialNormalizedLastName ||
+    currentNormalizedBio !== initialNormalizedBio;
+
   async function saveAvatarPreset(nextPresetId) {
     setIsUpdatingAvatar(true);
 
@@ -146,10 +158,14 @@ export function ProfileSettingsForm({ initialProfile }) {
   async function handleSubmit(event) {
     event.preventDefault();
 
-    const normalizedFirstName = normalizeProfileText(firstName);
-    const normalizedLastName = normalizeProfileText(lastName);
+    if (!hasProfileChanges || isSaving) {
+      return;
+    }
+
+    const normalizedFirstName = currentNormalizedFirstName;
+    const normalizedLastName = currentNormalizedLastName;
     const normalizedSchool = normalizeProfileText(initialProfile.school ?? "");
-    const normalizedBio = normalizeProfileText(bio);
+    const normalizedBio = currentNormalizedBio;
 
     setIsSaving(true);
 
@@ -351,7 +367,11 @@ export function ProfileSettingsForm({ initialProfile }) {
               </Field>
 
               <div className="flex justify-end">
-                <Button type="submit" className="rounded-xl px-5" disabled={isSaving}>
+                <Button
+                  type="submit"
+                  className="rounded-xl px-5"
+                  disabled={isSaving || !hasProfileChanges}
+                >
                   {isSaving ? "Saving..." : "Save profile"}
                 </Button>
               </div>
