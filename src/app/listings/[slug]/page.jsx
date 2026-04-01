@@ -90,29 +90,32 @@ export default async function ListingDetailPage({ params }) {
     notFound();
   }
 
-  const [{ data: listingImages = [] }, { data: seller }, { data: favourite }] =
-    await Promise.all([
-      supabase
-        .from("listing_images")
-        .select("image_url, storage_path, position, created_at")
-        .eq("listing_id", listing.id)
-        .order("position", { ascending: true }),
-      supabase
-        .from("profiles")
-        .select("id, first_name, last_name, school, avatar_preset_id, avatar_url, bio, is_public")
-        .eq("id", listing.seller_id)
-        .single(),
-      user
-        ? supabase
-            .from("listing_favourites")
-            .select("listing_id")
-            .eq("user_id", user.id)
-            .eq("listing_id", listing.id)
-            .maybeSingle()
-        : Promise.resolve({ data: null }),
-    ]);
+  const [listingImagesResult, sellerResult, favouriteResult] = await Promise.all([
+    supabase
+      .from("listing_images")
+      .select("image_url, storage_path, position, created_at")
+      .eq("listing_id", listing.id)
+      .order("position", { ascending: true }),
+    supabase
+      .from("profiles")
+      .select("id, first_name, last_name, school, avatar_preset_id, avatar_url, bio, is_public")
+      .eq("id", listing.seller_id)
+      .maybeSingle(),
+    user
+      ? supabase
+          .from("listing_favourites")
+          .select("listing_id")
+          .eq("user_id", user.id)
+          .eq("listing_id", listing.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
 
-  const { data: similarRows = [] } = await supabase
+  const listingImages = listingImagesResult.data ?? [];
+  const seller = sellerResult.data ?? null;
+  const favourite = favouriteResult.data ?? null;
+
+  const similarRowsResult = await supabase
     .from("listings")
     .select(
       `id,
@@ -137,16 +140,20 @@ export default async function ListingDetailPage({ params }) {
     .neq("slug", listing.slug)
     .limit(5);
 
+  const similarRows = similarRowsResult.data ?? [];
+
   const similarSellerIds = [
     ...new Set(similarRows.map((item) => item.seller_id).filter(Boolean)),
   ];
 
-  const { data: similarProfiles = [] } = similarSellerIds.length
+  const similarProfilesResult = similarSellerIds.length
     ? await supabase
         .from("profiles")
         .select("id, school")
         .in("id", similarSellerIds)
     : { data: [] };
+
+  const similarProfiles = similarProfilesResult.data ?? [];
 
   const schoolBySellerId = new Map(
     similarProfiles.map((profile) => [profile.id, profile.school])
@@ -284,15 +291,6 @@ export default async function ListingDetailPage({ params }) {
                     </div>
                   </div>
 
-                  {seller?.bio ? (
-                    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                        Profile
-                      </p>
-                      <p className="mt-2 text-sm leading-7 text-zinc-600">{seller.bio}</p>
-                    </div>
-                  ) : null}
-
                   <div className="grid gap-3 text-sm text-zinc-600 sm:grid-cols-2">
                     <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
                       <Clock3 className="size-4 text-zinc-500" />
@@ -317,6 +315,17 @@ export default async function ListingDetailPage({ params }) {
                       </div>
                     </div>
                   </div>
+
+                  {seller?.bio ? (
+                    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                        {language === "fr" ? "À propos du vendeur" : "About the seller"}
+                      </p>
+                      <p className="mt-2 whitespace-pre-line text-sm leading-7 text-zinc-600">
+                        {seller.bio}
+                      </p>
+                    </div>
+                  ) : null}
                 </CardContent>
               </Card>
             </div>
