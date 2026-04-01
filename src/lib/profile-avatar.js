@@ -71,7 +71,3 @@ export function getProfileAvatarPreset(presetId) {
 
   return PROFILE_AVATAR_PRESETS.find((preset) => preset.id === normalizedPresetId) ?? null;
 }
-
-export function getProfileAvatarStorageKey(userId) {
-  return userId ? `student-market-profile-avatar:${userId}` : null;
-}

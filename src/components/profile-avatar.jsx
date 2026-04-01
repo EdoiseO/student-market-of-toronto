@@ -7,23 +7,9 @@ import { cn } from "@/lib/utils";
 import {
   buildDefaultAvatarUrl,
   getProfileAvatarPreset,
-  getProfileAvatarStorageKey,
 } from "@/lib/profile-avatar";
 
-function useResolvedProfileAvatar({ userId, email, name, avatarPresetId, initialsOverride }) {
-  const [customImageUrl, setCustomImageUrl] = React.useState(null);
-
-  React.useEffect(() => {
-    const storageKey = getProfileAvatarStorageKey(userId);
-
-    if (!storageKey || typeof window === "undefined") {
-      setCustomImageUrl(null);
-      return;
-    }
-
-    setCustomImageUrl(window.localStorage.getItem(storageKey));
-  }, [userId]);
-
+function useResolvedProfileAvatar({ email, name, avatarPresetId, avatarUrl, initialsOverride }) {
   const initials =
     initialsOverride ??
     (name
@@ -34,7 +20,7 @@ function useResolvedProfileAvatar({ userId, email, name, avatarPresetId, initial
       .toUpperCase() || "SM");
 
   const preset = getProfileAvatarPreset(avatarPresetId);
-  const imageUrl = customImageUrl || (!preset ? buildDefaultAvatarUrl(email) : "");
+  const imageUrl = avatarUrl || (!preset ? buildDefaultAvatarUrl(email) : "");
 
   return {
     imageUrl,
@@ -44,20 +30,20 @@ function useResolvedProfileAvatar({ userId, email, name, avatarPresetId, initial
 }
 
 export function ProfileAvatar({
-  userId,
   email,
   name,
   avatarPresetId,
+  avatarUrl,
   initialsOverride,
   className,
   fallbackClassName,
   size = "default",
 }) {
   const { imageUrl, initials, preset } = useResolvedProfileAvatar({
-    userId,
     email,
     name,
     avatarPresetId,
+    avatarUrl,
     initialsOverride,
   });
   const showInitials = Boolean(preset) || !imageUrl;
@@ -78,19 +64,19 @@ export function ProfileAvatar({
 }
 
 export function ProfileAvatarPreview({
-  userId,
   email,
   name,
   avatarPresetId,
+  avatarUrl,
   initialsOverride,
   className,
   initialsClassName,
 }) {
   const { imageUrl, initials, preset } = useResolvedProfileAvatar({
-    userId,
     email,
     name,
     avatarPresetId,
+    avatarUrl,
     initialsOverride,
   });
 

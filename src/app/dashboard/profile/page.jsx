@@ -27,7 +27,7 @@ export default async function DashboardProfilePage() {
 
   const { data: existingProfile, error: profileError } = await supabase
     .from("profiles")
-    .select("id, first_name, last_name, school")
+    .select("id, first_name, last_name, school, avatar_preset_id, avatar_url, bio, is_public")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -43,10 +43,10 @@ export default async function DashboardProfilePage() {
       existingProfile?.last_name ?? normalizeMetadataText(user.user_metadata?.last_name) ?? "",
     school: existingProfile?.school ?? normalizeMetadataText(user.user_metadata?.school) ?? "",
     email: user.email ?? "",
-    avatarPresetId:
-      typeof user.user_metadata?.avatar_preset_id === "string"
-        ? user.user_metadata.avatar_preset_id
-        : null,
+    avatarPresetId: existingProfile?.avatar_preset_id ?? null,
+    avatarUrl: existingProfile?.avatar_url ?? "",
+    bio: existingProfile?.bio ?? "",
+    isPublic: Boolean(existingProfile?.is_public),
   };
 
   return (

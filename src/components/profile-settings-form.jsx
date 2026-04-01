@@ -29,7 +29,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   PROFILE_AVATAR_PRESETS,
-  getProfileAvatarStorageKey,
 } from "@/lib/profile-avatar";
 
 function normalizeProfileText(value) {
@@ -45,6 +44,8 @@ export function ProfileSettingsForm({ initialProfile }) {
   const [firstName, setFirstName] = React.useState(initialProfile.firstName ?? "");
   const [lastName, setLastName] = React.useState(initialProfile.lastName ?? "");
   const [avatarPresetId, setAvatarPresetId] = React.useState(initialProfile.avatarPresetId ?? null);
+  const [avatarUrl, setAvatarUrl] = React.useState(initialProfile.avatarUrl ?? "");
+  const [bio, setBio] = React.useState(initialProfile.bio ?? "");
   const [isAvatarPickerOpen, setIsAvatarPickerOpen] = React.useState(false);
   const [isUpdatingAvatar, setIsUpdatingAvatar] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -57,26 +58,23 @@ export function ProfileSettingsForm({ initialProfile }) {
     .toUpperCase() || "SM";
 
   async function saveAvatarPreset(nextPresetId) {
-    const storageKey = getProfileAvatarStorageKey(initialProfile.id);
-
     setIsUpdatingAvatar(true);
 
     try {
-      if (storageKey && typeof window !== "undefined") {
-        window.localStorage.removeItem(storageKey);
-      }
-
-      const { error } = await supabase.auth.updateUser({
-        data: {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
           avatar_preset_id: nextPresetId,
-        },
-      });
+          avatar_url: null,
+        })
+        .eq("id", initialProfile.id);
 
       if (error) {
         throw error;
       }
 
       setAvatarPresetId(nextPresetId);
+      setAvatarUrl("");
       setIsAvatarPickerOpen(false);
       toast.success("Profile photo style updated.");
       router.refresh();
@@ -105,13 +103,6 @@ export function ProfileSettingsForm({ initialProfile }) {
       return;
     }
 
-    const storageKey = getProfileAvatarStorageKey(initialProfile.id);
-
-    if (!storageKey || typeof window === "undefined") {
-      toast.error("Custom profile images are not available right now.");
-      return;
-    }
-
     setIsUpdatingAvatar(true);
 
     try {
@@ -126,21 +117,22 @@ export function ProfileSettingsForm({ initialProfile }) {
         throw new Error("Invalid file preview result");
       }
 
-      window.localStorage.setItem(storageKey, dataUrl);
-
-      const { error } = await supabase.auth.updateUser({
-        data: {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
           avatar_preset_id: null,
-        },
-      });
+          avatar_url: dataUrl,
+        })
+        .eq("id", initialProfile.id);
 
       if (error) {
         throw error;
       }
 
       setAvatarPresetId(null);
+      setAvatarUrl(dataUrl);
       setIsAvatarPickerOpen(false);
-      toast.success("Custom profile image saved on this browser.");
+      toast.success("Custom profile image updated.");
       router.refresh();
     } catch (error) {
       console.error("Failed to save custom avatar image", error);
@@ -157,6 +149,7 @@ export function ProfileSettingsForm({ initialProfile }) {
     const normalizedFirstName = normalizeProfileText(firstName);
     const normalizedLastName = normalizeProfileText(lastName);
     const normalizedSchool = normalizeProfileText(initialProfile.school ?? "");
+    const normalizedBio = normalizeProfileText(bio);
 
     setIsSaving(true);
 
@@ -180,6 +173,10 @@ export function ProfileSettingsForm({ initialProfile }) {
             first_name: normalizedFirstName,
             last_name: normalizedLastName,
             school: normalizedSchool,
+            bio: normalizedBio,
+            avatar_preset_id: avatarPresetId,
+            avatar_url: avatarUrl || null,
+            is_public: initialProfile.isPublic ?? false,
           },
           { onConflict: "id" },
         );
@@ -205,7 +202,7 @@ export function ProfileSettingsForm({ initialProfile }) {
           <CardHeader className="border-b border-zinc-200 px-6 py-6">
             <CardTitle className="text-2xl text-zinc-950">Profile picture</CardTitle>
             <CardDescription>
-              Choose a color style or a browser-local custom image.
+              Choose a color style or add your own image.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-6 px-6 pt-4 pb-8 text-center">
@@ -213,10 +210,10 @@ export function ProfileSettingsForm({ initialProfile }) {
               <PopoverAnchor asChild>
                 <div className="relative flex aspect-square w-full max-w-[260px] items-center justify-center self-center rounded-[2rem] border border-dashed border-zinc-300 bg-zinc-50">
                   <ProfileAvatarPreview
-                    userId={initialProfile.id}
                     email={initialProfile.email}
                     name={`${firstName} ${lastName}`.trim()}
                     avatarPresetId={avatarPresetId}
+                    avatarUrl={avatarUrl}
                     className="h-full w-full rounded-[calc(2rem-1px)]"
                     initialsClassName="text-6xl md:text-7xl"
                   />
@@ -240,7 +237,7 @@ export function ProfileSettingsForm({ initialProfile }) {
                   <PopoverHeader className="mb-2">
                     <PopoverTitle>Choose profile picture</PopoverTitle>
                     <PopoverDescription>
-                      Pick a color style or add your own image from this browser.
+                      Pick a color style or add your own image.
                     </PopoverDescription>
                   </PopoverHeader>
 
@@ -290,15 +287,14 @@ export function ProfileSettingsForm({ initialProfile }) {
                   />
 
                   <p className="mt-3 text-sm text-zinc-500">
-                    Custom image avatars are browser-local for now.
+                    Uploaded images save to your profile.
                   </p>
               </PopoverContent>
             </Popover>
             <div className="space-y-2">
               <p className="text-sm font-medium text-zinc-950">{initialProfile.email || "Student account"}</p>
               <p className="text-sm text-zinc-500">
-                Gradient styles sync with your account. Custom image uploads stay on this browser
-                for now.
+                Profile colors and custom images now save to your profile.
               </p>
             </div>
             <div className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-4 text-left">
@@ -347,15 +343,11 @@ export function ProfileSettingsForm({ initialProfile }) {
                 <FieldLabel htmlFor="profile-description">Description</FieldLabel>
                 <Textarea
                   id="profile-description"
-                  value=""
-                  readOnly
-                  disabled
-                  className="min-h-36 rounded-2xl bg-zinc-50"
+                  value={bio}
+                  onChange={(event) => setBio(event.target.value)}
+                  className="min-h-36 rounded-2xl bg-white"
                   placeholder="Tell other students about yourself, what you usually sell, or preferred meetup details."
                 />
-                <p className="text-sm text-zinc-500">
-                  Profile descriptions are not editable yet.
-                </p>
               </Field>
 
               <div className="flex justify-end">

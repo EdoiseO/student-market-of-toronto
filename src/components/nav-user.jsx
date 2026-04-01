@@ -61,10 +61,10 @@ export function NavUser({ user }) {
       <SidebarMenuItem>
         <div className="flex min-h-12 items-center gap-2 rounded-xl px-3 text-left text-sm">
           <ProfileAvatar
-            userId={user?.id}
             email={user?.email}
             name={user?.name}
             avatarPresetId={user?.avatarPresetId}
+            avatarUrl={user?.avatarUrl}
             className="h-9 w-9 rounded-xl"
             fallbackClassName="rounded-xl"
           />
