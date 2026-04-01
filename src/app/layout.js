@@ -100,15 +100,17 @@ export default async function RootLayout({ children }) {
 
   const sidebarUser = user
     ? {
+        id: user.id,
         name: displayName,
         email: user.email ?? "",
         school:
           profile?.school ??
           user.user_metadata?.school ??
           (language === "fr" ? "Étudiant de Toronto" : "Toronto student"),
-        avatar: user.email
-          ? `https://avatar.vercel.sh/${encodeURIComponent(user.email)}`
-          : "",
+        avatarPresetId:
+          typeof user.user_metadata?.avatar_preset_id === "string"
+            ? user.user_metadata.avatar_preset_id
+            : null,
       }
     : null;
 

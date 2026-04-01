@@ -1,12 +1,12 @@
 "use client";
 
 import * as React from "react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
-import { TORONTO_CAMPUS_OPTIONS } from "@/lib/campuses";
+import { ProfileAvatarPreview } from "@/components/profile-avatar";
 import { createClient } from "@/utils/supabase/client";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,19 +15,22 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+  PopoverDescription,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
-
-const themeOptions = [
-  { label: "Light", value: "light" },
-  { label: "Dark", value: "dark" },
-  { label: "System", value: "system" },
-  { label: "Semi-dark", value: "semi-dark" },
-];
+import {
+  PROFILE_AVATAR_PRESETS,
+  getProfileAvatarStorageKey,
+} from "@/lib/profile-avatar";
 
 function normalizeProfileText(value) {
   const normalizedValue = value.trim();
@@ -37,10 +40,13 @@ function normalizeProfileText(value) {
 export function ProfileSettingsForm({ initialProfile }) {
   const router = useRouter();
   const supabase = React.useMemo(() => createClient(), []);
+  const fileInputRef = React.useRef(null);
 
   const [firstName, setFirstName] = React.useState(initialProfile.firstName ?? "");
   const [lastName, setLastName] = React.useState(initialProfile.lastName ?? "");
-  const [school, setSchool] = React.useState(initialProfile.school ?? "");
+  const [avatarPresetId, setAvatarPresetId] = React.useState(initialProfile.avatarPresetId ?? null);
+  const [isAvatarPickerOpen, setIsAvatarPickerOpen] = React.useState(false);
+  const [isUpdatingAvatar, setIsUpdatingAvatar] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
 
   const initials = [firstName, lastName]
@@ -50,16 +56,107 @@ export function ProfileSettingsForm({ initialProfile }) {
     .slice(0, 2)
     .toUpperCase() || "SM";
 
-  const avatarUrl = initialProfile.email
-    ? `https://avatar.vercel.sh/${encodeURIComponent(initialProfile.email)}`
-    : "";
+  async function saveAvatarPreset(nextPresetId) {
+    const storageKey = getProfileAvatarStorageKey(initialProfile.id);
+
+    setIsUpdatingAvatar(true);
+
+    try {
+      if (storageKey && typeof window !== "undefined") {
+        window.localStorage.removeItem(storageKey);
+      }
+
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          avatar_preset_id: nextPresetId,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setAvatarPresetId(nextPresetId);
+      setIsAvatarPickerOpen(false);
+      toast.success("Profile photo style updated.");
+      router.refresh();
+    } catch (error) {
+      console.error("Failed to update avatar preset", error);
+      toast.error("We could not update your profile photo style.");
+    } finally {
+      setIsUpdatingAvatar(false);
+    }
+  }
+
+  async function handleCustomAvatarChange(event) {
+    const selectedFile = event.target.files?.[0];
+
+    if (!selectedFile) {
+      return;
+    }
+
+    if (!selectedFile.type.startsWith("image/")) {
+      toast.error("Please choose an image file.");
+      return;
+    }
+
+    if (selectedFile.size > 2 * 1024 * 1024) {
+      toast.error("Please choose an image under 2MB.");
+      return;
+    }
+
+    const storageKey = getProfileAvatarStorageKey(initialProfile.id);
+
+    if (!storageKey || typeof window === "undefined") {
+      toast.error("Custom profile images are not available right now.");
+      return;
+    }
+
+    setIsUpdatingAvatar(true);
+
+    try {
+      const fileReader = new FileReader();
+      const dataUrl = await new Promise((resolve, reject) => {
+        fileReader.onload = () => resolve(fileReader.result);
+        fileReader.onerror = () => reject(fileReader.error);
+        fileReader.readAsDataURL(selectedFile);
+      });
+
+      if (typeof dataUrl !== "string") {
+        throw new Error("Invalid file preview result");
+      }
+
+      window.localStorage.setItem(storageKey, dataUrl);
+
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          avatar_preset_id: null,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setAvatarPresetId(null);
+      setIsAvatarPickerOpen(false);
+      toast.success("Custom profile image saved on this browser.");
+      router.refresh();
+    } catch (error) {
+      console.error("Failed to save custom avatar image", error);
+      toast.error("We could not save that image.");
+    } finally {
+      event.target.value = "";
+      setIsUpdatingAvatar(false);
+    }
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
 
     const normalizedFirstName = normalizeProfileText(firstName);
     const normalizedLastName = normalizeProfileText(lastName);
-    const normalizedSchool = normalizeProfileText(school);
+    const normalizedSchool = normalizeProfileText(initialProfile.school ?? "");
 
     setIsSaving(true);
 
@@ -68,7 +165,6 @@ export function ProfileSettingsForm({ initialProfile }) {
         data: {
           first_name: normalizedFirstName,
           last_name: normalizedLastName,
-          school: normalizedSchool,
         },
       });
 
@@ -109,38 +205,121 @@ export function ProfileSettingsForm({ initialProfile }) {
           <CardHeader className="border-b border-zinc-200 px-6 py-6">
             <CardTitle className="text-2xl text-zinc-950">Profile picture</CardTitle>
             <CardDescription>
-              Your current avatar uses your account email for now.
+              Choose a color style or a browser-local custom image.
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col items-center gap-6 px-6 py-8 text-center">
-            <div className="flex h-52 w-full items-center justify-center rounded-[2rem] border border-dashed border-zinc-300 bg-zinc-50">
-              <Avatar className="size-28 border border-zinc-200 bg-white shadow-sm" size="lg">
-                <AvatarImage src={avatarUrl} alt={`${firstName} ${lastName}`.trim() || "Profile avatar"} />
-                <AvatarFallback>{initials}</AvatarFallback>
-              </Avatar>
-            </div>
+          <CardContent className="flex flex-col items-center gap-6 px-6 pt-4 pb-8 text-center">
+            <Popover open={isAvatarPickerOpen} onOpenChange={setIsAvatarPickerOpen}>
+              <PopoverAnchor asChild>
+                <div className="relative flex aspect-square w-full max-w-[260px] items-center justify-center self-center rounded-[2rem] border border-dashed border-zinc-300 bg-zinc-50">
+                  <ProfileAvatarPreview
+                    userId={initialProfile.id}
+                    email={initialProfile.email}
+                    name={`${firstName} ${lastName}`.trim()}
+                    avatarPresetId={avatarPresetId}
+                    className="h-full w-full rounded-[calc(2rem-1px)]"
+                    initialsClassName="text-6xl md:text-7xl"
+                  />
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Choose profile picture style"
+                      className="absolute bottom-2 right-2 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-950 text-white shadow-lg opacity-80"
+                    >
+                      <Plus className="size-5" />
+                    </button>
+                  </PopoverTrigger>
+                </div>
+              </PopoverAnchor>
+              <PopoverContent
+                side="right"
+                align="center"
+                sideOffset={16}
+                className="w-[360px] rounded-[2rem] p-5 sm:w-[420px]"
+              >
+                  <PopoverHeader className="mb-2">
+                    <PopoverTitle>Choose profile picture</PopoverTitle>
+                    <PopoverDescription>
+                      Pick a color style or add your own image from this browser.
+                    </PopoverDescription>
+                  </PopoverHeader>
+
+                  <div className="grid grid-cols-5 gap-4">
+                    {PROFILE_AVATAR_PRESETS.map((preset) => {
+                      const isSelected = avatarPresetId === preset.id;
+
+                      return (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => saveAvatarPreset(preset.id)}
+                          disabled={isUpdatingAvatar}
+                          className={`flex aspect-square items-center justify-center rounded-full border-2 transition ${
+                            isSelected
+                              ? "border-zinc-950 ring-4 ring-zinc-200"
+                              : "border-transparent hover:scale-[1.02]"
+                          }`}
+                          aria-label={preset.label}
+                        >
+                          <div
+                            className={`flex h-full w-full items-center justify-center rounded-full text-sm font-semibold text-white ${preset.className}`}
+                          >
+                            {initials}
+                          </div>
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUpdatingAvatar}
+                      className="flex aspect-square items-center justify-center rounded-full border-2 border-dashed border-zinc-300 bg-zinc-50 text-zinc-700 transition hover:bg-zinc-100"
+                      aria-label="Upload a custom profile picture"
+                    >
+                      <Plus className="size-6" />
+                    </button>
+                  </div>
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleCustomAvatarChange}
+                  />
+
+                  <p className="mt-3 text-sm text-zinc-500">
+                    Custom image avatars are browser-local for now.
+                  </p>
+              </PopoverContent>
+            </Popover>
             <div className="space-y-2">
               <p className="text-sm font-medium text-zinc-950">{initialProfile.email || "Student account"}</p>
               <p className="text-sm text-zinc-500">
-                Profile photo uploads are not implemented yet, so this stays honest for now.
+                Gradient styles sync with your account. Custom image uploads stay on this browser
+                for now.
               </p>
             </div>
-            <Button type="button" variant="outline" className="w-full rounded-xl" disabled>
-              Change profile picture
-            </Button>
+            <div className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-4 text-left">
+              <p className="text-sm font-medium text-zinc-950">School</p>
+              <p className="mt-1 text-sm text-zinc-600">
+                {initialProfile.school || "No school on file yet."}
+              </p>
+            </div>
           </CardContent>
         </Card>
 
         <Card className="rounded-3xl bg-white py-0 shadow-sm ring-zinc-200">
           <CardHeader className="border-b border-zinc-200 px-6 py-6">
-            <CardTitle className="text-2xl text-zinc-950">Account details</CardTitle>
+            <CardTitle className="text-2xl text-zinc-950">Personal details</CardTitle>
             <CardDescription>
               Update the personal details that appear across your seller identity.
             </CardDescription>
           </CardHeader>
           <CardContent className="px-6 py-8">
             <FieldGroup className="gap-6">
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid w-full gap-4 md:max-w-[50%]">
                 <Field>
                   <FieldLabel htmlFor="profile-first-name">First name</FieldLabel>
                   <Input
@@ -165,20 +344,18 @@ export function ProfileSettingsForm({ initialProfile }) {
               </div>
 
               <Field>
-                <FieldLabel htmlFor="profile-school">School</FieldLabel>
-                <NativeSelect
-                  id="profile-school"
-                  value={school}
-                  onChange={(event) => setSchool(event.target.value)}
-                  className="w-full"
-                >
-                  <NativeSelectOption value="">Choose your school</NativeSelectOption>
-                  {TORONTO_CAMPUS_OPTIONS.map((option) => (
-                    <NativeSelectOption key={option} value={option}>
-                      {option}
-                    </NativeSelectOption>
-                  ))}
-                </NativeSelect>
+                <FieldLabel htmlFor="profile-description">Description</FieldLabel>
+                <Textarea
+                  id="profile-description"
+                  value=""
+                  readOnly
+                  disabled
+                  className="min-h-36 rounded-2xl bg-zinc-50"
+                  placeholder="Tell other students about yourself, what you usually sell, or preferred meetup details."
+                />
+                <p className="text-sm text-zinc-500">
+                  Profile descriptions are not editable yet.
+                </p>
               </Field>
 
               <div className="flex justify-end">
@@ -191,61 +368,6 @@ export function ProfileSettingsForm({ initialProfile }) {
         </Card>
       </div>
 
-      <div className="grid gap-8 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-        <Card className="rounded-3xl bg-white py-0 shadow-sm ring-zinc-200">
-          <CardHeader className="border-b border-zinc-200 px-6 py-6">
-            <CardTitle className="text-2xl text-zinc-950">Preferences</CardTitle>
-            <CardDescription>
-              These controls match your concept layout and stay disabled until the underlying
-              settings are implemented.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-8 px-6 py-8">
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-zinc-950">Theme</p>
-              <RadioGroup value="system" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" disabled>
-                {themeOptions.map((option) => (
-                  <label
-                    key={option.value}
-                    className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-500"
-                  >
-                    <RadioGroupItem value={option.value} disabled />
-                    <span>{option.label}</span>
-                  </label>
-                ))}
-              </RadioGroup>
-            </div>
-
-            <div className="flex items-center justify-between rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-4">
-              <div>
-                <p className="text-sm font-medium text-zinc-950">Notifications</p>
-                <p className="mt-1 text-sm text-zinc-500">
-                  Notification preferences are planned for a later pass.
-                </p>
-              </div>
-              <Checkbox checked={false} disabled aria-label="Notifications coming soon" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-3xl bg-white py-0 shadow-sm ring-zinc-200">
-          <CardHeader className="border-b border-zinc-200 px-6 py-6">
-            <CardTitle className="text-2xl text-zinc-950">Description</CardTitle>
-            <CardDescription>
-              Profile bios are not in the current schema yet, so this area is a placeholder.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-6 py-8">
-            <Textarea
-              value=""
-              readOnly
-              disabled
-              className="min-h-44 rounded-2xl bg-zinc-50"
-              placeholder="Tell other students about yourself, what you usually sell, or preferred meetup details."
-            />
-          </CardContent>
-        </Card>
-      </div>
     </form>
   );
 }

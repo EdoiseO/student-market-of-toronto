@@ -43,6 +43,10 @@ export default async function DashboardProfilePage() {
       existingProfile?.last_name ?? normalizeMetadataText(user.user_metadata?.last_name) ?? "",
     school: existingProfile?.school ?? normalizeMetadataText(user.user_metadata?.school) ?? "",
     email: user.email ?? "",
+    avatarPresetId:
+      typeof user.user_metadata?.avatar_preset_id === "string"
+        ? user.user_metadata.avatar_preset_id
+        : null,
   };
 
   return (
@@ -51,8 +55,8 @@ export default async function DashboardProfilePage() {
         <section className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-zinc-200">
           <h1 className="text-4xl font-bold tracking-tight text-zinc-950">Profile</h1>
           <p className="mt-3 max-w-3xl text-base text-zinc-600">
-            Manage the student details shown across your marketplace account. Name and school
-            changes sync with your profile so seller identity stays consistent.
+            Manage the student details shown across your marketplace account. Name changes sync
+            with your profile so seller identity stays consistent.
           </p>
         </section>
 
