@@ -96,7 +96,7 @@ export function AppSidebar({ user, ...props }) {
   const accountItems = [
     {
       title: t.profile,
-      url: "#",
+      url: "/dashboard/profile",
       icon: UserIcon,
     },
   ];
@@ -245,6 +245,7 @@ export function AppSidebar({ user, ...props }) {
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       asChild
+                      isActive={pathname === item.url}
                       tooltip={item.title}
                       className="min-h-11 rounded-xl px-3 text-sm"
                     >
