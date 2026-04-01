@@ -149,13 +149,15 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
         if (tab.key === "all") {
           acc[tab.key] = allItems.length;
         } else if (tab.key === "favourite") {
-          acc[tab.key] = hasActiveFilters ? filteredFavouriteItems.length : favouriteCount;
+          acc[tab.key] = currentTab === "favourite"
+            ? filteredFavouriteItems.length
+            : favouriteCount;
         } else {
           acc[tab.key] = statusCounts[tab.key] ?? 0;
         }
         return acc;
       }, {}),
-    [allItems.length, favouriteCount, filteredFavouriteItems.length, hasActiveFilters, statusCounts]
+    [allItems.length, currentTab, favouriteCount, filteredFavouriteItems.length, statusCounts]
   );
 
   const showManagementActions = !readOnlyTabs.has(currentTab);
