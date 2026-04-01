@@ -6,10 +6,12 @@ import * as React from "react";
 import Link from "next/link";
 import { CheckIcon } from "lucide-react";
 
+import { DashboardCategoryFilter } from "@/components/dashboard-category-filter";
 import { DashboardSearchInput } from "@/components/dashboard-search-input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DashboardListingActions } from "@/components/dashboard-listing-actions";
+import { CATEGORY_OPTIONS } from "@/lib/categories";
 
 const dashboardTabs = [
   { key: "all", label: "All" },
@@ -65,10 +67,12 @@ function buildDashboardHref(tab) {
 
 export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, favouriteCount = 0 }) {
   const [dashboardSearch, setDashboardSearch] = React.useState("");
+  const [selectedCategory, setSelectedCategory] = React.useState("");
   const [rowsPerPage, setRowsPerPage] = React.useState(7);
   const [currentPage, setCurrentPage] = React.useState(1);
 
   const normalizedDashboardSearch = dashboardSearch.trim().toLowerCase();
+  const hasActiveFilters = Boolean(normalizedDashboardSearch || selectedCategory);
 
   const matchesDashboardQuery = React.useCallback(
     (item) => {
@@ -83,14 +87,25 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
     [normalizedDashboardSearch]
   );
 
+  const matchesSelectedCategory = React.useCallback(
+    (item) => {
+      if (!selectedCategory) {
+        return true;
+      }
+
+      return item.category === selectedCategory;
+    },
+    [selectedCategory]
+  );
+
   const filteredOwnedItems = React.useMemo(
-    () => ownedItems.filter(matchesDashboardQuery),
-    [ownedItems, matchesDashboardQuery]
+    () => ownedItems.filter((item) => matchesDashboardQuery(item) && matchesSelectedCategory(item)),
+    [ownedItems, matchesDashboardQuery, matchesSelectedCategory]
   );
 
   const filteredFavouriteItems = React.useMemo(
-    () => favouriteItems.filter(matchesDashboardQuery),
-    [favouriteItems, matchesDashboardQuery]
+    () => favouriteItems.filter((item) => matchesDashboardQuery(item) && matchesSelectedCategory(item)),
+    [favouriteItems, matchesDashboardQuery, matchesSelectedCategory]
   );
 
   const allItems = filteredOwnedItems;
@@ -109,7 +124,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [dashboardSearch, currentTab, rowsPerPage]);
+  }, [dashboardSearch, currentTab, rowsPerPage, selectedCategory]);
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / rowsPerPage));
   const safePage = Math.min(currentPage, totalPages);
@@ -134,15 +149,13 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
         if (tab.key === "all") {
           acc[tab.key] = allItems.length;
         } else if (tab.key === "favourite") {
-          acc[tab.key] = normalizedDashboardSearch
-            ? filteredFavouriteItems.length
-            : favouriteCount;
+          acc[tab.key] = hasActiveFilters ? filteredFavouriteItems.length : favouriteCount;
         } else {
           acc[tab.key] = statusCounts[tab.key] ?? 0;
         }
         return acc;
       }, {}),
-    [allItems.length, favouriteCount, filteredFavouriteItems.length, normalizedDashboardSearch, statusCounts]
+    [allItems.length, favouriteCount, filteredFavouriteItems.length, hasActiveFilters, statusCounts]
   );
 
   const showManagementActions = !readOnlyTabs.has(currentTab);
@@ -183,6 +196,11 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
         </div>
 
         <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row md:items-center">
+          <DashboardCategoryFilter
+            value={selectedCategory}
+            onValueChange={setSelectedCategory}
+            options={CATEGORY_OPTIONS}
+          />
           <DashboardSearchInput value={dashboardSearch} onValueChange={setDashboardSearch} />
           {showManagementActions ? (
             <Button asChild className="h-10 rounded-xl px-4">
@@ -250,7 +268,9 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
 
         {filteredItems.length === 0 ? (
           <div className="px-6 py-12 text-center text-sm text-zinc-500">
-            No listings found for this section yet.
+            {hasActiveFilters
+              ? "No listings match your current search and category filter."
+              : "No listings found for this section yet."}
           </div>
         ) : null}
 

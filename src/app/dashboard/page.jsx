@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { DashboardTableClient } from "@/components/dashboard-table-client";
+import { normalizeCategoryValue } from "@/lib/categories";
 import { createClient } from "@/utils/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -23,7 +24,7 @@ function normalizeDashboardListing(listing, dashboardStatus = listing.status) {
     meta: listing.location ?? "",
     imageUrl: getPrimaryImageUrl(listing.listing_images),
     price: `$${Number(listing.price).toFixed(2)}`,
-    category: listing.category,
+    category: normalizeCategoryValue(listing.category),
     dashboardStatus,
     messageCount: 0,
   };
