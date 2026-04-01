@@ -30,6 +30,7 @@ Your Supabase project should already have the resources this app expects.
 ### Storage bucket used by the app
 
 - `listing-images`
+- `profile-images`
 
 If those tables or the storage bucket do not exist in your Supabase project, parts of the app will not work correctly.
 
@@ -135,4 +136,3 @@ public                  Static assets
 - This app is built with `Next.js`, `React`, `Tailwind CSS`, and `Supabase`.
 - Registration includes Toronto school email validation.
 - Listing image uploads use Supabase Storage.
-

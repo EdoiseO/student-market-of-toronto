@@ -1,3 +1,5 @@
+export const PROFILE_IMAGES_BUCKET = "profile-images";
+
 export const PROFILE_AVATAR_PRESETS = [
   {
     id: "gradient-sunset",
@@ -60,6 +62,39 @@ const PROFILE_AVATAR_PRESET_ALIASES = {
 
 export function buildDefaultAvatarUrl(email) {
   return email ? `https://avatar.vercel.sh/${encodeURIComponent(email)}` : "";
+}
+
+export function sanitizeProfileImageFileName(name) {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9.]+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export function buildProfileImageStoragePath(userId, fileName) {
+  const safeName = sanitizeProfileImageFileName(fileName || "profile-image");
+  return `${userId}/${Date.now()}-${safeName}`;
+}
+
+export function extractProfileImageStoragePath(avatarUrl) {
+  if (!avatarUrl || typeof avatarUrl !== "string") {
+    return null;
+  }
+
+  try {
+    const parsedUrl = new URL(avatarUrl);
+    const publicPathPrefix = `/storage/v1/object/public/${PROFILE_IMAGES_BUCKET}/`;
+
+    if (!parsedUrl.pathname.includes(publicPathPrefix)) {
+      return null;
+    }
+
+    const [, storagePath = ""] = parsedUrl.pathname.split(publicPathPrefix);
+    return decodeURIComponent(storagePath) || null;
+  } catch {
+    return null;
+  }
 }
 
 export function getProfileAvatarPreset(presetId) {

@@ -28,6 +28,9 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  buildProfileImageStoragePath,
+  extractProfileImageStoragePath,
+  PROFILE_IMAGES_BUCKET,
   PROFILE_AVATAR_PRESETS,
 } from "@/lib/profile-avatar";
 
@@ -73,6 +76,8 @@ export function ProfileSettingsForm({ initialProfile }) {
     setIsUpdatingAvatar(true);
 
     try {
+      const existingStoragePath = extractProfileImageStoragePath(avatarUrl);
+
       const { error } = await supabase
         .from("profiles")
         .update({
@@ -83,6 +88,16 @@ export function ProfileSettingsForm({ initialProfile }) {
 
       if (error) {
         throw error;
+      }
+
+      if (existingStoragePath) {
+        const { error: removeError } = await supabase.storage
+          .from(PROFILE_IMAGES_BUCKET)
+          .remove([existingStoragePath]);
+
+        if (removeError) {
+          console.error("Failed to remove previous profile image:", removeError.message);
+        }
       }
 
       setAvatarPresetId(nextPresetId);
@@ -118,31 +133,48 @@ export function ProfileSettingsForm({ initialProfile }) {
     setIsUpdatingAvatar(true);
 
     try {
-      const fileReader = new FileReader();
-      const dataUrl = await new Promise((resolve, reject) => {
-        fileReader.onload = () => resolve(fileReader.result);
-        fileReader.onerror = () => reject(fileReader.error);
-        fileReader.readAsDataURL(selectedFile);
-      });
+      const existingStoragePath = extractProfileImageStoragePath(avatarUrl);
+      const storagePath = buildProfileImageStoragePath(initialProfile.id, selectedFile.name);
 
-      if (typeof dataUrl !== "string") {
-        throw new Error("Invalid file preview result");
+      const { error: uploadError } = await supabase.storage
+        .from(PROFILE_IMAGES_BUCKET)
+        .upload(storagePath, selectedFile, {
+          upsert: false,
+        });
+
+      if (uploadError) {
+        throw uploadError;
       }
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from(PROFILE_IMAGES_BUCKET).getPublicUrl(storagePath);
 
       const { error } = await supabase
         .from("profiles")
         .update({
           avatar_preset_id: null,
-          avatar_url: dataUrl,
+          avatar_url: publicUrl,
         })
         .eq("id", initialProfile.id);
 
       if (error) {
+        await supabase.storage.from(PROFILE_IMAGES_BUCKET).remove([storagePath]);
         throw error;
       }
 
+      if (existingStoragePath) {
+        const { error: removeError } = await supabase.storage
+          .from(PROFILE_IMAGES_BUCKET)
+          .remove([existingStoragePath]);
+
+        if (removeError) {
+          console.error("Failed to remove previous profile image:", removeError.message);
+        }
+      }
+
       setAvatarPresetId(null);
-      setAvatarUrl(dataUrl);
+      setAvatarUrl(publicUrl);
       setIsAvatarPickerOpen(false);
       toast.success("Custom profile image updated.");
       router.refresh();
@@ -303,14 +335,14 @@ export function ProfileSettingsForm({ initialProfile }) {
                   />
 
                   <p className="mt-3 text-sm text-zinc-500">
-                    Uploaded images save to your profile.
+                    Uploaded images save to the `profile-images` bucket.
                   </p>
               </PopoverContent>
             </Popover>
             <div className="space-y-2">
               <p className="text-sm font-medium text-zinc-950">{initialProfile.email || "Student account"}</p>
               <p className="text-sm text-zinc-500">
-                Profile colors and custom images now save to your profile.
+                Profile colors save to your profile, and custom images upload to storage.
               </p>
             </div>
             <div className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-4 text-left">

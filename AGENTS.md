@@ -35,6 +35,7 @@
   - `listing_favourites`
 - Main storage bucket used by the app:
   - `listing-images`
+  - `profile-images`
 - Auth is handled through Supabase `auth.users`, while app-facing seller identity is read from `profiles`.
 
 - `profiles`
@@ -43,6 +44,7 @@
   - one profile row should exist per authenticated user
   - listing detail seller identity depends on this table
   - current profile page/avatar work reads and writes avatar and bio data from this table
+  - custom uploaded profile images are stored in the `profile-images` bucket and referenced by `avatar_url`
 
 - `listings`
   - primary key: `id` (`uuid`)
