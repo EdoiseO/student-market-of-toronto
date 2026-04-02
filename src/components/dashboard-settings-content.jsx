@@ -141,8 +141,8 @@ export function DashboardSettingsContent({
         <p className="mt-3 max-w-4xl text-base text-zinc-600">{t.settingsDescription}</p>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <Card className="rounded-3xl bg-white py-0 shadow-sm ring-zinc-200">
+      <div className="grid gap-6 xl:grid-cols-3">
+        <Card className="h-full rounded-3xl bg-white py-0 shadow-sm ring-zinc-200">
           <CardHeader className="border-b border-zinc-200 px-6 py-6">
             <CardTitle className="text-2xl text-zinc-950">{t.settingsAppearanceTitle}</CardTitle>
             <CardDescription>{t.settingsAppearanceDescription}</CardDescription>
@@ -183,7 +183,7 @@ export function DashboardSettingsContent({
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl bg-white py-0 shadow-sm ring-zinc-200">
+        <Card className="h-full rounded-3xl bg-white py-0 shadow-sm ring-zinc-200">
           <CardHeader className="border-b border-zinc-200 px-6 py-6">
             <CardTitle className="text-2xl text-zinc-950">{t.settingsNotificationsTitle}</CardTitle>
             <CardDescription>{t.settingsNotificationsDescription}</CardDescription>
@@ -282,49 +282,49 @@ export function DashboardSettingsContent({
             </FieldGroup>
           </CardContent>
         </Card>
+
+        <Card className="h-full rounded-3xl bg-white py-0 shadow-sm ring-zinc-200">
+          <CardHeader className="border-b border-zinc-200 px-6 py-6">
+            <CardTitle className="text-2xl text-zinc-950">{t.settingsProfileTitle}</CardTitle>
+            <CardDescription>{t.settingsProfileDescription}</CardDescription>
+          </CardHeader>
+
+          <CardContent className="space-y-6 px-6 py-8">
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+              <Field orientation="horizontal" className="items-start gap-3">
+                <Checkbox
+                  checked={hideBioOnListingPage}
+                  onCheckedChange={(checked) => setHideBioOnListingPage(checked === true)}
+                  disabled={isSavingBioVisibility}
+                  aria-label={t.settingsHideBioOnListingPageTitle}
+                  className="mt-0.5"
+                />
+                <FieldContent>
+                  <FieldTitle className="text-zinc-950">
+                    {t.settingsHideBioOnListingPageTitle}
+                  </FieldTitle>
+                  <FieldDescription>{t.settingsHideBioOnListingPageDescription}</FieldDescription>
+                  <p className="mt-2 text-sm text-zinc-500">{t.settingsBioIdentityNote}</p>
+                  {!hasBio ? (
+                    <p className="mt-2 text-sm text-zinc-500">{t.settingsNoBioYet}</p>
+                  ) : null}
+                </FieldContent>
+              </Field>
+            </div>
+
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                className="rounded-xl px-5"
+                onClick={handleBioVisibilitySave}
+                disabled={isSavingBioVisibility || !hasBioVisibilityChanges}
+              >
+                {isSavingBioVisibility ? t.saving : t.settingsSaveChanges}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
-
-      <Card className="rounded-3xl bg-white py-0 shadow-sm ring-zinc-200">
-        <CardHeader className="border-b border-zinc-200 px-6 py-6">
-          <CardTitle className="text-2xl text-zinc-950">{t.settingsProfileTitle}</CardTitle>
-          <CardDescription>{t.settingsProfileDescription}</CardDescription>
-        </CardHeader>
-
-        <CardContent className="space-y-6 px-6 py-8">
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-            <Field orientation="horizontal" className="items-start gap-3">
-              <Checkbox
-                checked={hideBioOnListingPage}
-                onCheckedChange={(checked) => setHideBioOnListingPage(checked === true)}
-                disabled={isSavingBioVisibility}
-                aria-label={t.settingsHideBioOnListingPageTitle}
-                className="mt-0.5"
-              />
-              <FieldContent>
-                <FieldTitle className="text-zinc-950">
-                  {t.settingsHideBioOnListingPageTitle}
-                </FieldTitle>
-                <FieldDescription>{t.settingsHideBioOnListingPageDescription}</FieldDescription>
-                <p className="mt-2 text-sm text-zinc-500">{t.settingsBioIdentityNote}</p>
-                {!hasBio ? (
-                  <p className="mt-2 text-sm text-zinc-500">{t.settingsNoBioYet}</p>
-                ) : null}
-              </FieldContent>
-            </Field>
-          </div>
-
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              className="rounded-xl px-5"
-              onClick={handleBioVisibilitySave}
-              disabled={isSavingBioVisibility || !hasBioVisibilityChanges}
-            >
-              {isSavingBioVisibility ? t.saving : t.settingsSaveChanges}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </>
   );
 }
