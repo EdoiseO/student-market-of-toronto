@@ -1,8 +1,8 @@
 # Student Market of Toronto — Local Agent Notes
 
 ## Project status
-- Implemented and actively used: authentication, registration, listing creation, listing viewing, listing editing, dashboard listing management.
-- Placeholder or not fully implemented yet: search, messages, profile.
+- Implemented and actively used: authentication, registration, listing creation, listing viewing, listing editing, dashboard listing management, dashboard profile editing, profile avatar uploads/presets, and seller profile data on listing pages.
+- Placeholder or not fully implemented yet: search, messages, public seller profile page, and most settings persistence beyond the listing-page bio visibility toggle.
 
 ## Working rules
 - Every time code is changed, create a session log in `logs/<date>-<session-title>.md`.
@@ -43,8 +43,9 @@
   - fields confirmed from schema screenshot: `first_name`, `last_name`, `school`, `created_at`, `avatar_preset_id`, `avatar_url`, `bio`, `is_public`, `updated_at`
   - one profile row should exist per authenticated user
   - listing detail seller identity depends on this table
-  - current profile page/avatar work reads and writes avatar and bio data from this table
+  - current profile page/avatar work reads and writes avatar, bio, and listing-page bio visibility data from this table
   - custom uploaded profile images are stored in the `profile-images` bucket and referenced by `avatar_url`
+  - current app behavior uses `is_public` as the saved setting for hiding or showing the seller bio on listing pages, despite the column name sounding broader
 
 - `listings`
   - primary key: `id` (`uuid`)
@@ -75,14 +76,15 @@
   - listing cards and detail pages expect `slug` to uniquely identify a listing
   - listing detail seller UI depends on `profiles`, not only `auth.user_metadata`
   - profile avatar presets and custom profile image URLs now belong to `profiles`
-  - profile bio and public-profile visibility now belong to `profiles`
+  - profile bio and listing-page bio visibility now belong to `profiles`
   - image display depends on `listing_images.position` order
   - deleting a listing should also remove its `listing_images` rows and storage files where applicable
   - search and dashboard logic assume `status` is meaningful across values like `active`, `inactive`, `draft`, `sold`, and derived dashboard `favourite`
+  - dashboard settings currently has preview-only appearance and notification controls, while bio visibility is the real persisted setting
 
 - Known sync rule
   - Keep auth metadata and `profiles` rows in sync so seller names and schools render correctly.
-  - Avatar preset, avatar URL, bio, and public-profile visibility should be treated as `profiles` data, not auth metadata.
+  - Avatar preset, avatar URL, bio, and listing-page bio visibility should be treated as `profiles` data, not auth metadata.
 
 - Not in schema yet
   - `saved_searches` is not present and should not be assumed.
