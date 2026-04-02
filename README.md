@@ -118,6 +118,8 @@ Those features may still appear in the UI, but they are not fully built yet.
 - `/listings/create`
 - `/listings/[slug]/edit`
 - `/dashboard`
+- `/dashboard/profile`
+- `/dashboard/settings`
 - `/login`
 - `/register`
 
