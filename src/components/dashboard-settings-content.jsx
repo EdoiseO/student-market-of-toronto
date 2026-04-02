@@ -57,6 +57,13 @@ export function DashboardSettingsContent({ userEmail }) {
       emailEnabled: true,
       inAppEnabled: true,
     },
+    {
+      key: "messages",
+      title: t.settingsMessagesNotificationsTitle,
+      description: t.settingsMessagesNotificationsDescription,
+      emailEnabled: true,
+      inAppEnabled: true,
+    },
   ];
 
   return (

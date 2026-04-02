@@ -50,6 +50,9 @@ export const translations = {
     settingsFavouriteNotificationsTitle: "Favourited item activity",
     settingsFavouriteNotificationsDescription:
       "Get notified when an item you favourited changes price, gets marked sold, or becomes unavailable.",
+    settingsMessagesNotificationsTitle: "Messages",
+    settingsMessagesNotificationsDescription:
+      "Get notified when a buyer or seller sends you a new message or follow-up in a conversation.",
     settingsChannelsTitle: "Notification channels",
     settingsChannelsDescription:
       "Choose the places where future listing and account updates should appear.",
@@ -289,6 +292,9 @@ export const translations = {
     settingsFavouriteNotificationsTitle: "Activité des articles favoris",
     settingsFavouriteNotificationsDescription:
       "Recevez une alerte lorsqu'un article ajouté aux favoris change de prix, est marqué vendu ou devient indisponible.",
+    settingsMessagesNotificationsTitle: "Messages",
+    settingsMessagesNotificationsDescription:
+      "Recevez une alerte lorsqu'un acheteur ou un vendeur vous envoie un nouveau message ou un suivi dans une conversation.",
     settingsChannelsTitle: "Canaux de notification",
     settingsChannelsDescription:
       "Choisissez où les futures mises à jour du compte et des annonces devraient apparaître.",
