@@ -45,7 +45,7 @@ export default async function RootLayout({ children }) {
 
     const { data: existingProfile, error: profileError } = await supabase
       .from("profiles")
-      .select("id, first_name, last_name, school")
+      .select("id, first_name, last_name, school, avatar_preset_id, avatar_url, bio, is_public")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -86,6 +86,10 @@ export default async function RootLayout({ children }) {
       first_name: syncedFirstName,
       last_name: syncedLastName,
       school: syncedSchool,
+      avatar_preset_id: existingProfile?.avatar_preset_id ?? null,
+      avatar_url: existingProfile?.avatar_url ?? null,
+      bio: existingProfile?.bio ?? null,
+      is_public: existingProfile?.is_public ?? false,
     };
   }
 
@@ -100,15 +104,15 @@ export default async function RootLayout({ children }) {
 
   const sidebarUser = user
     ? {
+        id: user.id,
         name: displayName,
         email: user.email ?? "",
         school:
           profile?.school ??
           user.user_metadata?.school ??
           (language === "fr" ? "Étudiant de Toronto" : "Toronto student"),
-        avatar: user.email
-          ? `https://avatar.vercel.sh/${encodeURIComponent(user.email)}`
-          : "",
+        avatarPresetId: profile?.avatar_preset_id ?? null,
+        avatarUrl: profile?.avatar_url ?? null,
       }
     : null;
 
