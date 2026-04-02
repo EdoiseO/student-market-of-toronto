@@ -58,11 +58,6 @@ export function DashboardSettingsContent({
 
   const appearanceOptions = [
     {
-      value: "system",
-      title: t.settingsThemeSystem,
-      variant: "default",
-    },
-    {
       value: "light",
       title: t.settingsThemeLight,
       variant: "outline",
@@ -71,6 +66,11 @@ export function DashboardSettingsContent({
       value: "dark",
       title: t.settingsThemeDark,
       variant: "outline",
+    },
+    {
+      value: "system",
+      title: t.settingsThemeSystem,
+      variant: "default",
     },
   ];
 
