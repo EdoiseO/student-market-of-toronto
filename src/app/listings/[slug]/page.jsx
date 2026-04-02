@@ -1,5 +1,6 @@
 import { MessageCircle, Clock3, MapPin, Tag, UserRound } from "lucide-react";
 import { cookies } from "next/headers";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
@@ -325,6 +326,12 @@ export default async function ListingDetailPage({ params }) {
                         {seller.bio}
                       </p>
                     </div>
+                  ) : null}
+
+                  {seller?.id ? (
+                    <Button asChild type="button" variant="outline" className="w-full">
+                      <Link href={`/profile/${seller.id}`}>{t.viewProfile}</Link>
+                    </Button>
                   ) : null}
                 </CardContent>
               </Card>

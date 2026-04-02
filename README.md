@@ -115,6 +115,7 @@ Those features may still appear in the UI, but they are not fully built yet.
 - `/`
 - `/categories/[slug]`
 - `/listings/[slug]`
+- `/profile/[id]`
 - `/listings/create`
 - `/listings/[slug]/edit`
 - `/dashboard`
