@@ -2,11 +2,7 @@
 
 import Link from "next/link";
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar";
+import { ProfileAvatar } from "@/components/profile-avatar";
 import {
   SidebarMenu,
   SidebarMenuSub,
@@ -40,9 +36,11 @@ export function NavUser({ user }) {
         </SidebarMenuItem>
         <SidebarMenuItem>
           <div className="flex min-h-12 items-center gap-2 rounded-xl px-3 text-left text-sm">
-            <Avatar className="h-9 w-9 rounded-xl">
-              <AvatarFallback className="rounded-xl">{initials}</AvatarFallback>
-            </Avatar>
+            <ProfileAvatar
+              className="h-9 w-9 rounded-xl"
+              fallbackClassName="rounded-xl"
+              initialsOverride={initials}
+            />
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-semibold">{t.guest}</span>
               <span className="truncate text-xs">{t.browsePublicListings}</span>
@@ -62,10 +60,14 @@ export function NavUser({ user }) {
     <SidebarMenu>
       <SidebarMenuItem>
         <div className="flex min-h-12 items-center gap-2 rounded-xl px-3 text-left text-sm">
-          <Avatar className="h-9 w-9 rounded-xl">
-            <AvatarImage src={user?.avatar} alt={user?.name} />
-            <AvatarFallback className="rounded-xl">{initials}</AvatarFallback>
-          </Avatar>
+          <ProfileAvatar
+            email={user?.email}
+            name={user?.name}
+            avatarPresetId={user?.avatarPresetId}
+            avatarUrl={user?.avatarUrl}
+            className="h-9 w-9 rounded-xl"
+            fallbackClassName="rounded-xl"
+          />
           <div className="grid flex-1 text-left text-sm leading-tight">
             <span className="truncate font-semibold">{user?.name ?? t.student}</span>
             <span className="truncate text-xs">{user?.email ?? ""}</span>

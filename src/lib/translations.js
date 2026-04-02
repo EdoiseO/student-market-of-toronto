@@ -19,6 +19,64 @@ export const translations = {
     favourites: "Favourites",
     messages: "Messages",
     profile: "Profile",
+    settings: "Settings",
+    settingsPreviewBadge: "Preview",
+    settingsDescription:
+      "Appearance and notification preferences start here. The controls below show the structure we will use once these account-level settings are connected.",
+    settingsAppearanceTitle: "Appearance",
+    settingsAppearanceDescription:
+      "Preview the theme options planned for your dashboard and account pages.",
+    settingsThemePreference: "Theme preference",
+    settingsThemePreferenceDescription:
+      "Choose how Student Market should look when appearance controls are enabled.",
+    settingsThemeSystem: "Match system",
+    settingsThemeSystemDescription:
+      "Follow your device light or dark mode automatically.",
+    settingsThemeLight: "Light",
+    settingsThemeLightDescription:
+      "Keep the dashboard bright and clear for daytime browsing.",
+    settingsThemeDark: "Dark",
+    settingsThemeDarkDescription:
+      "Use a darker interface for late-night studying and listing cleanup.",
+    settingsNotificationsTitle: "Notifications",
+    settingsNotificationsDescription:
+      "Plan how marketplace updates should reach you once notification preferences are connected.",
+    settingsProfileTitle: "Profile",
+    settingsProfileDescription:
+      "Control the softer profile details that appear on listing pages while keeping seller identity visible.",
+    settingsHideBioOnListingPageTitle: "Hide bio on listing page",
+    settingsHideBioOnListingPageDescription:
+      "Remove your description from the seller section on listing pages.",
+    settingsBioIdentityNote:
+      "Your name, school, and profile photo stay visible so buyers can still see who they are dealing with.",
+    settingsNoBioYet:
+      "You do not have a bio yet, but this preference will apply once you add one on your profile page.",
+    settingsSaveChanges: "Save changes",
+    settingsBioVisibilitySaved: "Listing bio visibility updated.",
+    settingsBioVisibilityError: "We could not save your bio visibility right now.",
+    settingsNotificationTypesTitle: "Notification types",
+    settingsNotificationTypesDescription:
+      "Choose the marketplace activity you want to hear about across email and in-app alerts.",
+    settingsSoldNotificationsTitle: "Sold listing updates",
+    settingsSoldNotificationsDescription:
+      "Get notified when one of your listings is marked sold or needs a final follow-up.",
+    settingsFavouriteNotificationsTitle: "Favourited item activity",
+    settingsFavouriteNotificationsDescription:
+      "Get notified when an item you favourited changes price, gets marked sold, or becomes unavailable.",
+    settingsMessagesNotificationsTitle: "Messages",
+    settingsMessagesNotificationsDescription:
+      "Get notified when a buyer or seller sends you a new message or follow-up in a conversation.",
+    settingsChannelsTitle: "Notification channels",
+    settingsChannelsDescription:
+      "Choose the places where future listing and account updates should appear.",
+    settingsEmailNotifications: "Email notifications",
+    settingsEmailNotificationsDescription:
+      "Receive listing activity, account notices, and important marketplace updates by email.",
+    settingsInAppNotifications: "In-app notifications",
+    settingsInAppNotificationsDescription:
+      "See alerts inside your dashboard when in-app notification storage is added.",
+    settingsPreviewNote:
+      "These controls are shown as honest preview content for now and do not save changes yet.",
     studentMarket: "Student Market",
     toronto: "Toronto",
     marketplace: "Marketplace",
@@ -210,6 +268,65 @@ export const translations = {
     favourites: "Favoris",
     messages: "Messages",
     profile: "Profil",
+    settings: "Paramètres",
+    settingsPreviewBadge: "Aperçu",
+    settingsDescription:
+      "Les préférences d'apparence et de notifications commencent ici. Les contrôles ci-dessous montrent la structure qui sera utilisée une fois ces paramètres de compte connectés.",
+    settingsAppearanceTitle: "Apparence",
+    settingsAppearanceDescription:
+      "Prévisualisez les options de thème prévues pour votre tableau de bord et vos pages de compte.",
+    settingsThemePreference: "Préférence de thème",
+    settingsThemePreferenceDescription:
+      "Choisissez l'apparence de Student Market lorsque les contrôles d'apparence seront activés.",
+    settingsThemeSystem: "Suivre le système",
+    settingsThemeSystemDescription:
+      "Suivez automatiquement le mode clair ou sombre de votre appareil.",
+    settingsThemeLight: "Clair",
+    settingsThemeLightDescription:
+      "Gardez le tableau de bord lumineux et lisible pendant la journée.",
+    settingsThemeDark: "Sombre",
+    settingsThemeDarkDescription:
+      "Utilisez une interface plus sombre pour les études tardives et la gestion des annonces.",
+    settingsNotificationsTitle: "Notifications",
+    settingsNotificationsDescription:
+      "Définissez comment les mises à jour de la marketplace devraient vous parvenir une fois les préférences connectées.",
+    settingsProfileTitle: "Profil",
+    settingsProfileDescription:
+      "Contrôlez les détails de profil plus personnels affichés sur les pages d'annonce tout en gardant l'identité du vendeur visible.",
+    settingsHideBioOnListingPageTitle: "Masquer la bio sur la page d'annonce",
+    settingsHideBioOnListingPageDescription:
+      "Retirez votre description de la section vendeur sur les pages d'annonce.",
+    settingsBioIdentityNote:
+      "Votre nom, votre école et votre photo de profil restent visibles afin que les acheteurs sachent toujours à qui ils ont affaire.",
+    settingsNoBioYet:
+      "Vous n'avez pas encore de bio, mais cette préférence s'appliquera dès que vous en ajouterez une sur votre page de profil.",
+    settingsSaveChanges: "Enregistrer les modifications",
+    settingsBioVisibilitySaved: "La visibilité de la bio sur les annonces a été mise à jour.",
+    settingsBioVisibilityError:
+      "Nous n'avons pas pu enregistrer la visibilité de votre bio pour le moment.",
+    settingsNotificationTypesTitle: "Types de notifications",
+    settingsNotificationTypesDescription:
+      "Choisissez l'activité de la marketplace pour laquelle vous voulez recevoir des alertes par e-mail et dans l'application.",
+    settingsSoldNotificationsTitle: "Mises à jour des annonces vendues",
+    settingsSoldNotificationsDescription:
+      "Recevez une alerte lorsqu'une de vos annonces est marquée comme vendue ou nécessite un dernier suivi.",
+    settingsFavouriteNotificationsTitle: "Activité des articles favoris",
+    settingsFavouriteNotificationsDescription:
+      "Recevez une alerte lorsqu'un article ajouté aux favoris change de prix, est marqué vendu ou devient indisponible.",
+    settingsMessagesNotificationsTitle: "Messages",
+    settingsMessagesNotificationsDescription:
+      "Recevez une alerte lorsqu'un acheteur ou un vendeur vous envoie un nouveau message ou un suivi dans une conversation.",
+    settingsChannelsTitle: "Canaux de notification",
+    settingsChannelsDescription:
+      "Choisissez où les futures mises à jour du compte et des annonces devraient apparaître.",
+    settingsEmailNotifications: "Notifications par e-mail",
+    settingsEmailNotificationsDescription:
+      "Recevez l'activité des annonces, les avis du compte et les mises à jour importantes par e-mail.",
+    settingsInAppNotifications: "Notifications intégrées",
+    settingsInAppNotificationsDescription:
+      "Voyez les alertes directement dans votre tableau de bord lorsque le stockage des notifications intégrées sera ajouté.",
+    settingsPreviewNote:
+      "Ces contrôles sont affichés comme un aperçu honnête pour l'instant et n'enregistrent pas encore les changements.",
     studentMarket: "Marché étudiant",
     toronto: "Toronto",
     marketplace: "Marché",

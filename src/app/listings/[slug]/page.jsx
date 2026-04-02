@@ -2,7 +2,6 @@ import { MessageCircle, Clock3, MapPin, Tag, UserRound } from "lucide-react";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +13,7 @@ import {
 import { CardImage } from "@/components/card-image";
 import { FavouriteButton } from "@/components/favourite-button";
 import { ListingPhotoCarousel } from "@/components/listing-photo-carousel";
+import { ProfileAvatar } from "@/components/profile-avatar";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
@@ -90,29 +90,32 @@ export default async function ListingDetailPage({ params }) {
     notFound();
   }
 
-  const [{ data: listingImages = [] }, { data: seller }, { data: favourite }] =
-    await Promise.all([
-      supabase
-        .from("listing_images")
-        .select("image_url, storage_path, position, created_at")
-        .eq("listing_id", listing.id)
-        .order("position", { ascending: true }),
-      supabase
-        .from("profiles")
-        .select("id, first_name, last_name, school")
-        .eq("id", listing.seller_id)
-        .single(),
-      user
-        ? supabase
-            .from("listing_favourites")
-            .select("listing_id")
-            .eq("user_id", user.id)
-            .eq("listing_id", listing.id)
-            .maybeSingle()
-        : Promise.resolve({ data: null }),
-    ]);
+  const [listingImagesResult, sellerResult, favouriteResult] = await Promise.all([
+    supabase
+      .from("listing_images")
+      .select("image_url, storage_path, position, created_at")
+      .eq("listing_id", listing.id)
+      .order("position", { ascending: true }),
+    supabase
+      .from("profiles")
+      .select("id, first_name, last_name, school, avatar_preset_id, avatar_url, bio, is_public")
+      .eq("id", listing.seller_id)
+      .maybeSingle(),
+    user
+      ? supabase
+          .from("listing_favourites")
+          .select("listing_id")
+          .eq("user_id", user.id)
+          .eq("listing_id", listing.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
 
-  const { data: similarRows = [] } = await supabase
+  const listingImages = listingImagesResult.data ?? [];
+  const seller = sellerResult.data ?? null;
+  const favourite = favouriteResult.data ?? null;
+
+  const similarRowsResult = await supabase
     .from("listings")
     .select(
       `id,
@@ -137,16 +140,20 @@ export default async function ListingDetailPage({ params }) {
     .neq("slug", listing.slug)
     .limit(5);
 
+  const similarRows = similarRowsResult.data ?? [];
+
   const similarSellerIds = [
     ...new Set(similarRows.map((item) => item.seller_id).filter(Boolean)),
   ];
 
-  const { data: similarProfiles = [] } = similarSellerIds.length
+  const similarProfilesResult = similarSellerIds.length
     ? await supabase
         .from("profiles")
         .select("id, school")
         .in("id", similarSellerIds)
     : { data: [] };
+
+  const similarProfiles = similarProfilesResult.data ?? [];
 
   const schoolBySellerId = new Map(
     similarProfiles.map((profile) => [profile.id, profile.school])
@@ -155,14 +162,6 @@ export default async function ListingDetailPage({ params }) {
   const sellerName =
     [seller?.first_name, seller?.last_name].filter(Boolean).join(" ").trim() ||
     t.studentSeller;
-
-  const initials =
-    sellerName
-      .split(" ")
-      .map((part) => part[0] ?? "")
-      .join("")
-      .slice(0, 2)
-      .toUpperCase() || "SM";
 
   const photos = listingImages.length
     ? listingImages.map((image, index) => ({
@@ -274,11 +273,14 @@ export default async function ListingDetailPage({ params }) {
               <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-none">
                 <CardContent className="space-y-5 p-6 md:p-7">
                   <div className="flex items-center gap-4">
-                    <Avatar className="h-14 w-14 rounded-2xl">
-                      <AvatarFallback className="rounded-2xl bg-zinc-200 text-zinc-900">
-                        {initials}
-                      </AvatarFallback>
-                    </Avatar>
+                    <ProfileAvatar
+                      email={null}
+                      name={sellerName}
+                      avatarPresetId={seller?.avatar_preset_id ?? null}
+                      avatarUrl={seller?.avatar_url ?? null}
+                      className="h-14 w-14 rounded-2xl"
+                      fallbackClassName="rounded-2xl"
+                    />
                     <div>
                       <p className="text-xl font-semibold text-zinc-950">
                         {sellerName}
@@ -313,6 +315,17 @@ export default async function ListingDetailPage({ params }) {
                       </div>
                     </div>
                   </div>
+
+                  {seller?.bio && !seller?.is_public ? (
+                    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                        {language === "fr" ? "À propos du vendeur" : "About the seller"}
+                      </p>
+                      <p className="mt-2 whitespace-pre-line text-sm leading-7 text-zinc-600">
+                        {seller.bio}
+                      </p>
+                    </div>
+                  ) : null}
                 </CardContent>
               </Card>
             </div>
