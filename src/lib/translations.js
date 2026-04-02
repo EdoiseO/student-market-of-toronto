@@ -41,6 +41,15 @@ export const translations = {
     settingsNotificationsTitle: "Notifications",
     settingsNotificationsDescription:
       "Plan how marketplace updates should reach you once notification preferences are connected.",
+    settingsNotificationTypesTitle: "Notification types",
+    settingsNotificationTypesDescription:
+      "Choose the marketplace activity you want to hear about across email and in-app alerts.",
+    settingsSoldNotificationsTitle: "Sold listing updates",
+    settingsSoldNotificationsDescription:
+      "Get notified when one of your listings is marked sold or needs a final follow-up.",
+    settingsFavouriteNotificationsTitle: "Favourited item activity",
+    settingsFavouriteNotificationsDescription:
+      "Get notified when an item you favourited changes price, gets marked sold, or becomes unavailable.",
     settingsChannelsTitle: "Notification channels",
     settingsChannelsDescription:
       "Choose the places where future listing and account updates should appear.",
@@ -271,6 +280,15 @@ export const translations = {
     settingsNotificationsTitle: "Notifications",
     settingsNotificationsDescription:
       "Définissez comment les mises à jour de la marketplace devraient vous parvenir une fois les préférences connectées.",
+    settingsNotificationTypesTitle: "Types de notifications",
+    settingsNotificationTypesDescription:
+      "Choisissez l'activité de la marketplace pour laquelle vous voulez recevoir des alertes par e-mail et dans l'application.",
+    settingsSoldNotificationsTitle: "Mises à jour des annonces vendues",
+    settingsSoldNotificationsDescription:
+      "Recevez une alerte lorsqu'une de vos annonces est marquée comme vendue ou nécessite un dernier suivi.",
+    settingsFavouriteNotificationsTitle: "Activité des articles favoris",
+    settingsFavouriteNotificationsDescription:
+      "Recevez une alerte lorsqu'un article ajouté aux favoris change de prix, est marqué vendu ou devient indisponible.",
     settingsChannelsTitle: "Canaux de notification",
     settingsChannelsDescription:
       "Choisissez où les futures mises à jour du compte et des annonces devraient apparaître.",

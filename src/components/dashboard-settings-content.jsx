@@ -42,18 +42,20 @@ export function DashboardSettingsContent({ userEmail }) {
     },
   ];
 
-  const notificationChannels = [
+  const notificationPreferences = [
     {
-      key: "email",
-      checked: true,
-      title: t.settingsEmailNotifications,
-      description: t.settingsEmailNotificationsDescription,
+      key: "sold",
+      title: t.settingsSoldNotificationsTitle,
+      description: t.settingsSoldNotificationsDescription,
+      emailEnabled: true,
+      inAppEnabled: true,
     },
     {
-      key: "in-app",
-      checked: true,
-      title: t.settingsInAppNotifications,
-      description: t.settingsInAppNotificationsDescription,
+      key: "favourite",
+      title: t.settingsFavouriteNotificationsTitle,
+      description: t.settingsFavouriteNotificationsDescription,
+      emailEnabled: true,
+      inAppEnabled: true,
     },
   ];
 
@@ -124,23 +126,60 @@ export function DashboardSettingsContent({ userEmail }) {
             <FieldGroup>
               <FieldContent>
                 <FieldTitle className="text-base text-zinc-950">
-                  {t.settingsChannelsTitle}
+                  {t.settingsNotificationTypesTitle}
                 </FieldTitle>
-                <FieldDescription>{t.settingsChannelsDescription}</FieldDescription>
+                <FieldDescription>{t.settingsNotificationTypesDescription}</FieldDescription>
               </FieldContent>
 
-              {notificationChannels.map((channel) => (
+              {notificationPreferences.map((preference) => (
                 <div
-                  key={channel.key}
+                  key={preference.key}
                   className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4"
                 >
-                  <Field orientation="horizontal" data-disabled="true" className="items-start gap-3">
-                    <Checkbox checked={channel.checked} disabled className="mt-0.5" />
-                    <FieldContent>
-                      <FieldTitle className="text-zinc-950">{channel.title}</FieldTitle>
-                      <FieldDescription>{channel.description}</FieldDescription>
-                    </FieldContent>
-                  </Field>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm font-medium text-zinc-950">{preference.title}</p>
+                      <p className="mt-1 text-sm text-zinc-500">{preference.description}</p>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-xl border border-zinc-200 bg-white px-3 py-3">
+                        <Field
+                          orientation="horizontal"
+                          data-disabled="true"
+                          className="items-start gap-3"
+                        >
+                          <Checkbox checked={preference.emailEnabled} disabled className="mt-0.5" />
+                          <FieldContent>
+                            <FieldTitle className="text-zinc-950">
+                              {t.settingsEmailNotifications}
+                            </FieldTitle>
+                            <FieldDescription>
+                              {t.settingsEmailNotificationsDescription}
+                            </FieldDescription>
+                          </FieldContent>
+                        </Field>
+                      </div>
+
+                      <div className="rounded-xl border border-zinc-200 bg-white px-3 py-3">
+                        <Field
+                          orientation="horizontal"
+                          data-disabled="true"
+                          className="items-start gap-3"
+                        >
+                          <Checkbox checked={preference.inAppEnabled} disabled className="mt-0.5" />
+                          <FieldContent>
+                            <FieldTitle className="text-zinc-950">
+                              {t.settingsInAppNotifications}
+                            </FieldTitle>
+                            <FieldDescription>
+                              {t.settingsInAppNotificationsDescription}
+                            </FieldDescription>
+                          </FieldContent>
+                        </Field>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ))}
             </FieldGroup>
