@@ -22,7 +22,6 @@ import {
   FieldTitle,
 } from "@/components/ui/field";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { useLanguage } from "@/context/LanguageContext";
 import { createClient } from "@/utils/supabase/client";
@@ -55,17 +54,17 @@ export function DashboardSettingsContent({
     {
       value: "system",
       title: t.settingsThemeSystem,
-      description: t.settingsThemeSystemDescription,
+      variant: "default",
     },
     {
       value: "light",
       title: t.settingsThemeLight,
-      description: t.settingsThemeLightDescription,
+      variant: "outline",
     },
     {
       value: "dark",
       title: t.settingsThemeDark,
-      description: t.settingsThemeDarkDescription,
+      variant: "outline",
     },
   ];
 
@@ -157,22 +156,19 @@ export function DashboardSettingsContent({
                 <FieldDescription>{t.settingsThemePreferenceDescription}</FieldDescription>
               </FieldContent>
 
-              <RadioGroup defaultValue="system" className="gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 {appearanceOptions.map((option) => (
-                  <div
+                  <Button
                     key={option.value}
-                    className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4"
+                    type="button"
+                    variant={option.variant}
+                    disabled
+                    className="h-11 rounded-xl"
                   >
-                    <Field orientation="horizontal" data-disabled="true" className="items-start gap-3">
-                      <RadioGroupItem value={option.value} disabled className="mt-0.5" />
-                      <FieldContent>
-                        <FieldTitle className="text-zinc-950">{option.title}</FieldTitle>
-                        <FieldDescription>{option.description}</FieldDescription>
-                      </FieldContent>
-                    </Field>
-                  </div>
+                    {option.title}
+                  </Button>
                 ))}
-              </RadioGroup>
+              </div>
             </FieldGroup>
 
             <Separator />
