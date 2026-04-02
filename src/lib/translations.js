@@ -20,6 +20,44 @@ export const translations = {
     messages: "Messages",
     profile: "Profile",
     settings: "Settings",
+    settingsPreviewBadge: "Preview",
+    settingsDescription:
+      "Appearance and notification preferences start here. The controls below show the structure we will use once these account-level settings are connected.",
+    settingsAppearanceTitle: "Appearance",
+    settingsAppearanceDescription:
+      "Preview the theme options planned for your dashboard and account pages.",
+    settingsThemePreference: "Theme preference",
+    settingsThemePreferenceDescription:
+      "Choose how Student Market should look when appearance controls are enabled.",
+    settingsThemeSystem: "Match system",
+    settingsThemeSystemDescription:
+      "Follow your device light or dark mode automatically.",
+    settingsThemeLight: "Light",
+    settingsThemeLightDescription:
+      "Keep the dashboard bright and clear for daytime browsing.",
+    settingsThemeDark: "Dark",
+    settingsThemeDarkDescription:
+      "Use a darker interface for late-night studying and listing cleanup.",
+    settingsNotificationsTitle: "Notifications",
+    settingsNotificationsDescription:
+      "Plan how marketplace updates should reach you once notification preferences are connected.",
+    settingsChannelsTitle: "Notification channels",
+    settingsChannelsDescription:
+      "Choose the places where future listing and account updates should appear.",
+    settingsEmailNotifications: "Email notifications",
+    settingsEmailNotificationsDescription:
+      "Receive listing activity, account notices, and important marketplace updates by email.",
+    settingsInAppNotifications: "In-app notifications",
+    settingsInAppNotificationsDescription:
+      "See alerts inside your dashboard when in-app notification storage is added.",
+    settingsEmailCadenceTitle: "Email cadence",
+    settingsEmailCadenceDescription:
+      "Control how often non-urgent email updates should arrive.",
+    settingsEmailCadenceInstant: "Instant",
+    settingsEmailCadenceDaily: "Daily summary",
+    settingsEmailCadenceWeekly: "Weekly summary",
+    settingsPreviewNote:
+      "These controls are shown as honest preview content for now and do not save changes yet.",
     studentMarket: "Student Market",
     toronto: "Toronto",
     marketplace: "Marketplace",
@@ -212,6 +250,44 @@ export const translations = {
     messages: "Messages",
     profile: "Profil",
     settings: "Paramètres",
+    settingsPreviewBadge: "Aperçu",
+    settingsDescription:
+      "Les préférences d'apparence et de notifications commencent ici. Les contrôles ci-dessous montrent la structure qui sera utilisée une fois ces paramètres de compte connectés.",
+    settingsAppearanceTitle: "Apparence",
+    settingsAppearanceDescription:
+      "Prévisualisez les options de thème prévues pour votre tableau de bord et vos pages de compte.",
+    settingsThemePreference: "Préférence de thème",
+    settingsThemePreferenceDescription:
+      "Choisissez l'apparence de Student Market lorsque les contrôles d'apparence seront activés.",
+    settingsThemeSystem: "Suivre le système",
+    settingsThemeSystemDescription:
+      "Suivez automatiquement le mode clair ou sombre de votre appareil.",
+    settingsThemeLight: "Clair",
+    settingsThemeLightDescription:
+      "Gardez le tableau de bord lumineux et lisible pendant la journée.",
+    settingsThemeDark: "Sombre",
+    settingsThemeDarkDescription:
+      "Utilisez une interface plus sombre pour les études tardives et la gestion des annonces.",
+    settingsNotificationsTitle: "Notifications",
+    settingsNotificationsDescription:
+      "Définissez comment les mises à jour de la marketplace devraient vous parvenir une fois les préférences connectées.",
+    settingsChannelsTitle: "Canaux de notification",
+    settingsChannelsDescription:
+      "Choisissez où les futures mises à jour du compte et des annonces devraient apparaître.",
+    settingsEmailNotifications: "Notifications par e-mail",
+    settingsEmailNotificationsDescription:
+      "Recevez l'activité des annonces, les avis du compte et les mises à jour importantes par e-mail.",
+    settingsInAppNotifications: "Notifications intégrées",
+    settingsInAppNotificationsDescription:
+      "Voyez les alertes directement dans votre tableau de bord lorsque le stockage des notifications intégrées sera ajouté.",
+    settingsEmailCadenceTitle: "Fréquence des e-mails",
+    settingsEmailCadenceDescription:
+      "Contrôlez la fréquence des mises à jour non urgentes envoyées par e-mail.",
+    settingsEmailCadenceInstant: "Instantané",
+    settingsEmailCadenceDaily: "Résumé quotidien",
+    settingsEmailCadenceWeekly: "Résumé hebdomadaire",
+    settingsPreviewNote:
+      "Ces contrôles sont affichés comme un aperçu honnête pour l'instant et n'enregistrent pas encore les changements.",
     studentMarket: "Marché étudiant",
     toronto: "Toronto",
     marketplace: "Marché",
