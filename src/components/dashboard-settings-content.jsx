@@ -141,7 +141,7 @@ export function DashboardSettingsContent({
         <p className="mt-3 max-w-4xl text-base text-zinc-600">{t.settingsDescription}</p>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-3">
+      <div className="flex flex-col gap-4">
         <Card className="h-full rounded-3xl bg-white py-0 shadow-sm ring-zinc-200">
           <CardHeader className="border-b border-zinc-200 px-6 py-6">
             <CardTitle className="text-2xl text-zinc-950">{t.settingsAppearanceTitle}</CardTitle>
