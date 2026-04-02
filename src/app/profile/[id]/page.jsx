@@ -142,7 +142,8 @@ export default async function PublicProfilePage({ params }) {
                 name={sellerName}
                 avatarPresetId={profile.avatar_preset_id ?? null}
                 avatarUrl={profile.avatar_url ?? null}
-                className="h-20 w-20 rounded-3xl"
+                className="h-24 w-20 rounded-3xl after:rounded-3xl"
+                imageClassName="rounded-3xl"
                 fallbackClassName="rounded-3xl"
               />
 
