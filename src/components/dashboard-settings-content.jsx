@@ -19,12 +19,14 @@ import {
   FieldContent,
   FieldDescription,
   FieldGroup,
+  FieldLabel,
   FieldTitle,
 } from "@/components/ui/field";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useLanguage } from "@/context/LanguageContext";
+import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
 
 export function DashboardSettingsContent({
@@ -43,6 +45,7 @@ export function DashboardSettingsContent({
     initialHideBioOnListingPage,
   );
   const [isSavingBioVisibility, setIsSavingBioVisibility] = React.useState(false);
+  const [themePreferencePreview, setThemePreferencePreview] = React.useState("system");
   const [notificationChannelPreferences, setNotificationChannelPreferences] = React.useState({
     sold: { email: true, inApp: true },
     favourite: { email: true, inApp: true },
@@ -60,17 +63,14 @@ export function DashboardSettingsContent({
     {
       value: "light",
       title: t.settingsThemeLight,
-      variant: "outline",
     },
     {
       value: "dark",
       title: t.settingsThemeDark,
-      variant: "outline",
     },
     {
       value: "system",
       title: t.settingsThemeSystem,
-      variant: "default",
     },
   ];
 
@@ -172,19 +172,31 @@ export function DashboardSettingsContent({
                 <FieldDescription>{t.settingsThemePreferenceDescription}</FieldDescription>
               </FieldContent>
 
-              <div className="grid grid-cols-3 gap-3">
+              <RadioGroup
+                value={themePreferencePreview}
+                onValueChange={setThemePreferencePreview}
+                className="grid max-w-[500px] grid-cols-3 gap-3"
+              >
                 {appearanceOptions.map((option) => (
-                  <Button
+                  <FieldLabel
                     key={option.value}
-                    type="button"
-                    variant={option.variant}
-                    disabled
-                    className="h-11 rounded-xl"
+                    htmlFor={`theme-preview-${option.value}`}
+                    className={cn(
+                      "w-full",
+                      themePreferencePreview === option.value
+                        ? "border-zinc-950 bg-zinc-100"
+                        : "border-zinc-200 bg-zinc-50",
+                    )}
                   >
-                    {option.title}
-                  </Button>
+                    <Field orientation="horizontal" className="items-center gap-3">
+                      <FieldContent>
+                        <FieldTitle className="text-sm text-zinc-950">{option.title}</FieldTitle>
+                      </FieldContent>
+                      <RadioGroupItem value={option.value} id={`theme-preview-${option.value}`} />
+                    </Field>
+                  </FieldLabel>
                 ))}
-              </div>
+              </RadioGroup>
             </FieldGroup>
 
             <Separator />
