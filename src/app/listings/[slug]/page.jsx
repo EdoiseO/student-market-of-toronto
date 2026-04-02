@@ -273,9 +273,9 @@ export default async function ListingDetailPage({ params }) {
 
               <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-none">
                 <CardContent className="space-y-5 p-6 md:p-7">
-                  {listing.seller_id ? (
+                  {seller?.id ? (
                     <Link
-                      href={`/profile/${listing.seller_id}`}
+                      href={`/profile/${seller.id}`}
                       className="flex w-fit items-center gap-4 rounded-2xl transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/15"
                     >
                       <ProfileAvatar
@@ -352,9 +352,9 @@ export default async function ListingDetailPage({ params }) {
                     </div>
                   ) : null}
 
-                  {listing.seller_id ? (
+                  {seller?.id ? (
                     <Button asChild type="button" variant="outline" className="w-full">
-                      <Link href={`/profile/${listing.seller_id}`}>{t.viewProfile}</Link>
+                      <Link href={`/profile/${seller.id}`}>{t.viewProfile}</Link>
                     </Button>
                   ) : null}
                 </CardContent>
