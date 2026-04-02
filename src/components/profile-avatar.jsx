@@ -36,6 +36,7 @@ export function ProfileAvatar({
   avatarUrl,
   initialsOverride,
   className,
+  imageClassName,
   fallbackClassName,
   size = "default",
 }) {
@@ -50,7 +51,13 @@ export function ProfileAvatar({
 
   return (
     <Avatar className={className} size={size}>
-      {imageUrl ? <AvatarImage src={imageUrl} alt={name || "Profile avatar"} /> : null}
+      {imageUrl ? (
+        <AvatarImage
+          src={imageUrl}
+          alt={name || "Profile avatar"}
+          className={imageClassName}
+        />
+      ) : null}
       <AvatarFallback
         className={cn(
           preset ? `${preset.className} text-white` : undefined,

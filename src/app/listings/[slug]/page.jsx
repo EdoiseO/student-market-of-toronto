@@ -1,5 +1,6 @@
 import { MessageCircle, Clock3, MapPin, Tag, UserRound } from "lucide-react";
 import { cookies } from "next/headers";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
@@ -272,24 +273,48 @@ export default async function ListingDetailPage({ params }) {
 
               <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-none">
                 <CardContent className="space-y-5 p-6 md:p-7">
-                  <div className="flex items-center gap-4">
-                    <ProfileAvatar
-                      email={null}
-                      name={sellerName}
-                      avatarPresetId={seller?.avatar_preset_id ?? null}
-                      avatarUrl={seller?.avatar_url ?? null}
-                      className="h-14 w-14 rounded-2xl"
-                      fallbackClassName="rounded-2xl"
-                    />
-                    <div>
-                      <p className="text-xl font-semibold text-zinc-950">
-                        {sellerName}
-                      </p>
-                      <p className="text-sm text-zinc-500">
-                        {seller?.school || t.torontoStudent}
-                      </p>
+                  {seller?.id ? (
+                    <Link
+                      href={`/profile/${seller.id}`}
+                      className="flex w-fit items-center gap-4 rounded-2xl transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/15"
+                    >
+                      <ProfileAvatar
+                        email={null}
+                        name={sellerName}
+                        avatarPresetId={seller?.avatar_preset_id ?? null}
+                        avatarUrl={seller?.avatar_url ?? null}
+                        className="h-14 w-14 rounded-2xl"
+                        fallbackClassName="rounded-2xl"
+                      />
+                      <div>
+                        <p className="text-xl font-semibold text-zinc-950">
+                          {sellerName}
+                        </p>
+                        <p className="text-sm text-zinc-500">
+                          {seller?.school || t.torontoStudent}
+                        </p>
+                      </div>
+                    </Link>
+                  ) : (
+                    <div className="flex items-center gap-4">
+                      <ProfileAvatar
+                        email={null}
+                        name={sellerName}
+                        avatarPresetId={seller?.avatar_preset_id ?? null}
+                        avatarUrl={seller?.avatar_url ?? null}
+                        className="h-14 w-14 rounded-2xl"
+                        fallbackClassName="rounded-2xl"
+                      />
+                      <div>
+                        <p className="text-xl font-semibold text-zinc-950">
+                          {sellerName}
+                        </p>
+                        <p className="text-sm text-zinc-500">
+                          {seller?.school || t.torontoStudent}
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   <div className="grid gap-3 text-sm text-zinc-600 sm:grid-cols-2">
                     <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
@@ -325,6 +350,12 @@ export default async function ListingDetailPage({ params }) {
                         {seller.bio}
                       </p>
                     </div>
+                  ) : null}
+
+                  {seller?.id ? (
+                    <Button asChild type="button" variant="outline" className="w-full">
+                      <Link href={`/profile/${seller.id}`}>{t.viewProfile}</Link>
+                    </Button>
                   ) : null}
                 </CardContent>
               </Card>
