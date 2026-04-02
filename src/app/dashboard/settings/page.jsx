@@ -16,10 +16,25 @@ export default async function DashboardSettingsPage() {
     redirect("/login");
   }
 
+  const { data: existingProfile, error: profileError } = await supabase
+    .from("profiles")
+    .select("bio, is_public")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    console.error("Failed to load dashboard settings profile:", profileError.message);
+  }
+
   return (
     <main className="min-h-screen bg-zinc-100 p-6 md:p-8">
       <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-8">
-        <DashboardSettingsContent userEmail={user.email ?? ""} />
+        <DashboardSettingsContent
+          userEmail={user.email ?? ""}
+          userId={user.id}
+          initialHideBioOnListingPage={Boolean(existingProfile?.is_public)}
+          hasBio={Boolean(existingProfile?.bio?.trim())}
+        />
       </div>
     </main>
   );

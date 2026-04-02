@@ -41,6 +41,19 @@ export const translations = {
     settingsNotificationsTitle: "Notifications",
     settingsNotificationsDescription:
       "Plan how marketplace updates should reach you once notification preferences are connected.",
+    settingsProfileTitle: "Profile",
+    settingsProfileDescription:
+      "Control the softer profile details that appear on listing pages while keeping seller identity visible.",
+    settingsHideBioOnListingPageTitle: "Hide bio on listing page",
+    settingsHideBioOnListingPageDescription:
+      "Remove your description from the seller section on listing pages.",
+    settingsBioIdentityNote:
+      "Your name, school, and profile photo stay visible so buyers can still see who they are dealing with.",
+    settingsNoBioYet:
+      "You do not have a bio yet, but this preference will apply once you add one on your profile page.",
+    settingsSaveChanges: "Save changes",
+    settingsBioVisibilitySaved: "Listing bio visibility updated.",
+    settingsBioVisibilityError: "We could not save your bio visibility right now.",
     settingsNotificationTypesTitle: "Notification types",
     settingsNotificationTypesDescription:
       "Choose the marketplace activity you want to hear about across email and in-app alerts.",
@@ -283,6 +296,20 @@ export const translations = {
     settingsNotificationsTitle: "Notifications",
     settingsNotificationsDescription:
       "Définissez comment les mises à jour de la marketplace devraient vous parvenir une fois les préférences connectées.",
+    settingsProfileTitle: "Profil",
+    settingsProfileDescription:
+      "Contrôlez les détails de profil plus personnels affichés sur les pages d'annonce tout en gardant l'identité du vendeur visible.",
+    settingsHideBioOnListingPageTitle: "Masquer la bio sur la page d'annonce",
+    settingsHideBioOnListingPageDescription:
+      "Retirez votre description de la section vendeur sur les pages d'annonce.",
+    settingsBioIdentityNote:
+      "Votre nom, votre école et votre photo de profil restent visibles afin que les acheteurs sachent toujours à qui ils ont affaire.",
+    settingsNoBioYet:
+      "Vous n'avez pas encore de bio, mais cette préférence s'appliquera dès que vous en ajouterez une sur votre page de profil.",
+    settingsSaveChanges: "Enregistrer les modifications",
+    settingsBioVisibilitySaved: "La visibilité de la bio sur les annonces a été mise à jour.",
+    settingsBioVisibilityError:
+      "Nous n'avons pas pu enregistrer la visibilité de votre bio pour le moment.",
     settingsNotificationTypesTitle: "Types de notifications",
     settingsNotificationTypesDescription:
       "Choisissez l'activité de la marketplace pour laquelle vous voulez recevoir des alertes par e-mail et dans l'application.",

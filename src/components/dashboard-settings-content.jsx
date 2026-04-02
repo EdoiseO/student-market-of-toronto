@@ -1,6 +1,11 @@
 "use client";
 
+import * as React from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -20,9 +25,31 @@ import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { useLanguage } from "@/context/LanguageContext";
+import { createClient } from "@/utils/supabase/client";
 
-export function DashboardSettingsContent({ userEmail }) {
+export function DashboardSettingsContent({
+  userEmail,
+  userId,
+  initialHideBioOnListingPage,
+  hasBio,
+}) {
   const { t } = useLanguage();
+  const router = useRouter();
+  const supabase = React.useMemo(() => createClient(), []);
+  const [hideBioOnListingPage, setHideBioOnListingPage] = React.useState(
+    initialHideBioOnListingPage,
+  );
+  const [savedHideBioOnListingPage, setSavedHideBioOnListingPage] = React.useState(
+    initialHideBioOnListingPage,
+  );
+  const [isSavingBioVisibility, setIsSavingBioVisibility] = React.useState(false);
+
+  React.useEffect(() => {
+    setHideBioOnListingPage(initialHideBioOnListingPage);
+    setSavedHideBioOnListingPage(initialHideBioOnListingPage);
+  }, [initialHideBioOnListingPage]);
+
+  const hasBioVisibilityChanges = hideBioOnListingPage !== savedHideBioOnListingPage;
 
   const appearanceOptions = [
     {
@@ -65,6 +92,39 @@ export function DashboardSettingsContent({ userEmail }) {
       inAppEnabled: true,
     },
   ];
+
+  async function handleBioVisibilitySave() {
+    if (!hasBioVisibilityChanges || isSavingBioVisibility) {
+      return;
+    }
+
+    setIsSavingBioVisibility(true);
+
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .upsert(
+          {
+            id: userId,
+            is_public: hideBioOnListingPage,
+          },
+          { onConflict: "id" },
+        );
+
+      if (error) {
+        throw error;
+      }
+
+      setSavedHideBioOnListingPage(hideBioOnListingPage);
+      toast.success(t.settingsBioVisibilitySaved);
+      router.refresh();
+    } catch (error) {
+      console.error("Failed to save bio visibility setting", error);
+      toast.error(t.settingsBioVisibilityError);
+    } finally {
+      setIsSavingBioVisibility(false);
+    }
+  }
 
   return (
     <>
@@ -223,6 +283,48 @@ export function DashboardSettingsContent({ userEmail }) {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="rounded-3xl bg-white py-0 shadow-sm ring-zinc-200">
+        <CardHeader className="border-b border-zinc-200 px-6 py-6">
+          <CardTitle className="text-2xl text-zinc-950">{t.settingsProfileTitle}</CardTitle>
+          <CardDescription>{t.settingsProfileDescription}</CardDescription>
+        </CardHeader>
+
+        <CardContent className="space-y-6 px-6 py-8">
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+            <Field orientation="horizontal" className="items-start gap-3">
+              <Checkbox
+                checked={hideBioOnListingPage}
+                onCheckedChange={(checked) => setHideBioOnListingPage(checked === true)}
+                disabled={isSavingBioVisibility}
+                aria-label={t.settingsHideBioOnListingPageTitle}
+                className="mt-0.5"
+              />
+              <FieldContent>
+                <FieldTitle className="text-zinc-950">
+                  {t.settingsHideBioOnListingPageTitle}
+                </FieldTitle>
+                <FieldDescription>{t.settingsHideBioOnListingPageDescription}</FieldDescription>
+                <p className="mt-2 text-sm text-zinc-500">{t.settingsBioIdentityNote}</p>
+                {!hasBio ? (
+                  <p className="mt-2 text-sm text-zinc-500">{t.settingsNoBioYet}</p>
+                ) : null}
+              </FieldContent>
+            </Field>
+          </div>
+
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              className="rounded-xl px-5"
+              onClick={handleBioVisibilitySave}
+              disabled={isSavingBioVisibility || !hasBioVisibilityChanges}
+            >
+              {isSavingBioVisibility ? t.saving : t.settingsSaveChanges}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </>
   );
 }
