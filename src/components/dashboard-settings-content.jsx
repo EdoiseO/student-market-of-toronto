@@ -279,35 +279,16 @@ export function DashboardSettingsContent({
               ))}
             </FieldGroup>
 
-            <Separator />
+            {userEmail ? (
+              <>
+                <Separator />
 
-            <FieldGroup>
-              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                <Field className="gap-3" data-disabled="true">
-                  <FieldContent>
-                    <FieldTitle className="text-zinc-950">{t.settingsEmailCadenceTitle}</FieldTitle>
-                    <FieldDescription>{t.settingsEmailCadenceDescription}</FieldDescription>
-                  </FieldContent>
-
-                  <NativeSelect defaultValue="weekly" disabled className="w-full">
-                    <NativeSelectOption value="instant">
-                      {t.settingsEmailCadenceInstant}
-                    </NativeSelectOption>
-                    <NativeSelectOption value="daily">{t.settingsEmailCadenceDaily}</NativeSelectOption>
-                    <NativeSelectOption value="weekly">
-                      {t.settingsEmailCadenceWeekly}
-                    </NativeSelectOption>
-                  </NativeSelect>
-                </Field>
-              </div>
-
-              {userEmail ? (
                 <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/70 px-4 py-4">
                   <p className="text-sm font-medium text-zinc-950">{t.email}</p>
                   <p className="mt-1 break-all text-sm text-zinc-500">{userEmail}</p>
                 </div>
-              ) : null}
-            </FieldGroup>
+              </>
+            ) : null}
           </CardContent>
         </Card>
 

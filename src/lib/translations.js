@@ -75,12 +75,6 @@ export const translations = {
     settingsInAppNotifications: "In-app notifications",
     settingsInAppNotificationsDescription:
       "See alerts inside your dashboard when in-app notification storage is added.",
-    settingsEmailCadenceTitle: "Email cadence",
-    settingsEmailCadenceDescription:
-      "Control how often non-urgent email updates should arrive.",
-    settingsEmailCadenceInstant: "Instant",
-    settingsEmailCadenceDaily: "Daily summary",
-    settingsEmailCadenceWeekly: "Weekly summary",
     settingsPreviewNote:
       "These controls are shown as honest preview content for now and do not save changes yet.",
     studentMarket: "Student Market",
@@ -331,12 +325,6 @@ export const translations = {
     settingsInAppNotifications: "Notifications intégrées",
     settingsInAppNotificationsDescription:
       "Voyez les alertes directement dans votre tableau de bord lorsque le stockage des notifications intégrées sera ajouté.",
-    settingsEmailCadenceTitle: "Fréquence des e-mails",
-    settingsEmailCadenceDescription:
-      "Contrôlez la fréquence des mises à jour non urgentes envoyées par e-mail.",
-    settingsEmailCadenceInstant: "Instantané",
-    settingsEmailCadenceDaily: "Résumé quotidien",
-    settingsEmailCadenceWeekly: "Résumé hebdomadaire",
     settingsPreviewNote:
       "Ces contrôles sont affichés comme un aperçu honnête pour l'instant et n'enregistrent pas encore les changements.",
     studentMarket: "Marché étudiant",
