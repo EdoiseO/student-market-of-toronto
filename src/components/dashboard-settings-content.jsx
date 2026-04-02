@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/field";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { useLanguage } from "@/context/LanguageContext";
 import { createClient } from "@/utils/supabase/client";
 
@@ -42,6 +43,11 @@ export function DashboardSettingsContent({
     initialHideBioOnListingPage,
   );
   const [isSavingBioVisibility, setIsSavingBioVisibility] = React.useState(false);
+  const [notificationChannelPreferences, setNotificationChannelPreferences] = React.useState({
+    sold: { email: true, inApp: true },
+    favourite: { email: true, inApp: true },
+    messages: { email: true, inApp: true },
+  });
 
   React.useEffect(() => {
     setHideBioOnListingPage(initialHideBioOnListingPage);
@@ -123,6 +129,16 @@ export function DashboardSettingsContent({
     } finally {
       setIsSavingBioVisibility(false);
     }
+  }
+
+  function handleNotificationChannelChange(notificationKey, channelKey, checked) {
+    setNotificationChannelPreferences((currentPreferences) => ({
+      ...currentPreferences,
+      [notificationKey]: {
+        ...currentPreferences[notificationKey],
+        [channelKey]: checked === true,
+      },
+    }));
   }
 
   return (
@@ -209,10 +225,8 @@ export function DashboardSettingsContent({
                       <div className="rounded-xl border border-zinc-200 bg-white px-3 py-3">
                         <Field
                           orientation="horizontal"
-                          data-disabled="true"
-                          className="items-start gap-3"
+                          className="items-start justify-between gap-3"
                         >
-                          <Checkbox checked={preference.emailEnabled} disabled className="mt-0.5" />
                           <FieldContent>
                             <FieldTitle className="text-zinc-950">
                               {t.settingsEmailNotifications}
@@ -221,16 +235,24 @@ export function DashboardSettingsContent({
                               {t.settingsEmailNotificationsDescription}
                             </FieldDescription>
                           </FieldContent>
+                          <Switch
+                            checked={
+                              notificationChannelPreferences[preference.key]?.email ?? true
+                            }
+                            onCheckedChange={(checked) =>
+                              handleNotificationChannelChange(preference.key, "email", checked)
+                            }
+                            aria-label={`${preference.title} ${t.settingsEmailNotifications}`}
+                            className="mt-0.5"
+                          />
                         </Field>
                       </div>
 
                       <div className="rounded-xl border border-zinc-200 bg-white px-3 py-3">
                         <Field
                           orientation="horizontal"
-                          data-disabled="true"
-                          className="items-start gap-3"
+                          className="items-start justify-between gap-3"
                         >
-                          <Checkbox checked={preference.inAppEnabled} disabled className="mt-0.5" />
                           <FieldContent>
                             <FieldTitle className="text-zinc-950">
                               {t.settingsInAppNotifications}
@@ -239,6 +261,16 @@ export function DashboardSettingsContent({
                               {t.settingsInAppNotificationsDescription}
                             </FieldDescription>
                           </FieldContent>
+                          <Switch
+                            checked={
+                              notificationChannelPreferences[preference.key]?.inApp ?? true
+                            }
+                            onCheckedChange={(checked) =>
+                              handleNotificationChannelChange(preference.key, "inApp", checked)
+                            }
+                            aria-label={`${preference.title} ${t.settingsInAppNotifications}`}
+                            className="mt-0.5"
+                          />
                         </Field>
                       </div>
                     </div>
