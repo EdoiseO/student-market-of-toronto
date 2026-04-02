@@ -1,7 +1,7 @@
 import { Clock3, ListIcon } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 import { ProfileAvatar } from "@/components/profile-avatar";
 import { ProfileListingsSection } from "@/components/profile-listings-section";
@@ -69,22 +69,20 @@ export default async function PublicProfilePage({ params }) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/login");
-  }
+  let profile = null;
 
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("id, first_name, last_name, school, avatar_preset_id, avatar_url, bio, is_public, created_at")
-    .eq("id", resolvedParams.id)
-    .maybeSingle();
+  if (user) {
+    const { data: loadedProfile, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, first_name, last_name, school, avatar_preset_id, avatar_url, bio, is_public, created_at")
+      .eq("id", resolvedParams.id)
+      .maybeSingle();
 
-  if (profileError) {
-    console.error("Failed to load seller profile:", profileError.message);
-  }
+    if (profileError) {
+      console.error("Failed to load seller profile:", profileError.message);
+    }
 
-  if (!profile) {
-    notFound();
+    profile = loadedProfile ?? null;
   }
 
   const { data: listingRows, error: listingsError } = await supabase
@@ -106,7 +104,7 @@ export default async function PublicProfilePage({ params }) {
         position
       )
     `)
-    .eq("seller_id", profile.id)
+    .eq("seller_id", resolvedParams.id)
     .eq("status", "active")
     .order("created_at", { ascending: false });
 
@@ -114,8 +112,12 @@ export default async function PublicProfilePage({ params }) {
     console.error("Failed to load seller listings:", listingsError.message);
   }
 
+  if (!profile && (listingRows?.length ?? 0) === 0) {
+    notFound();
+  }
+
   const sellerName =
-    [profile.first_name, profile.last_name].filter(Boolean).join(" ").trim() || t.studentSeller;
+    [profile?.first_name, profile?.last_name].filter(Boolean).join(" ").trim() || t.studentSeller;
 
   const sellerListings = (listingRows ?? []).map((listing) => ({
     ...listing,
@@ -134,8 +136,8 @@ export default async function PublicProfilePage({ params }) {
               <ProfileAvatar
                 email={null}
                 name={sellerName}
-                avatarPresetId={profile.avatar_preset_id ?? null}
-                avatarUrl={profile.avatar_url ?? null}
+                avatarPresetId={profile?.avatar_preset_id ?? null}
+                avatarUrl={profile?.avatar_url ?? null}
                 className="h-32 w-32 rounded-3xl after:rounded-3xl"
                 imageClassName="rounded-3xl"
                 fallbackClassName="rounded-3xl"
@@ -149,7 +151,7 @@ export default async function PublicProfilePage({ params }) {
                     {t.seller}
                   </Badge>
                   <h1 className="text-4xl font-bold tracking-tight text-zinc-950">{sellerName}</h1>
-                  <p className="text-base text-zinc-600">{profile.school || t.torontoStudent}</p>
+                  <p className="text-base text-zinc-600">{profile?.school || t.torontoStudent}</p>
                 </div>
 
                 <div className="grid min-w-[260px] gap-3 sm:grid-cols-2 xl:max-w-[420px]">
@@ -170,7 +172,7 @@ export default async function PublicProfilePage({ params }) {
                         {t.memberSince}
                       </p>
                       <p className="mt-1 text-zinc-900">
-                        {profile.created_at ? formatDate(profile.created_at, language) : "—"}
+                        {profile?.created_at ? formatDate(profile.created_at, language) : "—"}
                       </p>
                     </div>
                   </div>
@@ -183,7 +185,7 @@ export default async function PublicProfilePage({ params }) {
             <p className="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-zinc-500">
               {t.profileDescriptionTitle}
             </p>
-            {profile.bio ? (
+            {profile?.bio ? (
               <p className="whitespace-pre-line text-base leading-7 text-zinc-600">
                 {profile.bio}
               </p>
@@ -195,7 +197,7 @@ export default async function PublicProfilePage({ params }) {
 
         <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 md:p-8">
           {sellerListings.length > 0 ? (
-            <ProfileListingsSection listings={sellerListings} sellerSchool={profile.school || ""} />
+            <ProfileListingsSection listings={sellerListings} sellerSchool={profile?.school || ""} />
           ) : (
             <Card className="rounded-3xl border-zinc-200 bg-zinc-50 py-0 shadow-none">
               <CardHeader className="px-6 py-6">
