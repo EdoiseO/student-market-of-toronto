@@ -1,10 +1,10 @@
-import { Clock3, ListIcon, UserRound } from "lucide-react";
+import { Clock3, ListIcon } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import { CardImage } from "@/components/card-image";
 import { ProfileAvatar } from "@/components/profile-avatar";
+import { ProfileListingsSection } from "@/components/profile-listings-section";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -22,14 +22,6 @@ function formatDate(dateString, language) {
     day: "numeric",
     year: "numeric",
   }).format(new Date(dateString));
-}
-
-function formatPrice(price, language) {
-  return new Intl.NumberFormat(language === "fr" ? "fr-CA" : "en-CA", {
-    style: "currency",
-    currency: "CAD",
-    maximumFractionDigits: 0,
-  }).format(Number(price ?? 0));
 }
 
 function isNewListing(createdAt) {
@@ -102,6 +94,7 @@ export default async function PublicProfilePage({ params }) {
       slug,
       title,
       price,
+      category,
       location,
       status,
       created_at,
@@ -126,6 +119,7 @@ export default async function PublicProfilePage({ params }) {
 
   const sellerListings = (listingRows ?? []).map((listing) => ({
     ...listing,
+    badge: getListingBadge(listing, t),
     listing_images: [...(listing.listing_images ?? [])].sort(
       (firstImage, secondImage) => (firstImage.position ?? 0) - (secondImage.position ?? 0),
     ),
@@ -135,19 +129,21 @@ export default async function PublicProfilePage({ params }) {
     <main className="min-h-screen bg-zinc-100 p-6 md:p-8">
       <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-8">
         <section className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-zinc-200">
-          <div className="flex flex-wrap items-start justify-between gap-6">
-            <div className="flex items-start gap-5">
+          <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
+            <div className="shrink-0">
               <ProfileAvatar
                 email={null}
                 name={sellerName}
                 avatarPresetId={profile.avatar_preset_id ?? null}
                 avatarUrl={profile.avatar_url ?? null}
-                className="h-24 w-20 rounded-3xl after:rounded-3xl"
+                className="h-32 w-32 rounded-3xl after:rounded-3xl"
                 imageClassName="rounded-3xl"
                 fallbackClassName="rounded-3xl"
               />
+            </div>
 
-              <div className="space-y-3">
+            <div className="flex-1 space-y-4">
+              <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
                 <div className="space-y-2">
                   <Badge variant="outline" className="border-zinc-300 bg-zinc-50 text-zinc-700">
                     {t.seller}
@@ -156,67 +152,50 @@ export default async function PublicProfilePage({ params }) {
                   <p className="text-base text-zinc-600">{profile.school || t.torontoStudent}</p>
                 </div>
 
-                {profile.bio ? (
-                  <p className="max-w-3xl whitespace-pre-line text-base leading-7 text-zinc-600">
-                    {profile.bio}
-                  </p>
-                ) : (
-                  <p className="max-w-3xl text-base text-zinc-500">{t.profileNoBio}</p>
-                )}
-              </div>
-            </div>
+                <div className="grid min-w-[260px] gap-3 sm:grid-cols-2 xl:max-w-[420px]">
+                  <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                    <ListIcon className="size-4 text-zinc-500" />
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                        {t.activeListingsTitle}
+                      </p>
+                      <p className="mt-1 text-zinc-900">{sellerListings.length}</p>
+                    </div>
+                  </div>
 
-            <div className="grid min-w-[260px] gap-3 sm:grid-cols-2">
-              <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                <ListIcon className="size-4 text-zinc-500" />
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                    {t.activeListingsTitle}
-                  </p>
-                  <p className="mt-1 text-zinc-900">{sellerListings.length}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                <Clock3 className="size-4 text-zinc-500" />
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                    {t.memberSince}
-                  </p>
-                  <p className="mt-1 text-zinc-900">
-                    {profile.created_at ? formatDate(profile.created_at, language) : "—"}
-                  </p>
+                  <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                    <Clock3 className="size-4 text-zinc-500" />
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                        {t.memberSince}
+                      </p>
+                      <p className="mt-1 text-zinc-900">
+                        {profile.created_at ? formatDate(profile.created_at, language) : "—"}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
+          </div>
+
+          <div className="mt-6 w-full max-w-5xl rounded-2xl border border-zinc-200 bg-zinc-50 p-6">
+            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-zinc-500">
+              {t.profileDescriptionTitle}
+            </p>
+            {profile.bio ? (
+              <p className="whitespace-pre-line text-base leading-7 text-zinc-600">
+                {profile.bio}
+              </p>
+            ) : (
+              <p className="text-base text-zinc-500">{t.profileNoBio}</p>
+            )}
           </div>
         </section>
 
         <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 md:p-8">
-          <div className="mb-5 flex items-center gap-3">
-            <UserRound className="size-5 text-zinc-500" />
-            <div>
-              <h2 className="text-2xl font-bold text-zinc-950">{t.activeListingsTitle}</h2>
-              <p className="text-sm text-zinc-500">{t.activeListingsDescription}</p>
-            </div>
-          </div>
-
           {sellerListings.length > 0 ? (
-            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-              {sellerListings.map((listing) => (
-                <CardImage
-                  key={listing.id}
-                  badge={getListingBadge(listing, t)}
-                  title={listing.title}
-                  price={formatPrice(listing.price, language)}
-                  meta={listing.location || profile.school || t.torontoMeetup}
-                  imageUrls={(listing.listing_images ?? []).map((image) => image.image_url)}
-                  imageUrl={listing.listing_images?.[0]?.image_url ?? null}
-                  href={`/listings/${listing.slug}`}
-                  imageAlt={listing.title}
-                />
-              ))}
-            </div>
+            <ProfileListingsSection listings={sellerListings} sellerSchool={profile.school || ""} />
           ) : (
             <Card className="rounded-3xl border-zinc-200 bg-zinc-50 py-0 shadow-none">
               <CardHeader className="px-6 py-6">
