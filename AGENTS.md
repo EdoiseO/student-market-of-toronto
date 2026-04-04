@@ -2,7 +2,8 @@
 
 ## Project status
 - Implemented and actively used: authentication, registration, listing creation, listing viewing, listing editing, dashboard listing management, dashboard profile editing, profile avatar uploads/presets, and seller profile data on listing pages.
-- Placeholder or not fully implemented yet: search, messages, public seller profile page, and most settings persistence beyond the listing-page bio visibility toggle.
+- Implemented and actively used: protected seller profile pages for signed-in users, including seller listing browsing.
+- Placeholder or not fully implemented yet: search, messages, and most settings persistence beyond the listing-page bio visibility toggle.
 
 ## Working rules
 - Every time code is changed, create a session log in `logs/<date>-<session-title>.md`.
