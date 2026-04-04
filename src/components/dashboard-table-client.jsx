@@ -19,11 +19,13 @@ const readOnlyTabs = new Set(["favourite"]);
 const editableStatuses = new Set(["active", "inactive", "draft", "sold"]);
 
 const statusBadgeClasses = {
-  active: "border-zinc-200 bg-white text-zinc-700",
-  inactive: "border-zinc-200 bg-white text-zinc-700",
-  draft: "border-zinc-200 bg-zinc-100 text-zinc-700",
-  sold: "border-zinc-200 bg-zinc-100 text-zinc-700",
-  favourite: "border-rose-200 bg-rose-50 text-rose-700",
+  active: "border-zinc-200 bg-white text-zinc-700 dark:border-border dark:bg-background dark:text-foreground",
+  inactive:
+    "border-zinc-200 bg-white text-zinc-700 dark:border-border dark:bg-background dark:text-foreground",
+  draft: "border-zinc-200 bg-zinc-100 text-zinc-700 dark:border-border dark:bg-muted dark:text-foreground",
+  sold: "border-zinc-200 bg-zinc-100 text-zinc-700 dark:border-border dark:bg-muted dark:text-foreground",
+  favourite:
+    "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300",
 };
 
 function DashboardStatusBadge({ status, label }) {
@@ -184,8 +186,8 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                 size="sm"
                 className={
                   isActive
-                    ? "h-9 rounded-xl px-3.5"
-                    : "h-9 rounded-xl bg-white px-3.5"
+                    ? "h-9 rounded-xl px-3.5 dark:bg-white dark:text-zinc-950 dark:hover:bg-white/95"
+                    : "h-9 rounded-xl bg-white px-3.5 dark:bg-background"
                 }
               >
                 <Link href={buildDashboardHref(tab.key)}>
@@ -193,8 +195,8 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                   <span
                     className={`ml-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
                       isActive
-                        ? "bg-white/20 text-white"
-                        : "bg-black/10 text-zinc-700"
+                        ? "bg-white/20 text-white dark:bg-zinc-900/10 dark:text-zinc-950"
+                        : "bg-black/10 text-zinc-700 dark:bg-white/10 dark:text-foreground"
                     }`}
                   >
                     {counts[tab.key]}
@@ -225,42 +227,42 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
           paginatedItems.map((item) => (
             <div
               key={`${item.dashboardStatus}-${item.id}`}
-              className="rounded-[1.5rem] border border-zinc-200 bg-white p-4 shadow-sm"
+              className="rounded-[1.5rem] border border-zinc-200 bg-white p-4 shadow-sm dark:border-border dark:bg-card"
             >
-              <Link href={`/listings/${item.slug}`} className="block rounded-xl transition hover:bg-zinc-50">
+              <Link href={`/listings/${item.slug}`} className="block rounded-xl transition hover:bg-zinc-50 dark:hover:bg-muted/40">
                 <div className="flex items-center gap-3">
-                  <div className="h-14 w-18 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100">
+                  <div className="h-14 w-18 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-border dark:bg-muted">
                     {item.imageUrl ? (
                       <img src={item.imageUrl} alt={item.title} className="h-full w-full object-cover" />
                     ) : (
-                      <div className="h-full w-full bg-zinc-100" />
+                      <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-zinc-950">{item.title}</p>
-                    <p className="mt-1 truncate text-sm text-zinc-500">{item.meta}</p>
+                    <p className="font-semibold text-zinc-950 dark:text-foreground">{item.title}</p>
+                    <p className="mt-1 truncate text-sm text-zinc-500 dark:text-muted-foreground">{item.meta}</p>
                   </div>
                 </div>
               </Link>
 
               <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500">{t.status}</p>
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-border dark:bg-muted/40">
+                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500 dark:text-muted-foreground">{t.status}</p>
                   <div className="mt-2">
                     <DashboardStatusBadge status={item.dashboardStatus} label={statusLabels[item.dashboardStatus]} />
                   </div>
                 </div>
-                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500">{t.price}</p>
-                  <p className="mt-2 font-medium text-zinc-900">{item.price}</p>
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-border dark:bg-muted/40">
+                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500 dark:text-muted-foreground">{t.price}</p>
+                  <p className="mt-2 font-medium text-zinc-900 dark:text-foreground">{item.price}</p>
                 </div>
-                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500">{t.messages}</p>
-                  <p className="mt-2 text-zinc-700">{item.messageCount > 0 ? `${item.messageCount}+` : "0"}</p>
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-border dark:bg-muted/40">
+                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500 dark:text-muted-foreground">{t.messages}</p>
+                  <p className="mt-2 text-zinc-700 dark:text-foreground">{item.messageCount > 0 ? `${item.messageCount}+` : "0"}</p>
                 </div>
-                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500">{t.category}</p>
-                  <p className="mt-2 line-clamp-2 text-zinc-700">
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-border dark:bg-muted/40">
+                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500 dark:text-muted-foreground">{t.category}</p>
+                  <p className="mt-2 line-clamp-2 text-zinc-700 dark:text-foreground">
                     {getTranslatedCategoryValue(item.category, t, language)}
                   </p>
                 </div>
@@ -271,14 +273,14 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                   {editableStatuses.has(item.dashboardStatus) ? (
                     <DashboardListingActions id={item.id} slug={item.slug} status={item.dashboardStatus} />
                   ) : (
-                    <span className="text-sm text-zinc-400">-</span>
+                    <span className="text-sm text-zinc-400 dark:text-muted-foreground">-</span>
                   )}
                 </div>
               ) : null}
             </div>
           ))
         ) : filteredItems.length === 0 ? (
-          <div className="rounded-[1.5rem] border border-zinc-200 bg-white px-6 py-10 text-center text-sm text-zinc-500 shadow-sm">
+          <div className="rounded-[1.5rem] border border-zinc-200 bg-white px-6 py-10 text-center text-sm text-zinc-500 shadow-sm dark:border-border dark:bg-card dark:text-muted-foreground">
             {hasActiveFilters
               ? t.dashboardNoListingsMatchFilters
               : t.noListingsInSection}
@@ -286,7 +288,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
         ) : null}
 
         {totalPages > 1 ? (
-          <div className="flex items-center justify-between gap-3 rounded-[1.5rem] border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-500 shadow-sm">
+          <div className="flex items-center justify-between gap-3 rounded-[1.5rem] border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-500 shadow-sm dark:border-border dark:bg-card dark:text-muted-foreground">
             <Button
               type="button"
               variant="outline"
@@ -296,7 +298,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
             >
               {t.previousPage}
             </Button>
-            <span className="text-center font-medium text-zinc-700">
+            <span className="text-center font-medium text-zinc-700 dark:text-foreground">
               {t.pageLabel} {safePage} {t.ofLabel} {totalPages}
             </span>
             <Button
@@ -312,11 +314,11 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
         ) : null}
       </div>
 
-      <div className="hidden overflow-hidden rounded-[1.75rem] border border-zinc-200 bg-white md:block">
+      <div className="hidden overflow-hidden rounded-[1.75rem] border border-zinc-200 bg-white dark:border-border dark:bg-card md:block">
         <div className="overflow-x-hidden">
           <table className="w-full table-fixed text-left">
-            <thead className="bg-zinc-50">
-              <tr className="border-b border-zinc-200 text-sm text-zinc-500">
+            <thead className="bg-zinc-50 dark:bg-muted/40">
+              <tr className="border-b border-zinc-200 text-sm text-zinc-500 dark:border-border dark:text-muted-foreground">
                 <th className="w-[32%] px-5 py-3.5 font-medium">{t.listing}</th>
                 <th className="w-[10%] px-5 py-3.5 font-medium">{t.status}</th>
                 <th className="w-[10%] px-5 py-3.5 font-medium">{t.price}</th>
@@ -329,20 +331,20 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
             </thead>
             <tbody>
               {paginatedItems.map((item) => (
-                <tr key={`${item.dashboardStatus}-${item.id}`} className="border-b border-zinc-200 last:border-b-0">
+                <tr key={`${item.dashboardStatus}-${item.id}`} className="border-b border-zinc-200 last:border-b-0 dark:border-border">
                   <td className="px-5 py-4 align-top">
-                    <Link href={`/listings/${item.slug}`} className="block rounded-xl transition hover:bg-zinc-50">
+                    <Link href={`/listings/${item.slug}`} className="block rounded-xl transition hover:bg-zinc-50 dark:hover:bg-muted/40">
                       <div className="flex items-center gap-4 py-1">
-                        <div className="h-12 w-16 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100">
+                        <div className="h-12 w-16 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-border dark:bg-muted">
                           {item.imageUrl ? (
                             <img src={item.imageUrl} alt={item.title} className="h-full w-full object-cover" />
                           ) : (
-                            <div className="h-full w-full bg-zinc-100" />
+                            <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
                           )}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-semibold text-zinc-950">{item.title}</p>
-                          <p className="mt-1 truncate text-sm text-zinc-500">{item.meta}</p>
+                          <p className="font-semibold text-zinc-950 dark:text-foreground">{item.title}</p>
+                          <p className="mt-1 truncate text-sm text-zinc-500 dark:text-muted-foreground">{item.meta}</p>
                         </div>
                       </div>
                     </Link>
@@ -350,9 +352,9 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                   <td className="px-5 py-4 align-top whitespace-nowrap">
                     <DashboardStatusBadge status={item.dashboardStatus} label={statusLabels[item.dashboardStatus]} />
                   </td>
-                  <td className="px-5 py-4 align-top font-medium whitespace-nowrap text-zinc-900">{item.price}</td>
-                  <td className="px-5 py-4 align-top whitespace-nowrap text-zinc-700">{item.messageCount > 0 ? `${item.messageCount}+` : "0"}</td>
-                  <td className="px-5 py-4 align-top text-zinc-700">
+                  <td className="px-5 py-4 align-top font-medium whitespace-nowrap text-zinc-900 dark:text-foreground">{item.price}</td>
+                  <td className="px-5 py-4 align-top whitespace-nowrap text-zinc-700 dark:text-foreground">{item.messageCount > 0 ? `${item.messageCount}+` : "0"}</td>
+                  <td className="px-5 py-4 align-top text-zinc-700 dark:text-foreground">
                     <span className="line-clamp-2">{getTranslatedCategoryValue(item.category, t, language)}</span>
                   </td>
                   {showManagementActions ? (
@@ -360,7 +362,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                       {editableStatuses.has(item.dashboardStatus) ? (
                         <DashboardListingActions id={item.id} slug={item.slug} status={item.dashboardStatus} />
                       ) : (
-                        <span className="text-sm text-zinc-400">-</span>
+                        <span className="text-sm text-zinc-400 dark:text-muted-foreground">-</span>
                       )}
                     </td>
                   ) : null}
@@ -371,7 +373,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
         </div>
 
         {filteredItems.length === 0 ? (
-          <div className="px-6 py-12 text-center text-sm text-zinc-500">
+          <div className="px-6 py-12 text-center text-sm text-zinc-500 dark:text-muted-foreground">
             {hasActiveFilters
               ? t.dashboardNoListingsMatchFilters
               : t.noListingsInSection}
@@ -379,11 +381,11 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
         ) : null}
 
         {filteredItems.length > 7 ? (
-          <div className="flex flex-col gap-4 border-t border-zinc-200 px-5 py-4 text-sm text-zinc-500 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-4 border-t border-zinc-200 px-5 py-4 text-sm text-zinc-500 dark:border-border dark:text-muted-foreground md:flex-row md:items-center md:justify-between">
             <p>0 {t.ofLabel} {filteredItems.length} {t.selectedRowsLabel}.</p>
             <div className="flex flex-col gap-4 md:flex-row md:items-center">
               <div className="flex items-center gap-2">
-                <span className="font-medium text-zinc-700">{t.rowsPerPage}</span>
+                <span className="font-medium text-zinc-700 dark:text-foreground">{t.rowsPerPage}</span>
                 <div className="flex items-center gap-2">
                   {rowsPerPageOptions.map((option) => (
                     <Button
@@ -391,7 +393,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                       type="button"
                       variant={rowsPerPage === option ? "outline" : "ghost"}
                       size="sm"
-                      className={rowsPerPage === option ? "h-9 rounded-xl bg-white px-3" : "h-9 rounded-xl px-3"}
+                      className={rowsPerPage === option ? "h-9 rounded-xl bg-white px-3 dark:bg-background" : "h-9 rounded-xl px-3"}
                       onClick={() => setRowsPerPage(option)}
                     >
                       {option}
@@ -400,7 +402,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className="font-medium text-zinc-700">{t.pageLabel} {safePage} {t.ofLabel} {totalPages}</span>
+                <span className="font-medium text-zinc-700 dark:text-foreground">{t.pageLabel} {safePage} {t.ofLabel} {totalPages}</span>
                 <div className="flex items-center gap-2">
                   <Button type="button" variant="outline" size="icon-sm" className={safePage === 1 ? "pointer-events-none opacity-50" : ""} onClick={() => setCurrentPage(1)}>
                     <span aria-hidden="true">«</span>

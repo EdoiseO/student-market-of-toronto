@@ -22,13 +22,13 @@ export const translations = {
     settings: "Settings",
     settingsPreviewBadge: "Preview",
     settingsDescription:
-      "Appearance and notification preferences start here. The controls below show the structure we will use once these account-level settings are connected.",
+      "Manage the settings that are live today, while previewing the notification controls planned for a future release.",
     settingsAppearanceTitle: "Appearance",
     settingsAppearanceDescription:
-      "Preview the theme options planned for your dashboard and account pages.",
+      "Choose how Student Market looks across supported pages and shared app surfaces.",
     settingsThemePreference: "Theme preference",
     settingsThemePreferenceDescription:
-      "Choose how Student Market should look when appearance controls are enabled.",
+      "Choose how Student Market should look on this device.",
     settingsThemeSystem: "Match system",
     settingsThemeSystemDescription:
       "Follow your device light or dark mode automatically.",
@@ -38,6 +38,7 @@ export const translations = {
     settingsThemeDark: "Dark",
     settingsThemeDarkDescription:
       "Use a darker interface for late-night studying and listing cleanup.",
+    settingsThemeSaved: "Theme updated for this device.",
     settingsNotificationsTitle: "Notifications",
     settingsNotificationsDescription:
       "Plan how marketplace updates should reach you once notification preferences are connected.",
@@ -77,6 +78,10 @@ export const translations = {
       "See alerts inside your dashboard when in-app notification storage is added.",
     settingsPreviewNote:
       "These controls are shown as honest preview content for now and do not save changes yet.",
+    settingsThemeLiveNote:
+      "Your theme choice applies right away and stays saved on this device.",
+    switchToDarkMode: "Switch to dark mode",
+    switchToLightMode: "Switch to light mode",
     studentMarket: "Student Market",
     toronto: "Toronto",
     marketplace: "Marketplace",
@@ -412,13 +417,13 @@ export const translations = {
     settings: "Paramètres",
     settingsPreviewBadge: "Aperçu",
     settingsDescription:
-      "Les préférences d'affichage et de notifications commencent ici. Les options ci-dessous présentent la structure qui sera utilisée une fois ces réglages de compte activés.",
+      "Gérez les réglages déjà actifs aujourd'hui tout en prévisualisant les contrôles de notifications prévus dans une prochaine version.",
     settingsAppearanceTitle: "Apparence",
     settingsAppearanceDescription:
-      "Découvrez les options de thème prévues pour votre tableau de bord et vos pages de compte.",
+      "Choisissez l'apparence de Student Market sur les pages prises en charge et les surfaces partagées de l'application.",
     settingsThemePreference: "Préférence de thème",
     settingsThemePreferenceDescription:
-      "Choisissez l'apparence de Student Market une fois les réglages d'affichage activés.",
+      "Choisissez l'apparence de Student Market sur cet appareil.",
     settingsThemeSystem: "Suivre le système",
     settingsThemeSystemDescription:
       "Suivez automatiquement le mode clair ou sombre de votre appareil.",
@@ -428,6 +433,7 @@ export const translations = {
     settingsThemeDark: "Sombre",
     settingsThemeDarkDescription:
       "Optez pour une interface plus sombre lors des longues soirées d'étude ou pour gérer vos annonces.",
+    settingsThemeSaved: "Le thème a été mis à jour pour cet appareil.",
     settingsNotificationsTitle: "Notifications",
     settingsNotificationsDescription:
       "Définissez comment vous souhaitez recevoir les mises à jour du marché étudiant une fois ces préférences activées.",
@@ -468,6 +474,10 @@ export const translations = {
       "Consultez les alertes directement dans votre tableau de bord lorsque la prise en charge des notifications dans l'application sera ajoutée.",
     settingsPreviewNote:
       "Ces options sont affichées comme un aperçu honnête pour l'instant et n'enregistrent pas encore de changements.",
+    settingsThemeLiveNote:
+      "Votre choix de thème s'applique immédiatement et reste enregistré sur cet appareil.",
+    switchToDarkMode: "Passer au mode sombre",
+    switchToLightMode: "Passer au mode clair",
     studentMarket: "Marché étudiant",
     toronto: "Toronto",
     marketplace: "Marché",

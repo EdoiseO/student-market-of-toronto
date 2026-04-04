@@ -94,10 +94,10 @@ export function ProfileListingsSection({ listings, sellerSchool }) {
     <>
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex items-center gap-3">
-          <UserRound className="size-5 text-zinc-500" />
+          <UserRound className="size-5 text-zinc-500 dark:text-muted-foreground" />
           <div>
-            <h2 className="text-2xl font-bold text-zinc-950">{t.activeListingsTitle}</h2>
-            <p className="text-sm text-zinc-500">{t.activeListingsDescription}</p>
+            <h2 className="text-2xl font-bold text-zinc-950 dark:text-foreground">{t.activeListingsTitle}</h2>
+            <p className="text-sm text-zinc-500 dark:text-muted-foreground">{t.activeListingsDescription}</p>
           </div>
         </div>
 
@@ -150,7 +150,7 @@ export function ProfileListingsSection({ listings, sellerSchool }) {
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder={t.searchListingsPlaceholder}
-              className="h-10 rounded-xl bg-white"
+              className="h-10 rounded-xl bg-white dark:bg-input/30"
             />
           </div>
         </div>
@@ -282,9 +282,9 @@ export function ProfileListingsSection({ listings, sellerSchool }) {
           ) : null}
         </>
       ) : (
-        <Card className="rounded-3xl border-zinc-200 bg-zinc-50 py-0 shadow-none">
+        <Card className="rounded-3xl border-zinc-200 bg-zinc-50 py-0 shadow-none dark:bg-muted/40 dark:ring-border">
           <CardHeader className="px-6 py-6">
-            <CardTitle className="text-xl text-zinc-950">{t.noListingsMatchFiltersTitle}</CardTitle>
+            <CardTitle className="text-xl text-zinc-950 dark:text-foreground">{t.noListingsMatchFiltersTitle}</CardTitle>
             <CardDescription>{t.noListingsMatchFiltersDescription}</CardDescription>
           </CardHeader>
           <CardContent className="px-6 pb-6">
@@ -294,7 +294,7 @@ export function ProfileListingsSection({ listings, sellerSchool }) {
                 setSearchQuery("");
                 setCategoryFilter("");
               }}
-              className="text-sm font-medium text-zinc-900 underline underline-offset-4"
+              className="text-sm font-medium text-zinc-900 underline underline-offset-4 dark:text-foreground"
             >
               {t.clearFilters}
             </button>

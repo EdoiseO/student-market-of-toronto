@@ -120,8 +120,8 @@ export function CardImage({
       onBlur={handlePointerLeave}
       aria-label={`${actionLabel ?? t.viewListing}: ${title}`}
     >
-      <Card className="flex h-full w-full max-w-none flex-col gap-0 overflow-hidden border-zinc-200 bg-white pt-0 shadow-sm ring-1 ring-zinc-200/80 transition-transform group-hover:-translate-y-0.5 group-focus-visible:-translate-y-0.5 group-focus-visible:ring-2 group-focus-visible:ring-zinc-900/15">
-        <div className="relative aspect-[4/3] overflow-hidden bg-zinc-200">
+      <Card className="flex h-full w-full max-w-none flex-col gap-0 overflow-hidden border-zinc-200 bg-white pt-0 shadow-sm ring-1 ring-zinc-200/80 transition-transform group-hover:-translate-y-0.5 group-focus-visible:-translate-y-0.5 group-focus-visible:ring-2 group-focus-visible:ring-zinc-900/15 dark:border-border dark:bg-card dark:ring-border dark:group-focus-visible:ring-white/15">
+        <div className="relative aspect-[4/3] overflow-hidden bg-zinc-200 dark:bg-muted">
           {images.length > 0 ? (
             <img
               key={`${images[activeImageIndex]}-${activeImageIndex}`}
@@ -132,26 +132,26 @@ export function CardImage({
           ) : (
             <div
               aria-label={imageAlt}
-              className="h-full w-full bg-zinc-200"
+              className="h-full w-full bg-zinc-200 dark:bg-muted"
             />
           )}
           {badge ? (
             <div className="absolute left-3 top-3 z-10">
-              <Badge variant="secondary" className="bg-white/90 text-zinc-900">
+              <Badge variant="secondary" className="bg-white/90 text-zinc-900 dark:bg-background/90 dark:text-foreground">
                 {translateBadgeLabel(badge, t)}
               </Badge>
             </div>
           ) : null}
         </div>
         <CardContent className="flex flex-1 flex-col gap-2 p-4">
-          <CardTitle className="min-h-[3.5rem] text-lg font-semibold text-zinc-950 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
+          <CardTitle className="min-h-[3.5rem] text-lg font-semibold text-zinc-950 dark:text-foreground [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
             {title}
           </CardTitle>
-          <p className="text-lg font-bold text-zinc-900">{price}</p>
-          <p className="truncate text-sm text-zinc-500">{meta}</p>
+          <p className="text-lg font-bold text-zinc-900 dark:text-foreground">{price}</p>
+          <p className="truncate text-sm text-zinc-500 dark:text-muted-foreground">{meta}</p>
         </CardContent>
-        <CardFooter className="border-t border-zinc-100 bg-zinc-50/70">
-          <div className="w-full rounded-lg bg-zinc-950 px-2.5 py-1.5 text-center text-sm font-medium text-white transition-colors group-hover:bg-zinc-800 group-focus-visible:bg-zinc-800">
+        <CardFooter className="border-t border-zinc-100 bg-zinc-50/70 dark:border-border dark:bg-muted/40">
+          <div className="w-full rounded-lg bg-zinc-950 px-2.5 py-1.5 text-center text-sm font-medium text-white transition-colors group-hover:bg-zinc-800 group-focus-visible:bg-zinc-800 dark:bg-primary dark:text-primary-foreground dark:group-hover:bg-primary/90 dark:group-focus-visible:bg-primary/90">
             {actionLabel ?? t.viewListing}
           </div>
         </CardFooter>

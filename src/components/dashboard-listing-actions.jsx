@@ -126,7 +126,7 @@ export function DashboardListingActions({ id, slug, status }) {
         asChild
         variant="outline"
         size="xs"
-        className="h-8 rounded-lg bg-white px-2.5"
+        className="h-8 rounded-lg bg-white px-2.5 dark:bg-background"
       >
         <Link href={`/listings/${slug}/edit`}>{t.editListing}</Link>
       </Button>
@@ -135,7 +135,7 @@ export function DashboardListingActions({ id, slug, status }) {
           type="button"
           variant="outline"
           size="xs"
-          className="h-8 rounded-lg bg-white px-2.5"
+          className="h-8 rounded-lg bg-white px-2.5 dark:bg-background"
           onClick={() => handleUpdateStatus("active")}
           disabled={isUpdatingStatus}
         >
@@ -147,7 +147,7 @@ export function DashboardListingActions({ id, slug, status }) {
           type="button"
           variant="outline"
           size="xs"
-          className="h-8 rounded-lg bg-white px-2.5"
+          className="h-8 rounded-lg bg-white px-2.5 dark:bg-background"
           onClick={() => handleUpdateStatus("sold")}
           disabled={isUpdatingStatus}
         >
@@ -159,7 +159,7 @@ export function DashboardListingActions({ id, slug, status }) {
           type="button"
           variant="outline"
           size="xs"
-          className="h-8 rounded-lg bg-white px-2.5"
+          className="h-8 rounded-lg bg-white px-2.5 dark:bg-background"
           onClick={() => handleUpdateStatus("active")}
           disabled={isUpdatingStatus}
         >
@@ -172,7 +172,7 @@ export function DashboardListingActions({ id, slug, status }) {
             type="button"
             variant="outline"
             size="xs"
-            className="h-8 rounded-lg border-rose-200 bg-rose-50 px-2.5 text-rose-700 hover:bg-rose-100"
+            className="h-8 rounded-lg border-rose-200 bg-rose-50 px-2.5 text-rose-700 hover:bg-rose-100 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-950/60"
           >
             {t.delete}
           </Button>

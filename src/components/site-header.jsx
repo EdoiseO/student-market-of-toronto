@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 
 import LanguageSwitcher from "@/components/language-switcher";
 import { SearchForm } from "@/components/search-form"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { useSidebar } from "@/components/ui/sidebar"
@@ -53,11 +54,15 @@ export function SiteHeader() {
               {t.browseListingsSubtitle}
             </p>
           </div>
+          <div className="ml-auto shrink-0 xl:hidden">
+            <ThemeToggle />
+          </div>
         </div>
         <div className="flex min-w-0 justify-center">
           <SearchForm className="w-full max-w-2xl xl:max-w-4xl" />
         </div>
-        <div className="hidden items-center justify-end xl:flex">
+        <div className="hidden items-center justify-end gap-2 xl:flex">
+          <ThemeToggle />
           <LanguageSwitcher />
         </div>
       </div>

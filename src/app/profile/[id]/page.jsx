@@ -126,9 +126,9 @@ export default async function PublicProfilePage({ params }) {
   }));
 
   return (
-    <main className="min-h-screen bg-zinc-100 p-5 md:p-6 lg:p-8">
+    <main className="min-h-screen bg-zinc-100 p-5 dark:bg-background md:p-6 lg:p-8">
       <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 lg:gap-7">
-        <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200 sm:p-6 lg:p-7">
+        <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200 dark:bg-card dark:ring-border sm:p-6 lg:p-7">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-6">
             <div className="shrink-0">
               <ProfileAvatar
@@ -145,33 +145,33 @@ export default async function PublicProfilePage({ params }) {
             <div className="flex-1 space-y-4">
               <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                 <div className="space-y-2">
-                  <Badge variant="outline" className="border-zinc-300 bg-zinc-50 text-zinc-700">
+                  <Badge variant="outline" className="border-zinc-300 bg-zinc-50 text-zinc-700 dark:border-border dark:bg-muted dark:text-foreground">
                     {t.seller}
                   </Badge>
-                  <h1 className="text-2xl font-bold tracking-tight text-zinc-950 sm:text-3xl lg:text-4xl">
+                  <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-foreground sm:text-3xl lg:text-4xl">
                     {sellerName}
                   </h1>
-                  <p className="text-base text-zinc-600">{profile.school || t.torontoStudent}</p>
+                  <p className="text-base text-zinc-600 dark:text-muted-foreground">{profile.school || t.torontoStudent}</p>
                 </div>
 
                 <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:max-w-[304px]">
-                  <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                    <ListIcon className="size-4 text-zinc-500" />
+                  <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-border dark:bg-muted/40">
+                    <ListIcon className="size-4 text-zinc-500 dark:text-muted-foreground" />
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-muted-foreground">
                         {t.activeListingsTitle}
                       </p>
-                      <p className="mt-1 text-zinc-900">{sellerListings.length}</p>
+                      <p className="mt-1 text-zinc-900 dark:text-foreground">{sellerListings.length}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                    <Clock3 className="size-4 text-zinc-500" />
+                  <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-border dark:bg-muted/40">
+                    <Clock3 className="size-4 text-zinc-500 dark:text-muted-foreground" />
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-muted-foreground">
                         {t.memberSince}
                       </p>
-                      <p className="mt-1 text-zinc-900">
+                      <p className="mt-1 text-zinc-900 dark:text-foreground">
                         {profile.created_at ? formatDate(profile.created_at, language) : "—"}
                       </p>
                     </div>
@@ -181,31 +181,31 @@ export default async function PublicProfilePage({ params }) {
             </div>
           </div>
 
-          <div className="mt-5 w-full max-w-5xl rounded-2xl border border-zinc-200 bg-zinc-50 p-4 sm:p-5 lg:p-6">
-            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-zinc-500">
+          <div className="mt-5 w-full max-w-5xl rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-border dark:bg-muted/40 sm:p-5 lg:p-6">
+            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-muted-foreground">
               {t.profileDescriptionTitle}
             </p>
             {profile.bio ? (
-              <p className="whitespace-pre-line text-base leading-7 text-zinc-600">
+              <p className="whitespace-pre-line text-base leading-7 text-zinc-600 dark:text-muted-foreground">
                 {profile.bio}
               </p>
             ) : (
-              <p className="text-base text-zinc-500">{t.profileNoBio}</p>
+              <p className="text-base text-zinc-500 dark:text-muted-foreground">{t.profileNoBio}</p>
             )}
           </div>
         </section>
 
-        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 lg:p-7">
+        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-card dark:ring-border lg:p-7">
           {sellerListings.length > 0 ? (
             <ProfileListingsSection listings={sellerListings} sellerSchool={profile.school || ""} />
           ) : (
-            <Card className="rounded-3xl border-zinc-200 bg-zinc-50 py-0 shadow-none">
+            <Card className="rounded-3xl border-zinc-200 bg-zinc-50 py-0 shadow-none dark:bg-muted/40 dark:ring-border">
               <CardHeader className="px-6 py-6">
-                <CardTitle className="text-xl text-zinc-950">{t.noActiveListingsTitle}</CardTitle>
+                <CardTitle className="text-xl text-zinc-950 dark:text-foreground">{t.noActiveListingsTitle}</CardTitle>
                 <CardDescription>{t.noActiveListingsDescription}</CardDescription>
               </CardHeader>
               <CardContent className="px-6 pb-6">
-                <Link href="/" className="text-sm font-medium text-zinc-900 underline underline-offset-4">
+                <Link href="/" className="text-sm font-medium text-zinc-900 underline underline-offset-4 dark:text-foreground">
                   {t.browseListings}
                 </Link>
               </CardContent>

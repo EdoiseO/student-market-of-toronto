@@ -116,21 +116,21 @@ function CategorySection({ title, description, items, href }) {
   }
 
   return (
-    <section className="rounded-3xl bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 md:p-8">
+    <section className="rounded-3xl bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-muted/40 dark:ring-border md:p-8">
       <div className="mb-5 flex items-center justify-between gap-4">
         <div>
           {href ? (
             <Link
               href={href}
-              className="inline-flex items-center gap-2 text-2xl font-bold text-zinc-950 transition-colors hover:text-zinc-700"
+              className="inline-flex items-center gap-2 text-2xl font-bold text-zinc-950 transition-colors hover:text-zinc-700 dark:text-foreground dark:hover:text-foreground/80"
             >
               <span>{title}</span>
               <span aria-hidden="true">➔</span>
             </Link>
           ) : (
-            <h2 className="text-2xl font-bold text-zinc-950">{title}</h2>
+            <h2 className="text-2xl font-bold text-zinc-950 dark:text-foreground">{title}</h2>
           )}
-          <p className="mt-1 text-sm text-zinc-500">{description}</p>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">{description}</p>
         </div>
       </div>
       <CategoryListingGrid items={items} />
@@ -203,13 +203,13 @@ export default async function CategoryPage({ params }) {
   const allAvailablePreview = getAllListingsPreview(listings, SECTION_ITEM_LIMIT, usedIds);
 
   return (
-    <main className="min-h-screen bg-zinc-100 p-6 md:p-8">
+    <main className="min-h-screen bg-zinc-100 p-6 dark:bg-background md:p-8">
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8">
-        <section className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-zinc-200">
-          <h1 className="text-4xl font-bold tracking-tight text-zinc-950">
+        <section className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-zinc-200 dark:bg-card dark:ring-border">
+          <h1 className="text-4xl font-bold tracking-tight text-zinc-950 dark:text-foreground">
             {categoryTitle}
           </h1>
-          <p className="mt-3 max-w-2xl text-base text-zinc-600">
+          <p className="mt-3 max-w-2xl text-base text-zinc-600 dark:text-muted-foreground">
             {t.categoryPageDescription}
           </p>
         </section>
@@ -258,9 +258,9 @@ export default async function CategoryPage({ params }) {
             />
           </>
         ) : (
-          <section className="rounded-3xl bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 md:p-8">
-            <h2 className="text-2xl font-bold text-zinc-950">{t.noActiveListingsYetTitle}</h2>
-            <p className="mt-2 max-w-2xl text-sm text-zinc-500">
+          <section className="rounded-3xl bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-muted/40 dark:ring-border md:p-8">
+            <h2 className="text-2xl font-bold text-zinc-950 dark:text-foreground">{t.noActiveListingsYetTitle}</h2>
+            <p className="mt-2 max-w-2xl text-sm text-zinc-500 dark:text-muted-foreground">
               {language === "fr"
                 ? `Aucune annonce active n'est disponible dans ${categoryTitleLower} pour le moment. Revenez bientôt ou explorez une autre catégorie.`
                 : `There are no active listings in ${categoryTitleLower} right now. Check back soon or explore another category.`}

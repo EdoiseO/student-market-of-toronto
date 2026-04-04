@@ -113,21 +113,21 @@ export default async function SearchPage({ searchParams }) {
   ].filter(Boolean);
 
   return (
-    <main className="min-h-screen bg-zinc-100 p-6 md:p-8">
+    <main className="min-h-screen bg-zinc-100 p-6 dark:bg-background md:p-8">
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-6">
         <section className="space-y-5">
-            <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm">
+            <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
               <CardContent className="space-y-4 p-6">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <p className="text-sm font-medium uppercase tracking-[0.18em] text-zinc-500">
+                    <p className="text-sm font-medium uppercase tracking-[0.18em] text-zinc-500 dark:text-muted-foreground">
                       {t.results}
                     </p>
-                    <h2 className="text-2xl font-bold text-zinc-950">
+                    <h2 className="text-2xl font-bold text-zinc-950 dark:text-foreground">
                       {filteredListings.length} {filteredListings.length === 1 ? t.listingResultSingular : t.listingResultPlural}
                     </h2>
                   </div>
-                  <div className="text-sm text-zinc-500">
+                  <div className="text-sm text-zinc-500 dark:text-muted-foreground">
                     {query ? `${t.showingMatchesFor} “${query}”` : t.showingAllActiveListings}
                   </div>
                 </div>
@@ -135,9 +135,9 @@ export default async function SearchPage({ searchParams }) {
                 {activeFilters.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {activeFilters.map((filter) => (
-                      <Badge key={filter.key} variant="secondary" className="bg-zinc-100 text-zinc-800">
+                      <Badge key={filter.key} variant="secondary" className="bg-zinc-100 text-zinc-800 dark:bg-muted dark:text-foreground">
                         <span>{filter.label}</span>
-                        <Link href={buildSearchHref("/search", currentParams, { [filter.key]: "" })} className="ml-2 text-zinc-500 hover:text-zinc-900">
+                        <Link href={buildSearchHref("/search", currentParams, { [filter.key]: "" })} className="ml-2 text-zinc-500 hover:text-zinc-900 dark:text-muted-foreground dark:hover:text-foreground">
                           ✕
                         </Link>
                       </Badge>
@@ -147,7 +147,7 @@ export default async function SearchPage({ searchParams }) {
               </CardContent>
             </Card>
 
-            <section className="rounded-[2rem] bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200">
+            <section className="rounded-[2rem] bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-muted/40 dark:ring-border">
               {filteredListings.length > 0 ? (
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                   {filteredListings.map((item) => (
@@ -165,9 +165,9 @@ export default async function SearchPage({ searchParams }) {
                   ))}
                 </div>
               ) : (
-                <div className="rounded-[1.5rem] border border-dashed border-zinc-300 bg-white px-6 py-16 text-center">
-                  <p className="text-lg font-semibold text-zinc-950">{t.noSearchResultsTitle}</p>
-                  <p className="mt-2 text-sm text-zinc-500">
+                <div className="rounded-[1.5rem] border border-dashed border-zinc-300 bg-white px-6 py-16 text-center dark:border-border dark:bg-card">
+                  <p className="text-lg font-semibold text-zinc-950 dark:text-foreground">{t.noSearchResultsTitle}</p>
+                  <p className="mt-2 text-sm text-zinc-500 dark:text-muted-foreground">
                     {t.noSearchResultsDescription}
                   </p>
                 </div>

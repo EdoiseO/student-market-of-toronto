@@ -333,14 +333,14 @@ export function EditListingForm({ listing }) {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-100 p-6 md:p-8">
+    <main className="min-h-screen bg-zinc-100 p-6 dark:bg-background md:p-8">
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8">
-        <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm">
-          <CardHeader className="border-b border-zinc-200 px-8 py-7">
-            <CardTitle className="text-4xl font-bold tracking-tight text-zinc-950">
+        <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
+          <CardHeader className="border-b border-zinc-200 px-8 py-7 dark:border-border">
+            <CardTitle className="text-4xl font-bold tracking-tight text-zinc-950 dark:text-foreground">
               {t.editListing}
             </CardTitle>
-            <CardDescription className="max-w-2xl text-base text-zinc-600">
+            <CardDescription className="max-w-2xl text-base text-zinc-600 dark:text-muted-foreground">
               {t.editListingDesc}
             </CardDescription>
           </CardHeader>
@@ -397,30 +397,30 @@ export function EditListingForm({ listing }) {
               </FieldGroup>
 
               <div className="flex flex-col gap-6">
-                <Card className="rounded-[1.75rem] border border-dashed border-zinc-300 bg-zinc-50 py-0 shadow-none">
+                <Card className="rounded-[1.75rem] border border-dashed border-zinc-300 bg-zinc-50 py-0 shadow-none dark:border-border dark:bg-muted/70 dark:ring-1 dark:ring-white/8">
                   <CardContent className="space-y-5 p-6">
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className={cn(
-                        "flex min-h-56 w-full flex-col items-center justify-center rounded-[1.5rem] border bg-white px-6 py-10 text-center transition",
+                        "flex min-h-56 w-full flex-col items-center justify-center rounded-[1.5rem] border bg-white px-6 py-10 text-center transition dark:bg-card",
                         isDragActive
-                          ? "border-zinc-950 ring-2 ring-zinc-950/10"
-                          : "border-zinc-200 hover:border-zinc-400"
+                          ? "border-zinc-950 ring-2 ring-zinc-950/10 dark:border-ring dark:ring-ring/20"
+                          : "border-zinc-200 hover:border-zinc-400 dark:border-border dark:hover:border-ring"
                       )}
                       {...dropzoneProps}
                     >
-                      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-950 text-white">
+                      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-950 text-white dark:bg-primary dark:text-primary-foreground">
                         <ImagePlus className="size-6" />
                       </div>
-                      <p className="text-lg font-semibold text-zinc-950">
+                      <p className="text-lg font-semibold text-zinc-950 dark:text-foreground">
                         {t.addPhotos}
                       </p>
-                      <p className="mt-2 text-sm text-zinc-500">
+                      <p className="mt-2 text-sm text-zinc-500 dark:text-muted-foreground">
                         {isDragActive ? t.dropImages : t.dragDrop}
                       </p>
                       {photos.length + newPhotos.length > 0 ? (
-                        <p className="mt-4 text-sm font-medium text-zinc-700">
+                        <p className="mt-4 text-sm font-medium text-zinc-700 dark:text-foreground">
                           {photos.length + newPhotos.length} {t.filesAvailableLabel}
                         </p>
                       ) : null}
@@ -473,7 +473,7 @@ export function EditListingForm({ listing }) {
                   </CardContent>
                 </Card>
 
-                <Card className="rounded-[1.75rem] border-zinc-200 bg-zinc-50 py-0 shadow-none">
+                <Card className="rounded-[1.75rem] border-zinc-200 bg-zinc-50 py-0 shadow-none dark:bg-muted/70 dark:ring-1 dark:ring-white/8">
                   <CardContent className="space-y-5 p-6">
                     <ListingCombobox
                       label={t.campus}
@@ -486,7 +486,7 @@ export function EditListingForm({ listing }) {
 
                     <Field
                       orientation="horizontal"
-                      className="items-start rounded-2xl border border-zinc-200 bg-white p-4"
+                      className="items-start rounded-2xl border border-zinc-200 bg-white p-4 dark:border-white/10 dark:bg-card"
                     >
                       <Checkbox
                         id="negotiable"
@@ -499,8 +499,8 @@ export function EditListingForm({ listing }) {
                       </div>
                     </Field>
 
-                    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                      <div className="mb-3 flex items-center gap-2 text-zinc-900">
+                    <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-white/10 dark:bg-card">
+                      <div className="mb-3 flex items-center gap-2 text-zinc-900 dark:text-foreground">
                         <Sparkles className="size-4" />
                         <p className="text-sm font-semibold uppercase tracking-[0.18em]">
                           {t.tagPreview}
@@ -511,19 +511,19 @@ export function EditListingForm({ listing }) {
                           <Badge
                             key={tag}
                             variant="secondary"
-                            className="bg-zinc-100 text-zinc-800"
+                            className="bg-zinc-100 text-zinc-800 dark:bg-muted dark:text-foreground"
                           >
                             {tag}
                           </Badge>
                         ))}
                       </div>
-                      <p className="mt-3 text-sm text-zinc-500">
+                      <p className="mt-3 text-sm text-zinc-500 dark:text-muted-foreground">
                         {t.editTagPreviewDesc}
                       </p>
                     </div>
 
-                    <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-500">
-                      <div className="mb-2 flex items-center gap-2 text-zinc-900">
+                    <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-500 dark:border-white/10 dark:bg-card dark:text-muted-foreground">
+                      <div className="mb-2 flex items-center gap-2 text-zinc-900 dark:text-foreground">
                         <Info className="size-4" />
                         <span className="font-medium">{t.recommendation}</span>
                       </div>
