@@ -1,20 +1,56 @@
 "use client";
 
 import * as React from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
 } from "@/components/ui/carousel";
 import { cn } from "@/lib/utils";
 
 export function ListingPhotoCarousel({ photos, title }) {
   const [api, setApi] = React.useState();
   const [activeIndex, setActiveIndex] = React.useState(0);
+
+  const carouselOptions = React.useMemo(
+    () => ({
+      watchDrag: false,
+    }),
+    []
+  );
+
+  const canGoPrevious = activeIndex > 0;
+  const canGoNext = activeIndex < photos.length - 1;
+
+  const handlePreviousMouseDown = React.useCallback((event) => {
+    event.stopPropagation();
+  }, []);
+
+  const handleNextMouseDown = React.useCallback((event) => {
+    event.stopPropagation();
+  }, []);
+
+  const handlePreviousClick = React.useCallback(
+    (event) => {
+      event.stopPropagation();
+      if (!canGoPrevious) return;
+      api?.scrollPrev();
+    },
+    [api, canGoPrevious]
+  );
+
+  const handleNextClick = React.useCallback(
+    (event) => {
+      event.stopPropagation();
+      if (!canGoNext) return;
+      api?.scrollNext();
+    },
+    [api, canGoNext]
+  );
 
   React.useEffect(() => {
     if (!api) {
@@ -37,11 +73,11 @@ export function ListingPhotoCarousel({ photos, title }) {
 
   return (
     <div className="space-y-5">
-      <Carousel className="w-full" setApi={setApi}>
+      <Carousel className="w-full" setApi={setApi} opts={carouselOptions}>
         <CarouselContent>
           {photos.map((photo, index) => (
             <CarouselItem key={`${photo.label}-${index}`}>
-              <div className="overflow-hidden rounded-[2rem] border border-zinc-200 bg-zinc-100">
+              <div className="pointer-events-none overflow-hidden rounded-[2rem] border border-zinc-200 bg-zinc-100">
                 <div className="relative flex aspect-[16/9] items-center justify-center overflow-hidden bg-zinc-200">
                   {photo.imageUrl ? (
                     <img
@@ -67,8 +103,36 @@ export function ListingPhotoCarousel({ photos, title }) {
 
         {photos.length > 1 ? (
           <>
-            <CarouselPrevious className="left-4 top-1/2 z-10 size-11 -translate-y-1/2 bg-white/90 text-zinc-900 shadow-sm backdrop-blur-sm transition-opacity hover:bg-white disabled:opacity-0" />
-            <CarouselNext className="right-4 top-1/2 z-10 size-11 -translate-y-1/2 bg-white/90 text-zinc-900 shadow-sm backdrop-blur-sm transition-opacity hover:bg-white disabled:opacity-0" />
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              className="absolute left-4 top-0 bottom-0 z-20 my-auto size-11 rounded-full bg-white/90 text-zinc-900 shadow-sm transition-transform duration-150 ease-out hover:bg-white hover:scale-105 active:scale-95 touch-manipulation disabled:pointer-events-none disabled:opacity-0"
+              aria-label="Previous slide"
+              disabled={!canGoPrevious}
+              onPointerDown={handlePreviousMouseDown}
+              onMouseDown={handlePreviousMouseDown}
+              onTouchStart={handlePreviousMouseDown}
+              onClick={handlePreviousClick}
+            >
+              <ChevronLeft className="size-5" />
+              <span className="sr-only">Previous slide</span>
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              className="absolute right-4 top-0 bottom-0 z-20 my-auto size-11 rounded-full bg-white/90 text-zinc-900 shadow-sm transition-transform duration-150 ease-out hover:bg-white hover:scale-105 active:scale-95 touch-manipulation disabled:pointer-events-none disabled:opacity-0"
+              aria-label="Next slide"
+              disabled={!canGoNext}
+              onPointerDown={handleNextMouseDown}
+              onMouseDown={handleNextMouseDown}
+              onTouchStart={handleNextMouseDown}
+              onClick={handleNextClick}
+            >
+              <ChevronRight className="size-5" />
+              <span className="sr-only">Next slide</span>
+            </Button>
           </>
         ) : null}
       </Carousel>
