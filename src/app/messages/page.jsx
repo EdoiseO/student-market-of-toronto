@@ -3,8 +3,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { ProfileAvatar } from "@/components/profile-avatar";
-import { Badge } from "@/components/ui/badge";
+import { ConversationListItem } from "@/components/conversation-list-item";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -113,64 +112,14 @@ export default async function MessagesPage() {
               <section>
                 <div className="space-y-3">
                   {conversations.map((conversation) => (
-                    <Link
+                    <ConversationListItem
                       key={conversation.id}
-                      href={`/messages/${conversation.id}`}
-                      className="block rounded-[1.5rem] border border-zinc-200 bg-white p-4 transition hover:bg-background dark:border-border dark:bg-card dark:hover:bg-background"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 dark:border-border dark:bg-muted">
-                          {conversation.listing.imageUrl ? (
-                            <img
-                              src={conversation.listing.imageUrl}
-                              alt={conversation.listing.title}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
-                          )}
-
-                          <div className="absolute -top-1 -right-1 rounded-full bg-white p-0.5 shadow-sm dark:bg-card">
-                            <ProfileAvatar
-                              name={conversation.otherParticipant.name}
-                              avatarPresetId={conversation.otherParticipant.avatarPresetId}
-                              avatarUrl={conversation.otherParticipant.avatarUrl}
-                              className="size-7 border border-zinc-200 dark:border-border"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="truncate font-semibold text-zinc-950 dark:text-foreground">
-                                {conversation.listing.title}
-                              </p>
-                              <p className="truncate text-sm text-zinc-500 dark:text-muted-foreground">
-                                {conversation.otherParticipant.name}
-                              </p>
-                            </div>
-                            <div className="flex shrink-0 items-center gap-2">
-                              {conversation.unreadCount > 0 ? (
-                                <Badge className="rounded-full px-2.5 py-0.5">
-                                  {conversation.unreadCount}
-                                </Badge>
-                              ) : null}
-                              <span className="text-xs text-zinc-500 dark:text-muted-foreground">
-                                {formatConversationDate(
-                                  conversation.lastMessageAt || conversation.updatedAt,
-                                  language,
-                                )}
-                              </span>
-                            </div>
-                          </div>
-
-                          <p className="mt-3 line-clamp-2 text-sm text-zinc-600 dark:text-muted-foreground">
-                            {conversation.lastMessagePreview || t.conversationNoMessagesYet}
-                          </p>
-                        </div>
-                      </div>
-                    </Link>
+                      conversation={conversation}
+                      formattedDate={formatConversationDate(
+                        conversation.lastMessageAt || conversation.updatedAt,
+                        language,
+                      )}
+                    />
                   ))}
                 </div>
               </section>

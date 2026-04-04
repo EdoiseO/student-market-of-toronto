@@ -3,11 +3,23 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Paperclip, SendHorizontal, SmilePlus } from "lucide-react";
+import {
+  EllipsisVertical,
+  Flag,
+  Paperclip,
+  SendHorizontal,
+  SmilePlus,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { ProfileAvatar } from "@/components/profile-avatar";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Tooltip,
@@ -41,6 +53,7 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
   const [messages, setMessages] = React.useState(initialMessages ?? []);
   const [draft, setDraft] = React.useState("");
   const [isSending, setIsSending] = React.useState(false);
+  const [actionMessageId, setActionMessageId] = React.useState(null);
 
   React.useEffect(() => {
     setMessages(initialMessages ?? []);
@@ -122,6 +135,24 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
     router.refresh();
   }
 
+  async function handleReportMessage(messageId) {
+    setActionMessageId(messageId);
+
+    const { error } = await supabase.rpc("report_conversation_message", {
+      p_message_id: messageId,
+    });
+
+    setActionMessageId(null);
+
+    if (error) {
+      toast.error(t.reportMessageError);
+      console.error("Failed to report message:", error.message);
+      return;
+    }
+
+    toast.success(t.messageReported);
+  }
+
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card">
       <div className="border-b border-zinc-200 p-6 dark:border-border">
@@ -188,7 +219,7 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
             return (
               <div
                 key={message.id}
-                className={`flex items-end gap-3 ${isCurrentUser ? "flex-row-reverse" : ""}`}
+                className={`group/message flex items-end gap-3 ${isCurrentUser ? "flex-row-reverse" : ""}`}
               >
                 <ProfileAvatar
                   name={participant.name}
@@ -198,10 +229,38 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
                 />
 
                 <div
-                  className={`flex max-w-[85%] flex-col gap-1.5 sm:max-w-[70%] ${
-                    isCurrentUser ? "items-end text-right" : "items-start text-left"
+                  className={`relative flex max-w-[85%] flex-col gap-1.5 sm:max-w-[70%] ${
+                    isCurrentUser ? "items-end" : "items-start"
                   }`}
                 >
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon-sm"
+                        aria-label={t.moreActions}
+                        className={`absolute top-1/2 z-10 -translate-y-1/2 rounded-full border-zinc-300 bg-white text-zinc-700 opacity-0 shadow-sm transition group-hover/message:opacity-100 group-focus-within/message:opacity-100 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted ${
+                          isCurrentUser ? "right-full mr-2" : "left-full ml-2"
+                        }`}
+                      >
+                        <EllipsisVertical className="size-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align={isCurrentUser ? "start" : "end"}
+                      className="w-44 rounded-2xl"
+                    >
+                      <DropdownMenuItem
+                        onClick={() => handleReportMessage(message.id)}
+                        disabled={actionMessageId === message.id}
+                      >
+                        <Flag className="size-4" />
+                        <span>{t.reportMessage}</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
                   <p
                     className={`px-1 text-xs ${
                       isCurrentUser
@@ -216,7 +275,7 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
                   </p>
 
                   <div
-                    className={`w-fit rounded-[1.5rem] px-4 py-3 shadow-sm ${
+                    className={`w-fit rounded-[1.5rem] px-4 py-3 text-left shadow-sm ${
                       isCurrentUser
                         ? "rounded-tr-md bg-primary text-primary-foreground"
                         : "rounded-tl-md border border-zinc-200 bg-white text-zinc-900 dark:border-border dark:bg-card dark:text-foreground"

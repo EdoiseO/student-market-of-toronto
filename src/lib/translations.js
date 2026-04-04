@@ -188,6 +188,15 @@ export const translations = {
     noConversationsDescription:
       "When you message a seller from a listing, the conversation will appear here and stay linked to that item.",
     aboutListing: "About this listing",
+    deleteConversation: "Delete conversation",
+    deleteConversationTitle: "Delete this conversation?",
+    deleteConversationDescription:
+      "This removes the full conversation and its messages for both participants.",
+    deleteConversationError:
+      "We could not delete this conversation right now.",
+    reportMessage: "Report message",
+    messageReported: "Message reported for review.",
+    reportMessageError: "We could not report this message right now.",
     noMessagesYetTitle: "No messages yet",
     noMessagesYetDescription:
       "This conversation is ready. Send your first message to start the thread.",
@@ -620,6 +629,16 @@ export const translations = {
     noConversationsDescription:
       "Quand vous écrirez à un vendeur depuis une annonce, la conversation apparaîtra ici et restera liée à cet article.",
     aboutListing: "À propos de cette annonce",
+    deleteConversation: "Supprimer la conversation",
+    deleteConversationTitle: "Supprimer cette conversation ?",
+    deleteConversationDescription:
+      "Cela supprimera toute la conversation et ses messages pour les deux participants.",
+    deleteConversationError:
+      "Nous n'avons pas pu supprimer cette conversation pour le moment.",
+    reportMessage: "Signaler le message",
+    messageReported: "Message signalé pour examen.",
+    reportMessageError:
+      "Nous n'avons pas pu signaler ce message pour le moment.",
     noMessagesYetTitle: "Aucun message pour le moment",
     noMessagesYetDescription:
       "Cette conversation est prête. Envoyez votre premier message pour démarrer le fil.",
