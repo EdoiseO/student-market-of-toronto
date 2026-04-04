@@ -101,7 +101,7 @@ export default async function CategoryAllPage({ params, searchParams }) {
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8">
         <section className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-zinc-200">
           <h1 className="text-4xl font-bold tracking-tight text-zinc-950">
-            {language === "fr" ? `Toutes les annonces — ${categoryTitle}` : `All ${categoryTitle} Listings`}
+            {language === "fr" ? `Toutes les annonces de ${categoryTitle}` : `All ${categoryTitle} Listings`}
           </h1>
           <p className="mt-3 max-w-2xl text-base text-zinc-600">
             {language === "fr"

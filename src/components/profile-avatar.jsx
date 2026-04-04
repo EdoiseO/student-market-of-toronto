@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useLanguage } from "@/context/LanguageContext";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,7 @@ export function ProfileAvatar({
   fallbackClassName,
   size = "default",
 }) {
+  const { t } = useLanguage();
   const { imageUrl, initials, preset } = useResolvedProfileAvatar({
     email,
     name,
@@ -54,7 +56,7 @@ export function ProfileAvatar({
       {imageUrl ? (
         <AvatarImage
           src={imageUrl}
-          alt={name || "Profile avatar"}
+          alt={name || t.profileAvatarLabel}
           className={imageClassName}
         />
       ) : null}
@@ -79,6 +81,7 @@ export function ProfileAvatarPreview({
   className,
   initialsClassName,
 }) {
+  const { t } = useLanguage();
   const { imageUrl, initials, preset } = useResolvedProfileAvatar({
     email,
     name,
@@ -90,7 +93,7 @@ export function ProfileAvatarPreview({
   if (imageUrl) {
     return (
       <div
-        aria-label={name || "Profile avatar"}
+        aria-label={name || t.profileAvatarLabel}
         role="img"
         className={cn("overflow-hidden bg-cover bg-center bg-no-repeat", className)}
         style={{ backgroundImage: `url(${imageUrl})` }}

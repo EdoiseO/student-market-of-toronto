@@ -220,7 +220,7 @@ export default async function CategoryPage({ params }) {
               title={t.promoted}
               description={
                 language === "fr"
-                  ? `Les annonces mises en avant à découvrir d'abord dans ${categoryTitleLower}.`
+                  ? `Les annonces à la une à découvrir en priorité dans ${categoryTitleLower}.`
                   : `Featured listings we want students to notice first in ${categoryTitleLower}.`
               }
               items={promotedItems}
@@ -230,7 +230,7 @@ export default async function CategoryPage({ params }) {
               title={t.trending}
               description={
                 language === "fr"
-                  ? `Les annonces qui attirent l'attention en ce moment dans ${categoryTitleLower}.`
+                  ? `Les annonces qui attirent le plus d'attention en ce moment dans ${categoryTitleLower}.`
                   : `Listings gaining attention right now in ${categoryTitleLower}.`
               }
               items={trendingItems}

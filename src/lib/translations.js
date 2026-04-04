@@ -392,7 +392,7 @@ export const translations = {
     homeDescription:
       "Parcourez les catégories à la une, repérez les bonnes affaires du moment et découvrez le marché étudiant, une page à la fois.",
     categoryDescription:
-      "Parcourez les annonces étudiantes en vedette dans cette catégorie.",
+      "Parcourez les annonces étudiantes mises en avant dans cette catégorie.",
     noListings: "Aucune annonce disponible dans cette catégorie pour le moment.",
     electronics: "Électronique",
     books: "Livres",
@@ -409,7 +409,7 @@ export const translations = {
       "Les préférences d'affichage et de notifications commencent ici. Les options ci-dessous présentent la structure qui sera utilisée une fois ces réglages de compte activés.",
     settingsAppearanceTitle: "Apparence",
     settingsAppearanceDescription:
-      "Prévisualisez les options de thème prévues pour votre tableau de bord et vos pages de compte.",
+      "Découvrez les options de thème prévues pour votre tableau de bord et vos pages de compte.",
     settingsThemePreference: "Préférence de thème",
     settingsThemePreferenceDescription:
       "Choisissez l'apparence de Student Market une fois les réglages d'affichage activés.",
@@ -424,7 +424,7 @@ export const translations = {
       "Optez pour une interface plus sombre lors des longues soirées d'étude ou pour gérer vos annonces.",
     settingsNotificationsTitle: "Notifications",
     settingsNotificationsDescription:
-      "Définissez comment vous souhaitez recevoir les mises à jour du marché une fois ces préférences activées.",
+      "Définissez comment vous souhaitez recevoir les mises à jour du marché étudiant une fois ces préférences activées.",
     settingsProfileTitle: "Profil",
     settingsProfileDescription:
       "Gérez les détails plus personnels affichés sur vos pages d'annonce tout en gardant l'identité du vendeur visible.",
@@ -457,9 +457,9 @@ export const translations = {
     settingsEmailNotifications: "Notifications par e-mail",
     settingsEmailNotificationsDescription:
       "Recevez l'activité des annonces, les avis du compte et les mises à jour importantes par e-mail.",
-    settingsInAppNotifications: "Notifications intégrées",
+    settingsInAppNotifications: "Notifications dans l'application",
     settingsInAppNotificationsDescription:
-      "Consultez les alertes directement dans votre tableau de bord lorsque le stockage des notifications intégrées sera ajouté.",
+      "Consultez les alertes directement dans votre tableau de bord lorsque la prise en charge des notifications dans l'application sera ajoutée.",
     settingsPreviewNote:
       "Ces options sont affichées comme un aperçu honnête pour l'instant et n'enregistrent pas encore de changements.",
     studentMarket: "Marché étudiant",
@@ -491,7 +491,7 @@ export const translations = {
     schoolEmail:
       "E-mail scolaire (utilisez votre adresse scolaire de Toronto)",
     confirmPassword: "Confirmer le mot de passe",
-    schoolCampus: "École / Campus",
+    schoolCampus: "Établissement / campus",
     schoolAutoFilledPlaceholder:
       "Rempli automatiquement à partir de votre e-mail scolaire",
     schoolAutoFilledDescription:
@@ -501,7 +501,7 @@ export const translations = {
     accountCreatedSuccess:
       "Compte créé ! Vérifiez votre e-mail pour le confirmer.",
     createListingDesc:
-      "Commencez par ajouter les informations principales sur l'article. Les photos, le campus, l'état et l'aperçu des étiquettes sont inclus ici pour montrer à quoi l'annonce ressemblera sur le marché.",
+      "Commencez par ajouter les informations principales sur l'article. Les photos, le campus, l'état et l'aperçu des étiquettes sont inclus ici pour vous montrer à quoi l'annonce ressemblera sur la plateforme.",
     title: "Titre",
     titlePlaceholder: "ex. MacBook Air M1",
     category: "Catégorie",
@@ -558,7 +558,7 @@ export const translations = {
     updated: "Mis à jour",
     meetupLocation: "Lieu de rencontre",
     meetupLocationDesc:
-      "Point de rencontre sur le campus, selon l'emplacement de l'annonce.",
+      "Point de rencontre sur le campus, d'après l'emplacement indiqué dans l'annonce.",
     similarListings: "Annonces similaires",
     similarListingsDesc: "D'autres options dans la même catégorie.",
     marketplacePicks: "Sélection du marché étudiant",
@@ -569,15 +569,15 @@ export const translations = {
     memberSince: "Membre depuis",
     activeListingsTitle: "Annonces actives",
     activeListingsDescription:
-      "Les annonces actuelles de ce vendeur encore disponibles.",
+      "Les annonces de ce vendeur qui sont encore disponibles.",
     noActiveListingsTitle: "Aucune annonce active pour le moment",
     noActiveListingsDescription:
       "Ce vendeur n'a aucune annonce active disponible pour le moment.",
     searchListingsLabel: "Rechercher des annonces",
     searchListingsPlaceholder: "Rechercher dans les annonces du vendeur",
     sortListingsLabel: "Trier les annonces",
-    newestFirst: "Récentes à anciennes",
-    oldestFirst: "Anciennes à récentes",
+    newestFirst: "Des plus récentes aux plus anciennes",
+    oldestFirst: "Des plus anciennes aux plus récentes",
     filterByCategoryLabel: "Filtrer par catégorie",
     allCategories: "Toutes les catégories",
     listingResultSingular: "annonce",
@@ -675,20 +675,20 @@ export const translations = {
     selectedFilePlural: "fichiers sélectionnés",
     profilePageTitle: "Profil",
     profilePageDescription:
-      "Gérez les informations étudiantes affichées sur votre compte. Les changements de nom sont synchronisés avec votre profil afin que votre identité de vendeur reste cohérente.",
+      "Gérez les informations affichées sur votre compte étudiant. Les changements de nom sont synchronisés avec votre profil afin que votre identité de vendeur reste cohérente.",
     profilePhotoTitle: "Photo de profil",
     profilePhotoDescription:
-      "Choisissez un style de couleur ou ajoutez votre propre image.",
+      "Choisissez un style de couleur ou ajoutez votre propre photo.",
     chooseProfilePictureStyle: "Choisir le style de photo de profil",
     chooseProfilePicture: "Choisir une photo de profil",
     chooseProfilePictureDescription:
-      "Choisissez un style de couleur ou ajoutez votre propre image.",
+      "Choisissez un style de couleur ou ajoutez votre propre photo.",
     uploadCustomProfilePicture: "Téléverser une photo de profil personnalisée",
     uploadedImagesBucketNote:
       "Les images téléversées sont enregistrées dans le bucket `profile-images`.",
     studentAccount: "Compte étudiant",
     profileColorsStorageNote:
-      "Les couleurs de profil sont enregistrées dans votre profil et les images personnalisées sont téléversées dans le stockage.",
+      "Les styles de couleur sont enregistrés dans votre profil et les images personnalisées sont téléversées dans le stockage.",
     noSchoolOnFile: "Aucun établissement enregistré pour le moment.",
     personalDetailsTitle: "Renseignements personnels",
     personalDetailsDescription:
@@ -713,7 +713,7 @@ export const translations = {
     forgotPasswordDescription:
       "Saisissez votre e-mail ci-dessous et nous vous enverrons un lien de réinitialisation du mot de passe.",
     checkEmailResetLink:
-      "Consultez votre e-mail pour le lien de réinitialisation.",
+      "Consultez votre boîte de réception pour accéder au lien de réinitialisation.",
     sendResetLink: "Envoyer le lien de réinitialisation",
     rememberedPassword: "Vous vous souvenez de votre mot de passe ?",
     backToLogin: "Retour à la connexion",
@@ -733,7 +733,7 @@ export const translations = {
     passwordUpdatedRedirecting:
       "Mot de passe mis à jour avec succès. Redirection vers la connexion...",
     categoryPageDescription:
-      "Parcourez les sélections mises en avant, les annonces tendance et tout ce qui est actuellement disponible dans cette catégorie.",
+      "Parcourez les sélections à la une, les annonces tendance et toutes les annonces actuellement disponibles dans cette catégorie.",
     promoted: "À la une",
     trending: "Tendances",
     recentlyAdded: "Ajoutées récemment",
@@ -742,7 +742,7 @@ export const translations = {
     results: "Résultats",
     showingMatchesFor: "Résultats pour",
     showingAllActiveListings: "Affichage de toutes les annonces actives",
-    noSearchResultsTitle: "Aucun résultat pour le moment",
+    noSearchResultsTitle: "Aucun résultat",
     noSearchResultsDescription:
       "Essayez d'ajuster vos filtres ou d'effacer la recherche actuelle.",
     filters: "Filtres",
@@ -783,5 +783,6 @@ export const translations = {
     enterTorontoSchoolEmail: "Entrez votre e-mail scolaire de Toronto.",
     validTorontoSchoolEmail:
       "Utilisez une adresse e-mail scolaire valide provenant d'un domaine pris en charge à Toronto.",
+    profileAvatarLabel: "Avatar de profil",
   },
 };

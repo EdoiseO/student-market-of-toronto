@@ -400,7 +400,7 @@ export function CreateListingForm() {
                         <ImagePlus className="size-6" />
                       </div>
                       <p className="text-lg font-semibold text-zinc-950">
-                        Add Listing Photos
+                        {t.addPhotos}
                       </p>
                       <p className="mt-2 text-sm text-zinc-500">
                         {isDragActive ? t.dropImages : t.dragDrop}

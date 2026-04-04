@@ -1,10 +1,13 @@
 "use client";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { translations } from "@/lib/translations";
 
 const LanguageContext = createContext();
 
 export function LanguageProvider({ children, initialLanguage = "en" }) {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
   const [language, setLanguage] = useState(() => {
     if (typeof window === "undefined") {
       return initialLanguage;
@@ -35,7 +38,18 @@ export function LanguageProvider({ children, initialLanguage = "en" }) {
 
   function updateLanguage(nextLanguage) {
     if (nextLanguage !== "en" && nextLanguage !== "fr") return;
+    if (nextLanguage === language) return;
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("language", nextLanguage);
+      document.cookie = `language=${nextLanguage}; path=/; max-age=31536000`;
+    }
+
     setLanguage(nextLanguage);
+
+    startTransition(() => {
+      router.refresh();
+    });
   }
 
   const t = translations[language] || translations.en;
