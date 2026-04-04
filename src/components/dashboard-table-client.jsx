@@ -267,6 +267,38 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
               ) : null}
             </div>
           ))
+        ) : filteredItems.length === 0 ? (
+          <div className="rounded-[1.5rem] border border-zinc-200 bg-white px-6 py-10 text-center text-sm text-zinc-500 shadow-sm">
+            {hasActiveFilters
+              ? "No listings match your current search and category filter."
+              : "No listings found for this section yet."}
+          </div>
+        ) : null}
+
+        {totalPages > 1 ? (
+          <div className="flex items-center justify-between gap-3 rounded-[1.5rem] border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-500 shadow-sm">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={safePage === 1 ? "pointer-events-none opacity-50" : ""}
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+            >
+              Prev
+            </Button>
+            <span className="text-center font-medium text-zinc-700">
+              Page {safePage} of {totalPages}
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={safePage === totalPages ? "pointer-events-none opacity-50" : ""}
+              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+            >
+              Next
+            </Button>
+          </div>
         ) : null}
       </div>
 
