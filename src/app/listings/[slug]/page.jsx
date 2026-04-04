@@ -16,6 +16,7 @@ import { FavouriteButton } from "@/components/favourite-button";
 import { ListingPhotoCarousel } from "@/components/listing-photo-carousel";
 import { ListingMoreButton } from "@/components/listing-more-button";
 import { ProfileAvatar } from "@/components/profile-avatar";
+import { StartConversationButton } from "@/components/start-conversation-button";
 import { getTranslatedConditionLabel } from "@/lib/search-listings";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
@@ -269,10 +270,12 @@ export default async function ListingDetailPage({ params }) {
                     </div>
                   </div>
 
-                  <Button type="button" className="w-full sm:w-auto">
-                    <MessageCircle className="size-4" />
-                    <span>{t.chatWithSeller}</span>
-                  </Button>
+                  <StartConversationButton
+                    listingId={listing.id}
+                    sellerId={listing.seller_id}
+                    currentUserId={user?.id ?? null}
+                    className="w-full sm:w-auto"
+                  />
                 </CardContent>
               </Card>
 

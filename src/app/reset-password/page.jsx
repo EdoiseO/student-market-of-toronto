@@ -143,11 +143,11 @@ export default function ResetPasswordPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-svh w-full items-center justify-center bg-zinc-100 p-6 md:p-10">
+      <main className="flex min-h-svh w-full items-center justify-center bg-zinc-100 p-6 dark:bg-background md:p-10">
         <div className="w-full max-w-sm">
           <Card>
             <CardContent className="p-8 text-center">
-              <p className="text-sm text-zinc-600">{t.preparingResetSession}</p>
+              <p className="text-sm text-zinc-600 dark:text-muted-foreground">{t.preparingResetSession}</p>
             </CardContent>
           </Card>
         </div>
@@ -156,7 +156,7 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <main className="flex min-h-svh w-full items-center justify-center bg-zinc-100 p-6 md:p-10">
+    <main className="flex min-h-svh w-full items-center justify-center bg-zinc-100 p-6 dark:bg-background md:p-10">
       <div className="w-full max-w-sm">
         <Card>
           <CardHeader>
@@ -195,7 +195,7 @@ export default function ResetPasswordPage() {
                     {t.updatePassword}
                   </Button>
                   {message ? (
-                    <p className="mt-2 text-sm text-center text-zinc-600">{message}</p>
+                    <p className="mt-2 text-center text-sm text-zinc-600 dark:text-muted-foreground">{message}</p>
                   ) : null}
                   <FieldDescription className="text-center">
                     {t.needFreshLink} <Link href="/forget-password">{t.requestAnotherResetEmail}</Link>

@@ -101,7 +101,7 @@ export const translations = {
     login: "Login",
     noAccount: "Don't have an account?",
     signUp: "Sign up",
-    loggedInSuccess: "Logged in ✅",
+    loggedInSuccess: "Login successful. Redirecting...",
     createAccount: "Create an account",
     registerDescription: "Fill in your details below to sign up",
     firstName: "First Name",
@@ -167,8 +167,37 @@ export const translations = {
     photo: "Photo",
     torontoMeetup: "Toronto meetup",
     chatWithSeller: "Chat with Seller",
+    signInToMessageSeller: "Sign in to message seller",
+    startingConversation: "Opening conversation...",
+    conversationStartError: "We could not open this conversation right now.",
+    thisIsYourListing: "This is your listing",
+    you: "You",
     created: "Created",
     updated: "Updated",
+    messagesPageDescription:
+      "Start conversations from listing pages, pick up existing threads, and keep buyer-seller messages tied to the right item.",
+    messagesSetupTitle: "Messaging needs database setup",
+    messagesSetupDescription:
+      "Apply the messaging SQL in Supabase first, then return here to use real conversations and threads.",
+    conversationsTitle: "Conversations",
+    conversationsDescription:
+      "Each thread stays linked to the listing it started from.",
+    backToMessages: "Back to messages",
+    conversationNoMessagesYet: "No messages yet. Send the first message when you are ready.",
+    noConversationsTitle: "No conversations yet",
+    noConversationsDescription:
+      "When you message a seller from a listing, the conversation will appear here and stay linked to that item.",
+    aboutListing: "About this listing",
+    noMessagesYetTitle: "No messages yet",
+    noMessagesYetDescription:
+      "This conversation is ready. Send your first message to start the thread.",
+    messageInputPlaceholder:
+      "Write a message about pickup, condition, price, or availability...",
+    emojiPickerSoon: "Emoji reactions are coming next.",
+    attachmentsSoon: "File attachments are not live yet.",
+    sendMessage: "Send message",
+    sendingMessage: "Sending...",
+    messageSendError: "We could not send your message right now.",
     meetupLocation: "Meetup Location",
     meetupLocationDesc: "Campus meetup spot based on the listing location.",
     similarListings: "Similar Listings",
@@ -496,7 +525,7 @@ export const translations = {
     login: "Se connecter",
     noAccount: "Vous n'avez pas de compte ?",
     signUp: "S'inscrire",
-    loggedInSuccess: "Connexion réussie ✅",
+    loggedInSuccess: "Connexion réussie. Redirection en cours...",
     createAccount: "Créer un compte",
     registerDescription:
       "Remplissez les champs ci-dessous pour créer votre compte.",
@@ -568,8 +597,40 @@ export const translations = {
     photo: "Photo",
     torontoMeetup: "Rencontre à Toronto",
     chatWithSeller: "Discuter avec le vendeur",
+    signInToMessageSeller: "Connectez-vous pour écrire au vendeur",
+    startingConversation: "Ouverture de la conversation...",
+    conversationStartError:
+      "Nous n'avons pas pu ouvrir cette conversation pour le moment.",
+    thisIsYourListing: "C'est votre annonce",
+    you: "Vous",
     created: "Créé",
     updated: "Mis à jour",
+    messagesPageDescription:
+      "Commencez des conversations depuis les pages d'annonce, reprenez les fils existants et gardez les messages acheteur-vendeur liés au bon article.",
+    messagesSetupTitle: "La messagerie a besoin de la configuration de la base de données",
+    messagesSetupDescription:
+      "Appliquez d'abord le SQL de messagerie dans Supabase, puis revenez ici pour utiliser de vraies conversations et de vrais fils.",
+    conversationsTitle: "Conversations",
+    conversationsDescription:
+      "Chaque conversation reste liée à l'annonce depuis laquelle elle a commencé.",
+    backToMessages: "Retour aux messages",
+    conversationNoMessagesYet:
+      "Aucun message pour le moment. Envoyez le premier message quand vous êtes prêt.",
+    noConversationsTitle: "Aucune conversation pour le moment",
+    noConversationsDescription:
+      "Quand vous écrirez à un vendeur depuis une annonce, la conversation apparaîtra ici et restera liée à cet article.",
+    aboutListing: "À propos de cette annonce",
+    noMessagesYetTitle: "Aucun message pour le moment",
+    noMessagesYetDescription:
+      "Cette conversation est prête. Envoyez votre premier message pour démarrer le fil.",
+    messageInputPlaceholder:
+      "Écrivez un message au sujet de la remise, de l'état, du prix ou de la disponibilité...",
+    emojiPickerSoon: "Les réactions emoji arrivent à la prochaine étape.",
+    attachmentsSoon: "Les pièces jointes ne sont pas encore disponibles.",
+    sendMessage: "Envoyer le message",
+    sendingMessage: "Envoi...",
+    messageSendError:
+      "Nous n'avons pas pu envoyer votre message pour le moment.",
     meetupLocation: "Lieu de rencontre",
     meetupLocationDesc:
       "Point de rencontre sur le campus, d'après l'emplacement indiqué dans l'annonce.",

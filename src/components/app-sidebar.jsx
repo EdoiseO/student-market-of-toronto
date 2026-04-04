@@ -89,7 +89,7 @@ export function AppSidebar({ user, ...props }) {
     },
     {
       title: t.messages,
-      url: "#",
+      url: "/messages",
       icon: MessageSquareIcon,
     },
   ];

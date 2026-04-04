@@ -16,16 +16,38 @@ export function AppLayoutShell({ children, user }) {
     pathname === "/forget-password" ||
     pathname === "/reset-password";
   const showSidebar = !isAuthPage;
+  const isMessagesConversationPage =
+    pathname?.startsWith("/messages/") && pathname !== "/messages";
 
   return (
     <TooltipProvider>
       {showSidebar ? (
-        <div className="[--header-height:calc(--spacing(16))]">
-          <SidebarProvider className="flex flex-col">
+        <div
+          className={
+            isMessagesConversationPage
+              ? "h-svh overflow-hidden [--header-height:calc(--spacing(16))]"
+              : "[--header-height:calc(--spacing(16))]"
+          }
+        >
+          <SidebarProvider
+            className={
+              isMessagesConversationPage
+                ? "flex h-full flex-col overflow-hidden"
+                : "flex flex-col"
+            }
+          >
             <SiteHeader />
-            <div className="flex flex-1">
+            <div
+              className={
+                isMessagesConversationPage
+                  ? "flex min-h-0 flex-1 overflow-hidden"
+                  : "flex flex-1"
+              }
+            >
               <AppSidebar user={user} />
-              <SidebarInset>
+              <SidebarInset
+                className={isMessagesConversationPage ? "min-h-0 overflow-hidden" : undefined}
+              >
                 {children}
                 <CreateListingFab user={user} />
               </SidebarInset>

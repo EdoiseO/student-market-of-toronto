@@ -24,6 +24,8 @@ export function SiteHeader() {
       ? t.browseListings
       : pathname.startsWith("/search")
         ? t.searchAndFilter
+      : pathname.startsWith("/messages")
+        ? t.messages
       : pathname.startsWith("/dashboard")
         ? t.dashboard
         : pathname.endsWith("/edit")
