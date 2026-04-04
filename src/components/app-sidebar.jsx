@@ -37,6 +37,7 @@ import {
   MessageSquareIcon,
   PlusSquareIcon,
   StarIcon,
+  Settings2Icon,
   TerminalIcon,
   UserIcon,
   FileTextIcon,
@@ -98,6 +99,11 @@ export function AppSidebar({ user, ...props }) {
       title: t.profile,
       url: "/dashboard/profile",
       icon: UserIcon,
+    },
+    {
+      title: t.settings,
+      url: "/dashboard/settings",
+      icon: Settings2Icon,
     },
   ];
 

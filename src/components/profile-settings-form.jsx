@@ -4,6 +4,7 @@ import * as React from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useLanguage } from "@/context/LanguageContext";
 
 import { ProfileAvatarPreview } from "@/components/profile-avatar";
 import { createClient } from "@/utils/supabase/client";
@@ -43,6 +44,7 @@ export function ProfileSettingsForm({ initialProfile }) {
   const router = useRouter();
   const supabase = React.useMemo(() => createClient(), []);
   const fileInputRef = React.useRef(null);
+  const { t } = useLanguage();
 
   const [firstName, setFirstName] = React.useState(initialProfile.firstName ?? "");
   const [lastName, setLastName] = React.useState(initialProfile.lastName ?? "");
@@ -52,6 +54,20 @@ export function ProfileSettingsForm({ initialProfile }) {
   const [isAvatarPickerOpen, setIsAvatarPickerOpen] = React.useState(false);
   const [isUpdatingAvatar, setIsUpdatingAvatar] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isMobileViewport, setIsMobileViewport] = React.useState(false);
+
+  React.useEffect(() => {
+    function syncIsMobileViewport() {
+      setIsMobileViewport(window.innerWidth < 640);
+    }
+
+    syncIsMobileViewport();
+    window.addEventListener("resize", syncIsMobileViewport);
+
+    return () => {
+      window.removeEventListener("resize", syncIsMobileViewport);
+    };
+  }, []);
 
   const initials = [firstName, lastName]
     .filter(Boolean)
@@ -103,11 +119,11 @@ export function ProfileSettingsForm({ initialProfile }) {
       setAvatarPresetId(nextPresetId);
       setAvatarUrl("");
       setIsAvatarPickerOpen(false);
-      toast.success("Profile photo style updated.");
+      toast.success(t.profilePhotoStyleUpdated);
       router.refresh();
     } catch (error) {
       console.error("Failed to update avatar preset", error);
-      toast.error("We could not update your profile photo style.");
+      toast.error(t.profilePhotoStyleUpdateError);
     } finally {
       setIsUpdatingAvatar(false);
     }
@@ -121,12 +137,12 @@ export function ProfileSettingsForm({ initialProfile }) {
     }
 
     if (!selectedFile.type.startsWith("image/")) {
-      toast.error("Please choose an image file.");
+      toast.error(t.chooseImageFile);
       return;
     }
 
     if (selectedFile.size > 2 * 1024 * 1024) {
-      toast.error("Please choose an image under 2MB.");
+      toast.error(t.chooseImageUnder2MB);
       return;
     }
 
@@ -176,11 +192,11 @@ export function ProfileSettingsForm({ initialProfile }) {
       setAvatarPresetId(null);
       setAvatarUrl(publicUrl);
       setIsAvatarPickerOpen(false);
-      toast.success("Custom profile image updated.");
+      toast.success(t.customProfileImageUpdated);
       router.refresh();
     } catch (error) {
       console.error("Failed to save custom avatar image", error);
-      toast.error("We could not save that image.");
+      toast.error(t.customProfileImageError);
     } finally {
       event.target.value = "";
       setIsUpdatingAvatar(false);
@@ -233,11 +249,11 @@ export function ProfileSettingsForm({ initialProfile }) {
         throw profileUpsertError;
       }
 
-      toast.success("Profile updated.");
+      toast.success(t.profileUpdated);
       router.refresh();
     } catch (error) {
       console.error("Failed to update profile", error);
-      toast.error("We could not save your profile right now.");
+      toast.error(t.profileUpdateError);
     } finally {
       setIsSaving(false);
     }
@@ -248,15 +264,13 @@ export function ProfileSettingsForm({ initialProfile }) {
       <div className="grid gap-8 xl:grid-cols-[320px_minmax(0,1fr)]">
         <Card className="rounded-3xl bg-white py-0 shadow-sm ring-zinc-200">
           <CardHeader className="border-b border-zinc-200 px-6 py-6">
-            <CardTitle className="text-2xl text-zinc-950">Profile picture</CardTitle>
-            <CardDescription>
-              Choose a color style or add your own image.
-            </CardDescription>
+            <CardTitle className="text-2xl text-zinc-950">{t.profilePhotoTitle}</CardTitle>
+            <CardDescription>{t.profilePhotoDescription}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-6 px-6 pt-4 pb-8 text-center">
             <Popover open={isAvatarPickerOpen} onOpenChange={setIsAvatarPickerOpen}>
               <PopoverAnchor asChild>
-                <div className="relative flex aspect-square w-full max-w-[260px] items-center justify-center self-center rounded-[2rem] border border-dashed border-zinc-300 bg-zinc-50">
+                <div className="relative flex aspect-square w-full max-w-[208px] items-center justify-center self-center rounded-[2rem] border border-dashed border-zinc-300 bg-zinc-50">
                   <ProfileAvatarPreview
                     email={initialProfile.email}
                     name={`${firstName} ${lastName}`.trim()}
@@ -268,7 +282,7 @@ export function ProfileSettingsForm({ initialProfile }) {
                   <PopoverTrigger asChild>
                     <button
                       type="button"
-                      aria-label="Choose profile picture style"
+                      aria-label={t.chooseProfilePictureStyle}
                       className="absolute bottom-2 right-2 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-950 text-white shadow-lg opacity-80"
                     >
                       <Plus className="size-5" />
@@ -277,15 +291,15 @@ export function ProfileSettingsForm({ initialProfile }) {
                 </div>
               </PopoverAnchor>
               <PopoverContent
-                side="right"
+                side={isMobileViewport ? "bottom" : "right"}
                 align="center"
                 sideOffset={16}
-                className="w-[360px] rounded-[2rem] p-5 sm:w-[420px]"
+                className="w-[min(20rem,calc(100vw-2rem))] rounded-[2rem] p-5 sm:w-[336px]"
               >
                   <PopoverHeader className="mb-2">
-                    <PopoverTitle>Choose profile picture</PopoverTitle>
+                    <PopoverTitle>{t.chooseProfilePicture}</PopoverTitle>
                     <PopoverDescription>
-                      Pick a color style or add your own image.
+                      {t.chooseProfilePictureDescription}
                     </PopoverDescription>
                   </PopoverHeader>
 
@@ -320,7 +334,7 @@ export function ProfileSettingsForm({ initialProfile }) {
                       onClick={() => fileInputRef.current?.click()}
                       disabled={isUpdatingAvatar}
                       className="flex aspect-square items-center justify-center rounded-full border-2 border-dashed border-zinc-300 bg-zinc-50 text-zinc-700 transition hover:bg-zinc-100"
-                      aria-label="Upload a custom profile picture"
+                      aria-label={t.uploadCustomProfilePicture}
                     >
                       <Plus className="size-6" />
                     </button>
@@ -335,20 +349,20 @@ export function ProfileSettingsForm({ initialProfile }) {
                   />
 
                   <p className="mt-3 text-sm text-zinc-500">
-                    Uploaded images save to the `profile-images` bucket.
+                    {t.uploadedImagesBucketNote}
                   </p>
               </PopoverContent>
             </Popover>
             <div className="space-y-2">
-              <p className="text-sm font-medium text-zinc-950">{initialProfile.email || "Student account"}</p>
+              <p className="text-sm font-medium text-zinc-950">{initialProfile.email || t.studentAccount}</p>
               <p className="text-sm text-zinc-500">
-                Profile colors save to your profile, and custom images upload to storage.
+                {t.profileColorsStorageNote}
               </p>
             </div>
             <div className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-4 text-left">
-              <p className="text-sm font-medium text-zinc-950">School</p>
+              <p className="text-sm font-medium text-zinc-950">{t.school}</p>
               <p className="mt-1 text-sm text-zinc-600">
-                {initialProfile.school || "No school on file yet."}
+                {initialProfile.school || t.noSchoolOnFile}
               </p>
             </div>
           </CardContent>
@@ -356,45 +370,43 @@ export function ProfileSettingsForm({ initialProfile }) {
 
         <Card className="rounded-3xl bg-white py-0 shadow-sm ring-zinc-200">
           <CardHeader className="border-b border-zinc-200 px-6 py-6">
-            <CardTitle className="text-2xl text-zinc-950">Personal details</CardTitle>
-            <CardDescription>
-              Update the personal details that appear across your seller identity.
-            </CardDescription>
+            <CardTitle className="text-2xl text-zinc-950">{t.personalDetailsTitle}</CardTitle>
+            <CardDescription>{t.personalDetailsDescription}</CardDescription>
           </CardHeader>
           <CardContent className="px-6 py-8">
             <FieldGroup className="gap-6">
               <div className="grid w-full gap-4 md:max-w-[50%]">
                 <Field>
-                  <FieldLabel htmlFor="profile-first-name">First name</FieldLabel>
+                  <FieldLabel htmlFor="profile-first-name">{t.firstName}</FieldLabel>
                   <Input
                     id="profile-first-name"
                     value={firstName}
                     onChange={(event) => setFirstName(event.target.value)}
-                    placeholder="Your first name"
+                    placeholder={t.firstNamePlaceholder}
                     className="h-10 rounded-xl bg-white"
                   />
                 </Field>
 
                 <Field>
-                  <FieldLabel htmlFor="profile-last-name">Last name</FieldLabel>
+                  <FieldLabel htmlFor="profile-last-name">{t.lastName}</FieldLabel>
                   <Input
                     id="profile-last-name"
                     value={lastName}
                     onChange={(event) => setLastName(event.target.value)}
-                    placeholder="Your last name"
+                    placeholder={t.lastNamePlaceholder}
                     className="h-10 rounded-xl bg-white"
                   />
                 </Field>
               </div>
 
               <Field>
-                <FieldLabel htmlFor="profile-description">Description</FieldLabel>
+                <FieldLabel htmlFor="profile-description">{t.description}</FieldLabel>
                 <Textarea
                   id="profile-description"
                   value={bio}
                   onChange={(event) => setBio(event.target.value)}
                   className="min-h-36 rounded-2xl bg-white"
-                  placeholder="Tell other students about yourself, what you usually sell, or preferred meetup details."
+                  placeholder={t.profileBioPlaceholder}
                 />
               </Field>
 
@@ -404,7 +416,7 @@ export function ProfileSettingsForm({ initialProfile }) {
                   className="rounded-xl px-5"
                   disabled={isSaving || !hasProfileChanges}
                 >
-                  {isSaving ? "Saving..." : "Save profile"}
+                  {isSaving ? t.saving : t.saveProfile}
                 </Button>
               </div>
             </FieldGroup>

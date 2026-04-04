@@ -17,11 +17,13 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
+import { useLanguage } from "@/context/LanguageContext";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/utils/supabase/client";
 
 export default function ForgotPasswordPage() {
   const supabase = createClient();
+  const { t } = useLanguage();
 
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -37,7 +39,7 @@ export default function ForgotPasswordPage() {
     if (error) {
       setMessage(error.message);
     } else {
-      setMessage("Check your email for reset link.");
+      setMessage(t.checkEmailResetLink);
     }
   }
 
@@ -46,16 +48,14 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-sm">
         <Card>
           <CardHeader>
-            <CardTitle className="text-center">Forgot Password</CardTitle>
-            <CardDescription>
-              Enter your email below and we&apos;ll send you a password reset link.
-            </CardDescription>
+            <CardTitle className="text-center">{t.forgotPasswordTitle}</CardTitle>
+            <CardDescription>{t.forgotPasswordDescription}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit}>
               <FieldGroup>
                 <Field>
-                  <FieldLabel htmlFor="email">Email</FieldLabel>
+                  <FieldLabel htmlFor="email">{t.email}</FieldLabel>
                   <Input
                     id="email"
                     type="email"
@@ -67,12 +67,12 @@ export default function ForgotPasswordPage() {
                 </Field>
 
                 <Field>
-                  <Button type="submit">Send Reset Link</Button>
+                  <Button type="submit">{t.sendResetLink}</Button>
                   {message ? (
                     <p className="mt-2 text-sm text-center text-zinc-600">{message}</p>
                   ) : null}
                   <FieldDescription className="text-center">
-                    Remembered your password? <Link href="/login">Back to login</Link>
+                    {t.rememberedPassword} <Link href="/login">{t.backToLogin}</Link>
                   </FieldDescription>
                 </Field>
               </FieldGroup>

@@ -11,7 +11,7 @@ export default function HomePageContent({ listingSections }) {
 
   return (
     <main className="min-h-screen bg-zinc-100 p-6 md:p-8">
-      <div className="mx-auto flex w-full max-w-[1800px] flex-col gap-8">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8">
         <section className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-zinc-200">
           <div>
             <p className="text-sm font-medium uppercase tracking-[0.2em] text-zinc-500">
@@ -48,7 +48,7 @@ export default function HomePageContent({ listingSections }) {
             </div>
 
             {section.items.length > 0 ? (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-6">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                 {section.items.map((item) => (
                   <CardImage
                     key={item.id}

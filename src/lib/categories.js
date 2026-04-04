@@ -54,6 +54,21 @@ export function getTranslatedCategoryTitle(slug, t, language = "en", fallbackTit
   return translationMap[canonicalSlug] ?? fallbackTitle;
 }
 
+export function getTranslatedCategoryValue(value, t, language = "en") {
+  const category = CATEGORIES.find(
+    (currentCategory) =>
+      currentCategory.value === value ||
+      currentCategory.title === value ||
+      currentCategory.slug === getCanonicalCategorySlug(value)
+  );
+
+  if (!category) {
+    return value ?? "";
+  }
+
+  return getTranslatedCategoryTitle(category.slug, t, language, category.title);
+}
+
 export function getCanonicalCategorySlug(slug) {
   return CATEGORY_SLUG_ALIASES[slug] ?? slug;
 }

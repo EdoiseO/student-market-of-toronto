@@ -101,12 +101,14 @@ npm run start
 - create listing
 - edit listing
 - dashboard listing management
+- dashboard profile and settings pages
+- protected seller profile pages for signed-in users
 
 ## Features Not Fully Implemented Yet
 
 - search
 - messages
-- profile
+- most settings persistence beyond listing-page bio visibility
 
 Those features may still appear in the UI, but they are not fully built yet.
 
@@ -115,9 +117,12 @@ Those features may still appear in the UI, but they are not fully built yet.
 - `/`
 - `/categories/[slug]`
 - `/listings/[slug]`
+- `/profile/[id]`
 - `/listings/create`
 - `/listings/[slug]/edit`
 - `/dashboard`
+- `/dashboard/profile`
+- `/dashboard/settings`
 - `/login`
 - `/register`
 

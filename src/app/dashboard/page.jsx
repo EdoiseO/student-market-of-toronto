@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { DashboardTableClient } from "@/components/dashboard-table-client";
 import { normalizeCategoryValue } from "@/lib/categories";
+import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -45,6 +46,8 @@ export default async function DashboardPage({ searchParams }) {
     : "all";
 
   const cookieStore = await cookies();
+  const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
+  const t = translations[language] || translations.en;
   const supabase = createClient(cookieStore);
 
   const {
@@ -132,16 +135,15 @@ export default async function DashboardPage({ searchParams }) {
     : [];
 
   return (
-    <main className="min-h-screen bg-zinc-100 p-6 md:p-8">
-      <div className="mx-auto flex w-full max-w-[1800px] flex-col gap-8">
+    <main className="min-h-screen bg-zinc-100 p-5 md:p-6 lg:p-7">
+      <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6">
         <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm">
-          <CardHeader className="border-b border-zinc-200 px-8 py-6">
-            <CardTitle className="text-4xl font-bold tracking-tight text-zinc-950">
-              Dashboard
+          <CardHeader className="border-b border-zinc-200 px-6 py-5 lg:px-7">
+            <CardTitle className="text-3xl font-bold tracking-tight text-zinc-950 lg:text-4xl">
+              {t.dashboard}
             </CardTitle>
             <p className="max-w-2xl text-base text-zinc-600">
-              Track live listings, inactive listings, sold items, drafts, and
-              saved items in one place.
+              {t.dashboardDescription}
             </p>
           </CardHeader>
 

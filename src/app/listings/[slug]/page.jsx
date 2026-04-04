@@ -1,5 +1,6 @@
 import { MessageCircle, Clock3, MapPin, Tag, UserRound } from "lucide-react";
 import { cookies } from "next/headers";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +15,7 @@ import { CardImage } from "@/components/card-image";
 import { FavouriteButton } from "@/components/favourite-button";
 import { ListingPhotoCarousel } from "@/components/listing-photo-carousel";
 import { ProfileAvatar } from "@/components/profile-avatar";
+import { getTranslatedConditionLabel } from "@/lib/search-listings";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
@@ -199,9 +201,9 @@ export default async function ListingDetailPage({ params }) {
 
   return (
     <main className="min-h-screen bg-zinc-100 p-6 md:p-8">
-      <div className="mx-auto flex w-full max-w-[1800px] flex-col gap-8">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8">
         <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 md:p-8">
-          <div className="grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.95fr)]">
+          <div className="grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(256px,0.95fr)]">
             <div className="flex flex-col gap-5">
               <ListingPhotoCarousel photos={photos} title={listing.title} />
 
@@ -258,7 +260,7 @@ export default async function ListingDetailPage({ params }) {
                         {t.condition}
                       </p>
                       <p className="mt-2 text-base font-medium text-zinc-900">
-                        {listing.condition}
+                        {getTranslatedConditionLabel(listing.condition, t)}
                       </p>
                     </div>
                   </div>
@@ -272,24 +274,48 @@ export default async function ListingDetailPage({ params }) {
 
               <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-none">
                 <CardContent className="space-y-5 p-6 md:p-7">
-                  <div className="flex items-center gap-4">
-                    <ProfileAvatar
-                      email={null}
-                      name={sellerName}
-                      avatarPresetId={seller?.avatar_preset_id ?? null}
-                      avatarUrl={seller?.avatar_url ?? null}
-                      className="h-14 w-14 rounded-2xl"
-                      fallbackClassName="rounded-2xl"
-                    />
-                    <div>
-                      <p className="text-xl font-semibold text-zinc-950">
-                        {sellerName}
-                      </p>
-                      <p className="text-sm text-zinc-500">
-                        {seller?.school || t.torontoStudent}
-                      </p>
+                  {seller?.id ? (
+                    <Link
+                      href={`/profile/${seller.id}`}
+                      className="flex w-full items-center gap-4 rounded-2xl transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/15 sm:w-fit"
+                    >
+                      <ProfileAvatar
+                        email={null}
+                        name={sellerName}
+                        avatarPresetId={seller?.avatar_preset_id ?? null}
+                        avatarUrl={seller?.avatar_url ?? null}
+                        className="h-14 w-14 rounded-2xl"
+                        fallbackClassName="rounded-2xl"
+                      />
+                      <div>
+                        <p className="text-xl font-semibold text-zinc-950">
+                          {sellerName}
+                        </p>
+                        <p className="text-sm text-zinc-500">
+                          {seller?.school || t.torontoStudent}
+                        </p>
+                      </div>
+                    </Link>
+                  ) : (
+                    <div className="flex items-center gap-4">
+                      <ProfileAvatar
+                        email={null}
+                        name={sellerName}
+                        avatarPresetId={seller?.avatar_preset_id ?? null}
+                        avatarUrl={seller?.avatar_url ?? null}
+                        className="h-14 w-14 rounded-2xl"
+                        fallbackClassName="rounded-2xl"
+                      />
+                      <div>
+                        <p className="text-xl font-semibold text-zinc-950">
+                          {sellerName}
+                        </p>
+                        <p className="text-sm text-zinc-500">
+                          {seller?.school || t.torontoStudent}
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   <div className="grid gap-3 text-sm text-zinc-600 sm:grid-cols-2">
                     <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
@@ -316,15 +342,21 @@ export default async function ListingDetailPage({ params }) {
                     </div>
                   </div>
 
-                  {seller?.bio ? (
+                  {seller?.bio && !seller?.is_public ? (
                     <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                        {language === "fr" ? "À propos du vendeur" : "About the seller"}
+                        {t.aboutSeller}
                       </p>
                       <p className="mt-2 whitespace-pre-line text-sm leading-7 text-zinc-600">
                         {seller.bio}
                       </p>
                     </div>
+                  ) : null}
+
+                  {seller?.id ? (
+                    <Button asChild type="button" variant="outline" className="w-full">
+                      <Link href={`/profile/${seller.id}`}>{t.viewProfile}</Link>
+                    </Button>
                   ) : null}
                 </CardContent>
               </Card>
@@ -349,7 +381,7 @@ export default async function ListingDetailPage({ params }) {
               src={`https://www.google.com/maps?q=${encodeURIComponent(
                 campusLabel
               )}&z=15&output=embed`}
-              className="h-[360px] w-full border-0"
+              className="h-[288px] w-full border-0"
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
             />
@@ -372,7 +404,7 @@ export default async function ListingDetailPage({ params }) {
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
             {similarListings.map((item) => (
               <CardImage
                 key={item.slug}
