@@ -15,6 +15,7 @@ import { CardImage } from "@/components/card-image";
 import { FavouriteButton } from "@/components/favourite-button";
 import { ListingPhotoCarousel } from "@/components/listing-photo-carousel";
 import { ProfileAvatar } from "@/components/profile-avatar";
+import { getTranslatedConditionLabel } from "@/lib/search-listings";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
@@ -259,7 +260,7 @@ export default async function ListingDetailPage({ params }) {
                         {t.condition}
                       </p>
                       <p className="mt-2 text-base font-medium text-zinc-900">
-                        {listing.condition}
+                        {getTranslatedConditionLabel(listing.condition, t)}
                       </p>
                     </div>
                   </div>

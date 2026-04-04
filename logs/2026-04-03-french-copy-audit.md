@@ -11,6 +11,7 @@
 - Replaced a remaining hardcoded English heading in the create-listing photo upload card so the `/listings/create` page fully switches to French.
 - Replaced the dashboard page hero title and description with shared translation keys so `/dashboard` switches languages without leaving English copy behind.
 - Completed a second pass across the marketplace pages and refined remaining French phrasing in shared translations, category-page descriptions, profile copy, settings copy, search/auth wording, and profile avatar accessibility labels.
+- Fixed the listing detail page condition field so stored values like `New`, `Like New`, and `Used` render through the translated condition labels instead of appearing as raw English values.
 
 ## Files touched
 - `logs/2026-04-03-french-copy-audit.md`
