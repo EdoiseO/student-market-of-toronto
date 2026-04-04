@@ -347,10 +347,6 @@ export function ProfileSettingsForm({ initialProfile }) {
                     className="hidden"
                     onChange={handleCustomAvatarChange}
                   />
-
-                  <p className="mt-3 text-sm text-zinc-500 dark:text-muted-foreground">
-                    {t.uploadedImagesBucketNote}
-                  </p>
               </PopoverContent>
             </Popover>
             <div className="space-y-2">

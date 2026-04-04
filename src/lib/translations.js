@@ -291,8 +291,6 @@ export const translations = {
     chooseProfilePicture: "Choose profile picture",
     chooseProfilePictureDescription: "Pick a color style or add your own image.",
     uploadCustomProfilePicture: "Upload a custom profile picture",
-    uploadedImagesBucketNote:
-      "Uploaded images save to the `profile-images` bucket.",
     studentAccount: "Student account",
     profileColorsStorageNote:
       "Profile colors save to your profile, and custom images upload to storage.",
@@ -700,8 +698,6 @@ export const translations = {
     chooseProfilePictureDescription:
       "Choisissez un style de couleur ou ajoutez votre propre photo.",
     uploadCustomProfilePicture: "Téléverser une photo de profil personnalisée",
-    uploadedImagesBucketNote:
-      "Les images téléversées sont enregistrées dans le bucket `profile-images`.",
     studentAccount: "Compte étudiant",
     profileColorsStorageNote:
       "Les styles de couleur sont enregistrés dans votre profil et les images personnalisées sont téléversées dans le stockage.",
