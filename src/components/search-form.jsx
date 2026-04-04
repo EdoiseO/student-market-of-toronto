@@ -85,7 +85,7 @@ export function SearchForm({
           <button
             type="button"
             onClick={clearSearchQuery}
-            className="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900"
+            className="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-muted-foreground dark:hover:bg-muted dark:hover:text-foreground"
             aria-label={t.clearSearch}
           >
             <XIcon className="size-3.5" />

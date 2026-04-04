@@ -58,7 +58,7 @@ export function ListingMoreButton({ slug }) {
           variant="outline"
           size="icon"
           aria-label={t.moreActions}
-          className="size-11 rounded-full border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-100"
+          className="size-11 rounded-full border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-100 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted"
         >
           <Ellipsis className="size-5" />
         </Button>

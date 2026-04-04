@@ -201,41 +201,41 @@ export default async function ListingDetailPage({ params }) {
   }));
 
   return (
-    <main className="min-h-screen bg-zinc-100 p-6 md:p-8">
+    <main className="min-h-screen bg-zinc-100 p-6 dark:bg-background md:p-8">
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8">
-        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 md:p-8">
+        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-card dark:ring-border md:p-8">
           <div className="grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(256px,0.95fr)]">
             <div className="flex flex-col gap-5">
               <ListingPhotoCarousel photos={photos} title={listing.title} />
 
-              <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-none">
-                <CardHeader className="border-b border-zinc-200 px-6 py-5 md:px-7">
-                  <CardTitle className="text-2xl text-zinc-950">
+              <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-none dark:bg-card dark:ring-border">
+                <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border md:px-7">
+                  <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">
                     {t.description}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="px-6 py-6 text-base leading-8 text-zinc-600 md:px-7">
+                <CardContent className="px-6 py-6 text-base leading-8 text-zinc-600 dark:text-muted-foreground md:px-7">
                   {listing.description}
                 </CardContent>
               </Card>
             </div>
 
             <div className="flex flex-col gap-5">
-              <Card className="rounded-[2rem] border-zinc-200 bg-zinc-50 py-0 shadow-none">
+              <Card className="rounded-[2rem] border-zinc-200 bg-zinc-50 py-0 shadow-none dark:bg-muted/40 dark:ring-border">
                 <CardContent className="space-y-6 p-6 md:p-7">
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-3">
                       <Badge
                         variant="outline"
-                        className="w-fit border-zinc-300 bg-white text-zinc-700"
+                        className="w-fit border-zinc-300 bg-white text-zinc-700 dark:border-border dark:bg-background dark:text-foreground"
                       >
                         {badge}
                       </Badge>
                       <div className="space-y-2">
-                        <h1 className="text-3xl font-bold tracking-tight text-zinc-950 md:text-4xl">
+                        <h1 className="text-3xl font-bold tracking-tight text-zinc-950 dark:text-foreground md:text-4xl">
                           {listing.title}
                         </h1>
-                        <p className="text-3xl font-bold text-zinc-900">
+                        <p className="text-3xl font-bold text-zinc-900 dark:text-foreground">
                           {formatPrice(listing.price, language)}
                         </p>
                       </div>
@@ -250,20 +250,20 @@ export default async function ListingDetailPage({ params }) {
                     </div>
                   </div>
 
-                  <div className="grid gap-3 text-sm text-zinc-600 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                  <div className="grid gap-3 text-sm text-zinc-600 dark:text-muted-foreground sm:grid-cols-2">
+                    <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-border dark:bg-background">
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500 dark:text-muted-foreground">
                         {t.campus}
                       </p>
-                      <p className="mt-2 text-base font-medium text-zinc-900">
+                      <p className="mt-2 text-base font-medium text-zinc-900 dark:text-foreground">
                         {campusLabel}
                       </p>
                     </div>
-                    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                    <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-border dark:bg-background">
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500 dark:text-muted-foreground">
                         {t.condition}
                       </p>
-                      <p className="mt-2 text-base font-medium text-zinc-900">
+                      <p className="mt-2 text-base font-medium text-zinc-900 dark:text-foreground">
                         {getTranslatedConditionLabel(listing.condition, t)}
                       </p>
                     </div>
@@ -276,12 +276,12 @@ export default async function ListingDetailPage({ params }) {
                 </CardContent>
               </Card>
 
-              <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-none">
+              <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-none dark:bg-card dark:ring-border">
                 <CardContent className="space-y-5 p-6 md:p-7">
                   {seller?.id ? (
                     <Link
                       href={`/profile/${seller.id}`}
-                      className="flex w-full items-center gap-4 rounded-2xl transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/15 sm:w-fit"
+                      className="flex w-full items-center gap-4 rounded-2xl transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/15 dark:focus-visible:ring-white/15 sm:w-fit"
                     >
                       <ProfileAvatar
                         email={null}
@@ -292,10 +292,10 @@ export default async function ListingDetailPage({ params }) {
                         fallbackClassName="rounded-2xl"
                       />
                       <div>
-                        <p className="text-xl font-semibold text-zinc-950">
+                        <p className="text-xl font-semibold text-zinc-950 dark:text-foreground">
                           {sellerName}
                         </p>
-                        <p className="text-sm text-zinc-500">
+                        <p className="text-sm text-zinc-500 dark:text-muted-foreground">
                           {seller?.school || t.torontoStudent}
                         </p>
                       </div>
@@ -311,35 +311,35 @@ export default async function ListingDetailPage({ params }) {
                         fallbackClassName="rounded-2xl"
                       />
                       <div>
-                        <p className="text-xl font-semibold text-zinc-950">
+                        <p className="text-xl font-semibold text-zinc-950 dark:text-foreground">
                           {sellerName}
                         </p>
-                        <p className="text-sm text-zinc-500">
+                        <p className="text-sm text-zinc-500 dark:text-muted-foreground">
                           {seller?.school || t.torontoStudent}
                         </p>
                       </div>
                     </div>
                   )}
 
-                  <div className="grid gap-3 text-sm text-zinc-600 sm:grid-cols-2">
-                    <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                      <Clock3 className="size-4 text-zinc-500" />
+                  <div className="grid gap-3 text-sm text-zinc-600 dark:text-muted-foreground sm:grid-cols-2">
+                    <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-border dark:bg-muted/40">
+                      <Clock3 className="size-4 text-zinc-500 dark:text-muted-foreground" />
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-muted-foreground">
                           {t.created}
                         </p>
-                        <p className="mt-1 text-zinc-900">
+                        <p className="mt-1 text-zinc-900 dark:text-foreground">
                           {formatDate(listing.created_at, language)}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                      <Tag className="size-4 text-zinc-500" />
+                    <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-border dark:bg-muted/40">
+                      <Tag className="size-4 text-zinc-500 dark:text-muted-foreground" />
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-muted-foreground">
                           {t.updated}
                         </p>
-                        <p className="mt-1 text-zinc-900">
+                        <p className="mt-1 text-zinc-900 dark:text-foreground">
                           {formatDate(listing.updated_at, language)}
                         </p>
                       </div>
@@ -347,11 +347,11 @@ export default async function ListingDetailPage({ params }) {
                   </div>
 
                   {seller?.bio && !seller?.is_public ? (
-                    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-border dark:bg-muted/40">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-muted-foreground">
                         {t.aboutSeller}
                       </p>
-                      <p className="mt-2 whitespace-pre-line text-sm leading-7 text-zinc-600">
+                      <p className="mt-2 whitespace-pre-line text-sm leading-7 text-zinc-600 dark:text-muted-foreground">
                         {seller.bio}
                       </p>
                     </div>
@@ -368,18 +368,18 @@ export default async function ListingDetailPage({ params }) {
           </div>
         </section>
 
-        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 md:p-8">
+        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-card dark:ring-border md:p-8">
           <div className="mb-5 flex items-center gap-3">
-            <MapPin className="size-5 text-zinc-500" />
+            <MapPin className="size-5 text-zinc-500 dark:text-muted-foreground" />
             <div>
-              <h2 className="text-2xl font-bold text-zinc-950">
+              <h2 className="text-2xl font-bold text-zinc-950 dark:text-foreground">
                 {t.meetupLocation}
               </h2>
-              <p className="text-sm text-zinc-500">{t.meetupLocationDesc}</p>
+              <p className="text-sm text-zinc-500 dark:text-muted-foreground">{t.meetupLocationDesc}</p>
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-[2rem] border border-zinc-200 bg-zinc-100">
+          <div className="overflow-hidden rounded-[2rem] border border-zinc-200 bg-zinc-100 dark:border-border dark:bg-muted">
             <iframe
               title={`${campusLabel} map`}
               src={`https://www.google.com/maps?q=${encodeURIComponent(
@@ -392,17 +392,17 @@ export default async function ListingDetailPage({ params }) {
           </div>
         </section>
 
-        <section className="rounded-3xl bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 md:p-8">
+        <section className="rounded-3xl bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-muted/40 dark:ring-border md:p-8">
           <div className="mb-5 flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-bold text-zinc-950">
+              <h2 className="text-2xl font-bold text-zinc-950 dark:text-foreground">
                 {t.similarListings}
               </h2>
-              <p className="mt-1 text-sm text-zinc-500">
+              <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
                 {t.similarListingsDesc}
               </p>
             </div>
-            <div className="hidden items-center gap-2 text-sm font-medium text-zinc-500 md:flex">
+            <div className="hidden items-center gap-2 text-sm font-medium text-zinc-500 dark:text-muted-foreground md:flex">
               <UserRound className="size-4" />
               <span>{t.marketplacePicks}</span>
             </div>

@@ -104,7 +104,7 @@ export function ProfileAvatarPreview({
   return (
     <div
       className={cn(
-        "flex items-center justify-center overflow-hidden bg-zinc-100 text-zinc-700",
+        "flex items-center justify-center overflow-hidden bg-zinc-100 text-zinc-700 dark:bg-muted dark:text-foreground",
         preset?.className,
         preset ? "text-white" : undefined,
         className,

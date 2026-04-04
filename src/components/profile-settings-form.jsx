@@ -262,15 +262,15 @@ export function ProfileSettingsForm({ initialProfile }) {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-8">
       <div className="grid gap-8 xl:grid-cols-[320px_minmax(0,1fr)]">
-        <Card className="rounded-3xl bg-white py-0 shadow-sm ring-zinc-200">
-          <CardHeader className="border-b border-zinc-200 px-6 py-6">
-            <CardTitle className="text-2xl text-zinc-950">{t.profilePhotoTitle}</CardTitle>
+        <Card className="rounded-3xl bg-white py-0 shadow-sm ring-zinc-200 dark:bg-card dark:ring-border">
+          <CardHeader className="border-b border-zinc-200 px-6 py-6 dark:border-border">
+            <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">{t.profilePhotoTitle}</CardTitle>
             <CardDescription>{t.profilePhotoDescription}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-6 px-6 pt-4 pb-8 text-center">
             <Popover open={isAvatarPickerOpen} onOpenChange={setIsAvatarPickerOpen}>
               <PopoverAnchor asChild>
-                <div className="relative flex aspect-square w-full max-w-[208px] items-center justify-center self-center rounded-[2rem] border border-dashed border-zinc-300 bg-zinc-50">
+                <div className="relative flex aspect-square w-full max-w-[208px] items-center justify-center self-center rounded-[2rem] border border-dashed border-zinc-300 bg-zinc-50 dark:border-border dark:bg-muted/40">
                   <ProfileAvatarPreview
                     email={initialProfile.email}
                     name={`${firstName} ${lastName}`.trim()}
@@ -283,7 +283,7 @@ export function ProfileSettingsForm({ initialProfile }) {
                     <button
                       type="button"
                       aria-label={t.chooseProfilePictureStyle}
-                      className="absolute bottom-2 right-2 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-950 text-white shadow-lg opacity-80"
+                      className="absolute bottom-2 right-2 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-950 text-white shadow-lg opacity-80 dark:bg-primary dark:text-primary-foreground"
                     >
                       <Plus className="size-5" />
                     </button>
@@ -315,7 +315,7 @@ export function ProfileSettingsForm({ initialProfile }) {
                           disabled={isUpdatingAvatar}
                           className={`flex aspect-square items-center justify-center rounded-full border-2 transition ${
                             isSelected
-                              ? "border-zinc-950 ring-4 ring-zinc-200"
+                              ? "border-zinc-950 ring-4 ring-zinc-200 dark:border-ring dark:ring-border"
                               : "border-transparent hover:scale-[1.02]"
                           }`}
                           aria-label={preset.label}
@@ -333,7 +333,7 @@ export function ProfileSettingsForm({ initialProfile }) {
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={isUpdatingAvatar}
-                      className="flex aspect-square items-center justify-center rounded-full border-2 border-dashed border-zinc-300 bg-zinc-50 text-zinc-700 transition hover:bg-zinc-100"
+                      className="flex aspect-square items-center justify-center rounded-full border-2 border-dashed border-zinc-300 bg-zinc-50 text-zinc-700 transition hover:bg-zinc-100 dark:border-border dark:bg-muted/40 dark:text-foreground dark:hover:bg-muted"
                       aria-label={t.uploadCustomProfilePicture}
                     >
                       <Plus className="size-6" />
@@ -348,29 +348,29 @@ export function ProfileSettingsForm({ initialProfile }) {
                     onChange={handleCustomAvatarChange}
                   />
 
-                  <p className="mt-3 text-sm text-zinc-500">
+                  <p className="mt-3 text-sm text-zinc-500 dark:text-muted-foreground">
                     {t.uploadedImagesBucketNote}
                   </p>
               </PopoverContent>
             </Popover>
             <div className="space-y-2">
-              <p className="text-sm font-medium text-zinc-950">{initialProfile.email || t.studentAccount}</p>
-              <p className="text-sm text-zinc-500">
+              <p className="text-sm font-medium text-zinc-950 dark:text-foreground">{initialProfile.email || t.studentAccount}</p>
+              <p className="text-sm text-zinc-500 dark:text-muted-foreground">
                 {t.profileColorsStorageNote}
               </p>
             </div>
-            <div className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-4 text-left">
-              <p className="text-sm font-medium text-zinc-950">{t.school}</p>
-              <p className="mt-1 text-sm text-zinc-600">
+            <div className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-4 text-left dark:border-border dark:bg-muted/40">
+              <p className="text-sm font-medium text-zinc-950 dark:text-foreground">{t.school}</p>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-muted-foreground">
                 {initialProfile.school || t.noSchoolOnFile}
               </p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl bg-white py-0 shadow-sm ring-zinc-200">
-          <CardHeader className="border-b border-zinc-200 px-6 py-6">
-            <CardTitle className="text-2xl text-zinc-950">{t.personalDetailsTitle}</CardTitle>
+        <Card className="rounded-3xl bg-white py-0 shadow-sm ring-zinc-200 dark:bg-card dark:ring-border">
+          <CardHeader className="border-b border-zinc-200 px-6 py-6 dark:border-border">
+            <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">{t.personalDetailsTitle}</CardTitle>
             <CardDescription>{t.personalDetailsDescription}</CardDescription>
           </CardHeader>
           <CardContent className="px-6 py-8">
@@ -383,7 +383,7 @@ export function ProfileSettingsForm({ initialProfile }) {
                     value={firstName}
                     onChange={(event) => setFirstName(event.target.value)}
                     placeholder={t.firstNamePlaceholder}
-                    className="h-10 rounded-xl bg-white"
+                    className="h-10 rounded-xl bg-white dark:bg-input/30"
                   />
                 </Field>
 
@@ -394,7 +394,7 @@ export function ProfileSettingsForm({ initialProfile }) {
                     value={lastName}
                     onChange={(event) => setLastName(event.target.value)}
                     placeholder={t.lastNamePlaceholder}
-                    className="h-10 rounded-xl bg-white"
+                    className="h-10 rounded-xl bg-white dark:bg-input/30"
                   />
                 </Field>
               </div>
@@ -405,7 +405,7 @@ export function ProfileSettingsForm({ initialProfile }) {
                   id="profile-description"
                   value={bio}
                   onChange={(event) => setBio(event.target.value)}
-                  className="min-h-36 rounded-2xl bg-white"
+                  className="min-h-36 rounded-2xl bg-white dark:bg-input/30"
                   placeholder={t.profileBioPlaceholder}
                 />
               </Field>

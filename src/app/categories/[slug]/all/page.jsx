@@ -97,20 +97,20 @@ export default async function CategoryAllPage({ params, searchParams }) {
   const paginatedItems = listings.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   return (
-    <main className="min-h-screen bg-zinc-100 p-6 md:p-8">
+    <main className="min-h-screen bg-zinc-100 p-6 dark:bg-background md:p-8">
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8">
-        <section className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-zinc-200">
-          <h1 className="text-4xl font-bold tracking-tight text-zinc-950">
+        <section className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-zinc-200 dark:bg-card dark:ring-border">
+          <h1 className="text-4xl font-bold tracking-tight text-zinc-950 dark:text-foreground">
             {language === "fr" ? `Toutes les annonces de ${categoryTitle}` : `All ${categoryTitle} Listings`}
           </h1>
-          <p className="mt-3 max-w-2xl text-base text-zinc-600">
+          <p className="mt-3 max-w-2xl text-base text-zinc-600 dark:text-muted-foreground">
             {language === "fr"
               ? "Parcourez toutes les annonces actives actuellement disponibles dans cette catégorie."
               : "Browse every active listing currently available in this category."}
           </p>
         </section>
 
-        <section className="rounded-3xl bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 md:p-8">
+        <section className="rounded-3xl bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-muted/40 dark:ring-border md:p-8">
           {paginatedItems.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
               {paginatedItems.map((item) => (
@@ -128,7 +128,7 @@ export default async function CategoryAllPage({ params, searchParams }) {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-zinc-500 dark:text-muted-foreground">
               {t.noListings}
             </p>
           )}

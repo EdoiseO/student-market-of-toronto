@@ -77,8 +77,8 @@ export function ListingPhotoCarousel({ photos, title }) {
         <CarouselContent>
           {photos.map((photo, index) => (
             <CarouselItem key={`${photo.label}-${index}`}>
-              <div className="pointer-events-none overflow-hidden rounded-[2rem] border border-zinc-200 bg-zinc-100">
-                <div className="relative flex aspect-[16/9] items-center justify-center overflow-hidden bg-zinc-200">
+              <div className="pointer-events-none overflow-hidden rounded-[2rem] border border-zinc-200 bg-zinc-100 dark:border-border dark:bg-muted">
+                <div className="relative flex aspect-[16/9] items-center justify-center overflow-hidden bg-zinc-200 dark:bg-muted/80">
                   {photo.imageUrl ? (
                     <img
                       src={photo.imageUrl}
@@ -86,12 +86,12 @@ export function ListingPhotoCarousel({ photos, title }) {
                       className="h-full w-full object-contain"
                     />
                   ) : (
-                    <span className="text-7xl font-semibold text-zinc-500 md:text-8xl">
+                    <span className="text-7xl font-semibold text-zinc-500 dark:text-muted-foreground md:text-8xl">
                       {index + 1}
                     </span>
                   )}
                   <div className="absolute left-5 top-5">
-                    <Badge variant="secondary" className="bg-white/90 text-zinc-950">
+                    <Badge variant="secondary" className="bg-white/90 text-zinc-950 dark:bg-background/90 dark:text-foreground">
                       {photo.label}
                     </Badge>
                   </div>
@@ -107,7 +107,7 @@ export function ListingPhotoCarousel({ photos, title }) {
               type="button"
               variant="secondary"
               size="icon"
-              className="absolute left-4 top-0 bottom-0 z-20 my-auto size-11 rounded-full bg-white/90 text-zinc-900 shadow-sm transition-transform duration-150 ease-out hover:bg-white hover:scale-105 active:scale-95 touch-manipulation disabled:pointer-events-none disabled:opacity-0"
+              className="absolute left-4 top-0 bottom-0 z-20 my-auto size-11 rounded-full bg-white/90 text-zinc-900 shadow-sm transition-transform duration-150 ease-out hover:bg-white hover:scale-105 active:scale-95 touch-manipulation disabled:pointer-events-none disabled:opacity-0 dark:bg-background/90 dark:text-foreground dark:hover:bg-background"
               aria-label="Previous slide"
               disabled={!canGoPrevious}
               onPointerDown={handlePreviousMouseDown}
@@ -122,7 +122,7 @@ export function ListingPhotoCarousel({ photos, title }) {
               type="button"
               variant="secondary"
               size="icon"
-              className="absolute right-4 top-0 bottom-0 z-20 my-auto size-11 rounded-full bg-white/90 text-zinc-900 shadow-sm transition-transform duration-150 ease-out hover:bg-white hover:scale-105 active:scale-95 touch-manipulation disabled:pointer-events-none disabled:opacity-0"
+              className="absolute right-4 top-0 bottom-0 z-20 my-auto size-11 rounded-full bg-white/90 text-zinc-900 shadow-sm transition-transform duration-150 ease-out hover:bg-white hover:scale-105 active:scale-95 touch-manipulation disabled:pointer-events-none disabled:opacity-0 dark:bg-background/90 dark:text-foreground dark:hover:bg-background"
               aria-label="Next slide"
               disabled={!canGoNext}
               onPointerDown={handleNextMouseDown}
@@ -144,10 +144,10 @@ export function ListingPhotoCarousel({ photos, title }) {
             type="button"
             onClick={() => api?.scrollTo(index)}
             className={cn(
-              "h-14 w-18 overflow-hidden rounded-xl border bg-zinc-100 transition sm:h-16 sm:w-20",
+              "h-14 w-18 overflow-hidden rounded-xl border bg-zinc-100 transition dark:bg-muted sm:h-16 sm:w-20",
               activeIndex === index
-                ? "border-zinc-900 ring-2 ring-zinc-900/10"
-                : "border-zinc-200 hover:border-zinc-400"
+                ? "border-zinc-900 ring-2 ring-zinc-900/10 dark:border-ring dark:ring-ring/20"
+                : "border-zinc-200 hover:border-zinc-400 dark:border-border dark:hover:border-ring"
             )}
           >
             {photo.imageUrl ? (
@@ -157,7 +157,7 @@ export function ListingPhotoCarousel({ photos, title }) {
                 className="h-full w-full object-cover"
               />
             ) : (
-              <span className="flex h-full w-full items-center justify-center text-lg font-semibold text-zinc-500 sm:text-xl">
+              <span className="flex h-full w-full items-center justify-center text-lg font-semibold text-zinc-500 dark:text-muted-foreground sm:text-xl">
                 {index + 1}
               </span>
             )}

@@ -95,6 +95,7 @@ npm run start
 
 - registration
 - login
+- light/dark theme switching
 - browsing listings
 - category pages
 - listing detail pages
@@ -108,7 +109,7 @@ npm run start
 
 - search
 - messages
-- most settings persistence beyond listing-page bio visibility
+- notification settings persistence and most account-level settings beyond theme and listing-page bio visibility
 
 Those features may still appear in the UI, but they are not fully built yet.
 

@@ -30,11 +30,11 @@ export function ListingPhotoChip({ index, imageUrl, alt, onRemove }) {
   const { t } = useLanguage();
 
   return (
-    <div className="relative h-22 w-22 overflow-hidden rounded-[1.4rem] border border-zinc-300 bg-zinc-100 text-zinc-600 shadow-[0_0_0_1px_rgba(24,24,27,0.03)]">
+    <div className="relative h-22 w-22 overflow-hidden rounded-[1.4rem] border border-zinc-300 bg-zinc-100 text-zinc-600 shadow-[0_0_0_1px_rgba(24,24,27,0.03)] dark:border-border dark:bg-muted dark:text-muted-foreground dark:shadow-none">
       <button
         type="button"
         onClick={onRemove}
-        className="absolute right-2 top-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-white/95 text-zinc-700 shadow-sm transition hover:bg-zinc-950 hover:text-white"
+        className="absolute right-2 top-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-white/95 text-zinc-700 shadow-sm transition hover:bg-zinc-950 hover:text-white dark:bg-background/95 dark:text-foreground dark:hover:bg-primary dark:hover:text-primary-foreground"
         aria-label={`${t.delete} ${t.photo.toLowerCase()} ${index + 1}`}
       >
         <X className="size-3.5" />

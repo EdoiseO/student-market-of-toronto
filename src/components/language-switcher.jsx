@@ -7,7 +7,7 @@ export default function LanguageSwitcher() {
   const { language, setLanguage } = useLanguage();
 
   return (
-    <div className="inline-flex items-center gap-1 rounded-xl border border-zinc-200 bg-white p-1 shadow-sm">
+    <div className="inline-flex items-center gap-1 rounded-xl border border-zinc-200 bg-white p-1 shadow-sm dark:border-border dark:bg-card">
       <Button
         type="button"
         size="sm"
