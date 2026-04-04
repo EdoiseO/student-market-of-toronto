@@ -34,7 +34,9 @@ import { ListingPhotoChip, useLocalPhotoPreviews } from "@/components/listing-ph
 import { Textarea } from "@/components/ui/textarea";
 import { useFileDropzone } from "@/hooks/use-file-dropzone";
 import { TORONTO_CAMPUS_OPTIONS } from "@/lib/campuses";
-import { CATEGORY_OPTIONS } from "@/lib/categories";
+import { CATEGORY_OPTIONS, getTranslatedCategoryValue } from "@/lib/categories";
+import { useLanguage } from "@/context/LanguageContext";
+import { getTranslatedConditionLabel } from "@/lib/search-listings";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
 
@@ -77,18 +79,23 @@ function ListingCombobox({
   onValueChange,
   options,
   description,
+  emptyLabel,
 }) {
+  const normalizedOptions = options.map((option) =>
+    typeof option === "string" ? { value: option, label: option } : option
+  );
+
   return (
     <Field>
       <FieldLabel>{label}</FieldLabel>
       <Combobox value={value} onValueChange={onValueChange}>
         <ComboboxInput placeholder={placeholder} />
         <ComboboxContent>
-          <ComboboxEmpty>No option found.</ComboboxEmpty>
+          <ComboboxEmpty>{emptyLabel}</ComboboxEmpty>
           <ComboboxList>
-            {options.map((option) => (
-              <ComboboxItem key={option} value={option}>
-                {option}
+            {normalizedOptions.map((option) => (
+              <ComboboxItem key={option.value} value={option.value}>
+                {option.label}
               </ComboboxItem>
             ))}
           </ComboboxList>
@@ -101,6 +108,7 @@ function ListingCombobox({
 
 export function CreateListingForm() {
   const supabase = React.useMemo(() => createClient(), []);
+  const { t, language } = useLanguage();
   const [title, setTitle] = React.useState("");
   const [category, setCategory] = React.useState("");
   const [price, setPrice] = React.useState("");
@@ -216,12 +224,12 @@ export function CreateListingForm() {
     );
 
     if (!title || !category || !price || !description || !campus || !condition) {
-      setError("Fill in all required listing fields before continuing.");
+      setError(t.fillFields);
       return;
     }
 
     if (!Number.isFinite(numericPrice) || numericPrice < 0) {
-      setError("Enter a valid price.");
+      setError(t.validPrice);
       return;
     }
 
@@ -234,7 +242,7 @@ export function CreateListingForm() {
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
-        throw new Error("You must be logged in to create a listing.");
+        throw new Error(t.mustLogin);
       }
 
       const createdListing = await createListingRecord(user.id, status, numericPrice);
@@ -273,11 +281,11 @@ export function CreateListingForm() {
       resetForm();
       toast.success(
         status === "draft"
-          ? "Draft saved successfully."
-          : "Listing published successfully.",
+          ? t.draftSaved
+          : t.listingPublished,
       );
     } catch (submitError) {
-      setError(submitError.message || "Something went wrong while creating the listing.");
+      setError(submitError.message || t.errorGeneric);
     } finally {
       setIsSubmitting(false);
     }
@@ -288,43 +296,64 @@ export function CreateListingForm() {
     tagPreview.push("Negotiable");
   }
 
+  const translatedCategoryOptions = React.useMemo(
+    () =>
+      CATEGORY_OPTIONS.map((option) => ({
+        value: option,
+        label: getTranslatedCategoryValue(option, t, language),
+      })),
+    [language, t]
+  );
+
+  const translatedConditionOptions = React.useMemo(
+    () =>
+      conditionOptions.map((option) => ({
+        value: option,
+        label: getTranslatedConditionLabel(option, t),
+      })),
+    [t]
+  );
+
+  const translatedTagPreview = tagPreview.map((tag) =>
+    tag === "New" ? t.new : tag === "Negotiable" ? t.negotiable : tag
+  );
+
   return (
     <main className="min-h-screen bg-zinc-100 p-6 md:p-8">
-      <div className="mx-auto flex w-full max-w-[1800px] flex-col gap-8">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8">
         <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm">
           <CardHeader className="border-b border-zinc-200 px-8 py-7">
             <CardTitle className="text-4xl font-bold tracking-tight text-zinc-950">
-              Create Listing
+              {t.createListing}
             </CardTitle>
             <CardDescription className="max-w-2xl text-base text-zinc-600">
-              Add the main item details first. Photos, campus, condition, and
-              tag preview are included here so the page reflects how the listing
-              will look later in the marketplace.
+              {t.createListingDesc}
             </CardDescription>
           </CardHeader>
 
           <CardContent className="p-8">
-            <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.85fr)]">
+            <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(288px,0.85fr)]">
               <FieldGroup>
                 <Field>
-                  <FieldLabel>Title</FieldLabel>
+                  <FieldLabel>{t.title}</FieldLabel>
                   <Input
                     value={title}
                     onChange={(event) => setTitle(event.target.value)}
-                    placeholder="e.g. MacBook Air M1"
+                    placeholder={t.titlePlaceholder}
                   />
                 </Field>
 
                 <ListingCombobox
-                  label="Category"
-                  placeholder="Choose a category"
+                  label={t.category}
+                  placeholder={t.categoryPlaceholder}
                   value={category}
                   onValueChange={setCategory}
-                  options={CATEGORY_OPTIONS}
+                  options={translatedCategoryOptions}
+                  emptyLabel={t.noOptionFound}
                 />
 
                 <Field>
-                  <FieldLabel>Price</FieldLabel>
+                  <FieldLabel>{t.price}</FieldLabel>
                   <Input
                     value={price}
                     onChange={(event) => setPrice(event.target.value)}
@@ -334,21 +363,22 @@ export function CreateListingForm() {
                 </Field>
 
                 <Field>
-                  <FieldLabel>Description</FieldLabel>
+                  <FieldLabel>{t.description}</FieldLabel>
                   <Textarea
                     value={description}
                     onChange={(event) => setDescription(event.target.value)}
                     className="min-h-40 resize-none"
-                    placeholder="Describe the condition, included accessories, pickup details, and anything a student buyer should know."
+                    placeholder={t.descriptionPlaceholder}
                   />
                 </Field>
 
                 <ListingCombobox
-                  label="Condition"
-                  placeholder="Select condition"
+                  label={t.condition}
+                  placeholder={t.conditionPlaceholder}
                   value={condition}
                   onValueChange={setCondition}
-                  options={conditionOptions}
+                  options={translatedConditionOptions}
+                  emptyLabel={t.noOptionFound}
                 />
               </FieldGroup>
 
@@ -373,11 +403,11 @@ export function CreateListingForm() {
                         Add Listing Photos
                       </p>
                       <p className="mt-2 text-sm text-zinc-500">
-                        {isDragActive ? "Drop images here" : "Drag and drop images here, or click to browse"}
+                        {isDragActive ? t.dropImages : t.dragDrop}
                       </p>
                       {photos.length > 0 ? (
                         <p className="mt-4 text-sm font-medium text-zinc-700">
-                          {photos.length} file{photos.length === 1 ? "" : "s"} selected
+                          {photos.length} {photos.length === 1 ? t.selectedFileSingular : t.selectedFilePlural}
                         </p>
                       ) : null}
                     </button>
@@ -418,11 +448,12 @@ export function CreateListingForm() {
                 <Card className="rounded-[1.75rem] border-zinc-200 bg-zinc-50 py-0 shadow-none">
                   <CardContent className="space-y-5 p-6">
                     <ListingCombobox
-                      label="Campus"
-                      placeholder="Choose a meetup campus"
+                      label={t.campus}
+                      placeholder={t.campusPlaceholder}
                       value={campus}
                       onValueChange={setCampus}
                       options={TORONTO_CAMPUS_OPTIONS}
+                      emptyLabel={t.noOptionFound}
                     />
 
                     <Field orientation="horizontal" className="items-start rounded-2xl border border-zinc-200 bg-white p-4">
@@ -432,10 +463,8 @@ export function CreateListingForm() {
                         onCheckedChange={(checked) => setIsNegotiable(Boolean(checked))}
                       />
                       <div className="space-y-1">
-                        <FieldTitle>Negotiable</FieldTitle>
-                        <FieldDescription>
-                          Turn this on if the seller is open to offers.
-                        </FieldDescription>
+                        <FieldTitle>{t.negotiable}</FieldTitle>
+                        <FieldDescription>{t.negotiableDesc}</FieldDescription>
                       </div>
                     </Field>
 
@@ -443,30 +472,27 @@ export function CreateListingForm() {
                       <div className="mb-3 flex items-center gap-2 text-zinc-900">
                         <Sparkles className="size-4" />
                         <p className="text-sm font-semibold uppercase tracking-[0.18em]">
-                          Tag Preview
+                          {t.tagPreview}
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {tagPreview.map((tag) => (
+                        {translatedTagPreview.map((tag) => (
                           <Badge key={tag} variant="secondary" className="bg-zinc-100 text-zinc-800">
                             {tag}
                           </Badge>
                         ))}
                       </div>
                       <p className="mt-3 text-sm text-zinc-500">
-                        `New` is automatic. `Popular`, `Hot`, `Price Drop`, and
-                        `Sold` should be derived later from listing activity or
-                        edits.
+                        {t.editTagPreviewDesc}
                       </p>
                     </div>
 
                     <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-500">
                       <div className="mb-2 flex items-center gap-2 text-zinc-900">
                         <Info className="size-4" />
-                        <span className="font-medium">Recommendation</span>
+                        <span className="font-medium">{t.recommendation}</span>
                       </div>
-                      Add a `Location Details` field later if you want meetup
-                      directions to be more specific than campus only.
+                      {t.editRecommendationDesc}
                     </div>
                   </CardContent>
                 </Card>
@@ -483,14 +509,14 @@ export function CreateListingForm() {
                 disabled={isSubmitting}
                 onClick={() => handleSubmit("draft")}
               >
-                Save Draft
+                {t.saveDraft}
               </Button>
               <Button
                 type="button"
                 disabled={isSubmitting}
                 onClick={() => handleSubmit("active")}
               >
-                {isSubmitting ? "Saving..." : "Publish Listing"}
+                {isSubmitting ? t.saving : t.publish}
               </Button>
             </div>
           </CardContent>

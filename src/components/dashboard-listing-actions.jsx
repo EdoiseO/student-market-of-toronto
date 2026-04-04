@@ -121,12 +121,12 @@ export function DashboardListingActions({ id, slug, status }) {
   }
 
   return (
-    <div className="flex justify-end gap-2">
+    <div className="flex flex-wrap items-center justify-end gap-1.5 whitespace-nowrap md:ml-auto md:flex-nowrap">
       <Button
         asChild
         variant="outline"
-        size="sm"
-        className="h-9 rounded-xl bg-white px-4"
+        size="xs"
+        className="h-8 rounded-lg bg-white px-2.5"
       >
         <Link href={`/listings/${slug}/edit`}>{t.editListing}</Link>
       </Button>
@@ -134,8 +134,8 @@ export function DashboardListingActions({ id, slug, status }) {
         <Button
           type="button"
           variant="outline"
-          size="sm"
-          className="h-9 rounded-xl bg-white px-4"
+          size="xs"
+          className="h-8 rounded-lg bg-white px-2.5"
           onClick={() => handleUpdateStatus("active")}
           disabled={isUpdatingStatus}
         >
@@ -146,8 +146,8 @@ export function DashboardListingActions({ id, slug, status }) {
         <Button
           type="button"
           variant="outline"
-          size="sm"
-          className="h-9 rounded-xl bg-white px-4"
+          size="xs"
+          className="h-8 rounded-lg bg-white px-2.5"
           onClick={() => handleUpdateStatus("sold")}
           disabled={isUpdatingStatus}
         >
@@ -158,8 +158,8 @@ export function DashboardListingActions({ id, slug, status }) {
         <Button
           type="button"
           variant="outline"
-          size="sm"
-          className="h-9 rounded-xl bg-white px-4"
+          size="xs"
+          className="h-8 rounded-lg bg-white px-2.5"
           onClick={() => handleUpdateStatus("active")}
           disabled={isUpdatingStatus}
         >
@@ -171,8 +171,8 @@ export function DashboardListingActions({ id, slug, status }) {
           <Button
             type="button"
             variant="outline"
-            size="sm"
-            className="h-9 rounded-xl border-rose-200 bg-rose-50 px-4 text-rose-700 hover:bg-rose-100"
+            size="xs"
+            className="h-8 rounded-lg border-rose-200 bg-rose-50 px-2.5 text-rose-700 hover:bg-rose-100"
           >
             {t.delete}
           </Button>

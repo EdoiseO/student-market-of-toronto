@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { ProfileSettingsForm } from "@/components/profile-settings-form";
+import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
 function normalizeMetadataText(value) {
@@ -15,6 +16,8 @@ function normalizeMetadataText(value) {
 
 export default async function DashboardProfilePage() {
   const cookieStore = await cookies();
+  const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
+  const t = translations[language] || translations.en;
   const supabase = createClient(cookieStore);
 
   const {
@@ -51,12 +54,11 @@ export default async function DashboardProfilePage() {
 
   return (
     <main className="min-h-screen bg-zinc-100 p-6 md:p-8">
-      <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-8">
+      <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-8">
         <section className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-zinc-200">
-          <h1 className="text-4xl font-bold tracking-tight text-zinc-950">Profile</h1>
+          <h1 className="text-4xl font-bold tracking-tight text-zinc-950">{t.profilePageTitle}</h1>
           <p className="mt-3 max-w-3xl text-base text-zinc-600">
-            Manage the student details shown across your marketplace account. Name changes sync
-            with your profile so seller identity stays consistent.
+            {t.profilePageDescription}
           </p>
         </section>
 

@@ -22,7 +22,7 @@ export function SiteHeader() {
     pathname === "/"
       ? t.browseListings
       : pathname.startsWith("/search")
-        ? "Search & Filter"
+        ? t.searchAndFilter
       : pathname.startsWith("/dashboard")
         ? t.dashboard
         : pathname.endsWith("/edit")
@@ -34,7 +34,7 @@ export function SiteHeader() {
   return (
     <header
       className="sticky top-0 z-50 flex w-full items-center border-b bg-background">
-      <div className="grid w-full grid-cols-1 gap-3 px-4 py-3 md:h-(--header-height) md:grid-cols-[minmax(240px,1fr)_minmax(0,520px)] md:items-center md:px-5 md:py-0 xl:grid-cols-[minmax(280px,1fr)_minmax(420px,980px)_minmax(0,1fr)]">
+      <div className="grid w-full grid-cols-1 gap-3 px-4 py-3 md:h-(--header-height) md:grid-cols-[minmax(192px,1fr)_minmax(0,416px)] md:items-center md:px-5 md:py-0 xl:grid-cols-[minmax(224px,1fr)_minmax(336px,784px)_minmax(0,1fr)]">
         <div className="flex min-w-0 items-center gap-2">
           <Button
             className="h-10 w-10 rounded-xl"

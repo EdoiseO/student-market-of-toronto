@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { Heart } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/context/LanguageContext";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
 
 export function FavouriteButton({ listingId, initialIsFavourited = false }) {
   const router = useRouter();
+  const { t } = useLanguage();
   const supabase = React.useMemo(() => createClient(), []);
   const [isFavourited, setIsFavourited] = React.useState(initialIsFavourited);
   const [loading, setLoading] = React.useState(false);
@@ -63,7 +65,7 @@ export function FavouriteButton({ listingId, initialIsFavourited = false }) {
       size="icon"
       onClick={handleToggleFavourite}
       disabled={loading}
-      aria-label={isFavourited ? "Remove from favourites" : "Add to favourites"}
+      aria-label={isFavourited ? t.removeFromFavourites : t.addToFavourites}
       className={cn(
         "size-11 rounded-full border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-100",
         isFavourited &&

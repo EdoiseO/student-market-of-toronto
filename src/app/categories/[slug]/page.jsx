@@ -3,8 +3,13 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { CardImage } from "@/components/card-image";
+import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
-import { getCategoryBySlug, getCategoryValuesBySlug } from "@/lib/categories";
+import {
+  getCategoryBySlug,
+  getCategoryValuesBySlug,
+  getTranslatedCategoryTitle,
+} from "@/lib/categories";
 
 const SECTION_ITEM_LIMIT = 6;
 const NEW_LISTING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
@@ -144,7 +149,16 @@ export default async function CategoryPage({ params }) {
   }
 
   const cookieStore = await cookies();
+  const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
+  const t = translations[language] || translations.en;
   const supabase = createClient(cookieStore);
+  const categoryTitle = getTranslatedCategoryTitle(
+    resolvedParams.slug,
+    t,
+    language,
+    section.title
+  );
+  const categoryTitleLower = categoryTitle.toLowerCase();
   const { data: allItems } = await supabase
     .from("listings")
     .select(`
@@ -190,49 +204,66 @@ export default async function CategoryPage({ params }) {
 
   return (
     <main className="min-h-screen bg-zinc-100 p-6 md:p-8">
-      <div className="mx-auto flex w-full max-w-[1800px] flex-col gap-8">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8">
         <section className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-zinc-200">
           <h1 className="text-4xl font-bold tracking-tight text-zinc-950">
-            {section.title}
+            {categoryTitle}
           </h1>
           <p className="mt-3 max-w-2xl text-base text-zinc-600">
-            Browse curated picks, trending listings, and everything currently available in this category.
+            {t.categoryPageDescription}
           </p>
         </section>
 
         {listings.length > 0 ? (
           <>
             <CategorySection
-              title="Promoted"
-              description={`Featured listings we want students to notice first in ${section.title.toLowerCase()}.`}
+              title={t.promoted}
+              description={
+                language === "fr"
+                  ? `Les annonces mises en avant à découvrir d'abord dans ${categoryTitleLower}.`
+                  : `Featured listings we want students to notice first in ${categoryTitleLower}.`
+              }
               items={promotedItems}
             />
 
             <CategorySection
-              title="Trending"
-              description={`Listings gaining attention right now in ${section.title.toLowerCase()}.`}
+              title={t.trending}
+              description={
+                language === "fr"
+                  ? `Les annonces qui attirent l'attention en ce moment dans ${categoryTitleLower}.`
+                  : `Listings gaining attention right now in ${categoryTitleLower}.`
+              }
               items={trendingItems}
             />
 
             <CategorySection
-              title="Recently Added"
-              description={`Newest listings in ${section.title.toLowerCase()}.`}
+              title={t.recentlyAdded}
+              description={
+                language === "fr"
+                  ? `Les annonces les plus récentes dans ${categoryTitleLower}.`
+                  : `Newest listings in ${categoryTitleLower}.`
+              }
               items={recentlyAddedItems}
             />
 
             <CategorySection
-              title="All Listings"
-              description="Every listing currently shown in this category."
+              title={t.allListingsTitle}
+              description={
+                language === "fr"
+                  ? "Toutes les annonces actuellement affichées dans cette catégorie."
+                  : "Every listing currently shown in this category."
+              }
               items={allAvailablePreview}
               href={`/categories/${resolvedParams.slug}/all`}
             />
           </>
         ) : (
           <section className="rounded-3xl bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 md:p-8">
-            <h2 className="text-2xl font-bold text-zinc-950">No active listings yet</h2>
+            <h2 className="text-2xl font-bold text-zinc-950">{t.noActiveListingsYetTitle}</h2>
             <p className="mt-2 max-w-2xl text-sm text-zinc-500">
-              There are no active listings in {section.title.toLowerCase()} right now. Check back
-              soon or explore another category.
+              {language === "fr"
+                ? `Aucune annonce active n'est disponible dans ${categoryTitleLower} pour le moment. Revenez bientôt ou explorez une autre catégorie.`
+                : `There are no active listings in ${categoryTitleLower} right now. Check back soon or explore another category.`}
             </p>
           </section>
         )}

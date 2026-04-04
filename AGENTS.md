@@ -2,7 +2,8 @@
 
 ## Project status
 - Implemented and actively used: authentication, registration, listing creation, listing viewing, listing editing, dashboard listing management, dashboard profile editing, profile avatar uploads/presets, and seller profile data on listing pages.
-- Placeholder or not fully implemented yet: search, messages, public seller profile page, and most settings persistence beyond the listing-page bio visibility toggle.
+- Implemented and actively used: protected seller profile pages for signed-in users, including seller listing browsing.
+- Placeholder or not fully implemented yet: search, messages, and most settings persistence beyond the listing-page bio visibility toggle.
 
 ## Working rules
 - Every time code is changed, create a session log in `logs/<date>-<session-title>.md`.
@@ -15,11 +16,13 @@
 - Placeholder UI is allowed, but it should not look broken or misleading.
 - Keep changes focused on the requested task; avoid broad refactors.
 - Prefer minimal, readable solutions that match the existing codebase style.
+- For user-facing text, prefer centralized entries in `src/lib/translations.js` over hardcoded page-level copy whenever the UI is part of the bilingual experience.
 
 ## UI conventions
 - Reuse existing `shadcn`/UI components and current Tailwind patterns.
 - Keep the marketplace/dashboard visual style consistent with existing rounded cards, spacing, and button styles.
 - For unfinished features, prefer honest disabled or informational UI over fake interactivity.
+- When translating category, filter, badge, or status labels, keep stored values stable and localize at render time instead of changing app-facing data values.
 
 ## Listing flows
 - Listing management lives primarily in the dashboard and listing form components.

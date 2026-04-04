@@ -2,8 +2,13 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { CardImage } from "@/components/card-image";
+import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
-import { getCategoryBySlug, getCategoryValuesBySlug } from "@/lib/categories";
+import {
+  getCategoryBySlug,
+  getCategoryValuesBySlug,
+  getTranslatedCategoryTitle,
+} from "@/lib/categories";
 import {
   Pagination,
   PaginationContent,
@@ -49,7 +54,15 @@ export default async function CategoryAllPage({ params, searchParams }) {
   }
 
   const cookieStore = await cookies();
+  const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
+  const t = translations[language] || translations.en;
   const supabase = createClient(cookieStore);
+  const categoryTitle = getTranslatedCategoryTitle(
+    resolvedParams.slug,
+    t,
+    language,
+    section.title
+  );
   const { data: allItems } = await supabase
     .from("listings")
     .select(`
@@ -85,13 +98,15 @@ export default async function CategoryAllPage({ params, searchParams }) {
 
   return (
     <main className="min-h-screen bg-zinc-100 p-6 md:p-8">
-      <div className="mx-auto flex w-full max-w-[1800px] flex-col gap-8">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8">
         <section className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-zinc-200">
           <h1 className="text-4xl font-bold tracking-tight text-zinc-950">
-            All {section.title} Listings
+            {language === "fr" ? `Toutes les annonces — ${categoryTitle}` : `All ${categoryTitle} Listings`}
           </h1>
           <p className="mt-3 max-w-2xl text-base text-zinc-600">
-            Browse every active listing currently available in this category.
+            {language === "fr"
+              ? "Parcourez toutes les annonces actives actuellement disponibles dans cette catégorie."
+              : "Browse every active listing currently available in this category."}
           </p>
         </section>
 
@@ -114,7 +129,7 @@ export default async function CategoryAllPage({ params, searchParams }) {
             </div>
           ) : (
             <p className="text-sm text-zinc-500">
-              No listings available in this category yet.
+              {t.noListings}
             </p>
           )}
 
