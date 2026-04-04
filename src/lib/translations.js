@@ -379,6 +379,12 @@ export const translations = {
     enterTorontoSchoolEmail: "Enter your Toronto school email.",
     validTorontoSchoolEmail:
       "Use a valid Toronto school email from a supported school domain.",
+    moreActions: "More actions",
+    shareListing: "Share listing",
+    reportListing: "Report listing",
+    listingLinkCopied: "Listing link copied.",
+    listingLinkCopyError: "We could not copy the listing link right now.",
+    reportListingUnavailable: "Reporting is not available yet.",
   },
   fr: {
     browseListings: "Parcourir les annonces",
@@ -784,5 +790,12 @@ export const translations = {
     validTorontoSchoolEmail:
       "Utilisez une adresse e-mail scolaire valide provenant d'un domaine pris en charge à Toronto.",
     profileAvatarLabel: "Avatar de profil",
+    moreActions: "Plus d'actions",
+    shareListing: "Partager l'annonce",
+    reportListing: "Signaler l'annonce",
+    listingLinkCopied: "Le lien de l'annonce a été copié.",
+    listingLinkCopyError:
+      "Nous n'avons pas pu copier le lien de l'annonce pour le moment.",
+    reportListingUnavailable: "Le signalement n'est pas encore disponible.",
   },
 };

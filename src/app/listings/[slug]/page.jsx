@@ -14,6 +14,7 @@ import {
 import { CardImage } from "@/components/card-image";
 import { FavouriteButton } from "@/components/favourite-button";
 import { ListingPhotoCarousel } from "@/components/listing-photo-carousel";
+import { ListingMoreButton } from "@/components/listing-more-button";
 import { ProfileAvatar } from "@/components/profile-avatar";
 import { getTranslatedConditionLabel } from "@/lib/search-listings";
 import { translations } from "@/lib/translations";
@@ -240,10 +241,13 @@ export default async function ListingDetailPage({ params }) {
                       </div>
                     </div>
 
-                    <FavouriteButton
-                      listingId={listing.id}
-                      initialIsFavourited={initialIsFavourited}
-                    />
+                    <div className="flex items-center gap-2">
+                      <FavouriteButton
+                        listingId={listing.id}
+                        initialIsFavourited={initialIsFavourited}
+                      />
+                      <ListingMoreButton slug={listing.slug} />
+                    </div>
                   </div>
 
                   <div className="grid gap-3 text-sm text-zinc-600 sm:grid-cols-2">
