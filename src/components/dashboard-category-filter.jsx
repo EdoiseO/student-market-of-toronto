@@ -8,7 +8,7 @@ import {
 
 export function DashboardCategoryFilter({ value, onValueChange, options }) {
   return (
-    <div className="w-full md:w-[240px]">
+    <div className="w-full md:w-[160px] lg:w-[170px]">
       <Label htmlFor="dashboard-category-filter" className="sr-only">
         Filter dashboard listings by category
       </Label>

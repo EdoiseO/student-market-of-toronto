@@ -132,11 +132,11 @@ export default async function DashboardPage({ searchParams }) {
     : [];
 
   return (
-    <main className="min-h-screen bg-zinc-100 p-6 md:p-8">
-      <div className="mx-auto flex w-full max-w-[1800px] flex-col gap-8">
+    <main className="min-h-screen bg-zinc-100 p-5 md:p-6 lg:p-7">
+      <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6">
         <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm">
-          <CardHeader className="border-b border-zinc-200 px-8 py-6">
-            <CardTitle className="text-4xl font-bold tracking-tight text-zinc-950">
+          <CardHeader className="border-b border-zinc-200 px-6 py-5 lg:px-7">
+            <CardTitle className="text-3xl font-bold tracking-tight text-zinc-950 lg:text-4xl">
               Dashboard
             </CardTitle>
             <p className="max-w-2xl text-base text-zinc-600">

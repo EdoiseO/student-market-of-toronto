@@ -101,8 +101,8 @@ export function ProfileListingsSection({ listings, sellerSchool }) {
           </div>
         </div>
 
-        <div className="flex w-full flex-col gap-3 sm:flex-row lg:ml-auto lg:flex-1 lg:justify-end lg:items-center">
-          <div className="w-full sm:max-w-[190px]">
+        <div className="flex w-full flex-col gap-3 sm:flex-row lg:ml-auto lg:flex-1 lg:justify-end lg:items-center lg:gap-2">
+          <div className="w-full sm:max-w-[152px]">
             <Label htmlFor="profile-listings-sort" className="sr-only">
               {t.sortListingsLabel}
             </Label>
@@ -117,7 +117,7 @@ export function ProfileListingsSection({ listings, sellerSchool }) {
             </NativeSelect>
           </div>
 
-          <div className="w-full sm:max-w-[220px]">
+          <div className="w-full sm:max-w-[168px]">
             <Label htmlFor="profile-listings-category" className="sr-only">
               {t.filterByCategoryLabel}
             </Label>
@@ -141,7 +141,7 @@ export function ProfileListingsSection({ listings, sellerSchool }) {
             </NativeSelect>
           </div>
 
-          <div className="w-full sm:max-w-[340px] lg:w-[340px] lg:max-w-none">
+          <div className="w-full sm:max-w-[240px] lg:w-[240px] lg:max-w-none">
             <Label htmlFor="profile-listings-search" className="sr-only">
               {t.searchListingsLabel}
             </Label>
@@ -158,7 +158,7 @@ export function ProfileListingsSection({ listings, sellerSchool }) {
 
       {filteredListings.length > 0 ? (
         <>
-          <div className="grid gap-6 md:grid-cols-3 xl:grid-cols-6">
+          <div className="grid gap-5 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
             {paginatedListings.map((listing) => (
               <CardImage
                 key={listing.id}

@@ -200,9 +200,9 @@ export default async function ListingDetailPage({ params }) {
 
   return (
     <main className="min-h-screen bg-zinc-100 p-6 md:p-8">
-      <div className="mx-auto flex w-full max-w-[1800px] flex-col gap-8">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8">
         <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 md:p-8">
-          <div className="grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.95fr)]">
+          <div className="grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(256px,0.95fr)]">
             <div className="flex flex-col gap-5">
               <ListingPhotoCarousel photos={photos} title={listing.title} />
 
@@ -276,7 +276,7 @@ export default async function ListingDetailPage({ params }) {
                   {seller?.id ? (
                     <Link
                       href={`/profile/${seller.id}`}
-                      className="flex w-fit items-center gap-4 rounded-2xl transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/15"
+                      className="flex w-full items-center gap-4 rounded-2xl transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/15 sm:w-fit"
                     >
                       <ProfileAvatar
                         email={null}
@@ -380,7 +380,7 @@ export default async function ListingDetailPage({ params }) {
               src={`https://www.google.com/maps?q=${encodeURIComponent(
                 campusLabel
               )}&z=15&output=embed`}
-              className="h-[360px] w-full border-0"
+              className="h-[288px] w-full border-0"
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
             />
@@ -403,7 +403,7 @@ export default async function ListingDetailPage({ params }) {
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
             {similarListings.map((item) => (
               <CardImage
                 key={item.slug}

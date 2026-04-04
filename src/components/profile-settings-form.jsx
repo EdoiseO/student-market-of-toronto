@@ -52,6 +52,20 @@ export function ProfileSettingsForm({ initialProfile }) {
   const [isAvatarPickerOpen, setIsAvatarPickerOpen] = React.useState(false);
   const [isUpdatingAvatar, setIsUpdatingAvatar] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isMobileViewport, setIsMobileViewport] = React.useState(false);
+
+  React.useEffect(() => {
+    function syncIsMobileViewport() {
+      setIsMobileViewport(window.innerWidth < 640);
+    }
+
+    syncIsMobileViewport();
+    window.addEventListener("resize", syncIsMobileViewport);
+
+    return () => {
+      window.removeEventListener("resize", syncIsMobileViewport);
+    };
+  }, []);
 
   const initials = [firstName, lastName]
     .filter(Boolean)
@@ -256,7 +270,7 @@ export function ProfileSettingsForm({ initialProfile }) {
           <CardContent className="flex flex-col items-center gap-6 px-6 pt-4 pb-8 text-center">
             <Popover open={isAvatarPickerOpen} onOpenChange={setIsAvatarPickerOpen}>
               <PopoverAnchor asChild>
-                <div className="relative flex aspect-square w-full max-w-[260px] items-center justify-center self-center rounded-[2rem] border border-dashed border-zinc-300 bg-zinc-50">
+                <div className="relative flex aspect-square w-full max-w-[208px] items-center justify-center self-center rounded-[2rem] border border-dashed border-zinc-300 bg-zinc-50">
                   <ProfileAvatarPreview
                     email={initialProfile.email}
                     name={`${firstName} ${lastName}`.trim()}
@@ -277,10 +291,10 @@ export function ProfileSettingsForm({ initialProfile }) {
                 </div>
               </PopoverAnchor>
               <PopoverContent
-                side="right"
+                side={isMobileViewport ? "bottom" : "right"}
                 align="center"
                 sideOffset={16}
-                className="w-[360px] rounded-[2rem] p-5 sm:w-[420px]"
+                className="w-[min(20rem,calc(100vw-2rem))] rounded-[2rem] p-5 sm:w-[336px]"
               >
                   <PopoverHeader className="mb-2">
                     <PopoverTitle>Choose profile picture</PopoverTitle>

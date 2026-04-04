@@ -126,33 +126,35 @@ export default async function PublicProfilePage({ params }) {
   }));
 
   return (
-    <main className="min-h-screen bg-zinc-100 p-6 md:p-8">
-      <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-8">
-        <section className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-zinc-200">
-          <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
+    <main className="min-h-screen bg-zinc-100 p-5 md:p-6 lg:p-8">
+      <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 lg:gap-7">
+        <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200 sm:p-6 lg:p-7">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-6">
             <div className="shrink-0">
               <ProfileAvatar
                 email={null}
                 name={sellerName}
                 avatarPresetId={profile.avatar_preset_id ?? null}
                 avatarUrl={profile.avatar_url ?? null}
-                className="h-32 w-32 rounded-3xl after:rounded-3xl"
+                className="h-24 w-24 rounded-3xl after:rounded-3xl sm:h-28 sm:w-28 lg:h-32 lg:w-32"
                 imageClassName="rounded-3xl"
                 fallbackClassName="rounded-3xl"
               />
             </div>
 
             <div className="flex-1 space-y-4">
-              <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                 <div className="space-y-2">
                   <Badge variant="outline" className="border-zinc-300 bg-zinc-50 text-zinc-700">
                     {t.seller}
                   </Badge>
-                  <h1 className="text-4xl font-bold tracking-tight text-zinc-950">{sellerName}</h1>
+                  <h1 className="text-2xl font-bold tracking-tight text-zinc-950 sm:text-3xl lg:text-4xl">
+                    {sellerName}
+                  </h1>
                   <p className="text-base text-zinc-600">{profile.school || t.torontoStudent}</p>
                 </div>
 
-                <div className="grid min-w-[260px] gap-3 sm:grid-cols-2 xl:max-w-[420px]">
+                <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:max-w-[304px]">
                   <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
                     <ListIcon className="size-4 text-zinc-500" />
                     <div>
@@ -179,7 +181,7 @@ export default async function PublicProfilePage({ params }) {
             </div>
           </div>
 
-          <div className="mt-6 w-full max-w-5xl rounded-2xl border border-zinc-200 bg-zinc-50 p-6">
+          <div className="mt-5 w-full max-w-5xl rounded-2xl border border-zinc-200 bg-zinc-50 p-4 sm:p-5 lg:p-6">
             <p className="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-zinc-500">
               {t.profileDescriptionTitle}
             </p>
@@ -193,7 +195,7 @@ export default async function PublicProfilePage({ params }) {
           </div>
         </section>
 
-        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 md:p-8">
+        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 lg:p-7">
           {sellerListings.length > 0 ? (
             <ProfileListingsSection listings={sellerListings} sellerSchool={profile.school || ""} />
           ) : (

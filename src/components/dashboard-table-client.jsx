@@ -165,7 +165,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2.5">
+        <div className="flex flex-wrap gap-2">
           {dashboardTabs.map((tab) => {
             const isActive = currentTab === tab.key;
             return (
@@ -176,8 +176,8 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                 size="sm"
                 className={
                   isActive
-                    ? "h-10 rounded-xl px-4"
-                    : "h-10 rounded-xl bg-white px-4"
+                    ? "h-9 rounded-xl px-3.5"
+                    : "h-9 rounded-xl bg-white px-3.5"
                 }
               >
                 <Link href={buildDashboardHref(tab.key)}>
@@ -197,7 +197,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
           })}
         </div>
 
-        <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row md:items-center">
+        <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center">
           <DashboardCategoryFilter
             value={selectedCategory}
             onValueChange={setSelectedCategory}
@@ -205,32 +205,90 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
           />
           <DashboardSearchInput value={dashboardSearch} onValueChange={setDashboardSearch} />
           {showManagementActions ? (
-            <Button asChild className="h-10 rounded-xl px-4">
+            <Button asChild size="sm" className="h-9 rounded-lg px-3">
               <Link href="/listings/create">Add Listing</Link>
             </Button>
           ) : null}
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-[1.75rem] border border-zinc-200 bg-white">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left">
+      <div className="space-y-4 md:hidden">
+        {paginatedItems.length > 0 ? (
+          paginatedItems.map((item) => (
+            <div
+              key={`${item.dashboardStatus}-${item.id}`}
+              className="rounded-[1.5rem] border border-zinc-200 bg-white p-4 shadow-sm"
+            >
+              <Link href={`/listings/${item.slug}`} className="block rounded-xl transition hover:bg-zinc-50">
+                <div className="flex items-center gap-3">
+                  <div className="h-14 w-18 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100">
+                    {item.imageUrl ? (
+                      <img src={item.imageUrl} alt={item.title} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="h-full w-full bg-zinc-100" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-zinc-950">{item.title}</p>
+                    <p className="mt-1 truncate text-sm text-zinc-500">{item.meta}</p>
+                  </div>
+                </div>
+              </Link>
+
+              <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500">Status</p>
+                  <div className="mt-2">
+                    <DashboardStatusBadge status={item.dashboardStatus} />
+                  </div>
+                </div>
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500">Price</p>
+                  <p className="mt-2 font-medium text-zinc-900">{item.price}</p>
+                </div>
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500">Messages</p>
+                  <p className="mt-2 text-zinc-700">{item.messageCount > 0 ? `${item.messageCount}+` : "0"}</p>
+                </div>
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500">Category</p>
+                  <p className="mt-2 line-clamp-2 text-zinc-700">{item.category}</p>
+                </div>
+              </div>
+
+              {showManagementActions ? (
+                <div className="mt-4">
+                  {editableStatuses.has(item.dashboardStatus) ? (
+                    <DashboardListingActions id={item.id} slug={item.slug} status={item.dashboardStatus} />
+                  ) : (
+                    <span className="text-sm text-zinc-400">-</span>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          ))
+        ) : null}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-[1.75rem] border border-zinc-200 bg-white md:block">
+        <div className="overflow-x-hidden">
+          <table className="w-full table-fixed text-left">
             <thead className="bg-zinc-50">
               <tr className="border-b border-zinc-200 text-sm text-zinc-500">
-                <th className="px-6 py-4 font-medium">Listing</th>
-                <th className="px-6 py-4 font-medium">Status</th>
-                <th className="px-6 py-4 font-medium">Price</th>
-                <th className="px-6 py-4 font-medium">Messages</th>
-                <th className="px-6 py-4 font-medium">Category</th>
+                <th className="w-[32%] px-5 py-3.5 font-medium">Listing</th>
+                <th className="w-[10%] px-5 py-3.5 font-medium">Status</th>
+                <th className="w-[10%] px-5 py-3.5 font-medium">Price</th>
+                <th className="w-[9%] px-5 py-3.5 font-medium">Messages</th>
+                <th className="w-[13%] px-5 py-3.5 font-medium">Category</th>
                 {showManagementActions ? (
-                  <th className="px-6 py-4 text-right font-medium">Actions</th>
+                  <th className="w-[26%] px-5 py-3.5 text-right font-medium">Actions</th>
                 ) : null}
               </tr>
             </thead>
             <tbody>
               {paginatedItems.map((item) => (
                 <tr key={`${item.dashboardStatus}-${item.id}`} className="border-b border-zinc-200 last:border-b-0">
-                  <td className="px-6 py-5">
+                  <td className="px-5 py-4 align-top">
                     <Link href={`/listings/${item.slug}`} className="block rounded-xl transition hover:bg-zinc-50">
                       <div className="flex items-center gap-4 py-1">
                         <div className="h-12 w-16 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100">
@@ -247,14 +305,16 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                       </div>
                     </Link>
                   </td>
-                  <td className="px-6 py-5">
+                  <td className="px-5 py-4 align-top whitespace-nowrap">
                     <DashboardStatusBadge status={item.dashboardStatus} />
                   </td>
-                  <td className="px-6 py-5 font-medium text-zinc-900">{item.price}</td>
-                  <td className="px-6 py-5 text-zinc-700">{item.messageCount > 0 ? `${item.messageCount}+` : "0"}</td>
-                  <td className="px-6 py-5 text-zinc-700">{item.category}</td>
+                  <td className="px-5 py-4 align-top font-medium whitespace-nowrap text-zinc-900">{item.price}</td>
+                  <td className="px-5 py-4 align-top whitespace-nowrap text-zinc-700">{item.messageCount > 0 ? `${item.messageCount}+` : "0"}</td>
+                  <td className="px-5 py-4 align-top text-zinc-700">
+                    <span className="line-clamp-2">{item.category}</span>
+                  </td>
                   {showManagementActions ? (
-                    <td className="px-6 py-5 text-right">
+                    <td className="px-5 py-4 align-top text-right">
                       {editableStatuses.has(item.dashboardStatus) ? (
                         <DashboardListingActions id={item.id} slug={item.slug} status={item.dashboardStatus} />
                       ) : (
@@ -277,7 +337,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
         ) : null}
 
         {filteredItems.length > 7 ? (
-          <div className="flex flex-col gap-4 border-t border-zinc-200 px-6 py-4 text-sm text-zinc-500 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-4 border-t border-zinc-200 px-5 py-4 text-sm text-zinc-500 md:flex-row md:items-center md:justify-between">
             <p>0 of {filteredItems.length} row(s) selected.</p>
             <div className="flex flex-col gap-4 md:flex-row md:items-center">
               <div className="flex items-center gap-2">

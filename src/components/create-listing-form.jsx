@@ -290,7 +290,7 @@ export function CreateListingForm() {
 
   return (
     <main className="min-h-screen bg-zinc-100 p-6 md:p-8">
-      <div className="mx-auto flex w-full max-w-[1800px] flex-col gap-8">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8">
         <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm">
           <CardHeader className="border-b border-zinc-200 px-8 py-7">
             <CardTitle className="text-4xl font-bold tracking-tight text-zinc-950">
@@ -304,7 +304,7 @@ export function CreateListingForm() {
           </CardHeader>
 
           <CardContent className="p-8">
-            <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.85fr)]">
+            <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(288px,0.85fr)]">
               <FieldGroup>
                 <Field>
                   <FieldLabel>Title</FieldLabel>

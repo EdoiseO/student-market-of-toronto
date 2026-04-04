@@ -105,7 +105,7 @@ export default async function SearchPage({ searchParams }) {
 
   return (
     <main className="min-h-screen bg-zinc-100 p-6 md:p-8">
-      <div className="mx-auto flex w-full max-w-[1800px] flex-col gap-6">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-6">
         <section className="space-y-5">
             <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm">
               <CardContent className="space-y-4 p-6">

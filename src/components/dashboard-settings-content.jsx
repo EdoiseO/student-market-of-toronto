@@ -175,7 +175,7 @@ export function DashboardSettingsContent({
               <RadioGroup
                 value={themePreferencePreview}
                 onValueChange={setThemePreferencePreview}
-                className="grid max-w-[500px] grid-cols-3 gap-3"
+                className="grid w-full max-w-[400px] grid-cols-1 gap-3 sm:grid-cols-3"
               >
                 {appearanceOptions.map((option) => (
                   <FieldLabel
@@ -237,7 +237,7 @@ export function DashboardSettingsContent({
                       <div className="rounded-xl border border-zinc-200 bg-white px-3 py-3">
                         <Field
                           orientation="horizontal"
-                          className="items-start justify-between gap-3"
+                          className="flex-col items-start gap-3 sm:flex-row sm:justify-between"
                         >
                           <FieldContent>
                             <FieldTitle className="text-zinc-950">
@@ -263,7 +263,7 @@ export function DashboardSettingsContent({
                       <div className="rounded-xl border border-zinc-200 bg-white px-3 py-3">
                         <Field
                           orientation="horizontal"
-                          className="items-start justify-between gap-3"
+                          className="flex-col items-start gap-3 sm:flex-row sm:justify-between"
                         >
                           <FieldContent>
                             <FieldTitle className="text-zinc-950">
@@ -333,10 +333,10 @@ export function DashboardSettingsContent({
               </Field>
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex justify-stretch sm:justify-end">
               <Button
                 type="button"
-                className="rounded-xl px-5"
+                className="w-full rounded-xl px-5 sm:w-auto"
                 onClick={handleBioVisibilitySave}
                 disabled={isSavingBioVisibility || !hasBioVisibilityChanges}
               >
