@@ -135,6 +135,20 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
     router.refresh();
   }
 
+  function handleComposerKeyDown(event) {
+    if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (!draft.trim() || isSending) {
+      return;
+    }
+
+    event.currentTarget.form?.requestSubmit();
+  }
+
   async function handleReportMessage(messageId) {
     setActionMessageId(messageId);
 
@@ -188,23 +202,46 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
             </div>
           </Link>
 
-          <div className="flex items-center gap-3 lg:self-center">
-            <ProfileAvatar
-              name={conversation.otherParticipant.name}
-              avatarPresetId={conversation.otherParticipant.avatarPresetId}
-              avatarUrl={conversation.otherParticipant.avatarUrl}
-              className="size-10 border border-zinc-200 dark:border-border"
-            />
+          {conversation.otherParticipant.id ? (
+            <Link
+              href={`/profile/${conversation.otherParticipant.id}`}
+              className="flex items-center gap-3 rounded-xl transition hover:bg-zinc-50/80 dark:hover:bg-muted/40 lg:self-center"
+            >
+              <ProfileAvatar
+                name={conversation.otherParticipant.name}
+                avatarPresetId={conversation.otherParticipant.avatarPresetId}
+                avatarUrl={conversation.otherParticipant.avatarUrl}
+                className="size-10 border border-zinc-200 dark:border-border"
+              />
 
-            <div>
-              <h1 className="text-lg font-semibold text-zinc-950 dark:text-foreground">
-                {conversation.otherParticipant.name}
-              </h1>
-              <p className="text-xs text-zinc-500 dark:text-muted-foreground">
-                {conversation.otherParticipant.school || t.torontoStudent}
-              </p>
+              <div>
+                <h1 className="text-lg font-semibold text-zinc-950 dark:text-foreground">
+                  {conversation.otherParticipant.name}
+                </h1>
+                <p className="text-xs text-zinc-500 dark:text-muted-foreground">
+                  {conversation.otherParticipant.school || t.torontoStudent}
+                </p>
+              </div>
+            </Link>
+          ) : (
+            <div className="flex items-center gap-3 lg:self-center">
+              <ProfileAvatar
+                name={conversation.otherParticipant.name}
+                avatarPresetId={conversation.otherParticipant.avatarPresetId}
+                avatarUrl={conversation.otherParticipant.avatarUrl}
+                className="size-10 border border-zinc-200 dark:border-border"
+              />
+
+              <div>
+                <h1 className="text-lg font-semibold text-zinc-950 dark:text-foreground">
+                  {conversation.otherParticipant.name}
+                </h1>
+                <p className="text-xs text-zinc-500 dark:text-muted-foreground">
+                  {conversation.otherParticipant.school || t.torontoStudent}
+                </p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -308,6 +345,7 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
           <Textarea
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={handleComposerKeyDown}
             placeholder={t.messageInputPlaceholder}
             rows={2}
             className="min-h-16 resize-none border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0"
