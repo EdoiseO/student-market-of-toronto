@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useLanguage } from "@/context/LanguageContext";
 
 import { Label } from "@/components/ui/label"
 import { SidebarInput } from "@/components/ui/sidebar"
@@ -10,6 +11,7 @@ import { SearchIcon, XIcon } from "lucide-react"
 export function SearchForm({
   ...props
 }) {
+  const { t } = useLanguage();
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -60,7 +62,7 @@ export function SearchForm({
     <form onSubmit={handleSubmit} {...props}>
       <div className="relative">
         <Label htmlFor="search" className="sr-only">
-          Search listings
+          {t.searchListingsLabel}
         </Label>
         <SidebarInput
           ref={inputRef}
@@ -74,7 +76,7 @@ export function SearchForm({
               clearSearchQuery();
             }
           }}
-          placeholder="Search listings..."
+          placeholder={t.searchListingsPlaceholderGlobal}
           className="h-10 rounded-xl pl-9 pr-10 text-sm"
         />
         <SearchIcon
@@ -84,7 +86,7 @@ export function SearchForm({
             type="button"
             onClick={clearSearchQuery}
             className="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900"
-            aria-label="Clear search"
+            aria-label={t.clearSearch}
           >
             <XIcon className="size-3.5" />
           </button>

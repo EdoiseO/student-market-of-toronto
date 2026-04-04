@@ -41,7 +41,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useFileDropzone } from "@/hooks/use-file-dropzone";
 import { TORONTO_CAMPUS_OPTIONS } from "@/lib/campuses";
-import { CATEGORY_OPTIONS, normalizeCategoryValue } from "@/lib/categories";
+import {
+  CATEGORY_OPTIONS,
+  getTranslatedCategoryValue,
+  normalizeCategoryValue,
+} from "@/lib/categories";
+import { getTranslatedConditionLabel } from "@/lib/search-listings";
 import { cn } from "@/lib/utils";
 
 const conditionOptions = ["New", "Like New", "Used"];
@@ -53,18 +58,23 @@ function ListingCombobox({
   onValueChange,
   options,
   description,
+  emptyLabel,
 }) {
+  const normalizedOptions = options.map((option) =>
+    typeof option === "string" ? { value: option, label: option } : option
+  );
+
   return (
     <Field>
       <FieldLabel>{label}</FieldLabel>
       <Combobox value={value} onValueChange={onValueChange}>
         <ComboboxInput placeholder={placeholder} />
         <ComboboxContent>
-          <ComboboxEmpty>No option found.</ComboboxEmpty>
+          <ComboboxEmpty>{emptyLabel}</ComboboxEmpty>
           <ComboboxList>
-            {options.map((option) => (
-              <ComboboxItem key={option} value={option}>
-                {option}
+            {normalizedOptions.map((option) => (
+              <ComboboxItem key={option.value} value={option.value}>
+                {option.label}
               </ComboboxItem>
             ))}
           </ComboboxList>
@@ -111,6 +121,24 @@ export function EditListingForm({ listing }) {
   }, []);
 
   const { isDragActive, dropzoneProps } = useFileDropzone(appendNewPhotos);
+
+  const translatedCategoryOptions = React.useMemo(
+    () =>
+      CATEGORY_OPTIONS.map((option) => ({
+        value: option,
+        label: getTranslatedCategoryValue(option, t, language),
+      })),
+    [language, t]
+  );
+
+  const translatedConditionOptions = React.useMemo(
+    () =>
+      conditionOptions.map((option) => ({
+        value: option,
+        label: getTranslatedConditionLabel(option, t),
+      })),
+    [t]
+  );
 
   const tagPreview = [];
   if (isNegotiable) {
@@ -299,7 +327,7 @@ export function EditListingForm({ listing }) {
     }
 
     setLoading(false);
-    toast.success("Listing updated successfully.");
+    toast.success(t.listingUpdatedSuccess);
     router.push(`/listings/${listing.slug}`);
     router.refresh();
   }
@@ -334,7 +362,8 @@ export function EditListingForm({ listing }) {
                   placeholder={t.categoryPlaceholder}
                   value={category}
                   onValueChange={setCategory}
-                  options={CATEGORY_OPTIONS}
+                  options={translatedCategoryOptions}
+                  emptyLabel={t.noOptionFound}
                 />
 
                 <Field>
@@ -362,7 +391,8 @@ export function EditListingForm({ listing }) {
                   placeholder={t.conditionPlaceholder}
                   value={condition}
                   onValueChange={setCondition}
-                  options={conditionOptions}
+                  options={translatedConditionOptions}
+                  emptyLabel={t.noOptionFound}
                 />
               </FieldGroup>
 
@@ -451,6 +481,7 @@ export function EditListingForm({ listing }) {
                       value={campus}
                       onValueChange={setCampus}
                       options={TORONTO_CAMPUS_OPTIONS}
+                      emptyLabel={t.noOptionFound}
                     />
 
                     <Field

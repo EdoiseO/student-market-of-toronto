@@ -19,11 +19,13 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
+import { useLanguage } from "@/context/LanguageContext";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/utils/supabase/client";
 
 export default function ResetPasswordPage() {
   const supabase = useMemo(() => createClient(), []);
+  const { t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -102,7 +104,7 @@ export default function ResetPasswordPage() {
       if (session) {
         setSessionReady(true);
       } else {
-        setMessage("Invalid or expired reset link.");
+        setMessage(t.invalidOrExpiredResetLink);
         setSessionReady(false);
       }
 
@@ -110,18 +112,18 @@ export default function ResetPasswordPage() {
     }
 
     setResetSession();
-  }, [searchParams, supabase]);
+  }, [searchParams, supabase, t.invalidOrExpiredResetLink]);
 
   async function handleSubmit(e) {
     e.preventDefault();
 
     if (loading || !sessionReady) {
-      setMessage("Reset session is not ready. Please open the reset link from your email again.");
+      setMessage(t.resetSessionNotReady);
       return;
     }
 
     if (password !== confirmPassword) {
-      setMessage("Passwords do not match.");
+      setMessage(t.passwordsDoNotMatch);
       return;
     }
 
@@ -132,7 +134,7 @@ export default function ResetPasswordPage() {
     if (error) {
       setMessage(error.message);
     } else {
-      setMessage("Password updated successfully. Redirecting to login...");
+      setMessage(t.passwordUpdatedRedirecting);
       setTimeout(() => {
         router.push("/login");
       }, 1500);
@@ -145,7 +147,7 @@ export default function ResetPasswordPage() {
         <div className="w-full max-w-sm">
           <Card>
             <CardContent className="p-8 text-center">
-              <p className="text-sm text-zinc-600">Preparing reset session...</p>
+              <p className="text-sm text-zinc-600">{t.preparingResetSession}</p>
             </CardContent>
           </Card>
         </div>
@@ -158,20 +160,18 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-sm">
         <Card>
           <CardHeader>
-            <CardTitle className="text-center">Reset Password</CardTitle>
-            <CardDescription>
-              Enter and confirm your new password.
-            </CardDescription>
+            <CardTitle className="text-center">{t.resetPasswordTitle}</CardTitle>
+            <CardDescription>{t.resetPasswordDescription}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit}>
               <FieldGroup>
                 <Field>
-                  <FieldLabel htmlFor="password">New Password</FieldLabel>
+                  <FieldLabel htmlFor="password">{t.newPassword}</FieldLabel>
                   <Input
                     id="password"
                     type="password"
-                    placeholder="New password"
+                    placeholder={t.newPassword}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -179,11 +179,11 @@ export default function ResetPasswordPage() {
                 </Field>
 
                 <Field>
-                  <FieldLabel htmlFor="confirmPassword">Confirm Password</FieldLabel>
+                  <FieldLabel htmlFor="confirmPassword">{t.confirmNewPassword}</FieldLabel>
                   <Input
                     id="confirmPassword"
                     type="password"
-                    placeholder="Confirm new password"
+                    placeholder={t.confirmNewPassword}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
@@ -192,13 +192,13 @@ export default function ResetPasswordPage() {
 
                 <Field>
                   <Button type="submit" disabled={loading || !sessionReady}>
-                    Update Password
+                    {t.updatePassword}
                   </Button>
                   {message ? (
                     <p className="mt-2 text-sm text-center text-zinc-600">{message}</p>
                   ) : null}
                   <FieldDescription className="text-center">
-                    Need a fresh link? <Link href="/forget-password">Request another reset email</Link>
+                    {t.needFreshLink} <Link href="/forget-password">{t.requestAnotherResetEmail}</Link>
                   </FieldDescription>
                 </Field>
               </FieldGroup>

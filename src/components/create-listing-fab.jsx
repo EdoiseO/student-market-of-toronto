@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Plus } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 export function CreateListingFab({ user }) {
+  const { t } = useLanguage();
   const pathname = usePathname();
 
   const shouldShow =
@@ -22,7 +24,7 @@ export function CreateListingFab({ user }) {
     <Link
       href="/listings/create"
       className="fixed bottom-8 right-8 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-950 text-white shadow-lg transition-transform hover:scale-[1.03] hover:bg-zinc-800"
-      aria-label="Create listing"
+      aria-label={t.createListingAriaLabel}
     >
       <Plus className="size-6" />
     </Link>

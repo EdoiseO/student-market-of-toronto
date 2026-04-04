@@ -8,19 +8,11 @@ import { CheckIcon } from "lucide-react";
 
 import { DashboardCategoryFilter } from "@/components/dashboard-category-filter";
 import { DashboardSearchInput } from "@/components/dashboard-search-input";
+import { useLanguage } from "@/context/LanguageContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DashboardListingActions } from "@/components/dashboard-listing-actions";
-import { CATEGORY_OPTIONS } from "@/lib/categories";
-
-const dashboardTabs = [
-  { key: "all", label: "All" },
-  { key: "active", label: "Active" },
-  { key: "inactive", label: "Inactive" },
-  { key: "sold", label: "Sold" },
-  { key: "draft", label: "Draft" },
-  { key: "favourite", label: "Favourite" },
-];
+import { CATEGORY_OPTIONS, getTranslatedCategoryValue } from "@/lib/categories";
 
 const rowsPerPageOptions = [7, 10, 15];
 const readOnlyTabs = new Set(["favourite"]);
@@ -34,29 +26,21 @@ const statusBadgeClasses = {
   favourite: "border-rose-200 bg-rose-50 text-rose-700",
 };
 
-const statusLabels = {
-  active: "Live",
-  inactive: "Inactive",
-  draft: "Draft",
-  sold: "Sold",
-  favourite: "Favourite",
-};
-
-function DashboardStatusBadge({ status }) {
+function DashboardStatusBadge({ status, label }) {
   if (status === "active") {
     return (
       <Badge variant="outline" className={statusBadgeClasses[status]}>
         <span className="mr-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-white">
           <CheckIcon className="size-3" />
         </span>
-        {statusLabels[status]}
+        {label}
       </Badge>
     );
   }
 
   return (
     <Badge variant="outline" className={statusBadgeClasses[status]}>
-      {statusLabels[status]}
+      {label}
     </Badge>
   );
 }
@@ -66,6 +50,7 @@ function buildDashboardHref(tab) {
 }
 
 export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, favouriteCount = 0 }) {
+  const { t, language } = useLanguage();
   const [dashboardSearch, setDashboardSearch] = React.useState("");
   const [selectedCategory, setSelectedCategory] = React.useState("");
   const [rowsPerPage, setRowsPerPage] = React.useState(7);
@@ -134,6 +119,29 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
     safePage * rowsPerPage,
   );
 
+  const dashboardTabs = React.useMemo(
+    () => [
+      { key: "all", label: t.all },
+      { key: "active", label: t.active },
+      { key: "inactive", label: t.inactive },
+      { key: "sold", label: t.sold },
+      { key: "draft", label: t.draft },
+      { key: "favourite", label: t.favourite },
+    ],
+    [t]
+  );
+
+  const statusLabels = React.useMemo(
+    () => ({
+      active: t.live,
+      inactive: t.inactive,
+      draft: t.draft,
+      sold: t.sold,
+      favourite: t.favourite,
+    }),
+    [t]
+  );
+
   const statusCounts = React.useMemo(
     () =>
       filteredOwnedItems.reduce((acc, item) => {
@@ -157,7 +165,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
         }
         return acc;
       }, {}),
-    [allItems.length, currentTab, favouriteCount, filteredFavouriteItems.length, statusCounts]
+    [allItems.length, currentTab, dashboardTabs, favouriteCount, filteredFavouriteItems.length, statusCounts]
   );
 
   const showManagementActions = !readOnlyTabs.has(currentTab);
@@ -206,7 +214,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
           <DashboardSearchInput value={dashboardSearch} onValueChange={setDashboardSearch} />
           {showManagementActions ? (
             <Button asChild size="sm" className="h-9 rounded-lg px-3">
-              <Link href="/listings/create">Add Listing</Link>
+              <Link href="/listings/create">{t.addListing}</Link>
             </Button>
           ) : null}
         </div>
@@ -237,22 +245,24 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
 
               <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                 <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500">Status</p>
+                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500">{t.status}</p>
                   <div className="mt-2">
-                    <DashboardStatusBadge status={item.dashboardStatus} />
+                    <DashboardStatusBadge status={item.dashboardStatus} label={statusLabels[item.dashboardStatus]} />
                   </div>
                 </div>
                 <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500">Price</p>
+                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500">{t.price}</p>
                   <p className="mt-2 font-medium text-zinc-900">{item.price}</p>
                 </div>
                 <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500">Messages</p>
+                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500">{t.messages}</p>
                   <p className="mt-2 text-zinc-700">{item.messageCount > 0 ? `${item.messageCount}+` : "0"}</p>
                 </div>
                 <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500">Category</p>
-                  <p className="mt-2 line-clamp-2 text-zinc-700">{item.category}</p>
+                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500">{t.category}</p>
+                  <p className="mt-2 line-clamp-2 text-zinc-700">
+                    {getTranslatedCategoryValue(item.category, t, language)}
+                  </p>
                 </div>
               </div>
 
@@ -270,8 +280,8 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
         ) : filteredItems.length === 0 ? (
           <div className="rounded-[1.5rem] border border-zinc-200 bg-white px-6 py-10 text-center text-sm text-zinc-500 shadow-sm">
             {hasActiveFilters
-              ? "No listings match your current search and category filter."
-              : "No listings found for this section yet."}
+              ? t.dashboardNoListingsMatchFilters
+              : t.noListingsInSection}
           </div>
         ) : null}
 
@@ -284,10 +294,10 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
               className={safePage === 1 ? "pointer-events-none opacity-50" : ""}
               onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
             >
-              Prev
+              {t.previousPage}
             </Button>
             <span className="text-center font-medium text-zinc-700">
-              Page {safePage} of {totalPages}
+              {t.pageLabel} {safePage} {t.ofLabel} {totalPages}
             </span>
             <Button
               type="button"
@@ -296,7 +306,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
               className={safePage === totalPages ? "pointer-events-none opacity-50" : ""}
               onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
             >
-              Next
+              {t.nextPage}
             </Button>
           </div>
         ) : null}
@@ -307,13 +317,13 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
           <table className="w-full table-fixed text-left">
             <thead className="bg-zinc-50">
               <tr className="border-b border-zinc-200 text-sm text-zinc-500">
-                <th className="w-[32%] px-5 py-3.5 font-medium">Listing</th>
-                <th className="w-[10%] px-5 py-3.5 font-medium">Status</th>
-                <th className="w-[10%] px-5 py-3.5 font-medium">Price</th>
-                <th className="w-[9%] px-5 py-3.5 font-medium">Messages</th>
-                <th className="w-[13%] px-5 py-3.5 font-medium">Category</th>
+                <th className="w-[32%] px-5 py-3.5 font-medium">{t.listing}</th>
+                <th className="w-[10%] px-5 py-3.5 font-medium">{t.status}</th>
+                <th className="w-[10%] px-5 py-3.5 font-medium">{t.price}</th>
+                <th className="w-[9%] px-5 py-3.5 font-medium">{t.messages}</th>
+                <th className="w-[13%] px-5 py-3.5 font-medium">{t.category}</th>
                 {showManagementActions ? (
-                  <th className="w-[26%] px-5 py-3.5 text-right font-medium">Actions</th>
+                  <th className="w-[26%] px-5 py-3.5 text-right font-medium">{t.actions}</th>
                 ) : null}
               </tr>
             </thead>
@@ -338,12 +348,12 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                     </Link>
                   </td>
                   <td className="px-5 py-4 align-top whitespace-nowrap">
-                    <DashboardStatusBadge status={item.dashboardStatus} />
+                    <DashboardStatusBadge status={item.dashboardStatus} label={statusLabels[item.dashboardStatus]} />
                   </td>
                   <td className="px-5 py-4 align-top font-medium whitespace-nowrap text-zinc-900">{item.price}</td>
                   <td className="px-5 py-4 align-top whitespace-nowrap text-zinc-700">{item.messageCount > 0 ? `${item.messageCount}+` : "0"}</td>
                   <td className="px-5 py-4 align-top text-zinc-700">
-                    <span className="line-clamp-2">{item.category}</span>
+                    <span className="line-clamp-2">{getTranslatedCategoryValue(item.category, t, language)}</span>
                   </td>
                   {showManagementActions ? (
                     <td className="px-5 py-4 align-top text-right">
@@ -363,17 +373,17 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
         {filteredItems.length === 0 ? (
           <div className="px-6 py-12 text-center text-sm text-zinc-500">
             {hasActiveFilters
-              ? "No listings match your current search and category filter."
-              : "No listings found for this section yet."}
+              ? t.dashboardNoListingsMatchFilters
+              : t.noListingsInSection}
           </div>
         ) : null}
 
         {filteredItems.length > 7 ? (
           <div className="flex flex-col gap-4 border-t border-zinc-200 px-5 py-4 text-sm text-zinc-500 md:flex-row md:items-center md:justify-between">
-            <p>0 of {filteredItems.length} row(s) selected.</p>
+            <p>0 {t.ofLabel} {filteredItems.length} {t.selectedRowsLabel}.</p>
             <div className="flex flex-col gap-4 md:flex-row md:items-center">
               <div className="flex items-center gap-2">
-                <span className="font-medium text-zinc-700">Rows per page</span>
+                <span className="font-medium text-zinc-700">{t.rowsPerPage}</span>
                 <div className="flex items-center gap-2">
                   {rowsPerPageOptions.map((option) => (
                     <Button
@@ -390,7 +400,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className="font-medium text-zinc-700">Page {safePage} of {totalPages}</span>
+                <span className="font-medium text-zinc-700">{t.pageLabel} {safePage} {t.ofLabel} {totalPages}</span>
                 <div className="flex items-center gap-2">
                   <Button type="button" variant="outline" size="icon-sm" className={safePage === 1 ? "pointer-events-none opacity-50" : ""} onClick={() => setCurrentPage(1)}>
                     <span aria-hidden="true">«</span>

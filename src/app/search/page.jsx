@@ -4,14 +4,19 @@ import { cookies } from "next/headers";
 import { CardImage } from "@/components/card-image";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { getTranslatedCategoryValue } from "@/lib/categories";
 import {
   buildSearchHref,
   formatPrice,
+  getTranslatedConditionLabel,
   getListingBadge,
+  getTranslatedSortLabel,
+  getTranslatedTagLabel,
   matchesTag,
   normalizeSearchRows,
   sortOptions,
 } from "@/lib/search-listings";
+import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
 export default async function SearchPage({ searchParams }) {
@@ -32,6 +37,8 @@ export default async function SearchPage({ searchParams }) {
   const sortBy = resolvedSearchParams?.sort ?? "new-old";
 
   const cookieStore = await cookies();
+  const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
+  const t = translations[language] || translations.en;
   const supabase = createClient(cookieStore);
 
   let listingsQuery = supabase
@@ -93,13 +100,15 @@ export default async function SearchPage({ searchParams }) {
     : normalizedRows;
 
   const activeFilters = [
-    query ? { label: `Search: ${query}`, key: "q" } : null,
-    minPrice ? { label: `Min: $${minPrice}`, key: "min" } : null,
-    maxPrice ? { label: `Max: $${maxPrice}`, key: "max" } : null,
-    condition ? { label: `Condition: ${condition}`, key: "condition" } : null,
-    tag ? { label: `Tag: ${tag}`, key: "tag" } : null,
+    query ? { label: `${t.searchQueryFilterLabel}: ${query}`, key: "q" } : null,
+    minPrice ? { label: `${t.minPriceFilterLabel}: $${minPrice}`, key: "min" } : null,
+    maxPrice ? { label: `${t.maxPriceFilterLabel}: $${maxPrice}`, key: "max" } : null,
+    condition
+      ? { label: `${t.conditionLabel}: ${getTranslatedConditionLabel(condition, t)}`, key: "condition" }
+      : null,
+    tag ? { label: `${t.tagFilterLabel}: ${getTranslatedTagLabel(tag, t)}`, key: "tag" } : null,
     sortBy && sortBy !== "new-old"
-      ? { label: `Sort: ${sortOptions.find((option) => option.value === sortBy)?.label ?? sortBy}`, key: "sort" }
+      ? { label: `${t.sortFilterLabel}: ${getTranslatedSortLabel(sortBy, t)}`, key: "sort" }
       : null,
   ].filter(Boolean);
 
@@ -112,14 +121,14 @@ export default async function SearchPage({ searchParams }) {
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
                     <p className="text-sm font-medium uppercase tracking-[0.18em] text-zinc-500">
-                      Results
+                      {t.results}
                     </p>
                     <h2 className="text-2xl font-bold text-zinc-950">
-                      {filteredListings.length} listing{filteredListings.length === 1 ? "" : "s"} found
+                      {filteredListings.length} {filteredListings.length === 1 ? t.listingResultSingular : t.listingResultPlural}
                     </h2>
                   </div>
                   <div className="text-sm text-zinc-500">
-                    {query ? `Showing matches for “${query}”` : "Showing all active listings"}
+                    {query ? `${t.showingMatchesFor} “${query}”` : t.showingAllActiveListings}
                   </div>
                 </div>
 
@@ -147,7 +156,7 @@ export default async function SearchPage({ searchParams }) {
                       badge={getListingBadge(item)}
                       title={item.title}
                       price={formatPrice(item.price)}
-                      meta={item.location || item.category}
+                      meta={item.location || getTranslatedCategoryValue(item.category, t, language)}
                       imageUrls={(item.listing_images ?? []).map((image) => image.image_url)}
                       imageUrl={item.listing_images?.[0]?.image_url ?? null}
                       imageAlt={item.title}
@@ -157,9 +166,9 @@ export default async function SearchPage({ searchParams }) {
                 </div>
               ) : (
                 <div className="rounded-[1.5rem] border border-dashed border-zinc-300 bg-white px-6 py-16 text-center">
-                  <p className="text-lg font-semibold text-zinc-950">No results yet</p>
+                  <p className="text-lg font-semibold text-zinc-950">{t.noSearchResultsTitle}</p>
                   <p className="mt-2 text-sm text-zinc-500">
-                    Try adjusting your filters or clearing the current search.
+                    {t.noSearchResultsDescription}
                   </p>
                 </div>
               )}

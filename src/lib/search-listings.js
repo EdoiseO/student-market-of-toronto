@@ -22,6 +22,48 @@ export const tagOptions = [
   { value: "price-drop", label: "Price Drop" },
 ];
 
+export function getTranslatedConditionLabel(condition, t) {
+  switch (condition) {
+    case "New":
+      return t.new;
+    case "Like New":
+      return t.likeNew;
+    case "Used":
+      return t.usedCondition;
+    default:
+      return condition;
+  }
+}
+
+export function getTranslatedTagLabel(tag, t) {
+  switch (tag) {
+    case "new":
+      return t.new;
+    case "featured":
+      return t.featured;
+    case "negotiable":
+      return t.negotiable;
+    case "price-drop":
+      return t.priceDrop;
+    default:
+      return tag;
+  }
+}
+
+export function getTranslatedSortLabel(sortBy, t) {
+  switch (sortBy) {
+    case "old-new":
+      return t.sortDateOldest;
+    case "price-low-high":
+      return t.sortPriceLowHigh;
+    case "price-high-low":
+      return t.sortPriceHighLow;
+    case "new-old":
+    default:
+      return t.sortDateNewest;
+  }
+}
+
 export function isNewListing(createdAt) {
   const createdTime = new Date(createdAt).getTime();
   return !Number.isNaN(createdTime) && Date.now() - createdTime <= NEW_LISTING_WINDOW_MS;

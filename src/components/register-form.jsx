@@ -4,7 +4,6 @@ import { createClient } from "@/utils/supabase/client";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/LanguageContext";
 import {
-  getTorontoSchoolEmailError,
   getTorontoSchoolNameFromEmail,
   isValidTorontoSchoolEmail,
   normalizeEmail,
@@ -39,8 +38,19 @@ export function RegisterForm({ className, ...props }) {
   const [success, setSuccess] = useState("");
   const normalizedEmail = normalizeEmail(form.email);
   const showSchoolEmailHint = normalizedEmail.length > 0;
+  const getSchoolEmailError = (email) => {
+    if (!normalizeEmail(email)) {
+      return t.enterTorontoSchoolEmail;
+    }
+
+    if (!isValidTorontoSchoolEmail(email)) {
+      return t.validTorontoSchoolEmail;
+    }
+
+    return "";
+  };
   const schoolEmailError = showSchoolEmailHint
-    ? getTorontoSchoolEmailError(form.email)
+    ? getSchoolEmailError(form.email)
     : "";
 
   function updateField(name, value) {
@@ -73,7 +83,7 @@ export function RegisterForm({ className, ...props }) {
     }
 
     if (!isValidTorontoSchoolEmail(email) || !school) {
-      setError(getTorontoSchoolEmailError(email));
+      setError(getSchoolEmailError(email));
       return;
     }
 

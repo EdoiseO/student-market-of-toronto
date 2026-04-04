@@ -344,7 +344,7 @@ export default async function ListingDetailPage({ params }) {
                   {seller?.bio && !seller?.is_public ? (
                     <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                        {language === "fr" ? "À propos du vendeur" : "About the seller"}
+                        {t.aboutSeller}
                       </p>
                       <p className="mt-2 whitespace-pre-line text-sm leading-7 text-zinc-600">
                         {seller.bio}

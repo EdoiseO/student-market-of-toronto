@@ -22,7 +22,7 @@ export function SiteHeader() {
     pathname === "/"
       ? t.browseListings
       : pathname.startsWith("/search")
-        ? "Search & Filter"
+        ? t.searchAndFilter
       : pathname.startsWith("/dashboard")
         ? t.dashboard
         : pathname.endsWith("/edit")
