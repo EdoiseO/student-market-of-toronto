@@ -13,17 +13,11 @@ import {
 } from "@/components/ui/card";
 import {
   MESSAGE_CONVERSATION_SELECT,
+  isConversationUserStateTableMissing,
   normalizeConversationRow,
 } from "@/lib/messages";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
-
-function formatConversationDate(dateString, language) {
-  return new Intl.DateTimeFormat(language === "fr" ? "fr-CA" : "en-CA", {
-    month: "short",
-    day: "numeric",
-  }).format(new Date(dateString));
-}
 
 export default async function MessagesPage() {
   const cookieStore = await cookies();
@@ -51,7 +45,30 @@ export default async function MessagesPage() {
 
   const hasMessagingSetupError = Boolean(conversationsError);
 
-  const conversationIds = (conversationRows ?? []).map((conversation) => conversation.id);
+  const { data: hiddenConversationRows, error: hiddenConversationsError } = await supabase
+    .from("conversation_user_state")
+    .select("conversation_id")
+    .eq("user_id", user.id)
+    .not("hidden_at", "is", null);
+
+  if (
+    hiddenConversationsError &&
+    !isConversationUserStateTableMissing(hiddenConversationsError)
+  ) {
+    console.error("Failed to load hidden conversations:", hiddenConversationsError.message);
+  }
+
+  const hiddenConversationIds = new Set(
+    (hiddenConversationRows ?? []).map((conversationState) => conversationState.conversation_id),
+  );
+
+  const visibleConversationRows = (conversationRows ?? []).filter(
+    (conversation) =>
+      Boolean(conversation.last_message_at || conversation.last_message_preview) &&
+      !hiddenConversationIds.has(conversation.id),
+  );
+
+  const conversationIds = visibleConversationRows.map((conversation) => conversation.id);
 
   const { data: unreadRows, error: unreadError } = conversationIds.length
     ? await supabase
@@ -71,7 +88,7 @@ export default async function MessagesPage() {
     return counts;
   }, {});
 
-  const conversations = (conversationRows ?? []).map((conversation) =>
+  const conversations = visibleConversationRows.map((conversation) =>
     normalizeConversationRow(
       conversation,
       user.id,
@@ -115,10 +132,7 @@ export default async function MessagesPage() {
                     <ConversationListItem
                       key={conversation.id}
                       conversation={conversation}
-                      formattedDate={formatConversationDate(
-                        conversation.lastMessageAt || conversation.updatedAt,
-                        language,
-                      )}
+                      dateValue={conversation.lastMessageAt || conversation.updatedAt}
                     />
                   ))}
                 </div>

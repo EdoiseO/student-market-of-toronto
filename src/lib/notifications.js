@@ -210,12 +210,3 @@ export function subscribeToNotificationUpdates({
     supabase.removeChannel(channel);
   };
 }
-
-export function formatNotificationDate(dateString, language) {
-  return new Intl.DateTimeFormat(language === "fr" ? "fr-CA" : "en-CA", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(dateString));
-}

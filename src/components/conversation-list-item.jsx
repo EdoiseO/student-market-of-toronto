@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Ellipsis, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { ClientFormattedDateTime } from "@/components/client-formatted-date-time";
 import { ProfileAvatar } from "@/components/profile-avatar";
 import {
   AlertDialog,
@@ -26,22 +27,29 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useLanguage } from "@/context/LanguageContext";
+import { isConversationUserStateTableMissing } from "@/lib/messages";
 import { createClient } from "@/utils/supabase/client";
 
-export function ConversationListItem({ conversation, formattedDate }) {
+export function ConversationListItem({ conversation, dateValue }) {
   const router = useRouter();
   const supabase = createClient();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
-  async function handleDeleteConversation() {
-    const { error } = await supabase
-      .from("conversations")
-      .delete()
-      .eq("id", conversation.id);
+  async function handleHideConversation() {
+    const { error } = await supabase.from("conversation_user_state").upsert(
+      {
+        conversation_id: conversation.id,
+        user_id: conversation.currentParticipant.id,
+        hidden_at: new Date().toISOString(),
+      },
+      { onConflict: "conversation_id,user_id" },
+    );
 
     if (error) {
-      toast.error(t.deleteConversationError);
-      console.error("Failed to delete conversation:", error.message);
+      if (!isConversationUserStateTableMissing(error)) {
+        console.error("Failed to hide conversation:", error.message);
+      }
+      toast.error(t.hideConversationError);
       return;
     }
 
@@ -91,9 +99,12 @@ export function ConversationListItem({ conversation, formattedDate }) {
                   {conversation.unreadCount}
                 </Badge>
               ) : null}
-              <span className="text-xs text-zinc-500 dark:text-muted-foreground">
-                {formattedDate}
-              </span>
+              <ClientFormattedDateTime
+                value={dateValue}
+                language={language}
+                variant="date"
+                className="text-xs text-zinc-500 dark:text-muted-foreground"
+              />
 
               <AlertDialog>
                 <DropdownMenu>
@@ -112,7 +123,7 @@ export function ConversationListItem({ conversation, formattedDate }) {
                     <AlertDialogTrigger asChild>
                       <DropdownMenuItem onSelect={(event) => event.preventDefault()}>
                         <Trash2 className="size-4" />
-                        <span>{t.deleteConversation}</span>
+                        <span>{t.hideConversation}</span>
                       </DropdownMenuItem>
                     </AlertDialogTrigger>
                   </DropdownMenuContent>
@@ -120,15 +131,15 @@ export function ConversationListItem({ conversation, formattedDate }) {
 
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>{t.deleteConversationTitle}</AlertDialogTitle>
+                    <AlertDialogTitle>{t.hideConversationTitle}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      {t.deleteConversationDescription}
+                      {t.hideConversationDescription}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeleteConversation}>
-                      {t.deleteConversation}
+                    <AlertDialogAction onClick={handleHideConversation}>
+                      {t.hideConversation}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>

@@ -27,6 +27,7 @@ Your Supabase project should already have the resources this app expects.
 - `listing_images`
 - `listing_favourites`
 - `conversations`
+- `conversation_user_state`
 - `messages`
 - `notification_preferences`
 - `notifications`
@@ -107,6 +108,7 @@ npm run start
 - listing detail pages
 - listing-to-seller messaging
 - conversations inbox and dedicated thread pages
+- per-user conversation hide/remove-from-inbox state
 - header message notifications
 - create listing
 - edit listing
@@ -119,7 +121,7 @@ npm run start
 ## Features Not Fully Implemented Yet
 
 - search
-- sold/favourite notification settings persistence and most account-level settings beyond theme, message notification preferences, and listing-page bio visibility
+- sold/favourite notification settings persistence, real email delivery for message notifications, and most account-level settings beyond theme and listing-page bio visibility
 
 Some supporting messaging actions, such as reporting flows, may still need follow-up backend wiring depending on your Supabase setup.
 

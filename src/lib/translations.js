@@ -206,6 +206,11 @@ export const translations = {
     conversationsDescription:
       "Each thread stays linked to the listing it started from.",
     backToMessages: "Back to messages",
+    hideConversation: "Hide conversation",
+    hideConversationTitle: "Remove this conversation from your inbox?",
+    hideConversationDescription:
+      "This only removes the conversation from your inbox. The other person can still see it, and it will reappear if a new message arrives.",
+    hideConversationError: "We could not hide this conversation right now.",
     conversationNoMessagesYet: "No messages yet. Send the first message when you are ready.",
     noConversationsTitle: "No conversations yet",
     noConversationsDescription:
@@ -224,6 +229,10 @@ export const translations = {
     noMessagesYetTitle: "No messages yet",
     noMessagesYetDescription:
       "This conversation is ready. Send your first message to start the thread.",
+    firstMessageSheetTitle: "Send the first message",
+    firstMessageSheetDescription:
+      "Your conversation will appear in Messages after you send the first message.",
+    sendFirstMessage: "Send first message",
     messageInputPlaceholder:
       "Write a message about pickup, condition, price, or availability...",
     emojiPickerSoon: "Emoji reactions are coming next.",
@@ -672,6 +681,12 @@ export const translations = {
     conversationsDescription:
       "Chaque conversation reste liée à l'annonce depuis laquelle elle a commencé.",
     backToMessages: "Retour aux messages",
+    hideConversation: "Masquer la conversation",
+    hideConversationTitle: "Retirer cette conversation de votre boîte de réception ?",
+    hideConversationDescription:
+      "Cela retire seulement la conversation de votre boîte de réception. L'autre personne pourra toujours la voir, et elle réapparaîtra lorsqu'un nouveau message arrivera.",
+    hideConversationError:
+      "Nous n'avons pas pu masquer cette conversation pour le moment.",
     conversationNoMessagesYet:
       "Aucun message pour le moment. Envoyez le premier message quand vous êtes prêt.",
     noConversationsTitle: "Aucune conversation pour le moment",
@@ -693,6 +708,10 @@ export const translations = {
     noMessagesYetTitle: "Aucun message pour le moment",
     noMessagesYetDescription:
       "Cette conversation est prête. Envoyez votre premier message pour démarrer le fil.",
+    firstMessageSheetTitle: "Envoyer le premier message",
+    firstMessageSheetDescription:
+      "Votre conversation apparaîtra dans Messages après l'envoi du premier message.",
+    sendFirstMessage: "Envoyer le premier message",
     messageInputPlaceholder:
       "Écrivez un message au sujet de la remise, de l'état, du prix ou de la disponibilité...",
     emojiPickerSoon: "Les réactions emoji arrivent à la prochaine étape.",

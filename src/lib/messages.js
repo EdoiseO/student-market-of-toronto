@@ -36,6 +36,14 @@ export const MESSAGE_CONVERSATION_SELECT = `
   )
 `;
 
+export function isConversationUserStateTableMissing(error) {
+  return (
+    error?.code === "42P01" ||
+    error?.code === "PGRST205" ||
+    error?.message?.includes("Could not find the table 'public.conversation_user_state'")
+  );
+}
+
 export function getConversationDisplayName(profile, t) {
   return [profile?.first_name, profile?.last_name].filter(Boolean).join(" ").trim() || t.student;
 }

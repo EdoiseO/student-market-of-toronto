@@ -26,17 +26,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { ClientFormattedDateTime } from "@/components/client-formatted-date-time";
 import { useLanguage } from "@/context/LanguageContext";
+import { isConversationUserStateTableMissing } from "@/lib/messages";
 import { createClient } from "@/utils/supabase/client";
-
-function formatMessageTimestamp(dateString, language) {
-  return new Intl.DateTimeFormat(language === "fr" ? "fr-CA" : "en-CA", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(dateString));
-}
 
 function formatPrice(price, language) {
   return new Intl.NumberFormat(language === "fr" ? "fr-CA" : "en-CA", {
@@ -129,6 +122,19 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
 
     if (createdMessage) {
       setMessages((currentMessages) => [...currentMessages, createdMessage]);
+    }
+
+    const { error: unhideError } = await supabase.from("conversation_user_state").upsert(
+      {
+        conversation_id: conversation.id,
+        user_id: currentUserId,
+        hidden_at: null,
+      },
+      { onConflict: "conversation_id,user_id" },
+    );
+
+    if (unhideError && !isConversationUserStateTableMissing(unhideError)) {
+      console.error("Failed to restore hidden conversation after send:", unhideError.message);
     }
 
     setDraft("");
@@ -296,7 +302,7 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
                     <span className="font-semibold text-zinc-900 dark:text-foreground">
                       {isCurrentUser ? t.you : participant.name}
                     </span>{" "}
-                    <span>{formatMessageTimestamp(message.created_at, language)}</span>
+                    <ClientFormattedDateTime value={message.created_at} language={language} />
                   </p>
 
                   <div

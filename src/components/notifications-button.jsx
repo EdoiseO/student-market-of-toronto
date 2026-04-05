@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Bell, X } from "lucide-react";
 import { toast } from "sonner";
 
+import { ClientFormattedDateTime } from "@/components/client-formatted-date-time";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +19,6 @@ import { useLanguage } from "@/context/LanguageContext";
 import {
   MESSAGE_NOTIFICATION_TYPE,
   NOTIFICATION_WITH_MESSAGE_SELECT,
-  formatNotificationDate,
   groupNotificationsByConversation,
   isNotificationPreferencesTableMissing,
   normalizeMessageNotificationPreferences,
@@ -322,9 +322,11 @@ export function NotificationsButton({ user }) {
                       {notification.description}
                     </p>
                   </div>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {formatNotificationDate(notification.createdAt, language)}
-                  </span>
+                  <ClientFormattedDateTime
+                    value={notification.createdAt}
+                    language={language}
+                    className="shrink-0 text-xs text-muted-foreground"
+                  />
                 </div>
               </Link>
             </div>
