@@ -22,7 +22,7 @@ export const translations = {
     settings: "Settings",
     settingsPreviewBadge: "Preview",
     settingsDescription:
-      "Manage the settings that are live today, while previewing the notification controls planned for a future release.",
+      "Manage the settings that are live today, including saved message notification preferences and other upcoming notification controls.",
     settingsAppearanceTitle: "Appearance",
     settingsAppearanceDescription:
       "Choose how Student Market looks across supported pages and shared app surfaces.",
@@ -41,7 +41,21 @@ export const translations = {
     settingsThemeSaved: "Theme updated for this device.",
     settingsNotificationsTitle: "Notifications",
     settingsNotificationsDescription:
-      "Plan how marketplace updates should reach you once notification preferences are connected.",
+      "Manage saved message notification preferences while previewing the next notification types.",
+    notifications: "Notifications",
+    notificationsButtonLabel: "Open notifications",
+    loadingNotifications: "Loading notifications...",
+    noNotificationsTitle: "No notifications yet",
+    noNotificationsDescription:
+      "New marketplace activity will appear here once someone messages you or other alerts go live.",
+    notificationsDisabledTitle: "In-app notifications are off",
+    notificationsDisabledDescription:
+      "Turn message notifications back on in Settings to see new message alerts here.",
+    notificationsMarkAllRead: "Mark all as read",
+    notificationMessagePreview: "{name}: {message}",
+    dismissNotification: "Dismiss notification",
+    notificationDismissError: "We could not remove this notification right now.",
+    notificationMessageFrom: "New message from {name}",
     settingsProfileTitle: "Profile",
     settingsProfileDescription:
       "Control the softer profile details that appear on listing pages while keeping seller identity visible.",
@@ -75,9 +89,18 @@ export const translations = {
       "Receive listing activity, account notices, and important marketplace updates by email.",
     settingsInAppNotifications: "In-app notifications",
     settingsInAppNotificationsDescription:
-      "See alerts inside your dashboard when in-app notification storage is added.",
+      "Show these alerts in the header bell and other in-app notification surfaces.",
     settingsPreviewNote:
       "These controls are shown as honest preview content for now and do not save changes yet.",
+    settingsNotificationPreviewNote:
+      "Sold listing and favourite activity notifications still stay preview-only for now.",
+    settingsMessageNotificationsLiveNote:
+      "Message notification preferences save to your account. In-app message alerts affect the header bell today, while the email preference is saved for future delivery support.",
+    settingsMessageNotificationsUnavailableNote:
+      "Message notification preferences are not available in this environment yet.",
+    settingsMessageNotificationsSaved: "Message notification preferences saved.",
+    settingsMessageNotificationsError:
+      "We could not save your message notification preferences right now.",
     settingsThemeLiveNote:
       "Your theme choice applies right away and stays saved on this device.",
     switchToDarkMode: "Switch to dark mode",
@@ -196,6 +219,7 @@ export const translations = {
       "We could not delete this conversation right now.",
     reportMessage: "Report message",
     messageReported: "Message reported for review.",
+    reportMessageUnavailable: "Message reporting is not available yet.",
     reportMessageError: "We could not report this message right now.",
     noMessagesYetTitle: "No messages yet",
     noMessagesYetDescription:
@@ -453,7 +477,7 @@ export const translations = {
     settings: "Paramètres",
     settingsPreviewBadge: "Aperçu",
     settingsDescription:
-      "Gérez les réglages déjà actifs aujourd'hui tout en prévisualisant les contrôles de notifications prévus dans une prochaine version.",
+      "Gérez les réglages déjà actifs aujourd'hui, y compris les préférences enregistrées pour les notifications de messages et les autres contrôles de notifications à venir.",
     settingsAppearanceTitle: "Apparence",
     settingsAppearanceDescription:
       "Choisissez l'apparence de Student Market sur les pages prises en charge et les surfaces partagées de l'application.",
@@ -472,7 +496,22 @@ export const translations = {
     settingsThemeSaved: "Le thème a été mis à jour pour cet appareil.",
     settingsNotificationsTitle: "Notifications",
     settingsNotificationsDescription:
-      "Définissez comment vous souhaitez recevoir les mises à jour du marché étudiant une fois ces préférences activées.",
+      "Gérez les préférences enregistrées pour les notifications de messages tout en prévisualisant les prochains types de notifications.",
+    notifications: "Notifications",
+    notificationsButtonLabel: "Ouvrir les notifications",
+    loadingNotifications: "Chargement des notifications...",
+    noNotificationsTitle: "Aucune notification pour le moment",
+    noNotificationsDescription:
+      "Les nouvelles activités du marché apparaîtront ici lorsqu'une personne vous écrira ou lorsque d'autres alertes seront activées.",
+    notificationsDisabledTitle: "Les notifications dans l'application sont désactivées",
+    notificationsDisabledDescription:
+      "Réactivez les notifications de messages dans les réglages pour voir les nouvelles alertes ici.",
+    notificationsMarkAllRead: "Tout marquer comme lu",
+    notificationMessagePreview: "{name} : {message}",
+    dismissNotification: "Masquer la notification",
+    notificationDismissError:
+      "Nous n'avons pas pu supprimer cette notification pour le moment.",
+    notificationMessageFrom: "Nouveau message de {name}",
     settingsProfileTitle: "Profil",
     settingsProfileDescription:
       "Gérez les détails plus personnels affichés sur vos pages d'annonce tout en gardant l'identité du vendeur visible.",
@@ -507,9 +546,19 @@ export const translations = {
       "Recevez l'activité des annonces, les avis du compte et les mises à jour importantes par e-mail.",
     settingsInAppNotifications: "Notifications dans l'application",
     settingsInAppNotificationsDescription:
-      "Consultez les alertes directement dans votre tableau de bord lorsque la prise en charge des notifications dans l'application sera ajoutée.",
+      "Affichez ces alertes dans la cloche d'en-tête et les autres surfaces de notifications intégrées.",
     settingsPreviewNote:
       "Ces options sont affichées comme un aperçu honnête pour l'instant et n'enregistrent pas encore de changements.",
+    settingsNotificationPreviewNote:
+      "Les notifications liées aux annonces vendues et à l'activité des favoris restent un aperçu pour le moment.",
+    settingsMessageNotificationsLiveNote:
+      "Les préférences de notifications de messages sont enregistrées sur votre compte. Les alertes de messages dans l'application s'appliquent déjà à la cloche d'en-tête, tandis que la préférence e-mail est enregistrée pour une future prise en charge.",
+    settingsMessageNotificationsUnavailableNote:
+      "Les préférences de notifications de messages ne sont pas encore disponibles dans cet environnement.",
+    settingsMessageNotificationsSaved:
+      "Les préférences de notifications de messages ont été enregistrées.",
+    settingsMessageNotificationsError:
+      "Nous n'avons pas pu enregistrer vos préférences de notifications de messages pour le moment.",
     settingsThemeLiveNote:
       "Votre choix de thème s'applique immédiatement et reste enregistré sur cet appareil.",
     switchToDarkMode: "Passer au mode sombre",
@@ -637,6 +686,8 @@ export const translations = {
       "Nous n'avons pas pu supprimer cette conversation pour le moment.",
     reportMessage: "Signaler le message",
     messageReported: "Message signalé pour examen.",
+    reportMessageUnavailable:
+      "Le signalement de message n'est pas encore disponible.",
     reportMessageError:
       "Nous n'avons pas pu signaler ce message pour le moment.",
     noMessagesYetTitle: "Aucun message pour le moment",

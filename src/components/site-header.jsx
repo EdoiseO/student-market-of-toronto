@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 
 import LanguageSwitcher from "@/components/language-switcher";
+import { NotificationsButton } from "@/components/notifications-button";
 import { SearchForm } from "@/components/search-form"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
@@ -13,7 +14,7 @@ import { PanelLeftIcon } from "lucide-react"
 import { useLanguage } from "@/context/LanguageContext";
 import { translations } from "@/lib/translations";
 
-export function SiteHeader() {
+export function SiteHeader({ user }) {
   const { toggleSidebar } = useSidebar()
   const pathname = usePathname();
   const { language } = useLanguage();
@@ -22,7 +23,7 @@ export function SiteHeader() {
   const pageTitle =
     pathname === "/"
       ? t.browseListings
-      : pathname.startsWith("/search")
+    : pathname.startsWith("/search")
         ? t.searchAndFilter
       : pathname.startsWith("/messages")
         ? t.messages
@@ -57,13 +58,17 @@ export function SiteHeader() {
             </p>
           </div>
           <div className="ml-auto shrink-0 xl:hidden">
-            <ThemeToggle />
+            <div className="flex items-center gap-2">
+              <NotificationsButton user={user} />
+              <ThemeToggle />
+            </div>
           </div>
         </div>
         <div className="flex min-w-0 justify-center">
           <SearchForm className="w-full max-w-2xl xl:max-w-4xl" />
         </div>
         <div className="hidden items-center justify-end gap-2 xl:flex">
+          <NotificationsButton user={user} />
           <ThemeToggle />
           <LanguageSwitcher />
         </div>

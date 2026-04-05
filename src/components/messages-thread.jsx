@@ -151,20 +151,8 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
 
   async function handleReportMessage(messageId) {
     setActionMessageId(messageId);
-
-    const { error } = await supabase.rpc("report_conversation_message", {
-      p_message_id: messageId,
-    });
-
+    toast.error(t.reportMessageUnavailable);
     setActionMessageId(null);
-
-    if (error) {
-      toast.error(t.reportMessageError);
-      console.error("Failed to report message:", error.message);
-      return;
-    }
-
-    toast.success(t.messageReported);
   }
 
   return (

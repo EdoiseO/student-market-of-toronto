@@ -87,7 +87,7 @@ export function ConversationListItem({ conversation, formattedDate }) {
 
             <div className="flex shrink-0 items-center gap-2">
               {conversation.unreadCount > 0 ? (
-                <Badge className="rounded-full px-2.5 py-0.5">
+                <Badge className="rounded-full bg-blue-500 px-2.5 py-0.5 text-white ring-2 ring-background shadow-[0_0_12px_rgba(59,130,246,0.95)]">
                   {conversation.unreadCount}
                 </Badge>
               ) : null}

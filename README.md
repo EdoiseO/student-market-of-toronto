@@ -28,6 +28,8 @@ Your Supabase project should already have the resources this app expects.
 - `listing_favourites`
 - `conversations`
 - `messages`
+- `notification_preferences`
+- `notifications`
 
 ### Storage bucket used by the app
 
@@ -105,17 +107,19 @@ npm run start
 - listing detail pages
 - listing-to-seller messaging
 - conversations inbox and dedicated thread pages
+- header message notifications
 - create listing
 - edit listing
 - dashboard listing management
 - dashboard contact counts based on unique listing conversations
 - dashboard profile and settings pages
+- saved message notification preferences
 - protected seller profile pages for signed-in users
 
 ## Features Not Fully Implemented Yet
 
 - search
-- notification settings persistence and most account-level settings beyond theme and listing-page bio visibility
+- sold/favourite notification settings persistence and most account-level settings beyond theme, message notification preferences, and listing-page bio visibility
 
 Some supporting messaging actions, such as reporting flows, may still need follow-up backend wiring depending on your Supabase setup.
 
