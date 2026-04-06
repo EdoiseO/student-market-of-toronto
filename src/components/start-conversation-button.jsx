@@ -16,7 +16,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Textarea } from "@/components/ui/textarea";
 import { isConversationUserStateTableMissing } from "@/lib/messages";
 import { createClient } from "@/utils/supabase/client";
 
@@ -180,26 +179,29 @@ export function StartConversationButton({
       <Sheet open={isComposerOpen} onOpenChange={setIsComposerOpen}>
         <SheetContent side="right" className="w-full sm:max-w-xl">
           <form className="flex h-full flex-col" onSubmit={handleSendFirstMessage}>
-            <SheetHeader className="space-y-2 text-left">
-              <SheetTitle>{t.firstMessageSheetTitle}</SheetTitle>
-              <SheetDescription>{t.firstMessageSheetDescription}</SheetDescription>
-              {listingTitle ? (
-                <p className="text-sm font-medium text-foreground">{listingTitle}</p>
-              ) : null}
-            </SheetHeader>
+            <div className="flex flex-1 flex-col gap-6 px-6 py-6">
+              <SheetHeader className="gap-2 p-0 text-left">
+                <SheetTitle>{t.firstMessageSheetTitle}</SheetTitle>
+                <SheetDescription>{t.firstMessageSheetDescription}</SheetDescription>
+                {listingTitle ? (
+                  <p className="pt-1 text-sm font-medium text-foreground">{listingTitle}</p>
+                ) : null}
+              </SheetHeader>
 
-            <div className="mt-6 flex-1">
-              <Textarea
-                value={draft}
-                onChange={(event) => setDraft(event.target.value)}
-                placeholder={t.messageInputPlaceholder}
-                rows={8}
-                maxLength={2000}
-                className="min-h-48 resize-none rounded-2xl"
-              />
+              <div className="flex-1">
+                <textarea
+                  data-slot="textarea"
+                  value={draft}
+                  onChange={(event) => setDraft(event.target.value)}
+                  placeholder={t.messageInputPlaceholder}
+                  rows={10}
+                  maxLength={2000}
+                  className="min-h-16 w-full resize-none rounded-xl border border-input bg-transparent px-2.5 py-2 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 md:text-sm dark:bg-input/30"
+                />
+              </div>
             </div>
 
-            <SheetFooter className="mt-6 sm:justify-end">
+            <SheetFooter className="border-t px-6 py-4 sm:flex-row sm:justify-end">
               <Button
                 type="button"
                 variant="outline"
