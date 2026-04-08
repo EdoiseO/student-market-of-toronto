@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Popover } from "@base-ui/react/popover";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Bell, X } from "lucide-react";
@@ -9,12 +10,6 @@ import { toast } from "sonner";
 import { ClientFormattedDateTime } from "@/components/client-formatted-date-time";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useLanguage } from "@/context/LanguageContext";
 import {
   MESSAGE_NOTIFICATION_TYPE,
@@ -229,25 +224,23 @@ export function NotificationsButton({ user }) {
   }
 
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          aria-label={t.notificationsButtonLabel}
-          className="relative h-10 w-10 rounded-xl"
-        >
-          <Bell className="size-4" />
-          {unreadCount > 0 ? (
-            <Badge className="absolute -top-1.5 -right-1.5 rounded-full bg-blue-500 px-1.5 py-0 text-[0.65rem] leading-5 text-white ring-2 ring-background shadow-[0_0_12px_rgba(59,130,246,0.95)]">
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </Badge>
-          ) : null}
-        </Button>
-      </DropdownMenuTrigger>
+    <Popover.Root open={isOpen} onOpenChange={(open) => setIsOpen(open)}>
+      <Popover.Trigger
+        aria-label={t.notificationsButtonLabel}
+        render={<Button type="button" variant="outline" size="icon" />}
+        className="relative h-10 w-10 rounded-xl"
+      >
+        <Bell className="size-4" />
+        {unreadCount > 0 ? (
+          <Badge className="absolute -top-1.5 -right-1.5 rounded-full bg-blue-500 px-1.5 py-0 text-[0.65rem] leading-5 text-white ring-2 ring-background shadow-[0_0_12px_rgba(59,130,246,0.95)]">
+            {unreadCount > 9 ? "9+" : unreadCount}
+          </Badge>
+        ) : null}
+      </Popover.Trigger>
 
-      <DropdownMenuContent align="end" className="w-80 rounded-2xl p-2">
+      <Popover.Portal>
+        <Popover.Positioner align="end" sideOffset={8}>
+          <Popover.Popup className="z-50 w-80 rounded-2xl border border-border bg-popover p-2 text-popover-foreground shadow-md outline-none">
         <div className="flex items-center justify-between gap-3 px-2 py-1.5">
           <p className="text-sm font-semibold text-foreground">{t.notifications}</p>
           {messageNotificationPreferences.inApp && unreadCount > 0 ? (
@@ -263,7 +256,7 @@ export function NotificationsButton({ user }) {
             </Button>
           ) : null}
         </div>
-        <DropdownMenuSeparator />
+        <div className="my-1 h-px bg-border" />
 
         {!messageNotificationPreferences.inApp ? (
           <div className="px-3 py-8 text-center">
@@ -342,7 +335,9 @@ export function NotificationsButton({ user }) {
           </div>
         )}
 
-      </DropdownMenuContent>
-    </DropdownMenu>
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }
