@@ -115,13 +115,12 @@ npm run start
 - dashboard listing management
 - dashboard contact counts based on unique listing conversations
 - dashboard profile and settings pages
-- saved message notification preferences
+- saved marketplace notification preferences
 - protected seller profile pages for signed-in users
 
 ## Features Not Fully Implemented Yet
 
-- search
-- sold/favourite notification settings persistence, real email delivery for message notifications, and most account-level settings beyond theme and listing-page bio visibility
+- seller-side sold listing notifications, real email delivery for notification preferences, and most account-level settings beyond theme and listing-page bio visibility
 
 Some supporting messaging actions, such as reporting flows, may still need follow-up backend wiring depending on your Supabase setup.
 

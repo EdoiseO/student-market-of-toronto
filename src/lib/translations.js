@@ -22,7 +22,7 @@ export const translations = {
     settings: "Settings",
     settingsPreviewBadge: "Preview",
     settingsDescription:
-      "Manage the settings that are live today, including saved message notification preferences and other upcoming notification controls.",
+      "Manage the settings that are live today, including saved marketplace notification preferences and other supported account controls.",
     settingsAppearanceTitle: "Appearance",
     settingsAppearanceDescription:
       "Choose how Student Market looks across supported pages and shared app surfaces.",
@@ -41,21 +41,30 @@ export const translations = {
     settingsThemeSaved: "Theme updated for this device.",
     settingsNotificationsTitle: "Notifications",
     settingsNotificationsDescription:
-      "Manage saved message notification preferences while previewing the next notification types.",
+      "Manage saved marketplace notification preferences across messages, favourites, and sold listing updates.",
     notifications: "Notifications",
     notificationsButtonLabel: "Open notifications",
     loadingNotifications: "Loading notifications...",
     noNotificationsTitle: "No notifications yet",
     noNotificationsDescription:
-      "New marketplace activity will appear here once someone messages you or other alerts go live.",
+      "New message and listing activity will appear here when marketplace alerts arrive.",
     notificationsDisabledTitle: "In-app notifications are off",
     notificationsDisabledDescription:
-      "Turn message notifications back on in Settings to see new message alerts here.",
+      "Turn in-app notifications back on in Settings to see alerts here.",
     notificationsMarkAllRead: "Mark all as read",
     notificationMessagePreview: "{name}: {message}",
     dismissNotification: "Dismiss notification",
     notificationDismissError: "We could not remove this notification right now.",
     notificationMessageFrom: "New message from {name}",
+    notificationFavouriteSoldDescription: "A favourited item was marked sold.",
+    notificationFavouriteUnavailableDescription:
+      "A favourited item is no longer available.",
+    notificationFavouritePriceChangeDescription:
+      "The price changed for a favourited item.",
+    notificationFavouritePriceChangeWithPrices:
+      "Price changed from {oldPrice} to {newPrice}.",
+    notificationListingSoldDescription:
+      "One of your listings was marked sold.",
     settingsProfileTitle: "Profile",
     settingsProfileDescription:
       "Control the softer profile details that appear on listing pages while keeping seller identity visible.",
@@ -94,6 +103,13 @@ export const translations = {
       "These controls are shown as honest preview content for now and do not save changes yet.",
     settingsNotificationPreviewNote:
       "Sold listing and favourite activity notifications still stay preview-only for now.",
+    settingsNotificationPreferencesLiveNote:
+      "Notification preferences save to your account. In-app message and favourite alerts affect the header bell today, sold listing preferences are saved for future seller-side alerts, and email preferences are saved for future delivery support.",
+    settingsNotificationPreferencesUnavailableNote:
+      "Notification preferences are not available in this environment yet.",
+    settingsNotificationPreferencesSaved: "Notification preferences saved.",
+    settingsNotificationPreferencesError:
+      "We could not save your notification preferences right now.",
     settingsMessageNotificationsLiveNote:
       "Message notification preferences save to your account. In-app message alerts affect the header bell today, while the email preference is saved for future delivery support.",
     settingsMessageNotificationsUnavailableNote:
@@ -486,7 +502,7 @@ export const translations = {
     settings: "Paramètres",
     settingsPreviewBadge: "Aperçu",
     settingsDescription:
-      "Gérez les réglages déjà actifs aujourd'hui, y compris les préférences enregistrées pour les notifications de messages et les autres contrôles de notifications à venir.",
+      "Gérez les réglages déjà actifs aujourd'hui, y compris les préférences enregistrées pour les notifications du marché et les autres contrôles de compte pris en charge.",
     settingsAppearanceTitle: "Apparence",
     settingsAppearanceDescription:
       "Choisissez l'apparence de Student Market sur les pages prises en charge et les surfaces partagées de l'application.",
@@ -505,22 +521,32 @@ export const translations = {
     settingsThemeSaved: "Le thème a été mis à jour pour cet appareil.",
     settingsNotificationsTitle: "Notifications",
     settingsNotificationsDescription:
-      "Gérez les préférences enregistrées pour les notifications de messages tout en prévisualisant les prochains types de notifications.",
+      "Gérez les préférences enregistrées pour les notifications du marché liées aux messages, aux favoris et aux annonces vendues.",
     notifications: "Notifications",
     notificationsButtonLabel: "Ouvrir les notifications",
     loadingNotifications: "Chargement des notifications...",
     noNotificationsTitle: "Aucune notification pour le moment",
     noNotificationsDescription:
-      "Les nouvelles activités du marché apparaîtront ici lorsqu'une personne vous écrira ou lorsque d'autres alertes seront activées.",
+      "Les nouvelles activités de messages et d'annonces apparaîtront ici lorsque des alertes du marché arriveront.",
     notificationsDisabledTitle: "Les notifications dans l'application sont désactivées",
     notificationsDisabledDescription:
-      "Réactivez les notifications de messages dans les réglages pour voir les nouvelles alertes ici.",
+      "Réactivez les notifications dans l'application dans les réglages pour voir les alertes ici.",
     notificationsMarkAllRead: "Tout marquer comme lu",
     notificationMessagePreview: "{name} : {message}",
     dismissNotification: "Masquer la notification",
     notificationDismissError:
       "Nous n'avons pas pu supprimer cette notification pour le moment.",
     notificationMessageFrom: "Nouveau message de {name}",
+    notificationFavouriteSoldDescription:
+      "Un article de vos favoris a été marqué comme vendu.",
+    notificationFavouriteUnavailableDescription:
+      "Un article de vos favoris n'est plus disponible.",
+    notificationFavouritePriceChangeDescription:
+      "Le prix d'un article de vos favoris a changé.",
+    notificationFavouritePriceChangeWithPrices:
+      "Le prix est passé de {oldPrice} à {newPrice}.",
+    notificationListingSoldDescription:
+      "Une de vos annonces a été marquée comme vendue.",
     settingsProfileTitle: "Profil",
     settingsProfileDescription:
       "Gérez les détails plus personnels affichés sur vos pages d'annonce tout en gardant l'identité du vendeur visible.",
@@ -560,6 +586,14 @@ export const translations = {
       "Ces options sont affichées comme un aperçu honnête pour l'instant et n'enregistrent pas encore de changements.",
     settingsNotificationPreviewNote:
       "Les notifications liées aux annonces vendues et à l'activité des favoris restent un aperçu pour le moment.",
+    settingsNotificationPreferencesLiveNote:
+      "Les préférences de notifications sont enregistrées sur votre compte. Les alertes de messages et de favoris dans l'application affectent déjà la cloche d'en-tête aujourd'hui, les préférences pour les annonces vendues sont enregistrées pour de futures alertes côté vendeur, et les préférences e-mail sont enregistrées pour une future prise en charge.",
+    settingsNotificationPreferencesUnavailableNote:
+      "Les préférences de notifications ne sont pas encore disponibles dans cet environnement.",
+    settingsNotificationPreferencesSaved:
+      "Les préférences de notifications ont été enregistrées.",
+    settingsNotificationPreferencesError:
+      "Nous n'avons pas pu enregistrer vos préférences de notifications pour le moment.",
     settingsMessageNotificationsLiveNote:
       "Les préférences de notifications de messages sont enregistrées sur votre compte. Les alertes de messages dans l'application s'appliquent déjà à la cloche d'en-tête, tandis que la préférence e-mail est enregistrée pour une future prise en charge.",
     settingsMessageNotificationsUnavailableNote:

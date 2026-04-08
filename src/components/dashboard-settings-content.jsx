@@ -28,8 +28,11 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useLanguage } from "@/context/LanguageContext";
 import {
+  FAVOURITE_NOTIFICATION_TYPE,
   MESSAGE_NOTIFICATION_TYPE,
-  defaultMessageNotificationPreferences,
+  NOTIFICATION_PREFERENCE_TYPES,
+  SOLD_NOTIFICATION_TYPE,
+  defaultNotificationChannelPreferences,
 } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
@@ -39,8 +42,8 @@ export function DashboardSettingsContent({
   userId,
   initialHideBioOnListingPage,
   hasBio,
-  initialMessageNotificationPreferences,
-  messageNotificationPreferencesAvailable,
+  initialNotificationPreferences,
+  notificationPreferencesAvailable,
 }) {
   const { t } = useLanguage();
   const router = useRouter();
@@ -54,12 +57,13 @@ export function DashboardSettingsContent({
   );
   const [isSavingBioVisibility, setIsSavingBioVisibility] = React.useState(false);
   const [themePreference, setThemePreference] = React.useState("system");
-  const [messageNotificationPreferences, setMessageNotificationPreferences] = React.useState(
-    initialMessageNotificationPreferences,
+  const [notificationPreferences, setNotificationPreferences] = React.useState(
+    initialNotificationPreferences,
   );
-  const [savedMessageNotificationPreferences, setSavedMessageNotificationPreferences] =
-    React.useState(initialMessageNotificationPreferences);
-  const [isSavingMessageNotificationPreferences, setIsSavingMessageNotificationPreferences] =
+  const [savedNotificationPreferences, setSavedNotificationPreferences] = React.useState(
+    initialNotificationPreferences,
+  );
+  const [isSavingNotificationPreferences, setIsSavingNotificationPreferences] =
     React.useState(false);
 
   React.useEffect(() => {
@@ -74,14 +78,18 @@ export function DashboardSettingsContent({
   }, [theme]);
 
   React.useEffect(() => {
-    setMessageNotificationPreferences(initialMessageNotificationPreferences);
-    setSavedMessageNotificationPreferences(initialMessageNotificationPreferences);
-  }, [initialMessageNotificationPreferences]);
+    setNotificationPreferences(initialNotificationPreferences);
+    setSavedNotificationPreferences(initialNotificationPreferences);
+  }, [initialNotificationPreferences]);
 
   const hasBioVisibilityChanges = hideBioOnListingPage !== savedHideBioOnListingPage;
-  const hasMessageNotificationChanges =
-    messageNotificationPreferences.email !== savedMessageNotificationPreferences.email ||
-    messageNotificationPreferences.inApp !== savedMessageNotificationPreferences.inApp;
+  const hasNotificationPreferenceChanges = NOTIFICATION_PREFERENCE_TYPES.some(
+    (notificationType) =>
+      notificationPreferences[notificationType]?.email !==
+        savedNotificationPreferences[notificationType]?.email ||
+      notificationPreferences[notificationType]?.inApp !==
+        savedNotificationPreferences[notificationType]?.inApp,
+  );
 
   const appearanceOptions = [
     {
@@ -98,27 +106,31 @@ export function DashboardSettingsContent({
     },
   ];
 
-  const notificationPreferences = [
+  const notificationPreferenceItems = [
     {
-      key: "sold",
+      key: SOLD_NOTIFICATION_TYPE,
       title: t.settingsSoldNotificationsTitle,
       description: t.settingsSoldNotificationsDescription,
-      isLive: false,
-      channelPreferences: defaultMessageNotificationPreferences,
+      isLive: notificationPreferencesAvailable,
+      channelPreferences:
+        notificationPreferences[SOLD_NOTIFICATION_TYPE] ?? defaultNotificationChannelPreferences,
     },
     {
-      key: "favourite",
+      key: FAVOURITE_NOTIFICATION_TYPE,
       title: t.settingsFavouriteNotificationsTitle,
       description: t.settingsFavouriteNotificationsDescription,
-      isLive: false,
-      channelPreferences: defaultMessageNotificationPreferences,
+      isLive: notificationPreferencesAvailable,
+      channelPreferences:
+        notificationPreferences[FAVOURITE_NOTIFICATION_TYPE] ??
+        defaultNotificationChannelPreferences,
     },
     {
       key: MESSAGE_NOTIFICATION_TYPE,
       title: t.settingsMessagesNotificationsTitle,
       description: t.settingsMessagesNotificationsDescription,
-      isLive: messageNotificationPreferencesAvailable,
-      channelPreferences: messageNotificationPreferences,
+      isLive: notificationPreferencesAvailable,
+      channelPreferences:
+        notificationPreferences[MESSAGE_NOTIFICATION_TYPE] ?? defaultNotificationChannelPreferences,
     },
   ];
 
@@ -155,26 +167,27 @@ export function DashboardSettingsContent({
     }
   }
 
-  async function handleMessageNotificationSave() {
+  async function handleNotificationPreferencesSave() {
     if (
-      !messageNotificationPreferencesAvailable ||
-      !hasMessageNotificationChanges ||
-      isSavingMessageNotificationPreferences
+      !notificationPreferencesAvailable ||
+      !hasNotificationPreferenceChanges ||
+      isSavingNotificationPreferences
     ) {
       return;
     }
 
-    setIsSavingMessageNotificationPreferences(true);
+    setIsSavingNotificationPreferences(true);
 
     try {
+      const updatedAt = new Date().toISOString();
       const { error } = await supabase.from("notification_preferences").upsert(
-        {
+        NOTIFICATION_PREFERENCE_TYPES.map((notificationType) => ({
           user_id: userId,
-          notification_type: MESSAGE_NOTIFICATION_TYPE,
-          email_enabled: messageNotificationPreferences.email,
-          in_app_enabled: messageNotificationPreferences.inApp,
-          updated_at: new Date().toISOString(),
-        },
+          notification_type: notificationType,
+          email_enabled: notificationPreferences[notificationType]?.email ?? true,
+          in_app_enabled: notificationPreferences[notificationType]?.inApp ?? true,
+          updated_at: updatedAt,
+        })),
         { onConflict: "user_id,notification_type" },
       );
 
@@ -182,25 +195,28 @@ export function DashboardSettingsContent({
         throw error;
       }
 
-      setSavedMessageNotificationPreferences(messageNotificationPreferences);
-      toast.success(t.settingsMessageNotificationsSaved);
+      setSavedNotificationPreferences(notificationPreferences);
+      toast.success(t.settingsNotificationPreferencesSaved);
       router.refresh();
     } catch (error) {
-      console.error("Failed to save message notification preferences", error);
-      toast.error(t.settingsMessageNotificationsError);
+      console.error("Failed to save notification preferences", error);
+      toast.error(t.settingsNotificationPreferencesError);
     } finally {
-      setIsSavingMessageNotificationPreferences(false);
+      setIsSavingNotificationPreferences(false);
     }
   }
 
   function handleNotificationChannelChange(notificationKey, channelKey, checked) {
-    if (notificationKey !== MESSAGE_NOTIFICATION_TYPE || !messageNotificationPreferencesAvailable) {
+    if (!notificationPreferencesAvailable) {
       return;
     }
 
-    setMessageNotificationPreferences((currentPreferences) => ({
+    setNotificationPreferences((currentPreferences) => ({
       ...currentPreferences,
-      [channelKey]: checked === true,
+      [notificationKey]: {
+        ...(currentPreferences[notificationKey] ?? defaultNotificationChannelPreferences),
+        [channelKey]: checked === true,
+      },
     }));
   }
 
@@ -285,7 +301,7 @@ export function DashboardSettingsContent({
                 <FieldDescription>{t.settingsNotificationTypesDescription}</FieldDescription>
               </FieldContent>
 
-              {notificationPreferences.map((preference) => (
+              {notificationPreferenceItems.map((preference) => (
                 <div
                   key={preference.key}
                   className="rounded-2xl border border-border bg-muted/40 p-4 dark:bg-muted/70 dark:ring-1 dark:ring-white/8"
@@ -366,26 +382,21 @@ export function DashboardSettingsContent({
 
             <div className="rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-4">
               <p className="text-sm text-muted-foreground">
-                {messageNotificationPreferencesAvailable
-                  ? t.settingsMessageNotificationsLiveNote
-                  : t.settingsMessageNotificationsUnavailableNote}
-              </p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {t.settingsNotificationPreviewNote}
+                {notificationPreferencesAvailable
+                  ? t.settingsNotificationPreferencesLiveNote
+                  : t.settingsNotificationPreferencesUnavailableNote}
               </p>
             </div>
 
-            {messageNotificationPreferencesAvailable ? (
+            {notificationPreferencesAvailable ? (
               <div className="flex justify-stretch sm:justify-end">
                 <Button
                   type="button"
                   className="w-full rounded-xl px-5 sm:w-auto"
-                  onClick={handleMessageNotificationSave}
-                  disabled={
-                    isSavingMessageNotificationPreferences || !hasMessageNotificationChanges
-                  }
+                  onClick={handleNotificationPreferencesSave}
+                  disabled={isSavingNotificationPreferences || !hasNotificationPreferenceChanges}
                 >
-                  {isSavingMessageNotificationPreferences ? t.saving : t.settingsSaveChanges}
+                  {isSavingNotificationPreferences ? t.saving : t.settingsSaveChanges}
                 </Button>
               </div>
             ) : null}

@@ -97,6 +97,7 @@ export function AppSidebar({ user, ...props }) {
     const { count, error } = await supabase
       .from("notifications")
       .select("id", { count: "exact", head: true })
+      .eq("type", MESSAGE_NOTIFICATION_TYPE)
       .is("read_at", null);
 
     if (error) {
@@ -120,6 +121,7 @@ export function AppSidebar({ user, ...props }) {
       supabase,
       userId,
       channelName: `sidebar-notifications-${userId}`,
+      notificationPreferenceTypes: [MESSAGE_NOTIFICATION_TYPE],
       onChange: () => {
         fetchUnreadNotifications();
       },

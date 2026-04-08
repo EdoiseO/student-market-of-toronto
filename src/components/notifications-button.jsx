@@ -12,11 +12,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/context/LanguageContext";
 import {
+  NOTIFICATION_PREFERENCE_TYPES,
   MESSAGE_NOTIFICATION_TYPE,
   NOTIFICATION_WITH_MESSAGE_SELECT,
+  buildNotificationPreferencesMap,
   groupNotificationsByConversation,
   isNotificationPreferencesTableMissing,
-  normalizeMessageNotificationPreferences,
   normalizeGroupedNotificationRow,
   subscribeToNotificationUpdates,
 } from "@/lib/notifications";
@@ -32,8 +33,12 @@ export function NotificationsButton({ user }) {
   const [dismissingNotificationKey, setDismissingNotificationKey] = React.useState(null);
   const [notifications, setNotifications] = React.useState([]);
   const [unreadCount, setUnreadCount] = React.useState(0);
-  const [messageNotificationPreferences, setMessageNotificationPreferences] = React.useState(
-    normalizeMessageNotificationPreferences(),
+  const [notificationPreferences, setNotificationPreferences] = React.useState(
+    buildNotificationPreferencesMap(),
+  );
+
+  const hasAnyInAppNotificationsEnabled = Object.values(notificationPreferences).some(
+    (preferences) => preferences.inApp,
   );
 
   const fetchNotifications = React.useCallback(async () => {
@@ -43,31 +48,27 @@ export function NotificationsButton({ user }) {
 
     setIsLoading(true);
 
-    const { data: messageNotificationPreferencesRow, error: messageNotificationPreferencesError } =
+    const { data: notificationPreferenceRows, error: notificationPreferencesError } =
       await supabase
         .from("notification_preferences")
-        .select("email_enabled, in_app_enabled")
+        .select("notification_type, email_enabled, in_app_enabled")
         .eq("user_id", user.id)
-        .eq("notification_type", MESSAGE_NOTIFICATION_TYPE)
-        .maybeSingle();
+        .in("notification_type", NOTIFICATION_PREFERENCE_TYPES);
 
     if (
-      messageNotificationPreferencesError &&
-      !isNotificationPreferencesTableMissing(messageNotificationPreferencesError)
+      notificationPreferencesError &&
+      !isNotificationPreferencesTableMissing(notificationPreferencesError)
     ) {
-      console.error(
-        "Failed to load message notification preferences:",
-        messageNotificationPreferencesError.message,
-      );
+      console.error("Failed to load notification preferences:", notificationPreferencesError.message);
     }
 
-    const normalizedMessageNotificationPreferences = normalizeMessageNotificationPreferences(
-      messageNotificationPreferencesRow,
+    const normalizedNotificationPreferences = buildNotificationPreferencesMap(
+      notificationPreferenceRows,
     );
 
-    setMessageNotificationPreferences(normalizedMessageNotificationPreferences);
+    setNotificationPreferences(normalizedNotificationPreferences);
 
-    if (!normalizedMessageNotificationPreferences.inApp) {
+    if (!Object.values(normalizedNotificationPreferences).some((preferences) => preferences.inApp)) {
       setNotifications([]);
       setUnreadCount(0);
       setIsLoading(false);
@@ -99,14 +100,14 @@ export function NotificationsButton({ user }) {
 
     const normalizedNotifications = groupNotificationsByConversation(
       (notificationsResult.data ?? []).map((notification) =>
-        normalizeGroupedNotificationRow(notification, user.id, t),
+        normalizeGroupedNotificationRow(notification, user.id, t, language),
       ),
     ).slice(0, 8);
 
     setNotifications(normalizedNotifications);
     setUnreadCount(unreadCountResult.count ?? 0);
     setIsLoading(false);
-  }, [supabase, t, user]);
+  }, [language, supabase, t, user]);
 
   React.useEffect(() => {
     fetchNotifications();
@@ -151,10 +152,10 @@ export function NotificationsButton({ user }) {
 
     setDismissingNotificationKey(notification.groupKey);
 
-    let query = supabase.from("notifications").delete().eq("type", MESSAGE_NOTIFICATION_TYPE);
+    let query = supabase.from("notifications").delete();
 
-    query = notification.conversationId
-      ? query.eq("conversation_id", notification.conversationId)
+    query = notification.conversationId && notification.type === MESSAGE_NOTIFICATION_TYPE
+      ? query.eq("type", MESSAGE_NOTIFICATION_TYPE).eq("conversation_id", notification.conversationId)
       : query.eq("id", notification.id);
 
     const { error } = await query;
@@ -243,7 +244,7 @@ export function NotificationsButton({ user }) {
           <Popover.Popup className="z-50 w-80 rounded-2xl border border-border bg-popover p-2 text-popover-foreground shadow-md outline-none">
         <div className="flex items-center justify-between gap-3 px-2 py-1.5">
           <p className="text-sm font-semibold text-foreground">{t.notifications}</p>
-          {messageNotificationPreferences.inApp && unreadCount > 0 ? (
+          {hasAnyInAppNotificationsEnabled && unreadCount > 0 ? (
             <Button
               type="button"
               variant="ghost"
@@ -258,7 +259,7 @@ export function NotificationsButton({ user }) {
         </div>
         <div className="my-1 h-px bg-border" />
 
-        {!messageNotificationPreferences.inApp ? (
+        {!hasAnyInAppNotificationsEnabled ? (
           <div className="px-3 py-8 text-center">
             <p className="text-sm font-medium text-foreground">
               {t.notificationsDisabledTitle}

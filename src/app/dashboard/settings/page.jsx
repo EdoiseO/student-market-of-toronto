@@ -3,9 +3,9 @@ import { redirect } from "next/navigation";
 
 import { DashboardSettingsContent } from "@/components/dashboard-settings-content";
 import {
-  MESSAGE_NOTIFICATION_TYPE,
+  NOTIFICATION_PREFERENCE_TYPES,
+  buildNotificationPreferencesMap,
   isNotificationPreferencesTableMissing,
-  normalizeMessageNotificationPreferences,
 } from "@/lib/notifications";
 import { createClient } from "@/utils/supabase/server";
 
@@ -31,24 +31,20 @@ export default async function DashboardSettingsPage() {
     console.error("Failed to load dashboard settings profile:", profileError.message);
   }
 
-  const { data: messageNotificationPreferencesRow, error: messageNotificationPreferencesError } =
+  const { data: notificationPreferenceRows, error: notificationPreferencesError } =
     await supabase
       .from("notification_preferences")
-      .select("email_enabled, in_app_enabled")
+      .select("notification_type, email_enabled, in_app_enabled")
       .eq("user_id", user.id)
-      .eq("notification_type", MESSAGE_NOTIFICATION_TYPE)
-      .maybeSingle();
+      .in("notification_type", NOTIFICATION_PREFERENCE_TYPES);
 
-  const messageNotificationPreferencesAvailable = !messageNotificationPreferencesError;
+  const notificationPreferencesAvailable = !notificationPreferencesError;
 
   if (
-    messageNotificationPreferencesError &&
-    !isNotificationPreferencesTableMissing(messageNotificationPreferencesError)
+    notificationPreferencesError &&
+    !isNotificationPreferencesTableMissing(notificationPreferencesError)
   ) {
-    console.error(
-      "Failed to load message notification preferences:",
-      messageNotificationPreferencesError.message,
-    );
+    console.error("Failed to load notification preferences:", notificationPreferencesError.message);
   }
 
   return (
@@ -59,10 +55,8 @@ export default async function DashboardSettingsPage() {
           userId={user.id}
           initialHideBioOnListingPage={Boolean(existingProfile?.is_public)}
           hasBio={Boolean(existingProfile?.bio?.trim())}
-          initialMessageNotificationPreferences={normalizeMessageNotificationPreferences(
-            messageNotificationPreferencesRow,
-          )}
-          messageNotificationPreferencesAvailable={messageNotificationPreferencesAvailable}
+          initialNotificationPreferences={buildNotificationPreferencesMap(notificationPreferenceRows)}
+          notificationPreferencesAvailable={notificationPreferencesAvailable}
         />
       </div>
     </main>

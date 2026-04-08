@@ -1,12 +1,28 @@
 export const MESSAGE_NOTIFICATION_TYPE = "messages";
+export const SOLD_NOTIFICATION_TYPE = "sold";
+export const FAVOURITE_NOTIFICATION_TYPE = "favourite";
+
+export const FAVOURITE_SOLD_NOTIFICATION_TYPE = "favourite_sold";
+export const FAVOURITE_UNAVAILABLE_NOTIFICATION_TYPE = "favourite_unavailable";
+export const FAVOURITE_PRICE_CHANGE_NOTIFICATION_TYPE = "favourite_price_change";
+export const LISTING_SOLD_NOTIFICATION_TYPE = "listing_sold";
+
+export const NOTIFICATION_PREFERENCE_TYPES = [
+  SOLD_NOTIFICATION_TYPE,
+  FAVOURITE_NOTIFICATION_TYPE,
+  MESSAGE_NOTIFICATION_TYPE,
+];
 
 export const NOTIFICATION_SELECT = `
   id,
+  user_id,
   type,
   read_at,
   created_at,
   conversation_id,
   message_id,
+  listing_id,
+  metadata,
   conversations!notifications_conversation_id_fkey (
     id,
     buyer_id,
@@ -40,16 +56,42 @@ export const NOTIFICATION_WITH_MESSAGE_SELECT = `
   )
 `;
 
-export const defaultMessageNotificationPreferences = {
+export const defaultNotificationChannelPreferences = {
   email: true,
   inApp: true,
 };
 
-export function normalizeMessageNotificationPreferences(preferencesRow) {
+export const defaultMessageNotificationPreferences = defaultNotificationChannelPreferences;
+
+export function normalizeNotificationChannelPreferences(preferencesRow) {
   return {
-    email: preferencesRow?.email_enabled ?? defaultMessageNotificationPreferences.email,
-    inApp: preferencesRow?.in_app_enabled ?? defaultMessageNotificationPreferences.inApp,
+    email: preferencesRow?.email_enabled ?? defaultNotificationChannelPreferences.email,
+    inApp: preferencesRow?.in_app_enabled ?? defaultNotificationChannelPreferences.inApp,
   };
+}
+
+export function normalizeMessageNotificationPreferences(preferencesRow) {
+  return normalizeNotificationChannelPreferences(preferencesRow);
+}
+
+export function buildNotificationPreferencesMap(preferenceRows = []) {
+  const preferencesMap = Object.fromEntries(
+    NOTIFICATION_PREFERENCE_TYPES.map((notificationType) => [
+      notificationType,
+      { ...defaultNotificationChannelPreferences },
+    ]),
+  );
+
+  preferenceRows.forEach((preferencesRow) => {
+    if (!preferencesRow?.notification_type || !preferencesMap[preferencesRow.notification_type]) {
+      return;
+    }
+
+    preferencesMap[preferencesRow.notification_type] =
+      normalizeNotificationChannelPreferences(preferencesRow);
+  });
+
+  return preferencesMap;
 }
 
 export function isNotificationPreferencesTableMissing(error) {
@@ -68,7 +110,89 @@ function getNotificationMessagePreview(messageBody) {
   return messageBody?.replace(/\s+/g, " ").trim() ?? "";
 }
 
-function getNotificationBase(notification, currentUserId, t) {
+function getNotificationMetadata(notification) {
+  if (
+    notification?.metadata &&
+    typeof notification.metadata === "object" &&
+    !Array.isArray(notification.metadata)
+  ) {
+    return notification.metadata;
+  }
+
+  return {};
+}
+
+function formatNotificationPrice(value, language) {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(numericValue)) {
+    return null;
+  }
+
+  return new Intl.NumberFormat(language === "fr" ? "fr-CA" : "en-CA", {
+    style: "currency",
+    currency: "CAD",
+    maximumFractionDigits: numericValue % 1 === 0 ? 0 : 2,
+  }).format(numericValue);
+}
+
+function getListingNotificationHref(metadata) {
+  if (typeof metadata.href === "string" && metadata.href.trim().length > 0) {
+    return metadata.href;
+  }
+
+  if (typeof metadata.listing_slug === "string" && metadata.listing_slug.trim().length > 0) {
+    return `/listings/${metadata.listing_slug}`;
+  }
+
+  return "/dashboard?tab=favourite";
+}
+
+function getListingNotificationDescription(notification, t, language) {
+  const metadata = getNotificationMetadata(notification);
+
+  if (notification.type === FAVOURITE_SOLD_NOTIFICATION_TYPE) {
+    return t.notificationFavouriteSoldDescription;
+  }
+
+  if (notification.type === FAVOURITE_UNAVAILABLE_NOTIFICATION_TYPE) {
+    return t.notificationFavouriteUnavailableDescription;
+  }
+
+  if (notification.type === LISTING_SOLD_NOTIFICATION_TYPE) {
+    return t.notificationListingSoldDescription;
+  }
+
+  if (notification.type === FAVOURITE_PRICE_CHANGE_NOTIFICATION_TYPE) {
+    const oldPrice = formatNotificationPrice(metadata.old_price, language);
+    const newPrice = formatNotificationPrice(metadata.new_price, language);
+
+    if (oldPrice && newPrice) {
+      return t.notificationFavouritePriceChangeWithPrices
+        .replace("{oldPrice}", oldPrice)
+        .replace("{newPrice}", newPrice);
+    }
+
+    return t.notificationFavouritePriceChangeDescription;
+  }
+
+  return t.notifications;
+}
+
+function isListingNotificationType(type) {
+  return [
+    FAVOURITE_SOLD_NOTIFICATION_TYPE,
+    FAVOURITE_UNAVAILABLE_NOTIFICATION_TYPE,
+    FAVOURITE_PRICE_CHANGE_NOTIFICATION_TYPE,
+    LISTING_SOLD_NOTIFICATION_TYPE,
+  ].includes(type);
+}
+
+function getMessageNotificationBase(notification, currentUserId, t) {
   const conversation = Array.isArray(notification.conversations)
     ? notification.conversations[0]
     : notification.conversations;
@@ -97,8 +221,39 @@ function getNotificationBase(notification, currentUserId, t) {
   };
 }
 
-export function normalizeNotificationRow(notification, currentUserId, t) {
-  const notificationBase = getNotificationBase(notification, currentUserId, t);
+function getNotificationBase(notification, currentUserId, t, language = "en") {
+  if (isListingNotificationType(notification?.type)) {
+    const metadata = getNotificationMetadata(notification);
+
+    return {
+      id: notification.id,
+      type: notification.type,
+      readAt: notification.read_at,
+      createdAt: notification.created_at,
+      conversationId: null,
+      href: getListingNotificationHref(metadata),
+      title:
+        typeof metadata.listing_title === "string" && metadata.listing_title.trim().length > 0
+          ? metadata.listing_title
+          : t.notifications,
+      description: getListingNotificationDescription(notification, t, language),
+    };
+  }
+
+  const messageNotificationBase = getMessageNotificationBase(notification, currentUserId, t);
+
+  return {
+    ...messageNotificationBase,
+    description: messageNotificationBase.messagePreview
+      ? t.notificationMessagePreview
+          .replace("{name}", messageNotificationBase.senderName)
+          .replace("{message}", messageNotificationBase.messagePreview)
+      : t.notificationMessageFrom.replace("{name}", messageNotificationBase.senderName),
+  };
+}
+
+export function normalizeNotificationRow(notification, currentUserId, t, language = "en") {
+  const notificationBase = getNotificationBase(notification, currentUserId, t, language);
 
   return {
     id: notificationBase.id,
@@ -107,12 +262,12 @@ export function normalizeNotificationRow(notification, currentUserId, t) {
     createdAt: notificationBase.createdAt,
     href: notificationBase.href,
     title: notificationBase.title,
-    description: t.notificationMessageFrom.replace("{name}", notificationBase.senderName),
+    description: notificationBase.description,
   };
 }
 
-export function normalizeGroupedNotificationRow(notification, currentUserId, t) {
-  const notificationBase = getNotificationBase(notification, currentUserId, t);
+export function normalizeGroupedNotificationRow(notification, currentUserId, t, language = "en") {
+  const notificationBase = getNotificationBase(notification, currentUserId, t, language);
 
   return {
     id: notificationBase.id,
@@ -121,11 +276,7 @@ export function normalizeGroupedNotificationRow(notification, currentUserId, t) 
     createdAt: notificationBase.createdAt,
     href: notificationBase.href,
     title: notificationBase.title,
-    description: notificationBase.messagePreview
-      ? t.notificationMessagePreview
-          .replace("{name}", notificationBase.senderName)
-          .replace("{message}", notificationBase.messagePreview)
-      : t.notificationMessageFrom.replace("{name}", notificationBase.senderName),
+    description: notificationBase.description,
   };
 }
 
@@ -163,9 +314,13 @@ export function groupNotificationsByConversation(notifications) {
   });
 }
 
-function isMessageNotificationPreferencePayload(payload) {
+function isNotificationPreferencePayload(payload, notificationPreferenceTypes) {
+  if (!notificationPreferenceTypes?.length) {
+    return true;
+  }
+
   const nextType = payload.new?.notification_type ?? payload.old?.notification_type;
-  return !nextType || nextType === MESSAGE_NOTIFICATION_TYPE;
+  return !nextType || notificationPreferenceTypes.includes(nextType);
 }
 
 export function subscribeToNotificationUpdates({
@@ -173,6 +328,7 @@ export function subscribeToNotificationUpdates({
   userId,
   channelName,
   onChange,
+  notificationPreferenceTypes,
 }) {
   if (!supabase || !userId || !onChange) {
     return () => {};
@@ -199,7 +355,7 @@ export function subscribeToNotificationUpdates({
         filter: `user_id=eq.${userId}`,
       },
       (payload) => {
-        if (isMessageNotificationPreferencePayload(payload)) {
+        if (isNotificationPreferencePayload(payload, notificationPreferenceTypes)) {
           onChange(payload);
         }
       },
