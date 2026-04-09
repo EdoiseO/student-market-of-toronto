@@ -172,7 +172,6 @@ export default async function AdminPage() {
           <CardContent className="space-y-6 p-8 pt-6">
             <AdminModerationDashboard
               initialReports={reports}
-              currentUserId={user.id}
               reportsAvailable={reportsAvailable}
             />
           </CardContent>

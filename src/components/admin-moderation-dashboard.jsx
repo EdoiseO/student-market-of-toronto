@@ -1,10 +1,7 @@
 "use client";
 
-import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Flag, MessageSquareWarning, Store } from "lucide-react";
-import { toast } from "sonner";
 
 import { ClientFormattedDateTime } from "@/components/client-formatted-date-time";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +13,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useLanguage } from "@/context/LanguageContext";
 import {
   REPORT_STATUS_VALUES,
@@ -25,7 +29,6 @@ import {
   getTranslatedReportStatus,
   getTranslatedReportSubjectType,
 } from "@/lib/moderation";
-import { createClient } from "@/utils/supabase/client";
 
 function SummaryCard({ icon: Icon, title, value, description }) {
   return (
@@ -44,150 +47,82 @@ function SummaryCard({ icon: Icon, title, value, description }) {
   );
 }
 
-function ReportMetadataRow({ label, children }) {
+function ReportQueueTable({ reports, language, t }) {
   return (
-    <div className="space-y-1">
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-        {label}
-      </p>
-      <div className="text-sm text-foreground">{children}</div>
-    </div>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>{t.type}</TableHead>
+          <TableHead>{t.adminSubject}</TableHead>
+          <TableHead>{t.adminReason}</TableHead>
+          <TableHead>{t.reporter}</TableHead>
+          <TableHead>{t.adminReportedUser}</TableHead>
+          <TableHead>{t.status}</TableHead>
+          <TableHead>{t.reportedAt}</TableHead>
+          <TableHead className="text-right">{t.action}</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {reports.length > 0 ? (
+          reports.map((report) => {
+            const subjectPreview =
+              report.subjectType === REPORT_SUBJECT_TYPES.listing
+                ? report.listing?.title ?? t.unknown
+                : report.message?.body ?? t.unknown;
+
+            return (
+              <TableRow key={report.id}>
+                <TableCell>
+                  <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
+                    {getTranslatedReportSubjectType(report.subjectType, t)}
+                  </Badge>
+                </TableCell>
+                <TableCell className="max-w-[280px]">
+                  <Link
+                    href={`/admin/reports/${report.id}`}
+                    className="block truncate font-medium text-foreground hover:underline"
+                    title={subjectPreview}
+                  >
+                    {subjectPreview}
+                  </Link>
+                </TableCell>
+                <TableCell>{getTranslatedReportReason(report.reason, t)}</TableCell>
+                <TableCell>{report.reporter.name}</TableCell>
+                <TableCell>{report.reportedUser.name}</TableCell>
+                <TableCell>
+                  <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
+                    {getTranslatedReportStatus(report.status, t)}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <ClientFormattedDateTime value={report.createdAt} language={language} className="text-sm text-muted-foreground" />
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button asChild variant="outline" size="sm" className="rounded-xl">
+                    <Link href={`/admin/reports/${report.id}`}>{t.review}</Link>
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })
+        ) : (
+          <TableRow>
+            <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
+              {t.noReports}
+            </TableCell>
+          </TableRow>
+        )}
+      </TableBody>
+    </Table>
   );
 }
 
-function ReportCard({
-  report,
-  language,
-  t,
-  isProcessing,
-  onResolve,
-  onDismiss,
-  onRemoveListing,
-}) {
-  const isOpen = report.status === REPORT_STATUS_VALUES.open;
-  const canRemoveListing =
-    report.subjectType === REPORT_SUBJECT_TYPES.listing && report.listing?.status === "active";
-  const canViewContext =
-    report.subjectType === REPORT_SUBJECT_TYPES.message && report.message?.id && report.conversationId;
-
-  return (
-    <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
-              {getTranslatedReportSubjectType(report.subjectType, t)}
-            </Badge>
-            <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
-              {getTranslatedReportReason(report.reason, t)}
-            </Badge>
-            <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
-              {getTranslatedReportStatus(report.status, t)}
-            </Badge>
-          </div>
-          {report.subjectType === REPORT_SUBJECT_TYPES.listing && report.listing ? (
-            <div>
-              <Link href={`/listings/${report.listing.slug}`} className="text-base font-semibold text-foreground hover:underline">
-                {report.listing.title}
-              </Link>
-            </div>
-          ) : report.message ? (
-            <div className="max-w-2xl rounded-2xl bg-muted/50 px-4 py-3 text-sm text-foreground">
-              {report.message.body}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">{t.unknown}</p>
-          )}
-        </div>
-
-        <div className="shrink-0 text-right text-xs text-muted-foreground">
-          <p>{t.reportedAt}</p>
-          <ClientFormattedDateTime value={report.createdAt} language={language} />
-        </div>
-      </div>
-
-      <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <ReportMetadataRow label={t.reporter}>{report.reporter.name}</ReportMetadataRow>
-        <ReportMetadataRow label={t.adminReportedUser}>{report.reportedUser.name}</ReportMetadataRow>
-        <ReportMetadataRow label={t.adminReason}>{getTranslatedReportReason(report.reason, t)}</ReportMetadataRow>
-        <ReportMetadataRow label={t.status}>{getTranslatedReportStatus(report.status, t)}</ReportMetadataRow>
-      </div>
-
-      {report.details ? (
-        <div className="mt-4 rounded-2xl border border-border bg-background px-4 py-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-            {t.adminDetails}
-          </p>
-          <p className="mt-2 whitespace-pre-wrap text-sm text-foreground">{report.details}</p>
-        </div>
-      ) : null}
-
-      {!isOpen && report.reviewedAt ? (
-        <div className="mt-4 text-xs text-muted-foreground">
-          {t.reviewedAt} <ClientFormattedDateTime value={report.reviewedAt} language={language} />
-        </div>
-      ) : null}
-
-      {isOpen ? (
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
-          {canViewContext ? (
-            <Button asChild variant="outline" className="rounded-xl">
-              <Link href={`/admin/reports/${report.id}`}>{t.viewContext}</Link>
-            </Button>
-          ) : null}
-          {canRemoveListing ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="rounded-xl"
-              onClick={() => onRemoveListing(report)}
-              disabled={isProcessing}
-            >
-              {t.removeListing}
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            variant="outline"
-            className="rounded-xl"
-            onClick={() => onDismiss(report)}
-            disabled={isProcessing}
-          >
-            {t.dismiss}
-          </Button>
-          <Button
-            type="button"
-            className="rounded-xl"
-            onClick={() => onResolve(report)}
-            disabled={isProcessing}
-          >
-            {t.resolve}
-          </Button>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-export function AdminModerationDashboard({ initialReports, currentUserId, reportsAvailable }) {
-  const router = useRouter();
-  const supabase = React.useMemo(() => createClient(), []);
+export function AdminModerationDashboard({ initialReports, reportsAvailable }) {
   const { t, language } = useLanguage();
-  const [reports, setReports] = React.useState(initialReports ?? []);
-  const [processingReportId, setProcessingReportId] = React.useState(null);
 
-  React.useEffect(() => {
-    setReports(initialReports ?? []);
-  }, [initialReports]);
-
-  const openReports = React.useMemo(
-    () => reports.filter((report) => report.status === REPORT_STATUS_VALUES.open),
-    [reports],
-  );
-  const reviewedReports = React.useMemo(
-    () => reports.filter((report) => report.status !== REPORT_STATUS_VALUES.open),
-    [reports],
-  );
+  const reports = initialReports ?? [];
+  const openReports = reports.filter((report) => report.status === REPORT_STATUS_VALUES.open);
+  const reviewedReports = reports.filter((report) => report.status !== REPORT_STATUS_VALUES.open);
 
   const listingReportCount = reports.filter(
     (report) => report.subjectType === REPORT_SUBJECT_TYPES.listing,
@@ -195,106 +130,6 @@ export function AdminModerationDashboard({ initialReports, currentUserId, report
   const messageReportCount = reports.filter(
     (report) => report.subjectType === REPORT_SUBJECT_TYPES.message,
   ).length;
-
-  function updateReportInState(reportId, changes, listingChanges = null) {
-    setReports((currentReports) =>
-      currentReports.map((report) => {
-        if (report.id !== reportId) {
-          return report;
-        }
-
-        return {
-          ...report,
-          ...changes,
-          listing:
-            listingChanges && report.listing
-              ? {
-                  ...report.listing,
-                  ...listingChanges,
-                }
-              : report.listing,
-        };
-      }),
-    );
-  }
-
-  async function handleUpdateStatus(report, nextStatus) {
-    if (!report?.id || !currentUserId || processingReportId) {
-      return;
-    }
-
-    setProcessingReportId(report.id);
-
-    const reviewedAt = new Date().toISOString();
-    const { error } = await supabase
-      .from("reports")
-      .update({
-        status: nextStatus,
-        reviewed_by: currentUserId,
-        reviewed_at: reviewedAt,
-      })
-      .eq("id", report.id);
-
-    setProcessingReportId(null);
-
-    if (error) {
-      console.error("Failed to update report status:", error.message);
-      toast.error(t.adminReportActionError);
-      return;
-    }
-
-    updateReportInState(report.id, { status: nextStatus, reviewedAt });
-    toast.success(
-      nextStatus === REPORT_STATUS_VALUES.dismissed ? t.reportDismissed : t.reportResolved,
-    );
-    router.refresh();
-  }
-
-  async function handleRemoveListing(report) {
-    if (!report?.listing?.id || !currentUserId || processingReportId) {
-      return;
-    }
-
-    setProcessingReportId(report.id);
-
-    const { error: listingError } = await supabase
-      .from("listings")
-      .update({ status: "inactive" })
-      .eq("id", report.listing.id);
-
-    if (listingError) {
-      setProcessingReportId(null);
-      console.error("Failed to remove listing from moderation dashboard:", listingError.message);
-      toast.error(t.adminReportActionError);
-      return;
-    }
-
-    const reviewedAt = new Date().toISOString();
-    const { error: reportError } = await supabase
-      .from("reports")
-      .update({
-        status: REPORT_STATUS_VALUES.resolved,
-        reviewed_by: currentUserId,
-        reviewed_at: reviewedAt,
-      })
-      .eq("id", report.id);
-
-    setProcessingReportId(null);
-
-    if (reportError) {
-      console.error("Failed to resolve report after removing listing:", reportError.message);
-      toast.error(t.adminReportActionError);
-      return;
-    }
-
-    updateReportInState(
-      report.id,
-      { status: REPORT_STATUS_VALUES.resolved, reviewedAt },
-      { status: "inactive" },
-    );
-    toast.success(t.adminListingRemovedAndResolved);
-    router.refresh();
-  }
 
   if (!reportsAvailable) {
     return (
@@ -333,26 +168,11 @@ export function AdminModerationDashboard({ initialReports, currentUserId, report
       <Card className="rounded-3xl bg-card py-0 shadow-sm ring-border">
         <CardHeader className="border-b border-border px-6 py-6">
           <CardTitle className="text-2xl text-foreground">{t.adminReports}</CardTitle>
-          <CardDescription>{t.adminReportsDescription}</CardDescription>
+          <CardDescription>{t.adminQueueDescription}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-5 px-6 py-6">
+        <CardContent className="px-6 py-6">
           {openReports.length > 0 ? (
-            openReports.map((report) => (
-              <ReportCard
-                key={report.id}
-                report={report}
-                language={language}
-                t={t}
-                isProcessing={processingReportId === report.id}
-                onResolve={(currentReport) =>
-                  handleUpdateStatus(currentReport, REPORT_STATUS_VALUES.resolved)
-                }
-                onDismiss={(currentReport) =>
-                  handleUpdateStatus(currentReport, REPORT_STATUS_VALUES.dismissed)
-                }
-                onRemoveListing={handleRemoveListing}
-              />
-            ))
+            <ReportQueueTable reports={openReports} language={language} t={t} />
           ) : (
             <div className="rounded-3xl border border-dashed border-border bg-muted/30 px-5 py-10 text-center text-sm text-muted-foreground">
               {t.noPendingReports}
@@ -366,31 +186,9 @@ export function AdminModerationDashboard({ initialReports, currentUserId, report
           <CardTitle className="text-2xl text-foreground">{t.adminRecentReviewsTitle}</CardTitle>
           <CardDescription>{t.adminRecentReviewsDescription}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4 px-6 py-6">
+        <CardContent className="px-6 py-6">
           {reviewedReports.length > 0 ? (
-            reviewedReports.slice(0, 10).map((report, index) => (
-              <React.Fragment key={report.id}>
-                {index > 0 ? <Separator /> : null}
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="font-medium text-foreground">
-                      {getTranslatedReportSubjectType(report.subjectType, t)} · {getTranslatedReportReason(report.reason, t)}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {report.reporter.name} → {report.reportedUser.name}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                    <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
-                      {getTranslatedReportStatus(report.status, t)}
-                    </Badge>
-                    {report.reviewedAt ? (
-                      <ClientFormattedDateTime value={report.reviewedAt} language={language} />
-                    ) : null}
-                  </div>
-                </div>
-              </React.Fragment>
-            ))
+            <ReportQueueTable reports={reviewedReports.slice(0, 20)} language={language} t={t} />
           ) : (
             <div className="rounded-3xl border border-dashed border-border bg-muted/30 px-5 py-10 text-center text-sm text-muted-foreground">
               {t.noReports}
@@ -398,7 +196,6 @@ export function AdminModerationDashboard({ initialReports, currentUserId, report
           )}
         </CardContent>
       </Card>
-
     </div>
   );
 }

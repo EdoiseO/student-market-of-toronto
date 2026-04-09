@@ -1,4 +1,4 @@
-import { ArrowLeft, MessageSquareWarning } from "lucide-react";
+import { ArrowLeft, Flag, MessageSquareWarning } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -16,6 +16,12 @@ import {
 } from "@/lib/moderation";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
+
+function getPrimaryListingImageUrl(listingImages) {
+  return (listingImages ?? [])
+    .slice()
+    .sort((firstImage, secondImage) => firstImage.position - secondImage.position)[0]?.image_url;
+}
 
 export default async function AdminReportReviewPage({ params }) {
   const resolvedParams = await params;
@@ -46,32 +52,8 @@ export default async function AdminReportReviewPage({ params }) {
     console.error("Failed to load moderation report review:", reportError.message);
   }
 
-  if (!reportRow || reportRow.subject_type !== REPORT_SUBJECT_TYPES.message || !reportRow.conversation_id) {
+  if (!reportRow) {
     notFound();
-  }
-
-  const { data: conversationRow, error: conversationError } = await supabase
-    .from("conversations")
-    .select(MESSAGE_CONVERSATION_SELECT)
-    .eq("id", reportRow.conversation_id)
-    .maybeSingle();
-
-  if (conversationError) {
-    console.error("Failed to load moderation conversation review:", conversationError.message);
-  }
-
-  if (!conversationRow) {
-    notFound();
-  }
-
-  const { data: messageRows, error: messagesError } = await supabase
-    .from("messages")
-    .select("id, sender_id, body, created_at")
-    .eq("conversation_id", conversationRow.id)
-    .order("created_at", { ascending: true });
-
-  if (messagesError) {
-    console.error("Failed to load moderation conversation messages:", messagesError.message);
   }
 
   const profileIds = [reportRow.reporter_user_id, reportRow.reported_user_id].filter(Boolean);
@@ -88,31 +70,135 @@ export default async function AdminReportReviewPage({ params }) {
 
   const reportProfilesById = new Map((reportProfiles ?? []).map((profile) => [profile.id, profile]));
 
-  const listing = Array.isArray(conversationRow.listings)
-    ? conversationRow.listings[0]
-    : conversationRow.listings;
-  const buyerProfile = Array.isArray(conversationRow.buyer_profile)
-    ? conversationRow.buyer_profile[0]
-    : conversationRow.buyer_profile;
-  const sellerProfile = Array.isArray(conversationRow.seller_profile)
-    ? conversationRow.seller_profile[0]
-    : conversationRow.seller_profile;
+  let reviewIcon = Flag;
+  let conversation = null;
+  let messages = [];
+  let listingReview = null;
+  let reportMessage = null;
 
-  const listingStatusResult = listing?.id
-    ? await supabase.from("listings").select("status").eq("id", listing.id).maybeSingle()
-    : { data: null, error: null };
+  if (reportRow.subject_type === REPORT_SUBJECT_TYPES.message) {
+    reviewIcon = MessageSquareWarning;
 
-  if (listingStatusResult.error) {
-    console.error("Failed to load moderation listing status:", listingStatusResult.error.message);
+    const { data: conversationRow, error: conversationError } = await supabase
+      .from("conversations")
+      .select(MESSAGE_CONVERSATION_SELECT)
+      .eq("id", reportRow.conversation_id)
+      .maybeSingle();
+
+    if (conversationError) {
+      console.error("Failed to load moderation conversation review:", conversationError.message);
+    }
+
+    if (!conversationRow) {
+      notFound();
+    }
+
+    const { data: messageRows, error: messagesError } = await supabase
+      .from("messages")
+      .select("id, sender_id, body, created_at")
+      .eq("conversation_id", conversationRow.id)
+      .order("created_at", { ascending: true });
+
+    if (messagesError) {
+      console.error("Failed to load moderation conversation messages:", messagesError.message);
+    }
+
+    const listing = Array.isArray(conversationRow.listings)
+      ? conversationRow.listings[0]
+      : conversationRow.listings;
+    const buyerProfile = Array.isArray(conversationRow.buyer_profile)
+      ? conversationRow.buyer_profile[0]
+      : conversationRow.buyer_profile;
+    const sellerProfile = Array.isArray(conversationRow.seller_profile)
+      ? conversationRow.seller_profile[0]
+      : conversationRow.seller_profile;
+
+    conversation = {
+      id: conversationRow.id,
+      listing: {
+        id: listing?.id,
+        slug: listing?.slug,
+        title: listing?.title ?? t.listing,
+        location: listing?.location ?? t.torontoMeetup,
+        imageUrl: getPrimaryListingImageUrl(listing?.listing_images),
+        status: "active",
+      },
+      buyer: {
+        id: buyerProfile?.id,
+        name: getConversationDisplayName(buyerProfile, t),
+        school: buyerProfile?.school ?? t.torontoStudent,
+        avatarPresetId: buyerProfile?.avatar_preset_id ?? null,
+        avatarUrl: buyerProfile?.avatar_url ?? null,
+      },
+      seller: {
+        id: sellerProfile?.id,
+        name: getConversationDisplayName(sellerProfile, t),
+        school: sellerProfile?.school ?? t.torontoStudent,
+        avatarPresetId: sellerProfile?.avatar_preset_id ?? null,
+        avatarUrl: sellerProfile?.avatar_url ?? null,
+      },
+    };
+
+    messages = messageRows ?? [];
+    reportMessage = messages.find((message) => message.id === reportRow.message_id) ?? null;
+  } else {
+    const { data: listingRow, error: listingError } = await supabase
+      .from("listings")
+      .select(
+        "id, seller_id, slug, title, description, price, location, status, listing_images ( image_url, position )"
+      )
+      .eq("id", reportRow.listing_id)
+      .maybeSingle();
+
+    if (listingError) {
+      console.error("Failed to load moderation listing review:", listingError.message);
+    }
+
+    if (!listingRow) {
+      notFound();
+    }
+
+    const { data: sellerProfile, error: sellerError } = listingRow.seller_id
+      ? await supabase
+          .from("profiles")
+          .select("id, first_name, last_name, school, avatar_preset_id, avatar_url")
+          .eq("id", listingRow.seller_id)
+          .maybeSingle()
+      : { data: null, error: null };
+
+    if (sellerError) {
+      console.error("Failed to load moderation listing seller profile:", sellerError.message);
+    }
+
+    listingReview = {
+      listing: {
+        id: listingRow.id,
+        slug: listingRow.slug,
+        title: listingRow.title ?? t.listing,
+        description: listingRow.description ?? "",
+        location: listingRow.location ?? t.torontoMeetup,
+        imageUrl: getPrimaryListingImageUrl(listingRow.listing_images),
+        status: listingRow.status,
+      },
+      seller: sellerProfile
+        ? {
+            id: sellerProfile.id,
+            name: getConversationDisplayName(sellerProfile, t),
+            school: sellerProfile.school ?? t.torontoStudent,
+            avatarPresetId: sellerProfile.avatar_preset_id ?? null,
+            avatarUrl: sellerProfile.avatar_url ?? null,
+          }
+        : null,
+    };
   }
 
   const report = {
     id: reportRow.id,
+    subjectType: reportRow.subject_type,
     reason: reportRow.reason,
     details: reportRow.details,
     status: reportRow.status,
     createdAt: reportRow.created_at,
-    message: (messageRows ?? []).find((message) => message.id === reportRow.message_id) ?? null,
     reporter: {
       id: reportRow.reporter_user_id,
       name: getModerationDisplayName(reportProfilesById.get(reportRow.reporter_user_id), t),
@@ -121,35 +207,10 @@ export default async function AdminReportReviewPage({ params }) {
       id: reportRow.reported_user_id,
       name: getModerationDisplayName(reportProfilesById.get(reportRow.reported_user_id), t),
     },
+    message: reportMessage,
   };
 
-  const conversation = {
-    id: conversationRow.id,
-    listing: {
-      id: listing?.id,
-      slug: listing?.slug,
-      title: listing?.title ?? t.listing,
-      location: listing?.location ?? t.torontoMeetup,
-      imageUrl: (listing?.listing_images ?? [])
-        .slice()
-        .sort((firstImage, secondImage) => firstImage.position - secondImage.position)[0]?.image_url,
-      status: listingStatusResult.data?.status ?? "active",
-    },
-    buyer: {
-      id: buyerProfile?.id,
-      name: getConversationDisplayName(buyerProfile, t),
-      school: buyerProfile?.school ?? t.torontoStudent,
-      avatarPresetId: buyerProfile?.avatar_preset_id ?? null,
-      avatarUrl: buyerProfile?.avatar_url ?? null,
-    },
-    seller: {
-      id: sellerProfile?.id,
-      name: getConversationDisplayName(sellerProfile, t),
-      school: sellerProfile?.school ?? t.torontoStudent,
-      avatarPresetId: sellerProfile?.avatar_preset_id ?? null,
-      avatarUrl: sellerProfile?.avatar_url ?? null,
-    },
-  };
+  const ReviewIcon = reviewIcon;
 
   return (
     <main className="h-full min-h-0 overflow-hidden bg-zinc-100 px-5 pt-3 pb-5 dark:bg-background md:px-6 md:pt-3 md:pb-6 lg:px-7 lg:pt-4 lg:pb-7">
@@ -162,7 +223,7 @@ export default async function AdminReportReviewPage({ params }) {
             </Link>
           </Button>
           <div className="flex items-center gap-2 rounded-full bg-background px-3 py-1.5 text-sm text-muted-foreground shadow-sm">
-            <MessageSquareWarning className="size-4" />
+            <ReviewIcon className="size-4" />
             <span>{t.adminReportReviewTitle}</span>
           </div>
         </div>
@@ -170,7 +231,8 @@ export default async function AdminReportReviewPage({ params }) {
         <AdminReportReviewContent
           report={report}
           conversation={conversation}
-          messages={messageRows ?? []}
+          messages={messages}
+          listingReview={listingReview}
           currentUserId={user.id}
         />
       </div>

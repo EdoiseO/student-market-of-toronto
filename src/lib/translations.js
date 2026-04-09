@@ -340,6 +340,7 @@ export const translations = {
     seller: "Seller",
     status: "Status",
     action: "Action",
+    review: "Review",
     remove: "Remove",
     name: "Name",
     school: "School",
@@ -366,6 +367,8 @@ export const translations = {
     banUser: "Ban User",
     adminReportsDescription:
       "Review incoming listing and message reports, resolve safe cases, and remove unsuitable listings when needed.",
+    adminQueueDescription:
+      "Scan incoming reports quickly, then open any row to review the full context before taking action.",
     adminReviewQueueDescription: "Open reports waiting for moderator review.",
     adminListingReportsDescription: "Reports linked to marketplace listings.",
     adminMessageReportsDescription: "Reports linked to buyer-seller messages.",
@@ -375,6 +378,7 @@ export const translations = {
     adminSetupDescription:
       "Apply the moderation SQL in Supabase first, then come back here to review live reports.",
     adminReportedUser: "Reported user",
+    adminSubject: "Subject",
     adminReason: "Reason",
     adminDetails: "Details",
     reportedAt: "Reported at",
@@ -393,6 +397,9 @@ export const translations = {
     adminReportReviewTitle: "Review reported conversation",
     adminReportReviewDescription:
       "Use the flagged message highlight and the full thread history below to make a moderation decision.",
+    adminListingReviewTitle: "Reported listing review",
+    adminListingReviewDescription:
+      "Inspect the reported listing details and listing owner before deciding on the moderation outcome.",
     backToAdminReports: "Back to reports",
     adminParticipantsTitle: "Conversation participants",
     adminReportActionError: "We could not update this report right now.",
@@ -910,6 +917,7 @@ export const translations = {
     seller: "Vendeur",
     status: "Statut",
     action: "Action",
+    review: "Examiner",
     remove: "Supprimer",
     name: "Nom",
     school: "École",
@@ -937,6 +945,8 @@ export const translations = {
     banUser: "Bannir l'utilisateur",
     adminReportsDescription:
       "Examinez les signalements d'annonces et de messages, résolvez les cas sûrs et retirez les annonces inappropriées au besoin.",
+    adminQueueDescription:
+      "Parcourez rapidement les signalements entrants, puis ouvrez une ligne pour examiner tout le contexte avant d'agir.",
     adminReviewQueueDescription:
       "Signalements ouverts en attente d'examen par un modérateur.",
     adminListingReportsDescription: "Signalements liés aux annonces du marché.",
@@ -948,6 +958,7 @@ export const translations = {
     adminSetupDescription:
       "Appliquez d'abord le SQL de modération dans Supabase, puis revenez ici pour examiner les signalements en direct.",
     adminReportedUser: "Utilisateur signalé",
+    adminSubject: "Sujet",
     adminReason: "Raison",
     adminDetails: "Détails",
     reportedAt: "Signalé le",
@@ -968,6 +979,9 @@ export const translations = {
     adminReportReviewTitle: "Examiner la conversation signalée",
     adminReportReviewDescription:
       "Utilisez la mise en évidence du message signalé et l'historique complet ci-dessous pour prendre une décision de modération.",
+    adminListingReviewTitle: "Examiner l'annonce signalée",
+    adminListingReviewDescription:
+      "Inspectez les détails de l'annonce signalée et le profil du vendeur avant de décider du résultat de modération.",
     backToAdminReports: "Retour aux signalements",
     adminParticipantsTitle: "Participants à la conversation",
     adminReportActionError:
