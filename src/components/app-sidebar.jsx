@@ -36,6 +36,7 @@ import {
   normalizeMessageNotificationPreferences,
   subscribeToNotificationUpdates,
 } from "@/lib/notifications";
+import { isModerationRole } from "@/lib/moderation";
 import {
   ChevronRightIcon,
   FolderIcon,
@@ -46,6 +47,7 @@ import {
   PlusSquareIcon,
   StarIcon,
   Settings2Icon,
+  ShieldCheckIcon,
   TerminalIcon,
   UserIcon,
   FileTextIcon,
@@ -59,6 +61,7 @@ export function AppSidebar({ user, ...props }) {
   const userId = user?.id ?? null;
   const categoriesOpen = pathname?.startsWith("/categories/") ?? false;
   const showLoggedInSections = Boolean(user);
+  const showModerationItem = isModerationRole(user?.role);
   const { t, language } = useLanguage();
   const [hasUnreadNotifications, setHasUnreadNotifications] = React.useState(false);
 
@@ -194,6 +197,15 @@ export function AppSidebar({ user, ...props }) {
       url: "/dashboard/settings",
       icon: Settings2Icon,
     },
+    ...(showModerationItem
+      ? [
+          {
+            title: t.adminDashboard,
+            url: "/admin",
+            icon: ShieldCheckIcon,
+          },
+        ]
+      : []),
   ];
 
   return (

@@ -27,6 +27,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ClientFormattedDateTime } from "@/components/client-formatted-date-time";
+import { ReportSheet } from "@/components/report-sheet";
 import { useLanguage } from "@/context/LanguageContext";
 import { isConversationUserStateTableMissing } from "@/lib/messages";
 import { createClient } from "@/utils/supabase/client";
@@ -46,7 +47,7 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
   const [messages, setMessages] = React.useState(initialMessages ?? []);
   const [draft, setDraft] = React.useState("");
   const [isSending, setIsSending] = React.useState(false);
-  const [actionMessageId, setActionMessageId] = React.useState(null);
+  const [reportMessageTarget, setReportMessageTarget] = React.useState(null);
 
   React.useEffect(() => {
     setMessages(initialMessages ?? []);
@@ -155,10 +156,8 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
     event.currentTarget.form?.requestSubmit();
   }
 
-  async function handleReportMessage(messageId) {
-    setActionMessageId(messageId);
-    toast.error(t.reportMessageUnavailable);
-    setActionMessageId(null);
+  async function handleReportMessage(message) {
+    setReportMessageTarget(message);
   }
 
   return (
@@ -282,10 +281,7 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
                       align={isCurrentUser ? "start" : "end"}
                       className="w-44 rounded-2xl"
                     >
-                      <DropdownMenuItem
-                        onClick={() => handleReportMessage(message.id)}
-                        disabled={actionMessageId === message.id}
-                      >
+                      <DropdownMenuItem onClick={() => handleReportMessage(message)}>
                         <Flag className="size-4" />
                         <span>{t.reportMessage}</span>
                       </DropdownMenuItem>
@@ -405,6 +401,21 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
           </div>
         </div>
       </form>
+
+      <ReportSheet
+        open={Boolean(reportMessageTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setReportMessageTarget(null);
+          }
+        }}
+        subjectType="message"
+        subjectId={reportMessageTarget?.id ?? null}
+        messageId={reportMessageTarget?.id ?? null}
+        conversationId={conversation.id}
+        currentUserId={currentUserId}
+        reportedUserId={reportMessageTarget?.sender_id ?? null}
+      />
     </section>
   );
 }

@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { AppLayoutShell } from "@/components/app-layout-shell";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { getUserModerationRole } from "@/lib/moderation";
 import { createClient } from "@/utils/supabase/server";
 import { LanguageProvider } from "@/context/LanguageContext";
 import "./globals.css";
@@ -112,6 +113,7 @@ export default async function RootLayout({ children }) {
           profile?.school ??
           user.user_metadata?.school ??
           (language === "fr" ? "Étudiant de Toronto" : "Toronto student"),
+        role: getUserModerationRole(user),
         avatarPresetId: profile?.avatar_preset_id ?? null,
         avatarUrl: profile?.avatar_url ?? null,
       }

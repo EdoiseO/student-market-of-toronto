@@ -25,6 +25,8 @@ export function SiteHeader({ user }) {
       ? t.browseListings
     : pathname.startsWith("/search")
         ? t.searchAndFilter
+      : pathname.startsWith("/admin")
+        ? t.adminDashboard
       : pathname.startsWith("/messages")
         ? t.messages
       : pathname.startsWith("/dashboard")

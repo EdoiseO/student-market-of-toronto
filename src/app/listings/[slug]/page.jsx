@@ -220,7 +220,12 @@ export default async function ListingDetailPage({ params }) {
                         listingId={listing.id}
                         initialIsFavourited={initialIsFavourited}
                       />
-                      <ListingMoreButton slug={listing.slug} />
+                      <ListingMoreButton
+                        slug={listing.slug}
+                        listingId={listing.id}
+                        currentUserId={user?.id ?? null}
+                        sellerId={listing.seller_id}
+                      />
                     </div>
                   </div>
 

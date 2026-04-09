@@ -1,0 +1,325 @@
+"use client";
+
+import * as React from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+
+import { ClientFormattedDateTime } from "@/components/client-formatted-date-time";
+import { ProfileAvatar } from "@/components/profile-avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { useLanguage } from "@/context/LanguageContext";
+import {
+  REPORT_STATUS_VALUES,
+  getTranslatedReportReason,
+  getTranslatedReportStatus,
+} from "@/lib/moderation";
+import { createClient } from "@/utils/supabase/client";
+
+function ReviewMetadata({ label, children }) {
+  return (
+    <div className="space-y-1">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+        {label}
+      </p>
+      <div className="text-sm text-foreground">{children}</div>
+    </div>
+  );
+}
+
+export function AdminReportReviewContent({ report, conversation, messages, currentUserId }) {
+  const router = useRouter();
+  const supabase = React.useMemo(() => createClient(), []);
+  const { t, language } = useLanguage();
+  const [isProcessing, setIsProcessing] = React.useState(false);
+
+  const flaggedMessageId = report.message?.id ?? null;
+  const isOpen = report.status === REPORT_STATUS_VALUES.open;
+  const canRemoveListing = conversation.listing?.id && conversation.listing?.status === "active";
+
+  async function handleUpdateStatus(nextStatus) {
+    if (!report?.id || !currentUserId || isProcessing) {
+      return;
+    }
+
+    setIsProcessing(true);
+
+    const reviewedAt = new Date().toISOString();
+    const { error } = await supabase
+      .from("reports")
+      .update({
+        status: nextStatus,
+        reviewed_by: currentUserId,
+        reviewed_at: reviewedAt,
+      })
+      .eq("id", report.id);
+
+    setIsProcessing(false);
+
+    if (error) {
+      console.error("Failed to update moderation report:", error.message);
+      toast.error(t.adminReportActionError);
+      return;
+    }
+
+    toast.success(
+      nextStatus === REPORT_STATUS_VALUES.dismissed ? t.reportDismissed : t.reportResolved,
+    );
+    router.push("/admin");
+    router.refresh();
+  }
+
+  async function handleRemoveListing() {
+    if (!conversation.listing?.id || !currentUserId || isProcessing) {
+      return;
+    }
+
+    setIsProcessing(true);
+
+    const { error: listingError } = await supabase
+      .from("listings")
+      .update({ status: "inactive" })
+      .eq("id", conversation.listing.id);
+
+    if (listingError) {
+      setIsProcessing(false);
+      console.error("Failed to remove reported listing:", listingError.message);
+      toast.error(t.adminReportActionError);
+      return;
+    }
+
+    const reviewedAt = new Date().toISOString();
+    const { error: reportError } = await supabase
+      .from("reports")
+      .update({
+        status: REPORT_STATUS_VALUES.resolved,
+        reviewed_by: currentUserId,
+        reviewed_at: reviewedAt,
+      })
+      .eq("id", report.id);
+
+    setIsProcessing(false);
+
+    if (reportError) {
+      console.error("Failed to resolve report after removing listing:", reportError.message);
+      toast.error(t.adminReportActionError);
+      return;
+    }
+
+    toast.success(t.adminListingRemovedAndResolved);
+    router.push("/admin");
+    router.refresh();
+  }
+
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+      <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
+        <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
+                  {getTranslatedReportReason(report.reason, t)}
+                </Badge>
+                <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
+                  {getTranslatedReportStatus(report.status, t)}
+                </Badge>
+                {flaggedMessageId ? (
+                  <Badge className="rounded-full bg-yellow-500 px-2.5 py-0.5 text-zinc-950 shadow-none">
+                    {t.adminReportedMessageBadge}
+                  </Badge>
+                ) : null}
+              </div>
+              <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">
+                {conversation.listing.title}
+              </CardTitle>
+              <CardDescription>{t.adminReportReviewDescription}</CardDescription>
+            </div>
+            <div className="text-right text-xs text-muted-foreground">
+              <p>{t.reportedAt}</p>
+              <ClientFormattedDateTime value={report.createdAt} language={language} />
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="grid gap-4 px-6 py-5 md:grid-cols-2 xl:grid-cols-4">
+          <ReviewMetadata label={t.reporter}>{report.reporter.name}</ReviewMetadata>
+          <ReviewMetadata label={t.adminReportedUser}>{report.reportedUser.name}</ReviewMetadata>
+          <ReviewMetadata label={t.adminReason}>{getTranslatedReportReason(report.reason, t)}</ReviewMetadata>
+          <ReviewMetadata label={t.status}>{getTranslatedReportStatus(report.status, t)}</ReviewMetadata>
+          {report.details ? (
+            <div className="md:col-span-2 xl:col-span-4">
+              <ReviewMetadata label={t.adminDetails}>{report.details}</ReviewMetadata>
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.8fr)]">
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card">
+          <div className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+            <p className="text-lg font-semibold text-zinc-950 dark:text-foreground">
+              {t.adminConversationContextLabel}
+            </p>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
+              {t.adminConversationContextDescription}
+            </p>
+          </div>
+
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto bg-zinc-50/70 px-6 py-5 dark:bg-muted/20">
+            {messages.map((message) => {
+              const isBuyer = message.sender_id === conversation.buyer.id;
+              const sender = isBuyer ? conversation.buyer : conversation.seller;
+              const isFlagged = message.id === flaggedMessageId;
+
+              return (
+                <div key={message.id} className={`flex items-end gap-3 ${isBuyer ? "" : "flex-row-reverse"}`}>
+                  <ProfileAvatar
+                    name={sender.name}
+                    avatarPresetId={sender.avatarPresetId}
+                    avatarUrl={sender.avatarUrl}
+                    className="size-10 border border-zinc-200 shadow-sm dark:border-border"
+                  />
+
+                  <div className={`relative flex max-w-[85%] flex-col gap-1.5 sm:max-w-[70%] ${isBuyer ? "items-start" : "items-end"}`}>
+                    <p className="px-1 text-xs text-zinc-500 dark:text-muted-foreground">
+                      <span className="font-semibold text-zinc-900 dark:text-foreground">
+                        {sender.name}
+                      </span>{" "}
+                      <ClientFormattedDateTime value={message.created_at} language={language} />
+                    </p>
+
+                    <div
+                      className={`w-fit rounded-[1.5rem] px-4 py-3 text-left shadow-sm ${
+                        isFlagged
+                          ? "border border-yellow-400 bg-yellow-50 text-zinc-950 dark:border-yellow-500/60 dark:bg-yellow-500/10 dark:text-foreground"
+                          : isBuyer
+                            ? "rounded-tl-md border border-zinc-200 bg-white text-zinc-900 dark:border-border dark:bg-card dark:text-foreground"
+                            : "rounded-tr-md bg-primary text-primary-foreground"
+                      }`}
+                    >
+                      {isFlagged ? (
+                        <div className="mb-2">
+                          <Badge className="rounded-full bg-yellow-500 px-2 py-0 text-zinc-950 shadow-none">
+                            {t.adminReportedMessageBadge}
+                          </Badge>
+                        </div>
+                      ) : null}
+                      <p className="whitespace-pre-wrap break-words text-sm leading-6">
+                        {message.body}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="border-t border-zinc-200 bg-background px-6 py-5 dark:border-border">
+            <div className="flex flex-wrap justify-end gap-2">
+              {canRemoveListing ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-xl"
+                  onClick={handleRemoveListing}
+                  disabled={isProcessing || !isOpen}
+                >
+                  {t.removeListing}
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-xl"
+                onClick={() => handleUpdateStatus(REPORT_STATUS_VALUES.dismissed)}
+                disabled={isProcessing || !isOpen}
+              >
+                {t.dismiss}
+              </Button>
+              <Button
+                type="button"
+                className="rounded-xl"
+                onClick={() => handleUpdateStatus(REPORT_STATUS_VALUES.resolved)}
+                disabled={isProcessing || !isOpen}
+              >
+                {t.resolve}
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        <div className="space-y-4">
+          <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
+            <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+              <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
+                {t.aboutListing}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 px-6 py-5">
+              <Link href={`/listings/${conversation.listing.slug}`} className="block rounded-2xl bg-zinc-50 p-4 transition hover:bg-background dark:bg-muted/40 dark:hover:bg-background">
+                <div className="flex items-center gap-4">
+                  <div className="h-18 w-18 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted">
+                    {conversation.listing.imageUrl ? (
+                      <img
+                        src={conversation.listing.imageUrl}
+                        alt={conversation.listing.title}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-base font-semibold text-zinc-950 dark:text-foreground">
+                      {conversation.listing.title}
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
+                      {conversation.listing.location || t.torontoMeetup}
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
+            <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+              <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
+                {t.adminParticipantsTitle}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 px-6 py-5">
+              {[conversation.buyer, conversation.seller].map((participant, index) => (
+                <React.Fragment key={participant.id}>
+                  {index > 0 ? <Separator /> : null}
+                  <Link href={`/profile/${participant.id}`} className="flex items-center gap-3 rounded-xl transition hover:bg-zinc-50/80 dark:hover:bg-muted/40">
+                    <ProfileAvatar
+                      name={participant.name}
+                      avatarPresetId={participant.avatarPresetId}
+                      avatarUrl={participant.avatarUrl}
+                      className="size-10 border border-zinc-200 dark:border-border"
+                    />
+                    <div>
+                      <p className="font-medium text-zinc-950 dark:text-foreground">{participant.name}</p>
+                      <p className="text-sm text-zinc-500 dark:text-muted-foreground">{participant.school}</p>
+                    </div>
+                  </Link>
+                </React.Fragment>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
