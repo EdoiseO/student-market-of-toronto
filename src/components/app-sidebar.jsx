@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { NavUser } from "@/components/nav-user";
 import { SearchSidebarFilters } from "@/components/search-sidebar-filters";
 import { SignOutButton } from "@/components/sign-out-button";
@@ -29,6 +30,13 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 import {
+  MESSAGE_NOTIFICATION_TYPE,
+  MESSAGE_NOTIFICATION_ROW_TYPES,
+  isNotificationPreferencesTableMissing,
+  normalizeMessageNotificationPreferences,
+  subscribeToNotificationUpdates,
+} from "@/lib/notifications";
+import {
   ChevronRightIcon,
   FolderIcon,
   LayoutGridIcon,
@@ -43,12 +51,92 @@ import {
   FileTextIcon,
 } from "lucide-react";
 import { getTranslatedCategoryTitle } from "@/lib/categories";
+import { createClient } from "@/utils/supabase/client";
 
 export function AppSidebar({ user, ...props }) {
+  const supabase = React.useMemo(() => createClient(), []);
   const pathname = usePathname();
+  const userId = user?.id ?? null;
   const categoriesOpen = pathname?.startsWith("/categories/") ?? false;
   const showLoggedInSections = Boolean(user);
   const { t, language } = useLanguage();
+  const [hasUnreadNotifications, setHasUnreadNotifications] = React.useState(false);
+
+  const fetchUnreadNotifications = React.useCallback(async () => {
+    if (!userId) {
+      setHasUnreadNotifications(false);
+      return;
+    }
+
+    const { data: messageNotificationPreferencesRow, error: messageNotificationPreferencesError } =
+      await supabase
+        .from("notification_preferences")
+        .select("email_enabled, in_app_enabled")
+        .eq("user_id", userId)
+        .eq("notification_type", MESSAGE_NOTIFICATION_TYPE)
+        .maybeSingle();
+
+    if (
+      messageNotificationPreferencesError &&
+      !isNotificationPreferencesTableMissing(messageNotificationPreferencesError)
+    ) {
+      console.error(
+        "Failed to load sidebar notification preferences:",
+        messageNotificationPreferencesError.message,
+      );
+    }
+
+    const messageNotificationPreferences = normalizeMessageNotificationPreferences(
+      messageNotificationPreferencesRow,
+    );
+
+    if (!messageNotificationPreferences.inApp) {
+      setHasUnreadNotifications(false);
+      return;
+    }
+
+    const { count, error } = await supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .in("type", MESSAGE_NOTIFICATION_ROW_TYPES)
+      .is("read_at", null);
+
+    if (error) {
+      console.error("Failed to load sidebar unread notifications count:", error.message);
+      return;
+    }
+
+    setHasUnreadNotifications((count ?? 0) > 0);
+  }, [supabase, userId]);
+
+  React.useEffect(() => {
+    fetchUnreadNotifications();
+  }, [fetchUnreadNotifications]);
+
+  React.useEffect(() => {
+    if (!userId) {
+      return undefined;
+    }
+
+    return subscribeToNotificationUpdates({
+      supabase,
+      userId,
+      channelName: `sidebar-notifications-${userId}`,
+      notificationPreferenceTypes: [MESSAGE_NOTIFICATION_TYPE],
+      onChange: () => {
+        fetchUnreadNotifications();
+      },
+    });
+  }, [fetchUnreadNotifications, supabase, userId]);
+
+  function renderMenuItemContent(item) {
+    return (
+      <>
+        <item.icon />
+        <span className="truncate">{item.title}</span>
+      </>
+    );
+  }
 
   const navigationItems = [
     {
@@ -89,8 +177,9 @@ export function AppSidebar({ user, ...props }) {
     },
     {
       title: t.messages,
-      url: "#",
+      url: "/messages",
       icon: MessageSquareIcon,
+      hasUnreadIndicator: hasUnreadNotifications,
     },
   ];
 
@@ -147,11 +236,16 @@ export function AppSidebar({ user, ...props }) {
                     tooltip={item.title}
                     className="min-h-11 rounded-xl px-3 text-sm"
                   >
-                    <Link href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
+                    <Link href={item.url} className="relative flex w-full items-center gap-2">
+                      {renderMenuItemContent(item)}
                     </Link>
                   </SidebarMenuButton>
+                  {item.hasUnreadIndicator ? (
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute top-2 right-2 size-2.5 rounded-full bg-blue-500 ring-2 ring-sidebar shadow-[0_0_12px_rgba(59,130,246,0.95)]"
+                    />
+                  ) : null}
                 </SidebarMenuItem>
               ))}
 
@@ -206,11 +300,16 @@ export function AppSidebar({ user, ...props }) {
                       tooltip={item.title}
                       className="min-h-11 rounded-xl px-3 text-sm"
                     >
-                      <Link href={item.url}>
-                        <item.icon />
-                        <span>{item.title}</span>
+                      <Link href={item.url} className="relative flex w-full items-center gap-2">
+                        {renderMenuItemContent(item)}
                       </Link>
                     </SidebarMenuButton>
+                    {item.hasUnreadIndicator ? (
+                      <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute top-2 right-2 size-2.5 rounded-full bg-blue-500 ring-2 ring-sidebar shadow-[0_0_12px_rgba(59,130,246,0.95)]"
+                      />
+                    ) : null}
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>
@@ -230,11 +329,16 @@ export function AppSidebar({ user, ...props }) {
                       tooltip={item.title}
                       className="min-h-11 rounded-xl px-3 text-sm"
                     >
-                      <Link href={item.url}>
-                        <item.icon />
-                        <span>{item.title}</span>
+                      <Link href={item.url} className="relative flex w-full items-center gap-2">
+                        {renderMenuItemContent(item)}
                       </Link>
                     </SidebarMenuButton>
+                    {item.hasUnreadIndicator ? (
+                      <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute top-2 right-2 size-2.5 rounded-full bg-blue-500 ring-2 ring-sidebar shadow-[0_0_12px_rgba(59,130,246,0.95)]"
+                      />
+                    ) : null}
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>
@@ -255,11 +359,16 @@ export function AppSidebar({ user, ...props }) {
                       tooltip={item.title}
                       className="min-h-11 rounded-xl px-3 text-sm"
                     >
-                      <Link href={item.url}>
-                        <item.icon />
-                        <span>{item.title}</span>
+                      <Link href={item.url} className="relative flex w-full items-center gap-2">
+                        {renderMenuItemContent(item)}
                       </Link>
                     </SidebarMenuButton>
+                    {item.hasUnreadIndicator ? (
+                      <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute top-2 right-2 size-2.5 rounded-full bg-blue-500 ring-2 ring-sidebar shadow-[0_0_12px_rgba(59,130,246,0.95)]"
+                      />
+                    ) : null}
                   </SidebarMenuItem>
                 ))}
                 <SidebarMenuItem>

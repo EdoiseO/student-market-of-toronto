@@ -44,7 +44,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="flex min-h-svh w-full items-center justify-center bg-zinc-100 p-6 md:p-10">
+    <main className="flex min-h-svh w-full items-center justify-center bg-zinc-100 p-6 dark:bg-background md:p-10">
       <div className="w-full max-w-sm">
         <Card>
           <CardHeader>
@@ -69,7 +69,7 @@ export default function ForgotPasswordPage() {
                 <Field>
                   <Button type="submit">{t.sendResetLink}</Button>
                   {message ? (
-                    <p className="mt-2 text-sm text-center text-zinc-600">{message}</p>
+                    <p className="mt-2 text-center text-sm text-zinc-600 dark:text-muted-foreground">{message}</p>
                   ) : null}
                   <FieldDescription className="text-center">
                     {t.rememberedPassword} <Link href="/login">{t.backToLogin}</Link>

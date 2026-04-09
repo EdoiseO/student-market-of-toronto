@@ -3,26 +3,9 @@ import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { CATEGORIES, getCategoryValuesBySlug } from "@/lib/categories";
 import HomePageContent from "@/components/home-page-content";
+import { getListingBadgeKey } from "@/lib/listing-badges";
 
-const NEW_LISTING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const HOME_SECTION_LIMIT = 6;
-
-function getListingBadge(listing) {
-  if (listing.is_featured) {
-    return "Featured";
-  }
-
-  const createdAt = new Date(listing.created_at).getTime();
-
-  if (
-    !Number.isNaN(createdAt) &&
-    Date.now() - createdAt <= NEW_LISTING_WINDOW_MS
-  ) {
-    return "New";
-  }
-
-  return undefined;
-}
 
 export default async function Page() {
   const cookieStore = await cookies();
@@ -35,9 +18,12 @@ export default async function Page() {
       slug,
       title,
       price,
+      previous_price,
       category,
       location,
+      status,
       is_featured,
+      is_negotiable,
       created_at,
       listing_images (
         image_url,
@@ -68,7 +54,7 @@ export default async function Page() {
     ...section,
     items: section.items.map((item) => ({
       ...item,
-      badge: getListingBadge(item),
+      badge: getListingBadgeKey(item),
     })),
   }));
 

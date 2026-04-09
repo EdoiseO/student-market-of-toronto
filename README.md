@@ -26,6 +26,11 @@ Your Supabase project should already have the resources this app expects.
 - `listings`
 - `listing_images`
 - `listing_favourites`
+- `conversations`
+- `conversation_user_state`
+- `messages`
+- `notification_preferences`
+- `notifications`
 
 ### Storage bucket used by the app
 
@@ -33,6 +38,8 @@ Your Supabase project should already have the resources this app expects.
 - `profile-images`
 
 If those tables or the storage bucket do not exist in your Supabase project, parts of the app will not work correctly.
+
+For custom profile picture uploads, `profile-images` should be configured as a public bucket and allow authenticated users to manage files inside their own folder path.
 
 ## Environment Variables
 
@@ -99,17 +106,23 @@ npm run start
 - browsing listings
 - category pages
 - listing detail pages
+- listing-to-seller messaging
+- conversations inbox and dedicated thread pages
+- per-user conversation hide/remove-from-inbox state
+- header message notifications
 - create listing
 - edit listing
 - dashboard listing management
+- dashboard contact counts based on unique listing conversations
 - dashboard profile and settings pages
+- saved marketplace notification preferences
 - protected seller profile pages for signed-in users
 
 ## Features Not Fully Implemented Yet
 
-- search
-- messages
-- notification settings persistence and most account-level settings beyond theme and listing-page bio visibility
+- seller-side sold listing notifications, real email delivery for notification preferences, and most account-level settings beyond theme and listing-page bio visibility
+
+Some supporting messaging actions, such as reporting flows, may still need follow-up backend wiring depending on your Supabase setup.
 
 Those features may still appear in the UI, but they are not fully built yet.
 
@@ -124,6 +137,8 @@ Those features may still appear in the UI, but they are not fully built yet.
 - `/dashboard`
 - `/dashboard/profile`
 - `/dashboard/settings`
+- `/messages`
+- `/messages/[conversationId]`
 - `/login`
 - `/register`
 

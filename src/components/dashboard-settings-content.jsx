@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -26,6 +27,13 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useLanguage } from "@/context/LanguageContext";
+import {
+  FAVOURITE_NOTIFICATION_TYPE,
+  MESSAGE_NOTIFICATION_TYPE,
+  NOTIFICATION_PREFERENCE_TYPES,
+  SOLD_NOTIFICATION_TYPE,
+  defaultNotificationChannelPreferences,
+} from "@/lib/notifications";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
 
@@ -34,6 +42,8 @@ export function DashboardSettingsContent({
   userId,
   initialHideBioOnListingPage,
   hasBio,
+  initialNotificationPreferences,
+  notificationPreferencesAvailable,
 }) {
   const { t } = useLanguage();
   const router = useRouter();
@@ -47,11 +57,14 @@ export function DashboardSettingsContent({
   );
   const [isSavingBioVisibility, setIsSavingBioVisibility] = React.useState(false);
   const [themePreference, setThemePreference] = React.useState("system");
-  const [notificationChannelPreferences, setNotificationChannelPreferences] = React.useState({
-    sold: { email: true, inApp: true },
-    favourite: { email: true, inApp: true },
-    messages: { email: true, inApp: true },
-  });
+  const [notificationPreferences, setNotificationPreferences] = React.useState(
+    initialNotificationPreferences,
+  );
+  const [savedNotificationPreferences, setSavedNotificationPreferences] = React.useState(
+    initialNotificationPreferences,
+  );
+  const [isSavingNotificationPreferences, setIsSavingNotificationPreferences] =
+    React.useState(false);
 
   React.useEffect(() => {
     setHideBioOnListingPage(initialHideBioOnListingPage);
@@ -64,7 +77,19 @@ export function DashboardSettingsContent({
     }
   }, [theme]);
 
+  React.useEffect(() => {
+    setNotificationPreferences(initialNotificationPreferences);
+    setSavedNotificationPreferences(initialNotificationPreferences);
+  }, [initialNotificationPreferences]);
+
   const hasBioVisibilityChanges = hideBioOnListingPage !== savedHideBioOnListingPage;
+  const hasNotificationPreferenceChanges = NOTIFICATION_PREFERENCE_TYPES.some(
+    (notificationType) =>
+      notificationPreferences[notificationType]?.email !==
+        savedNotificationPreferences[notificationType]?.email ||
+      notificationPreferences[notificationType]?.inApp !==
+        savedNotificationPreferences[notificationType]?.inApp,
+  );
 
   const appearanceOptions = [
     {
@@ -81,29 +106,34 @@ export function DashboardSettingsContent({
     },
   ];
 
-  const notificationPreferences = [
+  const notificationPreferenceItems = [
     {
-      key: "sold",
+      key: SOLD_NOTIFICATION_TYPE,
       title: t.settingsSoldNotificationsTitle,
       description: t.settingsSoldNotificationsDescription,
-      emailEnabled: true,
-      inAppEnabled: true,
+      isLive: notificationPreferencesAvailable,
+      channelPreferences:
+        notificationPreferences[SOLD_NOTIFICATION_TYPE] ?? defaultNotificationChannelPreferences,
     },
     {
-      key: "favourite",
+      key: FAVOURITE_NOTIFICATION_TYPE,
       title: t.settingsFavouriteNotificationsTitle,
       description: t.settingsFavouriteNotificationsDescription,
-      emailEnabled: true,
-      inAppEnabled: true,
+      isLive: notificationPreferencesAvailable,
+      channelPreferences:
+        notificationPreferences[FAVOURITE_NOTIFICATION_TYPE] ??
+        defaultNotificationChannelPreferences,
     },
     {
-      key: "messages",
+      key: MESSAGE_NOTIFICATION_TYPE,
       title: t.settingsMessagesNotificationsTitle,
       description: t.settingsMessagesNotificationsDescription,
-      emailEnabled: true,
-      inAppEnabled: true,
+      isLive: notificationPreferencesAvailable,
+      channelPreferences:
+        notificationPreferences[MESSAGE_NOTIFICATION_TYPE] ?? defaultNotificationChannelPreferences,
     },
   ];
+  const emailNotificationControlsLive = false;
 
   async function handleBioVisibilitySave() {
     if (!hasBioVisibilityChanges || isSavingBioVisibility) {
@@ -138,11 +168,54 @@ export function DashboardSettingsContent({
     }
   }
 
+  async function handleNotificationPreferencesSave() {
+    if (
+      !notificationPreferencesAvailable ||
+      !hasNotificationPreferenceChanges ||
+      isSavingNotificationPreferences
+    ) {
+      return;
+    }
+
+    setIsSavingNotificationPreferences(true);
+
+    try {
+      const updatedAt = new Date().toISOString();
+      const { error } = await supabase.from("notification_preferences").upsert(
+        NOTIFICATION_PREFERENCE_TYPES.map((notificationType) => ({
+          user_id: userId,
+          notification_type: notificationType,
+          email_enabled: notificationPreferences[notificationType]?.email ?? true,
+          in_app_enabled: notificationPreferences[notificationType]?.inApp ?? true,
+          updated_at: updatedAt,
+        })),
+        { onConflict: "user_id,notification_type" },
+      );
+
+      if (error) {
+        throw error;
+      }
+
+      setSavedNotificationPreferences(notificationPreferences);
+      toast.success(t.settingsNotificationPreferencesSaved);
+      router.refresh();
+    } catch (error) {
+      console.error("Failed to save notification preferences", error);
+      toast.error(t.settingsNotificationPreferencesError);
+    } finally {
+      setIsSavingNotificationPreferences(false);
+    }
+  }
+
   function handleNotificationChannelChange(notificationKey, channelKey, checked) {
-    setNotificationChannelPreferences((currentPreferences) => ({
+    if (!notificationPreferencesAvailable) {
+      return;
+    }
+
+    setNotificationPreferences((currentPreferences) => ({
       ...currentPreferences,
       [notificationKey]: {
-        ...currentPreferences[notificationKey],
+        ...(currentPreferences[notificationKey] ?? defaultNotificationChannelPreferences),
         [channelKey]: checked === true,
       },
     }));
@@ -229,14 +302,24 @@ export function DashboardSettingsContent({
                 <FieldDescription>{t.settingsNotificationTypesDescription}</FieldDescription>
               </FieldContent>
 
-              {notificationPreferences.map((preference) => (
+              {notificationPreferenceItems.map((preference) => (
                 <div
                   key={preference.key}
                   className="rounded-2xl border border-border bg-muted/40 p-4 dark:bg-muted/70 dark:ring-1 dark:ring-white/8"
                 >
                   <div className="space-y-4">
                     <div>
-                      <p className="text-sm font-medium text-foreground">{preference.title}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-medium text-foreground">{preference.title}</p>
+                        {!preference.isLive ? (
+                          <Badge
+                            variant="outline"
+                            className="rounded-full border-border bg-background text-muted-foreground"
+                          >
+                            {t.settingsPreviewBadge}
+                          </Badge>
+                        ) : null}
+                      </div>
                       <p className="mt-1 text-sm text-muted-foreground">{preference.description}</p>
                     </div>
 
@@ -247,22 +330,31 @@ export function DashboardSettingsContent({
                           className="flex-col items-start gap-3 sm:flex-row sm:justify-between"
                         >
                           <FieldContent>
-                            <FieldTitle className="text-foreground">
-                              {t.settingsEmailNotifications}
-                            </FieldTitle>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <FieldTitle className="text-foreground">
+                                {t.settingsEmailNotifications}
+                              </FieldTitle>
+                              {!emailNotificationControlsLive ? (
+                                <Badge
+                                  variant="outline"
+                                  className="rounded-full border-border bg-background text-muted-foreground"
+                                >
+                                  {t.settingsPreviewBadge}
+                                </Badge>
+                              ) : null}
+                            </div>
                             <FieldDescription>
                               {t.settingsEmailNotificationsDescription}
                             </FieldDescription>
                           </FieldContent>
                           <Switch
-                            checked={
-                              notificationChannelPreferences[preference.key]?.email ?? true
-                            }
+                            checked={preference.channelPreferences.email}
                             onCheckedChange={(checked) =>
                               handleNotificationChannelChange(preference.key, "email", checked)
                             }
                             aria-label={`${preference.title} ${t.settingsEmailNotifications}`}
                             className="mt-0.5"
+                            disabled={!preference.isLive || !emailNotificationControlsLive}
                           />
                         </Field>
                       </div>
@@ -281,14 +373,13 @@ export function DashboardSettingsContent({
                             </FieldDescription>
                           </FieldContent>
                           <Switch
-                            checked={
-                              notificationChannelPreferences[preference.key]?.inApp ?? true
-                            }
+                            checked={preference.channelPreferences.inApp}
                             onCheckedChange={(checked) =>
                               handleNotificationChannelChange(preference.key, "inApp", checked)
                             }
                             aria-label={`${preference.title} ${t.settingsInAppNotifications}`}
                             className="mt-0.5"
+                            disabled={!preference.isLive}
                           />
                         </Field>
                       </div>
@@ -297,6 +388,29 @@ export function DashboardSettingsContent({
                 </div>
               ))}
             </FieldGroup>
+
+            <Separator />
+
+            <div className="rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-4">
+              <p className="text-sm text-muted-foreground">
+                {notificationPreferencesAvailable
+                  ? t.settingsNotificationPreferencesLiveNote
+                  : t.settingsNotificationPreferencesUnavailableNote}
+              </p>
+            </div>
+
+            {notificationPreferencesAvailable ? (
+              <div className="flex justify-stretch sm:justify-end">
+                <Button
+                  type="button"
+                  className="w-full rounded-xl px-5 sm:w-auto"
+                  onClick={handleNotificationPreferencesSave}
+                  disabled={isSavingNotificationPreferences || !hasNotificationPreferenceChanges}
+                >
+                  {isSavingNotificationPreferences ? t.saving : t.settingsSaveChanges}
+                </Button>
+              </div>
+            ) : null}
 
             {userEmail ? (
               <>

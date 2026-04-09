@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { CardImage } from "@/components/card-image";
+import { getListingBadgeKey } from "@/lib/listing-badges";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 import {
@@ -20,26 +21,11 @@ import {
 } from "@/components/ui/pagination";
 
 const ITEMS_PER_PAGE = 18;
-const NEW_LISTING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 function buildCategoryAllPageHref(slug, pageNumber) {
   return pageNumber === 1
     ? `/categories/${slug}/all`
     : `/categories/${slug}/all?page=${pageNumber}`;
-}
-
-function getListingBadge(listing) {
-  if (listing.is_featured) {
-    return "Featured";
-  }
-
-  const createdAt = new Date(listing.created_at).getTime();
-
-  if (!Number.isNaN(createdAt) && Date.now() - createdAt <= NEW_LISTING_WINDOW_MS) {
-    return "New";
-  }
-
-  return undefined;
 }
 
 export default async function CategoryAllPage({ params, searchParams }) {
@@ -70,8 +56,11 @@ export default async function CategoryAllPage({ params, searchParams }) {
       slug,
       title,
       price,
+      previous_price,
       location,
+      status,
       is_featured,
+      is_negotiable,
       created_at,
       listing_images (
         image_url,
@@ -116,7 +105,7 @@ export default async function CategoryAllPage({ params, searchParams }) {
               {paginatedItems.map((item) => (
                 <CardImage
                   key={item.id}
-                  badge={getListingBadge(item)}
+                  badge={getListingBadgeKey(item)}
                   title={item.title}
                   price={`$${Number(item.price).toFixed(2)}`}
                   meta={item.location ?? ""}

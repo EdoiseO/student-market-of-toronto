@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { getListingBadgeKey } from "@/lib/listing-badges";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
@@ -22,40 +23,6 @@ function formatDate(dateString, language) {
     day: "numeric",
     year: "numeric",
   }).format(new Date(dateString));
-}
-
-function isNewListing(createdAt) {
-  const createdTime = new Date(createdAt).getTime();
-  const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
-  return Date.now() - createdTime <= sevenDaysInMs;
-}
-
-function getListingBadge(listing, t) {
-  if (listing.status === "sold") {
-    return t.sold;
-  }
-
-  if (listing.is_featured) {
-    return t.featured;
-  }
-
-  if (
-    listing.previous_price !== null &&
-    listing.previous_price !== undefined &&
-    Number(listing.previous_price) > Number(listing.price ?? 0)
-  ) {
-    return t.priceDrop;
-  }
-
-  if (listing.is_negotiable) {
-    return t.negotiable;
-  }
-
-  if (listing.created_at && isNewListing(listing.created_at)) {
-    return t.new;
-  }
-
-  return t.listing;
 }
 
 export default async function PublicProfilePage({ params }) {
@@ -119,7 +86,7 @@ export default async function PublicProfilePage({ params }) {
 
   const sellerListings = (listingRows ?? []).map((listing) => ({
     ...listing,
-    badge: getListingBadge(listing, t),
+    badge: getListingBadgeKey(listing),
     listing_images: [...(listing.listing_images ?? [])].sort(
       (firstImage, secondImage) => (firstImage.position ?? 0) - (secondImage.position ?? 0),
     ),

@@ -17,7 +17,11 @@ const dashboardTabs = [
   { key: "favourite", label: "Favourite" },
 ];
 
-function normalizeDashboardListing(listing, dashboardStatus = listing.status) {
+function normalizeDashboardListing(
+  listing,
+  dashboardStatus = listing.status,
+  messageCount = 0,
+) {
   return {
     id: listing.id,
     slug: listing.slug,
@@ -27,7 +31,7 @@ function normalizeDashboardListing(listing, dashboardStatus = listing.status) {
     price: `$${Number(listing.price).toFixed(2)}`,
     category: normalizeCategoryValue(listing.category),
     dashboardStatus,
-    messageCount: 0,
+    messageCount,
   };
 }
 
@@ -64,6 +68,7 @@ export default async function DashboardPage({ searchParams }) {
     { data: myListings, error: listingsError },
     { data: favourites, error: favouritesError },
     { count: favouriteCount = 0, error: favouriteCountError },
+    { data: conversations, error: conversationsError },
   ] = await Promise.all([
     (() => {
       let listingsQuery = supabase
@@ -111,17 +116,33 @@ export default async function DashboardPage({ searchParams }) {
       .from("listing_favourites")
       .select("listing_id", { count: "exact", head: true })
       .eq("user_id", user.id),
+    supabase
+      .from("conversations")
+      .select("listing_id")
+      .eq("seller_id", user.id),
   ]);
 
-  if (listingsError || favouritesError || favouriteCountError) {
+  if (listingsError || favouritesError || favouriteCountError || conversationsError) {
     console.error("Dashboard query failed", {
       listingsError,
       favouritesError,
       favouriteCountError,
+      conversationsError,
     });
   }
 
-  const ownedItems = (myListings ?? []).map((listing) => normalizeDashboardListing(listing));
+  const contactCountByListingId = (conversations ?? []).reduce((counts, conversation) => {
+    counts[conversation.listing_id] = (counts[conversation.listing_id] ?? 0) + 1;
+    return counts;
+  }, {});
+
+  const ownedItems = (myListings ?? []).map((listing) =>
+    normalizeDashboardListing(
+      listing,
+      listing.status,
+      contactCountByListingId[listing.id] ?? 0,
+    )
+  );
 
   const favouriteItems = shouldLoadFavourites
     ? (favourites ?? [])

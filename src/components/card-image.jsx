@@ -12,25 +12,9 @@ import {
   CardFooter,
   CardTitle,
 } from "@/components/ui/card"
+import { getTranslatedListingBadge } from "@/lib/listing-badges";
 
 const HOVER_IMAGE_CYCLE_MS = 900;
-
-function translateBadgeLabel(badge, t) {
-  switch (badge) {
-    case "Featured":
-      return t.featured;
-    case "New":
-      return t.new;
-    case "Sold":
-      return t.sold;
-    case "Price Drop":
-      return t.priceDrop;
-    case "Negotiable":
-      return t.negotiable;
-    default:
-      return badge;
-  }
-}
 
 export function CardImage({
   badge,
@@ -138,7 +122,7 @@ export function CardImage({
           {badge ? (
             <div className="absolute left-3 top-3 z-10">
               <Badge variant="secondary" className="bg-white/90 text-zinc-900 dark:bg-background/90 dark:text-foreground">
-                {translateBadgeLabel(badge, t)}
+                {getTranslatedListingBadge(badge, t)}
               </Badge>
             </div>
           ) : null}

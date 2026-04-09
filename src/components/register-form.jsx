@@ -154,7 +154,7 @@ export function RegisterForm({ className, ...props }) {
                   onChange={(e) => updateField("email", e.target.value)}
                 />
                 {schoolEmailError && (
-                  <p className="text-sm text-red-600">{schoolEmailError}</p>
+                  <p className="text-sm text-red-600 dark:text-red-400">{schoolEmailError}</p>
                 )}
               </Field>
 
@@ -201,9 +201,9 @@ export function RegisterForm({ className, ...props }) {
 
               <Field>
                 <Button type="submit">{t.signUp}</Button>
-                {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+                {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
                 {success && (
-                  <p className="mt-2 text-sm text-green-600">{success}</p>
+                  <p className="mt-2 text-sm text-green-600 dark:text-green-400">{success}</p>
                 )}
                 <FieldDescription className="text-center">
                   {t.alreadyHaveAccount} <a href="/login">{t.login}</a>

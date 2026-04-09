@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { CardImage } from "@/components/card-image";
+import { getListingBadgeKey } from "@/lib/listing-badges";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 import {
@@ -12,21 +13,6 @@ import {
 } from "@/lib/categories";
 
 const SECTION_ITEM_LIMIT = 6;
-const NEW_LISTING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
-
-function getListingBadge(listing) {
-  if (listing.is_featured) {
-    return "Featured";
-  }
-
-  const createdAt = new Date(listing.created_at).getTime();
-
-  if (!Number.isNaN(createdAt) && Date.now() - createdAt <= NEW_LISTING_WINDOW_MS) {
-    return "New";
-  }
-
-  return undefined;
-}
 
 function normalizeListings(rows = []) {
   return rows.map((listing) => ({
@@ -96,7 +82,7 @@ function CategoryListingGrid({ items }) {
       {items.map((item) => (
         <CardImage
           key={item.id}
-          badge={getListingBadge(item)}
+          badge={getListingBadgeKey(item)}
           title={item.title}
           price={`$${Number(item.price).toFixed(2)}`}
           meta={item.location ?? ""}
@@ -166,8 +152,11 @@ export default async function CategoryPage({ params }) {
       slug,
       title,
       price,
+      previous_price,
       location,
+      status,
       is_featured,
+      is_negotiable,
       created_at,
       view_count,
       listing_images (

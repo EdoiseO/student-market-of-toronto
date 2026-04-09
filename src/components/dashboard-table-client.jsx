@@ -171,6 +171,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
   );
 
   const showManagementActions = !readOnlyTabs.has(currentTab);
+  const showMessagesColumn = currentTab !== "favourite" && currentTab !== "draft";
 
   return (
     <>
@@ -256,10 +257,12 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                   <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500 dark:text-muted-foreground">{t.price}</p>
                   <p className="mt-2 font-medium text-zinc-900 dark:text-foreground">{item.price}</p>
                 </div>
-                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-border dark:bg-muted/40">
-                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500 dark:text-muted-foreground">{t.messages}</p>
-                  <p className="mt-2 text-zinc-700 dark:text-foreground">{item.messageCount > 0 ? `${item.messageCount}+` : "0"}</p>
-                </div>
+                {showMessagesColumn ? (
+                  <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-border dark:bg-muted/40">
+                    <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500 dark:text-muted-foreground">{t.messages}</p>
+                    <p className="mt-2 text-zinc-700 dark:text-foreground">{item.messageCount > 0 ? `${item.messageCount}+` : "0"}</p>
+                  </div>
+                ) : null}
                 <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-border dark:bg-muted/40">
                   <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500 dark:text-muted-foreground">{t.category}</p>
                   <p className="mt-2 line-clamp-2 text-zinc-700 dark:text-foreground">
@@ -322,7 +325,9 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                 <th className="w-[32%] px-5 py-3.5 font-medium">{t.listing}</th>
                 <th className="w-[10%] px-5 py-3.5 font-medium">{t.status}</th>
                 <th className="w-[10%] px-5 py-3.5 font-medium">{t.price}</th>
-                <th className="w-[9%] px-5 py-3.5 font-medium">{t.messages}</th>
+                {showMessagesColumn ? (
+                  <th className="w-[9%] px-5 py-3.5 font-medium">{t.messages}</th>
+                ) : null}
                 <th className="w-[13%] px-5 py-3.5 font-medium">{t.category}</th>
                 {showManagementActions ? (
                   <th className="w-[26%] px-5 py-3.5 text-right font-medium">{t.actions}</th>
@@ -353,7 +358,9 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                     <DashboardStatusBadge status={item.dashboardStatus} label={statusLabels[item.dashboardStatus]} />
                   </td>
                   <td className="px-5 py-4 align-top font-medium whitespace-nowrap text-zinc-900 dark:text-foreground">{item.price}</td>
-                  <td className="px-5 py-4 align-top whitespace-nowrap text-zinc-700 dark:text-foreground">{item.messageCount > 0 ? `${item.messageCount}+` : "0"}</td>
+                  {showMessagesColumn ? (
+                    <td className="px-5 py-4 align-top whitespace-nowrap text-zinc-700 dark:text-foreground">{item.messageCount > 0 ? `${item.messageCount}+` : "0"}</td>
+                  ) : null}
                   <td className="px-5 py-4 align-top text-zinc-700 dark:text-foreground">
                     <span className="line-clamp-2">{getTranslatedCategoryValue(item.category, t, language)}</span>
                   </td>

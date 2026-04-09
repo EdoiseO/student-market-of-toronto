@@ -22,7 +22,7 @@ export const translations = {
     settings: "Settings",
     settingsPreviewBadge: "Preview",
     settingsDescription:
-      "Manage the settings that are live today, while previewing the notification controls planned for a future release.",
+      "Manage the settings that are live today, including saved marketplace notification preferences and other supported account controls.",
     settingsAppearanceTitle: "Appearance",
     settingsAppearanceDescription:
       "Choose how Student Market looks across supported pages and shared app surfaces.",
@@ -41,7 +41,31 @@ export const translations = {
     settingsThemeSaved: "Theme updated for this device.",
     settingsNotificationsTitle: "Notifications",
     settingsNotificationsDescription:
-      "Plan how marketplace updates should reach you once notification preferences are connected.",
+      "Manage saved marketplace notification preferences across messages, favourites, and sold listing updates.",
+    notifications: "Notifications",
+    notificationsButtonLabel: "Open notifications",
+    loadingNotifications: "Loading notifications...",
+    noNotificationsTitle: "No notifications yet",
+    noNotificationsDescription:
+      "New message and listing activity will appear here when marketplace alerts arrive.",
+    notificationsDisabledTitle: "In-app notifications are off",
+    notificationsDisabledDescription:
+      "Turn in-app notifications back on in Settings to see alerts here.",
+    notificationsMarkAllRead: "Mark all as read",
+    notificationsViewAll: "View all",
+    notificationMessagePreview: "{name}: {message}",
+    dismissNotification: "Dismiss notification",
+    notificationDismissError: "We could not remove this notification right now.",
+    notificationMessageFrom: "New message from {name}",
+    notificationFavouriteSoldDescription: "A favourited item was marked sold.",
+    notificationFavouriteUnavailableDescription:
+      "A favourited item is no longer available.",
+    notificationFavouritePriceChangeDescription:
+      "The price changed for a favourited item.",
+    notificationFavouritePriceChangeWithPrices:
+      "Price changed from {oldPrice} to {newPrice}.",
+    notificationListingSoldDescription:
+      "One of your listings was marked sold.",
     settingsProfileTitle: "Profile",
     settingsProfileDescription:
       "Control the softer profile details that appear on listing pages while keeping seller identity visible.",
@@ -75,9 +99,25 @@ export const translations = {
       "Receive listing activity, account notices, and important marketplace updates by email.",
     settingsInAppNotifications: "In-app notifications",
     settingsInAppNotificationsDescription:
-      "See alerts inside your dashboard when in-app notification storage is added.",
+      "Show these alerts in the header bell and other in-app notification surfaces.",
     settingsPreviewNote:
       "These controls are shown as honest preview content for now and do not save changes yet.",
+    settingsNotificationPreviewNote:
+      "Sold listing and favourite activity notifications still stay preview-only for now.",
+    settingsNotificationPreferencesLiveNote:
+      "Notification preferences save to your account. In-app message and favourite alerts affect the header bell today, sold listing preferences are saved for future seller-side alerts, and email preferences are saved for future delivery support.",
+    settingsNotificationPreferencesUnavailableNote:
+      "Notification preferences are not available in this environment yet.",
+    settingsNotificationPreferencesSaved: "Notification preferences saved.",
+    settingsNotificationPreferencesError:
+      "We could not save your notification preferences right now.",
+    settingsMessageNotificationsLiveNote:
+      "Message notification preferences save to your account. In-app message alerts affect the header bell today, while the email preference is saved for future delivery support.",
+    settingsMessageNotificationsUnavailableNote:
+      "Message notification preferences are not available in this environment yet.",
+    settingsMessageNotificationsSaved: "Message notification preferences saved.",
+    settingsMessageNotificationsError:
+      "We could not save your message notification preferences right now.",
     settingsThemeLiveNote:
       "Your theme choice applies right away and stays saved on this device.",
     switchToDarkMode: "Switch to dark mode",
@@ -101,7 +141,7 @@ export const translations = {
     login: "Login",
     noAccount: "Don't have an account?",
     signUp: "Sign up",
-    loggedInSuccess: "Logged in ✅",
+    loggedInSuccess: "Login successful. Redirecting...",
     createAccount: "Create an account",
     registerDescription: "Fill in your details below to sign up",
     firstName: "First Name",
@@ -167,8 +207,56 @@ export const translations = {
     photo: "Photo",
     torontoMeetup: "Toronto meetup",
     chatWithSeller: "Chat with Seller",
+    signInToMessageSeller: "Sign in to message seller",
+    startingConversation: "Opening conversation...",
+    conversationStartError: "We could not open this conversation right now.",
+    thisIsYourListing: "This is your listing",
+    you: "You",
     created: "Created",
     updated: "Updated",
+    messagesPageDescription:
+      "Start conversations from listing pages, pick up existing threads, and keep buyer-seller messages tied to the right item.",
+    messagesSetupTitle: "Messaging needs database setup",
+    messagesSetupDescription:
+      "Apply the messaging SQL in Supabase first, then return here to use real conversations and threads.",
+    conversationsTitle: "Conversations",
+    conversationsDescription:
+      "Each thread stays linked to the listing it started from.",
+    backToMessages: "Back to messages",
+    hideConversation: "Hide conversation",
+    hideConversationTitle: "Remove this conversation from your inbox?",
+    hideConversationDescription:
+      "This only removes the conversation from your inbox. The other person can still see it, and it will reappear if a new message arrives.",
+    hideConversationError: "We could not hide this conversation right now.",
+    conversationNoMessagesYet: "No messages yet. Send the first message when you are ready.",
+    noConversationsTitle: "No conversations yet",
+    noConversationsDescription:
+      "When you message a seller from a listing, the conversation will appear here and stay linked to that item.",
+    aboutListing: "About this listing",
+    deleteConversation: "Delete conversation",
+    deleteConversationTitle: "Delete this conversation?",
+    deleteConversationDescription:
+      "This removes the full conversation and its messages for both participants.",
+    deleteConversationError:
+      "We could not delete this conversation right now.",
+    reportMessage: "Report message",
+    messageReported: "Message reported for review.",
+    reportMessageUnavailable: "Message reporting is not available yet.",
+    reportMessageError: "We could not report this message right now.",
+    noMessagesYetTitle: "No messages yet",
+    noMessagesYetDescription:
+      "This conversation is ready. Send your first message to start the thread.",
+    firstMessageSheetTitle: "Send the first message",
+    firstMessageSheetDescription:
+      "Your conversation will appear in Messages after you send the first message.",
+    sendFirstMessage: "Send first message",
+    messageInputPlaceholder:
+      "Write a message about pickup, condition, price, or availability...",
+    emojiPickerSoon: "Emoji reactions are coming next.",
+    attachmentsSoon: "File attachments are not live yet.",
+    sendMessage: "Send message",
+    sendingMessage: "Sending...",
+    messageSendError: "We could not send your message right now.",
     meetupLocation: "Meetup Location",
     meetupLocationDesc: "Campus meetup spot based on the listing location.",
     similarListings: "Similar Listings",
@@ -415,7 +503,7 @@ export const translations = {
     settings: "Paramètres",
     settingsPreviewBadge: "Aperçu",
     settingsDescription:
-      "Gérez les réglages déjà actifs aujourd'hui tout en prévisualisant les contrôles de notifications prévus dans une prochaine version.",
+      "Gérez les réglages déjà actifs aujourd'hui, y compris les préférences enregistrées pour les notifications du marché et les autres contrôles de compte pris en charge.",
     settingsAppearanceTitle: "Apparence",
     settingsAppearanceDescription:
       "Choisissez l'apparence de Student Market sur les pages prises en charge et les surfaces partagées de l'application.",
@@ -434,7 +522,33 @@ export const translations = {
     settingsThemeSaved: "Le thème a été mis à jour pour cet appareil.",
     settingsNotificationsTitle: "Notifications",
     settingsNotificationsDescription:
-      "Définissez comment vous souhaitez recevoir les mises à jour du marché étudiant une fois ces préférences activées.",
+      "Gérez les préférences enregistrées pour les notifications du marché liées aux messages, aux favoris et aux annonces vendues.",
+    notifications: "Notifications",
+    notificationsButtonLabel: "Ouvrir les notifications",
+    loadingNotifications: "Chargement des notifications...",
+    noNotificationsTitle: "Aucune notification pour le moment",
+    noNotificationsDescription:
+      "Les nouvelles activités de messages et d'annonces apparaîtront ici lorsque des alertes du marché arriveront.",
+    notificationsDisabledTitle: "Les notifications dans l'application sont désactivées",
+    notificationsDisabledDescription:
+      "Réactivez les notifications dans l'application dans les réglages pour voir les alertes ici.",
+    notificationsMarkAllRead: "Tout marquer comme lu",
+    notificationsViewAll: "Tout voir",
+    notificationMessagePreview: "{name} : {message}",
+    dismissNotification: "Masquer la notification",
+    notificationDismissError:
+      "Nous n'avons pas pu supprimer cette notification pour le moment.",
+    notificationMessageFrom: "Nouveau message de {name}",
+    notificationFavouriteSoldDescription:
+      "Un article de vos favoris a été marqué comme vendu.",
+    notificationFavouriteUnavailableDescription:
+      "Un article de vos favoris n'est plus disponible.",
+    notificationFavouritePriceChangeDescription:
+      "Le prix d'un article de vos favoris a changé.",
+    notificationFavouritePriceChangeWithPrices:
+      "Le prix est passé de {oldPrice} à {newPrice}.",
+    notificationListingSoldDescription:
+      "Une de vos annonces a été marquée comme vendue.",
     settingsProfileTitle: "Profil",
     settingsProfileDescription:
       "Gérez les détails plus personnels affichés sur vos pages d'annonce tout en gardant l'identité du vendeur visible.",
@@ -469,9 +583,27 @@ export const translations = {
       "Recevez l'activité des annonces, les avis du compte et les mises à jour importantes par e-mail.",
     settingsInAppNotifications: "Notifications dans l'application",
     settingsInAppNotificationsDescription:
-      "Consultez les alertes directement dans votre tableau de bord lorsque la prise en charge des notifications dans l'application sera ajoutée.",
+      "Affichez ces alertes dans la cloche d'en-tête et les autres surfaces de notifications intégrées.",
     settingsPreviewNote:
       "Ces options sont affichées comme un aperçu honnête pour l'instant et n'enregistrent pas encore de changements.",
+    settingsNotificationPreviewNote:
+      "Les notifications liées aux annonces vendues et à l'activité des favoris restent un aperçu pour le moment.",
+    settingsNotificationPreferencesLiveNote:
+      "Les préférences de notifications sont enregistrées sur votre compte. Les alertes de messages et de favoris dans l'application affectent déjà la cloche d'en-tête aujourd'hui, les préférences pour les annonces vendues sont enregistrées pour de futures alertes côté vendeur, et les préférences e-mail sont enregistrées pour une future prise en charge.",
+    settingsNotificationPreferencesUnavailableNote:
+      "Les préférences de notifications ne sont pas encore disponibles dans cet environnement.",
+    settingsNotificationPreferencesSaved:
+      "Les préférences de notifications ont été enregistrées.",
+    settingsNotificationPreferencesError:
+      "Nous n'avons pas pu enregistrer vos préférences de notifications pour le moment.",
+    settingsMessageNotificationsLiveNote:
+      "Les préférences de notifications de messages sont enregistrées sur votre compte. Les alertes de messages dans l'application s'appliquent déjà à la cloche d'en-tête, tandis que la préférence e-mail est enregistrée pour une future prise en charge.",
+    settingsMessageNotificationsUnavailableNote:
+      "Les préférences de notifications de messages ne sont pas encore disponibles dans cet environnement.",
+    settingsMessageNotificationsSaved:
+      "Les préférences de notifications de messages ont été enregistrées.",
+    settingsMessageNotificationsError:
+      "Nous n'avons pas pu enregistrer vos préférences de notifications de messages pour le moment.",
     settingsThemeLiveNote:
       "Votre choix de thème s'applique immédiatement et reste enregistré sur cet appareil.",
     switchToDarkMode: "Passer au mode sombre",
@@ -496,7 +628,7 @@ export const translations = {
     login: "Se connecter",
     noAccount: "Vous n'avez pas de compte ?",
     signUp: "S'inscrire",
-    loggedInSuccess: "Connexion réussie ✅",
+    loggedInSuccess: "Connexion réussie. Redirection en cours...",
     createAccount: "Créer un compte",
     registerDescription:
       "Remplissez les champs ci-dessous pour créer votre compte.",
@@ -568,8 +700,62 @@ export const translations = {
     photo: "Photo",
     torontoMeetup: "Rencontre à Toronto",
     chatWithSeller: "Discuter avec le vendeur",
+    signInToMessageSeller: "Connectez-vous pour écrire au vendeur",
+    startingConversation: "Ouverture de la conversation...",
+    conversationStartError:
+      "Nous n'avons pas pu ouvrir cette conversation pour le moment.",
+    thisIsYourListing: "C'est votre annonce",
+    you: "Vous",
     created: "Créé",
     updated: "Mis à jour",
+    messagesPageDescription:
+      "Commencez des conversations depuis les pages d'annonce, reprenez les fils existants et gardez les messages acheteur-vendeur liés au bon article.",
+    messagesSetupTitle: "La messagerie a besoin de la configuration de la base de données",
+    messagesSetupDescription:
+      "Appliquez d'abord le SQL de messagerie dans Supabase, puis revenez ici pour utiliser de vraies conversations et de vrais fils.",
+    conversationsTitle: "Conversations",
+    conversationsDescription:
+      "Chaque conversation reste liée à l'annonce depuis laquelle elle a commencé.",
+    backToMessages: "Retour aux messages",
+    hideConversation: "Masquer la conversation",
+    hideConversationTitle: "Retirer cette conversation de votre boîte de réception ?",
+    hideConversationDescription:
+      "Cela retire seulement la conversation de votre boîte de réception. L'autre personne pourra toujours la voir, et elle réapparaîtra lorsqu'un nouveau message arrivera.",
+    hideConversationError:
+      "Nous n'avons pas pu masquer cette conversation pour le moment.",
+    conversationNoMessagesYet:
+      "Aucun message pour le moment. Envoyez le premier message quand vous êtes prêt.",
+    noConversationsTitle: "Aucune conversation pour le moment",
+    noConversationsDescription:
+      "Quand vous écrirez à un vendeur depuis une annonce, la conversation apparaîtra ici et restera liée à cet article.",
+    aboutListing: "À propos de cette annonce",
+    deleteConversation: "Supprimer la conversation",
+    deleteConversationTitle: "Supprimer cette conversation ?",
+    deleteConversationDescription:
+      "Cela supprimera toute la conversation et ses messages pour les deux participants.",
+    deleteConversationError:
+      "Nous n'avons pas pu supprimer cette conversation pour le moment.",
+    reportMessage: "Signaler le message",
+    messageReported: "Message signalé pour examen.",
+    reportMessageUnavailable:
+      "Le signalement de message n'est pas encore disponible.",
+    reportMessageError:
+      "Nous n'avons pas pu signaler ce message pour le moment.",
+    noMessagesYetTitle: "Aucun message pour le moment",
+    noMessagesYetDescription:
+      "Cette conversation est prête. Envoyez votre premier message pour démarrer le fil.",
+    firstMessageSheetTitle: "Envoyer le premier message",
+    firstMessageSheetDescription:
+      "Votre conversation apparaîtra dans Messages après l'envoi du premier message.",
+    sendFirstMessage: "Envoyer le premier message",
+    messageInputPlaceholder:
+      "Écrivez un message au sujet de la remise, de l'état, du prix ou de la disponibilité...",
+    emojiPickerSoon: "Les réactions emoji arrivent à la prochaine étape.",
+    attachmentsSoon: "Les pièces jointes ne sont pas encore disponibles.",
+    sendMessage: "Envoyer le message",
+    sendingMessage: "Envoi...",
+    messageSendError:
+      "Nous n'avons pas pu envoyer votre message pour le moment.",
     meetupLocation: "Lieu de rencontre",
     meetupLocationDesc:
       "Point de rencontre sur le campus, d'après l'emplacement indiqué dans l'annonce.",
