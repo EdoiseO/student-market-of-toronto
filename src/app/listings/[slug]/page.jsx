@@ -17,6 +17,10 @@ import { ListingPhotoCarousel } from "@/components/listing-photo-carousel";
 import { ListingMoreButton } from "@/components/listing-more-button";
 import { ProfileAvatar } from "@/components/profile-avatar";
 import { StartConversationButton } from "@/components/start-conversation-button";
+import {
+  getListingBadgeKey,
+  getTranslatedListingBadge,
+} from "@/lib/listing-badges";
 import { getTranslatedConditionLabel } from "@/lib/search-listings";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
@@ -35,40 +39,6 @@ function formatPrice(price, language) {
     currency: "CAD",
     maximumFractionDigits: 0,
   }).format(Number(price ?? 0));
-}
-
-function isNewListing(createdAt) {
-  const createdTime = new Date(createdAt).getTime();
-  const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
-  return Date.now() - createdTime <= sevenDaysInMs;
-}
-
-function getListingBadge(listing, t) {
-  if (listing.status === "sold") {
-    return t.sold;
-  }
-
-  if (listing.is_featured) {
-    return t.featured;
-  }
-
-  if (
-    listing.previous_price !== null &&
-    listing.previous_price !== undefined &&
-    Number(listing.previous_price) > Number(listing.price ?? 0)
-  ) {
-    return t.priceDrop;
-  }
-
-  if (listing.is_negotiable) {
-    return t.negotiable;
-  }
-
-  if (listing.created_at && isNewListing(listing.created_at)) {
-    return t.new;
-  }
-
-  return t.listing;
 }
 
 export default async function ListingDetailPage({ params }) {
@@ -176,7 +146,10 @@ export default async function ListingDetailPage({ params }) {
     : [{ label: `${t.photo} 1` }];
 
   const campusLabel = listing.location || seller?.school || t.torontoMeetup;
-  const badge = getListingBadge(listing, t);
+  const badge = getTranslatedListingBadge(
+    getListingBadgeKey(listing, { includeFallback: true }),
+    t,
+  );
   const initialIsFavourited = Boolean(favourite);
 
   const similarListings = similarRows.map((item) => ({
@@ -185,7 +158,7 @@ export default async function ListingDetailPage({ params }) {
     price: formatPrice(item.price, language),
     meta:
       schoolBySellerId.get(item.seller_id) || item.location || t.torontoMeetup,
-    badge: getListingBadge(item, t),
+    badge: getListingBadgeKey(item),
     imageUrls: (item.listing_images ?? [])
       .slice()
       .sort(

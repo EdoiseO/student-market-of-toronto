@@ -5,11 +5,11 @@ import { CardImage } from "@/components/card-image";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { getTranslatedCategoryValue } from "@/lib/categories";
+import { getListingBadgeKey } from "@/lib/listing-badges";
 import {
   buildSearchHref,
   formatPrice,
   getTranslatedConditionLabel,
-  getListingBadge,
   getTranslatedSortLabel,
   getTranslatedTagLabel,
   matchesTag,
@@ -53,6 +53,7 @@ export default async function SearchPage({ searchParams }) {
       category,
       condition,
       location,
+      status,
       is_featured,
       is_negotiable,
       created_at,
@@ -153,7 +154,7 @@ export default async function SearchPage({ searchParams }) {
                   {filteredListings.map((item) => (
                     <CardImage
                       key={item.id}
-                      badge={getListingBadge(item)}
+                      badge={getListingBadgeKey(item)}
                       title={item.title}
                       price={formatPrice(item.price)}
                       meta={item.location || getTranslatedCategoryValue(item.category, t, language)}

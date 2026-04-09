@@ -1,4 +1,4 @@
-const NEW_LISTING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+import { hasPriceDrop, isNewListing } from "@/lib/listing-badges";
 
 export const sortOptions = [
   { value: "new-old", label: "Date Listed: New to Old" },
@@ -62,25 +62,6 @@ export function getTranslatedSortLabel(sortBy, t) {
     default:
       return t.sortDateNewest;
   }
-}
-
-export function isNewListing(createdAt) {
-  const createdTime = new Date(createdAt).getTime();
-  return !Number.isNaN(createdTime) && Date.now() - createdTime <= NEW_LISTING_WINDOW_MS;
-}
-
-export function hasPriceDrop(listing) {
-  return (
-    listing.previous_price !== null &&
-    listing.previous_price !== undefined &&
-    Number(listing.previous_price) > Number(listing.price ?? 0)
-  );
-}
-
-export function getListingBadge(listing) {
-  if (listing.is_featured) return "Featured";
-  if (isNewListing(listing.created_at)) return "New";
-  return undefined;
 }
 
 export function formatPrice(price) {
