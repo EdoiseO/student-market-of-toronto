@@ -52,6 +52,7 @@ export const translations = {
     notificationsDisabledDescription:
       "Turn in-app notifications back on in Settings to see alerts here.",
     notificationsMarkAllRead: "Mark all as read",
+    notificationsViewAll: "View all",
     notificationMessagePreview: "{name}: {message}",
     dismissNotification: "Dismiss notification",
     notificationDismissError: "We could not remove this notification right now.",
@@ -532,6 +533,7 @@ export const translations = {
     notificationsDisabledDescription:
       "Réactivez les notifications dans l'application dans les réglages pour voir les alertes ici.",
     notificationsMarkAllRead: "Tout marquer comme lu",
+    notificationsViewAll: "Tout voir",
     notificationMessagePreview: "{name} : {message}",
     dismissNotification: "Masquer la notification",
     notificationDismissError:

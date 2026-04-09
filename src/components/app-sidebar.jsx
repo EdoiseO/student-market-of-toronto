@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/sidebar";
 import {
   MESSAGE_NOTIFICATION_TYPE,
+  MESSAGE_NOTIFICATION_ROW_TYPES,
   isNotificationPreferencesTableMissing,
   normalizeMessageNotificationPreferences,
   subscribeToNotificationUpdates,
@@ -97,7 +98,7 @@ export function AppSidebar({ user, ...props }) {
     const { count, error } = await supabase
       .from("notifications")
       .select("id", { count: "exact", head: true })
-      .eq("type", MESSAGE_NOTIFICATION_TYPE)
+      .in("type", MESSAGE_NOTIFICATION_ROW_TYPES)
       .is("read_at", null);
 
     if (error) {

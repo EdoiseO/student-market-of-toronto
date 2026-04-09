@@ -1,4 +1,5 @@
 export const MESSAGE_NOTIFICATION_TYPE = "messages";
+export const LEGACY_MESSAGE_NOTIFICATION_TYPE = "message";
 export const SOLD_NOTIFICATION_TYPE = "sold";
 export const FAVOURITE_NOTIFICATION_TYPE = "favourite";
 
@@ -7,11 +8,30 @@ export const FAVOURITE_UNAVAILABLE_NOTIFICATION_TYPE = "favourite_unavailable";
 export const FAVOURITE_PRICE_CHANGE_NOTIFICATION_TYPE = "favourite_price_change";
 export const LISTING_SOLD_NOTIFICATION_TYPE = "listing_sold";
 
+export const MESSAGE_NOTIFICATION_ROW_TYPES = [
+  LEGACY_MESSAGE_NOTIFICATION_TYPE,
+  MESSAGE_NOTIFICATION_TYPE,
+];
+
+export const FAVOURITE_NOTIFICATION_ROW_TYPES = [
+  FAVOURITE_SOLD_NOTIFICATION_TYPE,
+  FAVOURITE_UNAVAILABLE_NOTIFICATION_TYPE,
+  FAVOURITE_PRICE_CHANGE_NOTIFICATION_TYPE,
+];
+
+export const SOLD_NOTIFICATION_ROW_TYPES = [LISTING_SOLD_NOTIFICATION_TYPE];
+
 export const NOTIFICATION_PREFERENCE_TYPES = [
   SOLD_NOTIFICATION_TYPE,
   FAVOURITE_NOTIFICATION_TYPE,
   MESSAGE_NOTIFICATION_TYPE,
 ];
+
+const NOTIFICATION_ROW_TYPES_BY_PREFERENCE = {
+  [SOLD_NOTIFICATION_TYPE]: SOLD_NOTIFICATION_ROW_TYPES,
+  [FAVOURITE_NOTIFICATION_TYPE]: FAVOURITE_NOTIFICATION_ROW_TYPES,
+  [MESSAGE_NOTIFICATION_TYPE]: MESSAGE_NOTIFICATION_ROW_TYPES,
+};
 
 export const NOTIFICATION_SELECT = `
   id,
@@ -72,6 +92,22 @@ export function normalizeNotificationChannelPreferences(preferencesRow) {
 
 export function normalizeMessageNotificationPreferences(preferencesRow) {
   return normalizeNotificationChannelPreferences(preferencesRow);
+}
+
+export function isMessageNotificationType(type) {
+  return MESSAGE_NOTIFICATION_ROW_TYPES.includes(type);
+}
+
+export function getEnabledNotificationRowTypes(notificationPreferences = {}) {
+  return Array.from(
+    new Set(
+      NOTIFICATION_PREFERENCE_TYPES.flatMap((preferenceType) =>
+        notificationPreferences[preferenceType]?.inApp
+          ? (NOTIFICATION_ROW_TYPES_BY_PREFERENCE[preferenceType] ?? [])
+          : [],
+      ),
+    ),
+  );
 }
 
 export function buildNotificationPreferencesMap(preferenceRows = []) {
@@ -184,12 +220,7 @@ function getListingNotificationDescription(notification, t, language) {
 }
 
 function isListingNotificationType(type) {
-  return [
-    FAVOURITE_SOLD_NOTIFICATION_TYPE,
-    FAVOURITE_UNAVAILABLE_NOTIFICATION_TYPE,
-    FAVOURITE_PRICE_CHANGE_NOTIFICATION_TYPE,
-    LISTING_SOLD_NOTIFICATION_TYPE,
-  ].includes(type);
+  return [...FAVOURITE_NOTIFICATION_ROW_TYPES, ...SOLD_NOTIFICATION_ROW_TYPES].includes(type);
 }
 
 function getMessageNotificationBase(notification, currentUserId, t) {
@@ -271,6 +302,7 @@ export function normalizeGroupedNotificationRow(notification, currentUserId, t, 
 
   return {
     id: notificationBase.id,
+    type: notificationBase.type,
     conversationId: notificationBase.conversationId,
     readAt: notificationBase.readAt,
     createdAt: notificationBase.createdAt,

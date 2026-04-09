@@ -12,14 +12,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/context/LanguageContext";
 import {
-  NOTIFICATION_PREFERENCE_TYPES,
-  MESSAGE_NOTIFICATION_TYPE,
+  MESSAGE_NOTIFICATION_ROW_TYPES,
   NOTIFICATION_WITH_MESSAGE_SELECT,
   buildNotificationPreferencesMap,
+  getEnabledNotificationRowTypes,
   groupNotificationsByConversation,
   isNotificationPreferencesTableMissing,
+  isMessageNotificationType,
   normalizeGroupedNotificationRow,
   subscribeToNotificationUpdates,
+  NOTIFICATION_PREFERENCE_TYPES,
 } from "@/lib/notifications";
 import { createClient } from "@/utils/supabase/client";
 
@@ -36,6 +38,7 @@ export function NotificationsButton({ user }) {
   const [notificationPreferences, setNotificationPreferences] = React.useState(
     buildNotificationPreferencesMap(),
   );
+  const headerActionButtonClassName = "rounded-lg px-2 text-xs";
 
   const hasAnyInAppNotificationsEnabled = Object.values(notificationPreferences).some(
     (preferences) => preferences.inApp,
@@ -65,10 +68,13 @@ export function NotificationsButton({ user }) {
     const normalizedNotificationPreferences = buildNotificationPreferencesMap(
       notificationPreferenceRows,
     );
+    const enabledNotificationRowTypes = getEnabledNotificationRowTypes(
+      normalizedNotificationPreferences,
+    );
 
     setNotificationPreferences(normalizedNotificationPreferences);
 
-    if (!Object.values(normalizedNotificationPreferences).some((preferences) => preferences.inApp)) {
+    if (enabledNotificationRowTypes.length === 0) {
       setNotifications([]);
       setUnreadCount(0);
       setIsLoading(false);
@@ -79,12 +85,14 @@ export function NotificationsButton({ user }) {
       supabase
         .from("notifications")
         .select(NOTIFICATION_WITH_MESSAGE_SELECT)
+        .in("type", enabledNotificationRowTypes)
         .is("read_at", null)
         .order("created_at", { ascending: false })
         .limit(24),
       supabase
         .from("notifications")
         .select("id", { count: "exact", head: true })
+        .in("type", enabledNotificationRowTypes)
         .is("read_at", null),
     ]);
 
@@ -154,8 +162,8 @@ export function NotificationsButton({ user }) {
 
     let query = supabase.from("notifications").delete();
 
-    query = notification.conversationId && notification.type === MESSAGE_NOTIFICATION_TYPE
-      ? query.eq("type", MESSAGE_NOTIFICATION_TYPE).eq("conversation_id", notification.conversationId)
+    query = notification.conversationId && isMessageNotificationType(notification.type)
+      ? query.in("type", MESSAGE_NOTIFICATION_ROW_TYPES).eq("conversation_id", notification.conversationId)
       : query.eq("id", notification.id);
 
     const { error } = await query;
@@ -199,9 +207,17 @@ export function NotificationsButton({ user }) {
     setIsMarkingAllRead(true);
 
     const readAt = new Date().toISOString();
+    const enabledNotificationRowTypes = getEnabledNotificationRowTypes(notificationPreferences);
+
+    if (enabledNotificationRowTypes.length === 0) {
+      setIsMarkingAllRead(false);
+      return;
+    }
+
     const { error } = await supabase
       .from("notifications")
       .update({ read_at: readAt })
+      .in("type", enabledNotificationRowTypes)
       .is("read_at", null);
 
     setIsMarkingAllRead(false);
@@ -240,16 +256,16 @@ export function NotificationsButton({ user }) {
       </Popover.Trigger>
 
       <Popover.Portal>
-        <Popover.Positioner align="end" sideOffset={8}>
-          <Popover.Popup className="z-50 w-80 rounded-2xl border border-border bg-popover p-2 text-popover-foreground shadow-md outline-none">
+        <Popover.Positioner align="end" sideOffset={8} className="z-[80]">
+          <Popover.Popup className="z-[80] w-80 rounded-2xl border border-border bg-popover p-2 text-popover-foreground shadow-md outline-none">
         <div className="flex items-center justify-between gap-3 px-2 py-1.5">
-          <p className="text-sm font-semibold text-foreground">{t.notifications}</p>
+          <p className="truncate text-sm font-semibold text-foreground">{t.notifications}</p>
           {hasAnyInAppNotificationsEnabled && unreadCount > 0 ? (
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="rounded-lg px-2 text-xs"
+              className={headerActionButtonClassName}
               onClick={handleMarkAllRead}
               disabled={isMarkingAllRead}
             >
@@ -335,6 +351,15 @@ export function NotificationsButton({ user }) {
             </p>
           </div>
         )}
+
+        <div className="my-1 h-px bg-border" />
+        <div className="flex justify-end px-2 py-1.5">
+          <Button asChild variant="ghost" size="sm" className={headerActionButtonClassName}>
+            <Link href="/messages" onClick={() => setIsOpen(false)}>
+              {t.notificationsViewAll}
+            </Link>
+          </Button>
+        </div>
 
           </Popover.Popup>
         </Popover.Positioner>
