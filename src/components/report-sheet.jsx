@@ -168,13 +168,16 @@ export function ReportSheet({
                     <FieldTitle className="text-foreground">{t.reportDetailsLabel}</FieldTitle>
                     <FieldDescription>{t.reportDetailsDescription}</FieldDescription>
                   </FieldContent>
-                  <Textarea
-                    value={details}
-                    onChange={(event) => setDetails(event.target.value)}
-                    placeholder={t.reportDetailsPlaceholder}
-                    className="min-h-32 rounded-2xl"
-                    maxLength={600}
-                  />
+                  <div className="rounded-lg border border-zinc-200 bg-background p-3 shadow-sm dark:border-border dark:bg-background">
+                    <Textarea
+                      value={details}
+                      onChange={(event) => setDetails(event.target.value)}
+                      placeholder={t.reportDetailsPlaceholder}
+                      rows={2}
+                      className="min-h-16 resize-none border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0"
+                      maxLength={600}
+                    />
+                  </div>
                 </Field>
               </FieldGroup>
             </div>

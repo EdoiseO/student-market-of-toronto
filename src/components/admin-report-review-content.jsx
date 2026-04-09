@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { ClientFormattedDateTime } from "@/components/client-formatted-date-time";
+import { ListingDescriptionContent } from "@/components/listing-description-content";
 import { ProfileAvatar } from "@/components/profile-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -54,6 +55,11 @@ export function AdminReportReviewContent({
   const listingTarget = report.subjectType === REPORT_SUBJECT_TYPES.message
     ? conversation?.listing
     : listingReview?.listing;
+  const reviewTitle = listingTarget?.title ?? t.listing;
+  const reviewDescription =
+    report.subjectType === REPORT_SUBJECT_TYPES.message
+      ? t.adminReportReviewDescription
+      : t.adminListingReviewDescription;
   const canRemoveListing = listingTarget?.id && listingTarget?.status === "active";
 
   async function handleUpdateStatus(nextStatus) {
@@ -150,9 +156,9 @@ export function AdminReportReviewContent({
                 ) : null}
               </div>
               <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">
-                {conversation.listing.title}
+                {reviewTitle}
               </CardTitle>
-              <CardDescription>{t.adminReportReviewDescription}</CardDescription>
+              <CardDescription>{reviewDescription}</CardDescription>
             </div>
             <div className="text-right text-xs text-muted-foreground">
               <p>{t.reportedAt}</p>
@@ -279,33 +285,43 @@ export function AdminReportReviewContent({
               </p>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto bg-zinc-50/70 px-6 py-5 dark:bg-muted/20">
-              <div className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 dark:border-border dark:bg-card">
-                <div className="flex items-start gap-4">
-                  <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted">
-                    {listingReview?.listing?.imageUrl ? (
-                      <img
-                        src={listingReview.listing.imageUrl}
-                        alt={listingReview.listing.title}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xl font-semibold text-zinc-950 dark:text-foreground">
-                      {listingReview?.listing?.title}
-                    </p>
-                    <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
-                      {listingReview?.listing?.location || t.torontoMeetup}
-                    </p>
-                    {listingReview?.listing?.description ? (
-                      <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-zinc-700 dark:text-muted-foreground">
-                        {listingReview.listing.description}
+              <div className="space-y-5">
+                <div className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 dark:border-border dark:bg-card">
+                  <div className="flex items-start gap-4">
+                    <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted">
+                      {listingReview?.listing?.imageUrl ? (
+                        <img
+                          src={listingReview.listing.imageUrl}
+                          alt={listingReview.listing.title}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xl font-semibold text-zinc-950 dark:text-foreground">
+                        {listingReview?.listing?.title}
                       </p>
-                    ) : null}
+                      <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
+                        {listingReview?.listing?.location || t.torontoMeetup}
+                      </p>
+                    </div>
                   </div>
                 </div>
+
+                {listingReview?.listing?.description ? (
+                  <Card className="rounded-[1.75rem] border-zinc-200 bg-white py-0 shadow-none dark:bg-card dark:ring-border">
+                    <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+                      <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">
+                        {t.description}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-6 py-6">
+                      <ListingDescriptionContent description={listingReview.listing.description} className="whitespace-normal leading-6 text-sm" />
+                    </CardContent>
+                  </Card>
+                ) : null}
               </div>
             </div>
             <div className="border-t border-zinc-200 bg-background px-6 py-5 dark:border-border">

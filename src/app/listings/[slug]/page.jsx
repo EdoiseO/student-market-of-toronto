@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { CardImage } from "@/components/card-image";
 import { FavouriteButton } from "@/components/favourite-button";
+import { ListingDescriptionContent } from "@/components/listing-description-content";
 import { ListingPhotoCarousel } from "@/components/listing-photo-carousel";
 import { ListingMoreButton } from "@/components/listing-more-button";
 import { ProfileAvatar } from "@/components/profile-avatar";
@@ -188,8 +189,8 @@ export default async function ListingDetailPage({ params }) {
                     {t.description}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="px-6 py-6 text-base leading-8 text-zinc-600 dark:text-muted-foreground md:px-7">
-                  {listing.description}
+                <CardContent className="px-6 py-6 md:px-7">
+                  <ListingDescriptionContent description={listing.description} />
                 </CardContent>
               </Card>
             </div>
