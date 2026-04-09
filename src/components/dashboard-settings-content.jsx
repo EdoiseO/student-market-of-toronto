@@ -133,6 +133,7 @@ export function DashboardSettingsContent({
         notificationPreferences[MESSAGE_NOTIFICATION_TYPE] ?? defaultNotificationChannelPreferences,
     },
   ];
+  const emailNotificationControlsLive = false;
 
   async function handleBioVisibilitySave() {
     if (!hasBioVisibilityChanges || isSavingBioVisibility) {
@@ -329,9 +330,19 @@ export function DashboardSettingsContent({
                           className="flex-col items-start gap-3 sm:flex-row sm:justify-between"
                         >
                           <FieldContent>
-                            <FieldTitle className="text-foreground">
-                              {t.settingsEmailNotifications}
-                            </FieldTitle>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <FieldTitle className="text-foreground">
+                                {t.settingsEmailNotifications}
+                              </FieldTitle>
+                              {!emailNotificationControlsLive ? (
+                                <Badge
+                                  variant="outline"
+                                  className="rounded-full border-border bg-background text-muted-foreground"
+                                >
+                                  {t.settingsPreviewBadge}
+                                </Badge>
+                              ) : null}
+                            </div>
                             <FieldDescription>
                               {t.settingsEmailNotificationsDescription}
                             </FieldDescription>
@@ -343,7 +354,7 @@ export function DashboardSettingsContent({
                             }
                             aria-label={`${preference.title} ${t.settingsEmailNotifications}`}
                             className="mt-0.5"
-                            disabled={!preference.isLive}
+                            disabled={!preference.isLive || !emailNotificationControlsLive}
                           />
                         </Field>
                       </div>
