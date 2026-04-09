@@ -85,6 +85,7 @@ export function NotificationsButton({ user }) {
       supabase
         .from("notifications")
         .select(NOTIFICATION_WITH_MESSAGE_SELECT)
+        .eq("user_id", user.id)
         .in("type", enabledNotificationRowTypes)
         .is("read_at", null)
         .order("created_at", { ascending: false })
@@ -92,6 +93,7 @@ export function NotificationsButton({ user }) {
       supabase
         .from("notifications")
         .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
         .in("type", enabledNotificationRowTypes)
         .is("read_at", null),
     ]);
@@ -163,8 +165,11 @@ export function NotificationsButton({ user }) {
     let query = supabase.from("notifications").delete();
 
     query = notification.conversationId && isMessageNotificationType(notification.type)
-      ? query.in("type", MESSAGE_NOTIFICATION_ROW_TYPES).eq("conversation_id", notification.conversationId)
-      : query.eq("id", notification.id);
+      ? query
+          .eq("user_id", user.id)
+          .in("type", MESSAGE_NOTIFICATION_ROW_TYPES)
+          .eq("conversation_id", notification.conversationId)
+      : query.eq("user_id", user.id).eq("id", notification.id);
 
     const { error } = await query;
 
@@ -217,6 +222,7 @@ export function NotificationsButton({ user }) {
     const { error } = await supabase
       .from("notifications")
       .update({ read_at: readAt })
+      .eq("user_id", user.id)
       .in("type", enabledNotificationRowTypes)
       .is("read_at", null);
 

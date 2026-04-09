@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Ellipsis, Trash2 } from "lucide-react";
@@ -32,7 +33,7 @@ import { createClient } from "@/utils/supabase/client";
 
 export function ConversationListItem({ conversation, dateValue }) {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = React.useMemo(() => createClient(), []);
   const { t, language } = useLanguage();
 
   async function handleHideConversation() {
