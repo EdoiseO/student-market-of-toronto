@@ -40,6 +40,7 @@ function ReviewMetadata({ label, children }) {
 
 export function AdminReportReviewContent({
   report,
+  relatedReports = [],
   conversation = null,
   messages = [],
   listingReview = null,
@@ -55,6 +56,22 @@ export function AdminReportReviewContent({
   const isProfileReport = report.subjectType === REPORT_SUBJECT_TYPES.profile;
   const flaggedMessageId = report.message?.id ?? null;
   const isOpen = report.status === REPORT_STATUS_VALUES.open;
+  const sortedRelatedReports = React.useMemo(
+    () => [...relatedReports].sort((firstReport, secondReport) => {
+      return new Date(secondReport.createdAt ?? 0).getTime() - new Date(firstReport.createdAt ?? 0).getTime();
+    }),
+    [relatedReports],
+  );
+  const openRelatedReports = React.useMemo(
+    () => sortedRelatedReports.filter((relatedReport) => relatedReport.status === REPORT_STATUS_VALUES.open),
+    [sortedRelatedReports],
+  );
+  const actionableReportIds = React.useMemo(
+    () => openRelatedReports.map((relatedReport) => relatedReport.id),
+    [openRelatedReports],
+  );
+  const hasOpenRelatedReports = actionableReportIds.length > 0;
+  const hasMultipleOpenRelatedReports = actionableReportIds.length > 1;
   const listingTarget = isMessageReport ? conversation?.listing : listingReview?.listing;
   const profileTarget = profileReview?.profile ?? null;
   const reviewTitle = isProfileReport
@@ -67,13 +84,16 @@ export function AdminReportReviewContent({
         ? t.adminProfileReviewDescription
         : t.adminListingReviewDescription;
   const canRemoveListing = !isProfileReport && listingTarget?.id && listingTarget?.status === "active";
+  const dismissActionLabel = hasMultipleOpenRelatedReports ? t.adminDismissAllOpen : t.dismiss;
+  const resolveActionLabel = hasMultipleOpenRelatedReports ? t.adminResolveAllOpen : t.resolve;
+  const removeListingActionLabel = hasMultipleOpenRelatedReports
+    ? t.adminRemoveListingAndResolveAllOpen
+    : t.removeListing;
 
-  async function handleUpdateStatus(nextStatus) {
-    if (!report?.id || !currentUserId || isProcessing) {
-      return;
+  async function updateRelatedReportStatuses(nextStatus) {
+    if (!currentUserId || isProcessing || actionableReportIds.length === 0) {
+      return { error: true };
     }
-
-    setIsProcessing(true);
 
     const reviewedAt = new Date().toISOString();
     const { error } = await supabase
@@ -83,25 +103,48 @@ export function AdminReportReviewContent({
         reviewed_by: currentUserId,
         reviewed_at: reviewedAt,
       })
-      .eq("id", report.id);
-
-    setIsProcessing(false);
+      .in("id", actionableReportIds);
 
     if (error) {
-      console.error("Failed to update moderation report:", error.message);
+      console.error("Failed to update related moderation reports:", error.message);
       toast.error(t.adminReportActionError);
+      return { error: true };
+    }
+
+    return { error: false, updatedCount: actionableReportIds.length };
+  }
+
+  async function handleUpdateStatus(nextStatus) {
+    if (!currentUserId || isProcessing || actionableReportIds.length === 0) {
       return;
     }
 
-    toast.success(
-      nextStatus === REPORT_STATUS_VALUES.dismissed ? t.reportDismissed : t.reportResolved,
-    );
+    setIsProcessing(true);
+
+    const result = await updateRelatedReportStatuses(nextStatus);
+
+    setIsProcessing(false);
+
+    if (result.error) {
+      return;
+    }
+
+    if (nextStatus === REPORT_STATUS_VALUES.dismissed) {
+      toast.success(
+        result.updatedCount > 1 ? t.adminOpenReportsDismissed : t.reportDismissed,
+      );
+    } else {
+      toast.success(
+        result.updatedCount > 1 ? t.adminOpenReportsResolved : t.reportResolved,
+      );
+    }
+
     router.push("/admin");
     router.refresh();
   }
 
   async function handleRemoveListing() {
-    if (!listingTarget?.id || !currentUserId || isProcessing) {
+    if (!listingTarget?.id || !currentUserId || isProcessing || actionableReportIds.length === 0) {
       return;
     }
 
@@ -119,25 +162,19 @@ export function AdminReportReviewContent({
       return;
     }
 
-    const reviewedAt = new Date().toISOString();
-    const { error: reportError } = await supabase
-      .from("reports")
-      .update({
-        status: REPORT_STATUS_VALUES.resolved,
-        reviewed_by: currentUserId,
-        reviewed_at: reviewedAt,
-      })
-      .eq("id", report.id);
+    const result = await updateRelatedReportStatuses(REPORT_STATUS_VALUES.resolved);
 
     setIsProcessing(false);
 
-    if (reportError) {
-      console.error("Failed to resolve report after removing listing:", reportError.message);
-      toast.error(t.adminReportActionError);
+    if (result.error) {
       return;
     }
 
-    toast.success(t.adminListingRemovedAndResolved);
+    toast.success(
+      result.updatedCount > 1
+        ? t.adminListingRemovedAndAllResolved
+        : t.adminListingRemovedAndResolved,
+    );
     router.push("/admin");
     router.refresh();
   }
@@ -149,6 +186,14 @@ export function AdminReportReviewContent({
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
+                  {sortedRelatedReports.length} {t.adminReportsCountLabel}
+                </Badge>
+                {openRelatedReports.length > 0 ? (
+                  <Badge className="rounded-full bg-primary/10 px-2.5 py-0.5 text-primary shadow-none dark:bg-primary/15">
+                    {openRelatedReports.length} {t.adminOpenCountLabel}
+                  </Badge>
+                ) : null}
                 <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
                   {getTranslatedReportReason(report.reason, t, report.subjectType)}
                 </Badge>
@@ -173,15 +218,17 @@ export function AdminReportReviewContent({
           </div>
         </CardHeader>
 
-        <CardContent className="grid gap-4 px-6 py-5 md:grid-cols-2 xl:grid-cols-4">
+        <CardContent className="grid gap-4 px-6 py-5 md:grid-cols-2 xl:grid-cols-6">
           <ReviewMetadata label={t.reporter}>{report.reporter.name}</ReviewMetadata>
           <ReviewMetadata label={t.adminReportedUser}>{report.reportedUser.name}</ReviewMetadata>
           <ReviewMetadata label={t.adminReason}>
             {getTranslatedReportReason(report.reason, t, report.subjectType)}
           </ReviewMetadata>
           <ReviewMetadata label={t.status}>{getTranslatedReportStatus(report.status, t)}</ReviewMetadata>
+          <ReviewMetadata label={t.adminGroupedReports}>{sortedRelatedReports.length}</ReviewMetadata>
+          <ReviewMetadata label={t.adminOpenCountLabel}>{openRelatedReports.length}</ReviewMetadata>
           {report.details ? (
-            <div className="md:col-span-2 xl:col-span-4">
+            <div className="md:col-span-2 xl:col-span-6">
               <ReviewMetadata label={t.adminDetails}>{report.details}</ReviewMetadata>
             </div>
           ) : null}
@@ -257,9 +304,9 @@ export function AdminReportReviewContent({
                     variant="outline"
                     className="rounded-xl"
                     onClick={handleRemoveListing}
-                    disabled={isProcessing || !isOpen}
+                    disabled={isProcessing || !hasOpenRelatedReports}
                   >
-                    {t.removeListing}
+                    {removeListingActionLabel}
                   </Button>
                 ) : null}
                 <Button
@@ -267,17 +314,17 @@ export function AdminReportReviewContent({
                   variant="outline"
                   className="rounded-xl"
                   onClick={() => handleUpdateStatus(REPORT_STATUS_VALUES.dismissed)}
-                  disabled={isProcessing || !isOpen}
+                  disabled={isProcessing || !hasOpenRelatedReports}
                 >
-                  {t.dismiss}
+                  {dismissActionLabel}
                 </Button>
                 <Button
                   type="button"
                   className="rounded-xl"
                   onClick={() => handleUpdateStatus(REPORT_STATUS_VALUES.resolved)}
-                  disabled={isProcessing || !isOpen}
+                  disabled={isProcessing || !hasOpenRelatedReports}
                 >
-                  {t.resolve}
+                  {resolveActionLabel}
                 </Button>
               </div>
             </div>
@@ -342,17 +389,17 @@ export function AdminReportReviewContent({
                   variant="outline"
                   className="rounded-xl"
                   onClick={() => handleUpdateStatus(REPORT_STATUS_VALUES.dismissed)}
-                  disabled={isProcessing || !isOpen}
+                  disabled={isProcessing || !hasOpenRelatedReports}
                 >
-                  {t.dismiss}
+                  {dismissActionLabel}
                 </Button>
                 <Button
                   type="button"
                   className="rounded-xl"
                   onClick={() => handleUpdateStatus(REPORT_STATUS_VALUES.resolved)}
-                  disabled={isProcessing || !isOpen}
+                  disabled={isProcessing || !hasOpenRelatedReports}
                 >
-                  {t.resolve}
+                  {resolveActionLabel}
                 </Button>
               </div>
             </div>
@@ -415,9 +462,9 @@ export function AdminReportReviewContent({
                     variant="outline"
                     className="rounded-xl"
                     onClick={handleRemoveListing}
-                    disabled={isProcessing || !isOpen}
+                    disabled={isProcessing || !hasOpenRelatedReports}
                   >
-                    {t.removeListing}
+                    {removeListingActionLabel}
                   </Button>
                 ) : null}
                 <Button
@@ -425,17 +472,17 @@ export function AdminReportReviewContent({
                   variant="outline"
                   className="rounded-xl"
                   onClick={() => handleUpdateStatus(REPORT_STATUS_VALUES.dismissed)}
-                  disabled={isProcessing || !isOpen}
+                  disabled={isProcessing || !hasOpenRelatedReports}
                 >
-                  {t.dismiss}
+                  {dismissActionLabel}
                 </Button>
                 <Button
                   type="button"
                   className="rounded-xl"
                   onClick={() => handleUpdateStatus(REPORT_STATUS_VALUES.resolved)}
-                  disabled={isProcessing || !isOpen}
+                  disabled={isProcessing || !hasOpenRelatedReports}
                 >
-                  {t.resolve}
+                  {resolveActionLabel}
                 </Button>
               </div>
             </div>
@@ -443,6 +490,70 @@ export function AdminReportReviewContent({
         )}
 
         <div className="space-y-4">
+          <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
+            <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+              <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
+                {t.adminRelatedReportsTitle}
+              </CardTitle>
+              <CardDescription>{t.adminRelatedReportsDescription}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 px-6 py-5">
+              {sortedRelatedReports.length > 0 ? (
+                sortedRelatedReports.map((relatedReport) => {
+                  const isCurrentReport = relatedReport.id === report.id;
+
+                  return (
+                    <Link
+                      key={relatedReport.id}
+                      href={`/admin/reports/${relatedReport.id}`}
+                      className={`block rounded-2xl border p-4 transition ${
+                        isCurrentReport
+                          ? "border-primary/40 bg-primary/5"
+                          : "border-zinc-200 bg-zinc-50 hover:bg-background dark:border-border dark:bg-muted/40 dark:hover:bg-background"
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="outline" className="rounded-full border-border bg-background px-2 py-0 text-foreground">
+                              {getTranslatedReportReason(relatedReport.reason, t, relatedReport.subjectType)}
+                            </Badge>
+                            <Badge variant="outline" className="rounded-full border-border bg-background px-2 py-0 text-foreground">
+                              {getTranslatedReportStatus(relatedReport.status, t)}
+                            </Badge>
+                            {isCurrentReport ? (
+                              <Badge className="rounded-full bg-primary px-2 py-0 text-primary-foreground shadow-none">
+                                {t.adminCurrentReport}
+                              </Badge>
+                            ) : null}
+                          </div>
+
+                          <p className="text-sm font-medium text-zinc-950 dark:text-foreground">
+                            {relatedReport.reporter.name}
+                          </p>
+
+                          {relatedReport.details ? (
+                            <p className="line-clamp-2 text-sm text-zinc-500 dark:text-muted-foreground">
+                              {relatedReport.details}
+                            </p>
+                          ) : null}
+                        </div>
+
+                        <div className="text-right text-xs text-zinc-500 dark:text-muted-foreground">
+                          <ClientFormattedDateTime value={relatedReport.createdAt} language={language} />
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })
+              ) : (
+                <p className="text-sm text-zinc-500 dark:text-muted-foreground">
+                  {t.adminNoRelatedReports}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
           {isProfileReport ? (
             <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
               <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">

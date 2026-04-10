@@ -188,6 +188,29 @@ export function getReportReasonOptions(subjectType, t) {
   }));
 }
 
+export function getModerationReportTargetId(report) {
+  if (!report) {
+    return null;
+  }
+
+  switch (report.subjectType ?? report.subject_type) {
+    case REPORT_SUBJECT_TYPES.message:
+      return report.message?.id ?? report.message_id ?? report.subjectId ?? report.subject_id ?? null;
+    case REPORT_SUBJECT_TYPES.profile:
+      return report.profile?.id ?? report.subjectId ?? report.subject_id ?? report.reported_user_id ?? null;
+    case REPORT_SUBJECT_TYPES.listing:
+    default:
+      return report.listing?.id ?? report.listing_id ?? report.subjectId ?? report.subject_id ?? null;
+  }
+}
+
+export function getModerationReportGroupKey(report) {
+  const subjectType = report?.subjectType ?? report?.subject_type ?? REPORT_SUBJECT_TYPES.listing;
+  const targetId = getModerationReportTargetId(report);
+
+  return `${subjectType}:${targetId ?? report?.id ?? "unknown"}`;
+}
+
 export function getModerationDisplayName(profile, t) {
   return [profile?.first_name, profile?.last_name].filter(Boolean).join(" ").trim() || t.student;
 }

@@ -56,9 +56,53 @@ export default async function AdminReportReviewPage({ params }) {
     notFound();
   }
 
+  let relatedReportRows = [reportRow];
+
+  if (reportRow.subject_type === REPORT_SUBJECT_TYPES.message && reportRow.message_id) {
+    const { data: relatedRows, error: relatedError } = await supabase
+      .from("reports")
+      .select(MODERATION_REPORT_SELECT)
+      .eq("subject_type", REPORT_SUBJECT_TYPES.message)
+      .eq("message_id", reportRow.message_id)
+      .order("created_at", { ascending: false });
+
+    if (relatedError) {
+      console.error("Failed to load related message reports:", relatedError.message);
+    } else if (relatedRows?.length) {
+      relatedReportRows = relatedRows;
+    }
+  } else if (reportRow.subject_type === REPORT_SUBJECT_TYPES.listing && reportRow.listing_id) {
+    const { data: relatedRows, error: relatedError } = await supabase
+      .from("reports")
+      .select(MODERATION_REPORT_SELECT)
+      .eq("subject_type", REPORT_SUBJECT_TYPES.listing)
+      .eq("listing_id", reportRow.listing_id)
+      .order("created_at", { ascending: false });
+
+    if (relatedError) {
+      console.error("Failed to load related listing reports:", relatedError.message);
+    } else if (relatedRows?.length) {
+      relatedReportRows = relatedRows;
+    }
+  } else if (reportRow.subject_type === REPORT_SUBJECT_TYPES.profile && reportRow.subject_id) {
+    const { data: relatedRows, error: relatedError } = await supabase
+      .from("reports")
+      .select(MODERATION_REPORT_SELECT)
+      .eq("subject_type", REPORT_SUBJECT_TYPES.profile)
+      .eq("subject_id", reportRow.subject_id)
+      .order("created_at", { ascending: false });
+
+    if (relatedError) {
+      console.error("Failed to load related profile reports:", relatedError.message);
+    } else if (relatedRows?.length) {
+      relatedReportRows = relatedRows;
+    }
+  }
+
   const profileIds = [
-    reportRow.reporter_user_id,
-    reportRow.reported_user_id,
+    ...relatedReportRows.map((report) => report.reporter_user_id),
+    ...relatedReportRows.map((report) => report.reported_user_id),
+    ...relatedReportRows.map((report) => report.reviewed_by),
     reportRow.subject_type === REPORT_SUBJECT_TYPES.profile ? reportRow.subject_id : null,
   ].filter(Boolean);
   const { data: reportProfiles, error: reportProfilesError } = profileIds.length
@@ -241,6 +285,26 @@ export default async function AdminReportReviewPage({ params }) {
     message: reportMessage,
   };
 
+  const relatedReports = relatedReportRows.map((relatedReport) => ({
+    id: relatedReport.id,
+    subjectType: relatedReport.subject_type,
+    reason: relatedReport.reason,
+    details: relatedReport.details,
+    status: relatedReport.status,
+    createdAt: relatedReport.created_at,
+    reviewedAt: relatedReport.reviewed_at,
+    reporter: {
+      id: relatedReport.reporter_user_id,
+      name: getModerationDisplayName(reportProfilesById.get(relatedReport.reporter_user_id), t),
+    },
+    reviewedBy: relatedReport.reviewed_by
+      ? {
+          id: relatedReport.reviewed_by,
+          name: getModerationDisplayName(reportProfilesById.get(relatedReport.reviewed_by), t),
+        }
+      : null,
+  }));
+
   const ReviewIcon = reviewIcon;
 
   return (
@@ -261,6 +325,7 @@ export default async function AdminReportReviewPage({ params }) {
 
         <AdminReportReviewContent
           report={report}
+          relatedReports={relatedReports}
           conversation={conversation}
           messages={messages}
           listingReview={listingReview}

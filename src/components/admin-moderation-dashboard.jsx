@@ -27,6 +27,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import {
   REPORT_STATUS_VALUES,
   REPORT_SUBJECT_TYPES,
+  getModerationReportGroupKey,
   getTranslatedReportReason,
   getTranslatedReportStatus,
   getTranslatedReportSubjectType,
@@ -62,69 +63,162 @@ function getReportSubjectPreview(report, t) {
   return report.message?.body ?? t.unknown;
 }
 
-function getReportSearchText(report, t) {
+function getReportSortTime(report) {
+  return new Date(report.createdAt ?? 0).getTime();
+}
+
+function buildReportGroups(reports, t) {
+  const groupsByKey = new Map();
+
+  for (const report of reports) {
+    const groupKey = getModerationReportGroupKey(report);
+    const existingGroup = groupsByKey.get(groupKey);
+
+    if (existingGroup) {
+      existingGroup.reports.push(report);
+      continue;
+    }
+
+    groupsByKey.set(groupKey, {
+      key: groupKey,
+      subjectType: report.subjectType,
+      reportedUser: report.reportedUser,
+      reports: [report],
+    });
+  }
+
+  return [...groupsByKey.values()]
+    .map((group) => {
+      const sortedReports = [...group.reports].sort(
+        (firstReport, secondReport) => getReportSortTime(secondReport) - getReportSortTime(firstReport),
+      );
+      const openReports = sortedReports.filter(
+        (report) => report.status === REPORT_STATUS_VALUES.open,
+      );
+      const latestReport = sortedReports[0] ?? null;
+      const primaryReport = openReports[0] ?? latestReport;
+      const reasonLabels = [...new Set(
+        sortedReports.map((report) => getTranslatedReportReason(report.reason, t, report.subjectType)),
+      )];
+      const reporterNames = [...new Set(sortedReports.map((report) => report.reporter.name).filter(Boolean))];
+
+      return {
+        key: group.key,
+        subjectType: group.subjectType,
+        subjectPreview: getReportSubjectPreview(primaryReport, t),
+        reportedUser: primaryReport.reportedUser,
+        latestReportId: primaryReport.id,
+        latestReportedAt: latestReport?.createdAt ?? null,
+        latestReporterName: latestReport?.reporter.name ?? t.unknown,
+        latestStatus: openReports.length > 0 ? REPORT_STATUS_VALUES.open : latestReport?.status,
+        totalCount: sortedReports.length,
+        openCount: openReports.length,
+        reasonLabels,
+        reporterNames,
+        reports: sortedReports,
+      };
+    })
+    .sort((firstGroup, secondGroup) => {
+      return new Date(secondGroup.latestReportedAt ?? 0).getTime() - new Date(firstGroup.latestReportedAt ?? 0).getTime();
+    });
+}
+
+function getReportGroupSearchText(group, t) {
   return [
-    getReportSubjectPreview(report, t),
-    report.reporter.name,
-    report.reportedUser.name,
-    getTranslatedReportReason(report.reason, t, report.subjectType),
-    getTranslatedReportSubjectType(report.subjectType, t),
+    group.subjectPreview,
+    group.reportedUser?.name,
+    ...group.reporterNames,
+    ...group.reasonLabels,
+    getTranslatedReportSubjectType(group.subjectType, t),
   ]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
 }
 
-function ReportQueueTable({ reports, language, t }) {
+function ReportQueueTable({ reportGroups, language, t }) {
   return (
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>{t.type}</TableHead>
           <TableHead>{t.adminSubject}</TableHead>
-          <TableHead>{t.adminReason}</TableHead>
-          <TableHead>{t.reporter}</TableHead>
+          <TableHead>{t.adminReasons}</TableHead>
+          <TableHead>{t.adminGroupedReports}</TableHead>
           <TableHead>{t.adminReportedUser}</TableHead>
-          <TableHead>{t.status}</TableHead>
-          <TableHead>{t.reportedAt}</TableHead>
+          <TableHead>{t.adminLatestReport}</TableHead>
           <TableHead className="text-right">{t.action}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {reports.length > 0 ? (
-          reports.map((report) => {
-            const subjectPreview = getReportSubjectPreview(report, t);
+        {reportGroups.length > 0 ? (
+          reportGroups.map((group) => {
+            const displayedReasons = group.reasonLabels.slice(0, 2);
+            const remainingReasonCount = Math.max(0, group.reasonLabels.length - displayedReasons.length);
 
             return (
-              <TableRow key={report.id}>
+              <TableRow key={group.key}>
                 <TableCell>
                   <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
-                    {getTranslatedReportSubjectType(report.subjectType, t)}
+                    {getTranslatedReportSubjectType(group.subjectType, t)}
                   </Badge>
                 </TableCell>
                 <TableCell className="max-w-[280px]">
                   <Link
-                    href={`/admin/reports/${report.id}`}
-                    className="block truncate font-medium text-foreground hover:underline"
-                    title={subjectPreview}
+                    href={`/admin/reports/${group.latestReportId}`}
+                    className="block font-medium text-foreground hover:underline"
+                    title={group.subjectPreview}
                   >
-                    {subjectPreview}
+                    <span className="block truncate">{group.subjectPreview}</span>
                   </Link>
-                </TableCell>
-                <TableCell>{getTranslatedReportReason(report.reason, t, report.subjectType)}</TableCell>
-                <TableCell>{report.reporter.name}</TableCell>
-                <TableCell>{report.reportedUser.name}</TableCell>
-                <TableCell>
-                  <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
-                    {getTranslatedReportStatus(report.status, t)}
-                  </Badge>
+                  <p className="mt-1 truncate text-xs text-muted-foreground">
+                    {t.adminLatestReporter}: {group.latestReporterName}
+                  </p>
                 </TableCell>
                 <TableCell>
-                  <ClientFormattedDateTime value={report.createdAt} language={language} className="text-sm text-muted-foreground" />
+                  <div className="flex flex-wrap gap-1.5">
+                    {displayedReasons.map((reasonLabel) => (
+                      <Badge
+                        key={reasonLabel}
+                        variant="outline"
+                        className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground"
+                      >
+                        {reasonLabel}
+                      </Badge>
+                    ))}
+                    {remainingReasonCount > 0 ? (
+                      <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
+                        +{remainingReasonCount}
+                      </Badge>
+                    ) : null}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap gap-1.5">
+                    <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
+                      {group.totalCount} {t.adminReportsCountLabel}
+                    </Badge>
+                    {group.openCount > 0 ? (
+                      <Badge className="rounded-full bg-primary/10 px-2.5 py-0.5 text-primary shadow-none dark:bg-primary/15">
+                        {group.openCount} {t.adminOpenCountLabel}
+                      </Badge>
+                    ) : null}
+                  </div>
+                </TableCell>
+                <TableCell>{group.reportedUser.name}</TableCell>
+                <TableCell>
+                  <div className="space-y-1">
+                    <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
+                      {getTranslatedReportStatus(group.latestStatus, t)}
+                    </Badge>
+                    <div>
+                      <ClientFormattedDateTime value={group.latestReportedAt} language={language} className="text-sm text-muted-foreground" />
+                    </div>
+                  </div>
                 </TableCell>
                 <TableCell className="text-right">
                   <Button asChild variant="outline" size="sm" className="rounded-xl">
-                    <Link href={`/admin/reports/${report.id}`}>{t.review}</Link>
+                    <Link href={`/admin/reports/${group.latestReportId}`}>{t.review}</Link>
                   </Button>
                 </TableCell>
               </TableRow>
@@ -132,7 +226,7 @@ function ReportQueueTable({ reports, language, t }) {
           })
         ) : (
           <TableRow>
-            <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
+            <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
               {t.noReports}
             </TableCell>
           </TableRow>
@@ -149,23 +243,25 @@ export function AdminModerationDashboard({ initialReports, reportsAvailable }) {
 
   const reports = React.useMemo(() => initialReports ?? [], [initialReports]);
 
-  const filteredReports = React.useMemo(() => {
+  const reportGroups = React.useMemo(() => buildReportGroups(reports, t), [reports, t]);
+
+  const filteredReportGroups = React.useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
-    return reports.filter((report) => {
-      const matchesType = typeFilter === "all" || report.subjectType === typeFilter;
+    return reportGroups.filter((group) => {
+      const matchesType = typeFilter === "all" || group.subjectType === typeFilter;
       const matchesQuery =
-        normalizedQuery.length === 0 || getReportSearchText(report, t).includes(normalizedQuery);
+        normalizedQuery.length === 0 || getReportGroupSearchText(group, t).includes(normalizedQuery);
 
       return matchesType && matchesQuery;
     });
-  }, [reports, searchQuery, t, typeFilter]);
+  }, [reportGroups, searchQuery, t, typeFilter]);
 
-  const openReports = filteredReports.filter(
-    (report) => report.status === REPORT_STATUS_VALUES.open,
+  const openReportGroups = filteredReportGroups.filter(
+    (group) => group.openCount > 0,
   );
-  const reviewedReports = filteredReports.filter(
-    (report) => report.status !== REPORT_STATUS_VALUES.open,
+  const reviewedReportGroups = filteredReportGroups.filter(
+    (group) => group.openCount === 0,
   );
   const totalOpenReports = reports.filter(
     (report) => report.status === REPORT_STATUS_VALUES.open,
@@ -279,8 +375,8 @@ export function AdminModerationDashboard({ initialReports, reportsAvailable }) {
           </div>
         </CardHeader>
         <CardContent className="px-6 py-6">
-          {openReports.length > 0 ? (
-            <ReportQueueTable reports={openReports} language={language} t={t} />
+          {openReportGroups.length > 0 ? (
+            <ReportQueueTable reportGroups={openReportGroups} language={language} t={t} />
           ) : (
             <div className="rounded-3xl border border-dashed border-border bg-muted/30 px-5 py-10 text-center text-sm text-muted-foreground">
               {hasActiveFilters ? t.adminNoOpenReportsMatchFilters : t.noPendingReports}
@@ -295,8 +391,8 @@ export function AdminModerationDashboard({ initialReports, reportsAvailable }) {
           <CardDescription>{t.adminRecentReviewsDescription}</CardDescription>
         </CardHeader>
         <CardContent className="px-6 py-6">
-          {reviewedReports.length > 0 ? (
-            <ReportQueueTable reports={reviewedReports.slice(0, 20)} language={language} t={t} />
+          {reviewedReportGroups.length > 0 ? (
+            <ReportQueueTable reportGroups={reviewedReportGroups.slice(0, 20)} language={language} t={t} />
           ) : (
             <div className="rounded-3xl border border-dashed border-border bg-muted/30 px-5 py-10 text-center text-sm text-muted-foreground">
               {hasActiveFilters ? t.adminNoReviewedReportsMatchFilters : t.noReports}

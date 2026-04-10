@@ -378,7 +378,7 @@ export const translations = {
     removeListing: "Remove Listing",
     banUser: "Ban User",
     adminReportsDescription:
-      "Review incoming listing and message reports, resolve safe cases, and remove unsuitable listings when needed.",
+      "Review incoming listing, message, and profile reports, resolve safe cases, and remove unsuitable listings when needed.",
     adminQueueDescription:
       "Scan incoming reports quickly, then open any row to review the full context before taking action.",
     adminReviewQueueDescription: "Open reports waiting for moderator review.",
@@ -391,6 +391,12 @@ export const translations = {
     adminNoReportsMatchFilters: "No reports match the current filters.",
     adminNoOpenReportsMatchFilters: "No open reports match the current filters.",
     adminNoReviewedReportsMatchFilters: "No reviewed reports match the current filters.",
+    adminGroupedReports: "Reports",
+    adminReasons: "Reasons",
+    adminLatestReport: "Latest report",
+    adminLatestReporter: "Latest reporter",
+    adminReportsCountLabel: "Reports",
+    adminOpenCountLabel: "Open",
     adminSetupTitle: "Moderation setup is still required",
     adminSetupDescription:
       "Apply the moderation SQL in Supabase first, then come back here to review live reports.",
@@ -418,11 +424,22 @@ export const translations = {
     adminListingReviewDescription:
       "Inspect the reported listing details and listing owner before deciding on the moderation outcome.",
     adminProfileReviewDescription:
-      "Inspect the reported profile details and current listings before deciding on the moderation outcome.",
+      "Inspect the reported profile details and the related reports before deciding on the moderation outcome.",
     backToAdminReports: "Back to reports",
     adminParticipantsTitle: "Conversation participants",
     adminReportedProfileTitle: "Reported profile",
     adminProfileNoListings: "This profile has no active listings right now.",
+    adminRelatedReportsTitle: "Related reports",
+    adminRelatedReportsDescription:
+      "Review all reports for this same target before taking a moderation action.",
+    adminNoRelatedReports: "No related reports were found for this target.",
+    adminCurrentReport: "Current",
+    adminDismissAllOpen: "Dismiss all open reports",
+    adminResolveAllOpen: "Resolve all open reports",
+    adminRemoveListingAndResolveAllOpen: "Remove listing and resolve all open reports",
+    adminOpenReportsResolved: "Open reports resolved.",
+    adminOpenReportsDismissed: "Open reports dismissed.",
+    adminListingRemovedAndAllResolved: "Listing removed and all open reports resolved.",
     adminReportActionError: "We could not update this report right now.",
     adminListingRemovedAndResolved: "Listing removed and report resolved.",
     adminOpenStatus: "Open",
@@ -977,7 +994,7 @@ export const translations = {
     removeListing: "Supprimer l'annonce",
     banUser: "Bannir l'utilisateur",
     adminReportsDescription:
-      "Examinez les signalements d'annonces et de messages, résolvez les cas sûrs et retirez les annonces inappropriées au besoin.",
+      "Examinez les signalements d'annonces, de messages et de profils, résolvez les cas sûrs et retirez les annonces inappropriées au besoin.",
     adminQueueDescription:
       "Parcourez rapidement les signalements entrants, puis ouvrez une ligne pour examiner tout le contexte avant d'agir.",
     adminReviewQueueDescription:
@@ -994,6 +1011,12 @@ export const translations = {
       "Aucun signalement ouvert ne correspond aux filtres actuels.",
     adminNoReviewedReportsMatchFilters:
       "Aucun signalement examiné ne correspond aux filtres actuels.",
+    adminGroupedReports: "Signalements",
+    adminReasons: "Raisons",
+    adminLatestReport: "Dernier signalement",
+    adminLatestReporter: "Dernier auteur",
+    adminReportsCountLabel: "signalements",
+    adminOpenCountLabel: "ouverts",
     adminSetupTitle: "La configuration de la modération est encore requise",
     adminSetupDescription:
       "Appliquez d'abord le SQL de modération dans Supabase, puis revenez ici pour examiner les signalements en direct.",
@@ -1023,11 +1046,24 @@ export const translations = {
     adminListingReviewDescription:
       "Inspectez les détails de l'annonce signalée et le profil du vendeur avant de décider du résultat de modération.",
     adminProfileReviewDescription:
-      "Inspectez les détails du profil signalé et ses annonces actives avant de décider du résultat de modération.",
+      "Inspectez les détails du profil signalé et les signalements liés avant de décider du résultat de modération.",
     backToAdminReports: "Retour aux signalements",
     adminParticipantsTitle: "Participants à la conversation",
     adminReportedProfileTitle: "Profil signalé",
     adminProfileNoListings: "Ce profil n'a aucune annonce active pour le moment.",
+    adminRelatedReportsTitle: "Signalements liés",
+    adminRelatedReportsDescription:
+      "Examinez tous les signalements visant ce même contenu avant d'agir.",
+    adminNoRelatedReports: "Aucun signalement lié n'a été trouvé pour ce contenu.",
+    adminCurrentReport: "Actuel",
+    adminDismissAllOpen: "Ignorer tous les signalements ouverts",
+    adminResolveAllOpen: "Résoudre tous les signalements ouverts",
+    adminRemoveListingAndResolveAllOpen:
+      "Supprimer l'annonce et résoudre tous les signalements ouverts",
+    adminOpenReportsResolved: "Les signalements ouverts ont été résolus.",
+    adminOpenReportsDismissed: "Les signalements ouverts ont été ignorés.",
+    adminListingRemovedAndAllResolved:
+      "Annonce supprimée et tous les signalements ouverts ont été résolus.",
     adminReportActionError:
       "Nous n'avons pas pu mettre ce signalement à jour pour le moment.",
     adminListingRemovedAndResolved: "Annonce supprimée et signalement résolu.",
