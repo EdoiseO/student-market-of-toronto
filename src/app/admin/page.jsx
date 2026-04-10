@@ -139,6 +139,12 @@ export default async function AdminPage() {
       id: report.reported_user_id,
       name: getModerationDisplayName(profilesById.get(report.reported_user_id), t),
     },
+    reviewedBy: report.reviewed_by
+      ? {
+          id: report.reviewed_by,
+          name: getModerationDisplayName(profilesById.get(report.reviewed_by), t),
+        }
+      : null,
     profile:
       report.subject_type === REPORT_SUBJECT_TYPES.profile
         ? {

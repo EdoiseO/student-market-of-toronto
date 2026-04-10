@@ -18,6 +18,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import { useLanguage } from "@/context/LanguageContext";
 import {
   REPORT_STATUS_VALUES,
@@ -45,12 +46,19 @@ export function AdminReportReviewContent({
   messages = [],
   listingReview = null,
   profileReview = null,
+  notesAvailable = false,
   currentUserId,
 }) {
   const router = useRouter();
   const supabase = React.useMemo(() => createClient(), []);
   const { t, language } = useLanguage();
   const [isProcessing, setIsProcessing] = React.useState(false);
+  const [isSavingNotes, setIsSavingNotes] = React.useState(false);
+  const [moderatorNotes, setModeratorNotes] = React.useState(report.moderatorNotes ?? "");
+
+  React.useEffect(() => {
+    setModeratorNotes(report.moderatorNotes ?? "");
+  }, [report.id, report.moderatorNotes]);
 
   const isMessageReport = report.subjectType === REPORT_SUBJECT_TYPES.message;
   const isProfileReport = report.subjectType === REPORT_SUBJECT_TYPES.profile;
@@ -89,6 +97,8 @@ export function AdminReportReviewContent({
   const removeListingActionLabel = hasMultipleOpenRelatedReports
     ? t.adminRemoveListingAndResolveAllOpen
     : t.removeListing;
+  const hasModeratorNotes = moderatorNotes.trim().length > 0;
+  const hasNotesChanges = moderatorNotes !== (report.moderatorNotes ?? "");
 
   async function updateRelatedReportStatuses(nextStatus) {
     if (!currentUserId || isProcessing || actionableReportIds.length === 0) {
@@ -179,6 +189,35 @@ export function AdminReportReviewContent({
     router.refresh();
   }
 
+  async function handleSaveModeratorNotes() {
+    if (!notesAvailable || !currentUserId || !report?.id || isSavingNotes || !hasNotesChanges) {
+      return;
+    }
+
+    setIsSavingNotes(true);
+
+    const trimmedNotes = moderatorNotes.trim();
+    const { error } = await supabase
+      .from("reports")
+      .update({
+        moderator_notes: trimmedNotes || null,
+        moderator_notes_updated_at: new Date().toISOString(),
+        moderator_notes_updated_by: currentUserId,
+      })
+      .eq("id", report.id);
+
+    setIsSavingNotes(false);
+
+    if (error) {
+      console.error("Failed to save moderator notes:", error.message);
+      toast.error(t.adminModeratorNotesSaveError);
+      return;
+    }
+
+    toast.success(t.adminModeratorNotesSaved);
+    router.refresh();
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
       <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
@@ -227,6 +266,14 @@ export function AdminReportReviewContent({
           <ReviewMetadata label={t.status}>{getTranslatedReportStatus(report.status, t)}</ReviewMetadata>
           <ReviewMetadata label={t.adminGroupedReports}>{sortedRelatedReports.length}</ReviewMetadata>
           <ReviewMetadata label={t.adminOpenCountLabel}>{openRelatedReports.length}</ReviewMetadata>
+          {report.reviewedBy ? (
+            <ReviewMetadata label={t.adminReviewedBy}>{report.reviewedBy.name}</ReviewMetadata>
+          ) : null}
+          {report.reviewedAt ? (
+            <ReviewMetadata label={t.reviewedAt}>
+              <ClientFormattedDateTime value={report.reviewedAt} language={language} />
+            </ReviewMetadata>
+          ) : null}
           {report.details ? (
             <div className="md:col-span-2 xl:col-span-6">
               <ReviewMetadata label={t.adminDetails}>{report.details}</ReviewMetadata>
@@ -493,6 +540,66 @@ export function AdminReportReviewContent({
           <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
             <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
               <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
+                {t.adminModeratorNotesTitle}
+              </CardTitle>
+              <CardDescription>
+                {notesAvailable
+                  ? t.adminModeratorNotesDescription
+                  : t.adminModeratorNotesSetupDescription}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 px-6 py-5">
+              {notesAvailable ? (
+                <>
+                  <div className="rounded-xl border border-zinc-200 bg-background p-3 shadow-sm dark:border-border dark:bg-background">
+                    <Textarea
+                      value={moderatorNotes}
+                      onChange={(event) => setModeratorNotes(event.target.value)}
+                      placeholder={t.adminModeratorNotesPlaceholder}
+                      rows={6}
+                      maxLength={4000}
+                      className="min-h-32 resize-y border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0"
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="text-xs text-zinc-500 dark:text-muted-foreground">
+                      {report.moderatorNotesUpdatedAt ? (
+                        <span>
+                          {t.adminModeratorNotesUpdatedByPrefix} {report.moderatorNotesUpdatedBy?.name ?? t.unknown} ·{" "}
+                          <ClientFormattedDateTime
+                            value={report.moderatorNotesUpdatedAt}
+                            language={language}
+                          />
+                        </span>
+                      ) : hasModeratorNotes ? (
+                        <span>{t.adminModeratorNotesUnsavedHint}</span>
+                      ) : (
+                        <span>{t.adminModeratorNotesEmpty}</span>
+                      )}
+                    </div>
+
+                    <Button
+                      type="button"
+                      className="rounded-xl"
+                      disabled={isSavingNotes || !hasNotesChanges}
+                      onClick={handleSaveModeratorNotes}
+                    >
+                      {isSavingNotes ? t.saving : t.saveNotes}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-5 text-sm text-muted-foreground">
+                  {t.adminModeratorNotesSetupHint}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
+            <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+              <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
                 {t.adminRelatedReportsTitle}
               </CardTitle>
               <CardDescription>{t.adminRelatedReportsDescription}</CardDescription>
@@ -531,6 +638,25 @@ export function AdminReportReviewContent({
                           <p className="text-sm font-medium text-zinc-950 dark:text-foreground">
                             {relatedReport.reporter.name}
                           </p>
+
+                          {relatedReport.reviewedBy || relatedReport.reviewedAt ? (
+                            <p className="text-xs text-zinc-500 dark:text-muted-foreground">
+                              {relatedReport.reviewedBy
+                                ? `${t.adminReviewedBy}: ${relatedReport.reviewedBy.name}`
+                                : t.reviewedAt}
+                              {relatedReport.reviewedAt ? (
+                                <>
+                                  {" "}· <ClientFormattedDateTime value={relatedReport.reviewedAt} language={language} />
+                                </>
+                              ) : null}
+                            </p>
+                          ) : null}
+
+                          {relatedReport.moderatorNotes ? (
+                            <p className="line-clamp-2 text-xs text-zinc-500 dark:text-muted-foreground">
+                              {relatedReport.moderatorNotes}
+                            </p>
+                          ) : null}
 
                           {relatedReport.details ? (
                             <p className="line-clamp-2 text-sm text-zinc-500 dark:text-muted-foreground">

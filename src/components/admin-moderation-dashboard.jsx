@@ -97,6 +97,7 @@ function buildReportGroups(reports, t) {
       );
       const latestReport = sortedReports[0] ?? null;
       const primaryReport = openReports[0] ?? latestReport;
+      const latestReviewedReport = sortedReports.find((report) => report.reviewedAt) ?? null;
       const reasonLabels = [...new Set(
         sortedReports.map((report) => getTranslatedReportReason(report.reason, t, report.subjectType)),
       )];
@@ -111,6 +112,8 @@ function buildReportGroups(reports, t) {
         latestReportedAt: latestReport?.createdAt ?? null,
         latestReporterName: latestReport?.reporter.name ?? t.unknown,
         latestStatus: openReports.length > 0 ? REPORT_STATUS_VALUES.open : latestReport?.status,
+        latestReviewedAt: latestReviewedReport?.reviewedAt ?? null,
+        latestReviewedByName: latestReviewedReport?.reviewedBy?.name ?? null,
         totalCount: sortedReports.length,
         openCount: openReports.length,
         reasonLabels,
@@ -212,8 +215,17 @@ function ReportQueueTable({ reportGroups, language, t }) {
                       {getTranslatedReportStatus(group.latestStatus, t)}
                     </Badge>
                     <div>
-                      <ClientFormattedDateTime value={group.latestReportedAt} language={language} className="text-sm text-muted-foreground" />
+                      <ClientFormattedDateTime
+                        value={group.openCount > 0 ? group.latestReportedAt : group.latestReviewedAt ?? group.latestReportedAt}
+                        language={language}
+                        className="text-sm text-muted-foreground"
+                      />
                     </div>
+                    {group.openCount === 0 && group.latestReviewedByName ? (
+                      <p className="text-xs text-muted-foreground">
+                        {t.adminReviewedBy}: {group.latestReviewedByName}
+                      </p>
+                    ) : null}
                   </div>
                 </TableCell>
                 <TableCell className="text-right">

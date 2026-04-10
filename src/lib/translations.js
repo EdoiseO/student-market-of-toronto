@@ -401,6 +401,7 @@ export const translations = {
     adminSetupDescription:
       "Apply the moderation SQL in Supabase first, then come back here to review live reports.",
     adminReportedUser: "Reported user",
+    adminReviewedBy: "Reviewed by",
     adminSubject: "Subject",
     adminReason: "Reason",
     adminDetails: "Details",
@@ -434,6 +435,21 @@ export const translations = {
       "Review all reports for this same target before taking a moderation action.",
     adminNoRelatedReports: "No related reports were found for this target.",
     adminCurrentReport: "Current",
+    adminModeratorNotesTitle: "Moderator notes",
+    adminModeratorNotesDescription:
+      "Private review notes for this specific report. Use them to capture context, rationale, or follow-up details.",
+    adminModeratorNotesSetupDescription:
+      "Moderator notes need a small reports-table update before they can be saved here.",
+    adminModeratorNotesSetupHint:
+      "Apply the moderator notes SQL in Supabase to enable private report notes and note audit fields.",
+    adminModeratorNotesPlaceholder:
+      "Add private review notes, decision context, or follow-up reminders for this report...",
+    adminModeratorNotesSaved: "Moderator notes saved.",
+    adminModeratorNotesSaveError: "We could not save moderator notes right now.",
+    adminModeratorNotesUpdatedByPrefix: "Last updated by",
+    adminModeratorNotesUnsavedHint: "You have unsaved note changes.",
+    adminModeratorNotesEmpty: "No moderator notes yet.",
+    saveNotes: "Save notes",
     adminDismissAllOpen: "Dismiss all open reports",
     adminResolveAllOpen: "Resolve all open reports",
     adminRemoveListingAndResolveAllOpen: "Remove listing and resolve all open reports",
@@ -1021,6 +1037,7 @@ export const translations = {
     adminSetupDescription:
       "Appliquez d'abord le SQL de modération dans Supabase, puis revenez ici pour examiner les signalements en direct.",
     adminReportedUser: "Utilisateur signalé",
+    adminReviewedBy: "Examiné par",
     adminSubject: "Sujet",
     adminReason: "Raison",
     adminDetails: "Détails",
@@ -1056,6 +1073,22 @@ export const translations = {
       "Examinez tous les signalements visant ce même contenu avant d'agir.",
     adminNoRelatedReports: "Aucun signalement lié n'a été trouvé pour ce contenu.",
     adminCurrentReport: "Actuel",
+    adminModeratorNotesTitle: "Notes de modération",
+    adminModeratorNotesDescription:
+      "Notes privées pour ce signalement précis. Utilisez-les pour garder le contexte, la justification ou un suivi à faire.",
+    adminModeratorNotesSetupDescription:
+      "Les notes de modération exigent une petite mise à jour de la table `reports` avant de pouvoir être enregistrées ici.",
+    adminModeratorNotesSetupHint:
+      "Appliquez le SQL des notes de modération dans Supabase pour activer les notes privées et leurs champs d'audit.",
+    adminModeratorNotesPlaceholder:
+      "Ajoutez des notes privées, le contexte de la décision, ou des rappels de suivi pour ce signalement...",
+    adminModeratorNotesSaved: "Notes de modération enregistrées.",
+    adminModeratorNotesSaveError:
+      "Nous n'avons pas pu enregistrer les notes de modération pour le moment.",
+    adminModeratorNotesUpdatedByPrefix: "Dernière mise à jour par",
+    adminModeratorNotesUnsavedHint: "Vous avez des changements de notes non enregistrés.",
+    adminModeratorNotesEmpty: "Aucune note de modération pour le moment.",
+    saveNotes: "Enregistrer les notes",
     adminDismissAllOpen: "Ignorer tous les signalements ouverts",
     adminResolveAllOpen: "Résoudre tous les signalements ouverts",
     adminRemoveListingAndResolveAllOpen:

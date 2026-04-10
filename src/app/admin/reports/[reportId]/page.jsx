@@ -7,10 +7,12 @@ import { AdminReportReviewContent } from "@/components/admin-report-review-conte
 import { Button } from "@/components/ui/button";
 import { MESSAGE_CONVERSATION_SELECT, getConversationDisplayName } from "@/lib/messages";
 import {
+  MODERATION_REPORT_NOTES_SELECT,
   MODERATION_REPORT_SELECT,
   REPORT_SUBJECT_TYPES,
   getModerationDisplayName,
   getUserModerationRole,
+  isReportNotesColumnsMissing,
   isModerationRole,
   isReportsTableMissing,
 } from "@/lib/moderation";
@@ -99,10 +101,31 @@ export default async function AdminReportReviewPage({ params }) {
     }
   }
 
+  let notesAvailable = true;
+  let reportNotesRows = [];
+
+  const { data: fetchedReportNotesRows, error: reportNotesError } = await supabase
+    .from("reports")
+    .select(MODERATION_REPORT_NOTES_SELECT)
+    .in("id", relatedReportRows.map((relatedReport) => relatedReport.id));
+
+  if (reportNotesError) {
+    if (isReportNotesColumnsMissing(reportNotesError)) {
+      notesAvailable = false;
+    } else {
+      console.error("Failed to load moderation report notes:", reportNotesError.message);
+    }
+  } else {
+    reportNotesRows = fetchedReportNotesRows ?? [];
+  }
+
+  const reportNotesById = new Map((reportNotesRows ?? []).map((notesRow) => [notesRow.id, notesRow]));
+
   const profileIds = [
     ...relatedReportRows.map((report) => report.reporter_user_id),
     ...relatedReportRows.map((report) => report.reported_user_id),
     ...relatedReportRows.map((report) => report.reviewed_by),
+    ...reportNotesRows.map((report) => report.moderator_notes_updated_by),
     reportRow.subject_type === REPORT_SUBJECT_TYPES.profile ? reportRow.subject_id : null,
   ].filter(Boolean);
   const { data: reportProfiles, error: reportProfilesError } = profileIds.length
@@ -274,6 +297,7 @@ export default async function AdminReportReviewPage({ params }) {
     details: reportRow.details,
     status: reportRow.status,
     createdAt: reportRow.created_at,
+    reviewedAt: reportRow.reviewed_at,
     reporter: {
       id: reportRow.reporter_user_id,
       name: getModerationDisplayName(reportProfilesById.get(reportRow.reporter_user_id), t),
@@ -282,6 +306,23 @@ export default async function AdminReportReviewPage({ params }) {
       id: reportRow.reported_user_id,
       name: getModerationDisplayName(reportProfilesById.get(reportRow.reported_user_id), t),
     },
+    reviewedBy: reportRow.reviewed_by
+      ? {
+          id: reportRow.reviewed_by,
+          name: getModerationDisplayName(reportProfilesById.get(reportRow.reviewed_by), t),
+        }
+      : null,
+    moderatorNotes: reportNotesById.get(reportRow.id)?.moderator_notes ?? null,
+    moderatorNotesUpdatedAt: reportNotesById.get(reportRow.id)?.moderator_notes_updated_at ?? null,
+    moderatorNotesUpdatedBy: reportNotesById.get(reportRow.id)?.moderator_notes_updated_by
+      ? {
+          id: reportNotesById.get(reportRow.id).moderator_notes_updated_by,
+          name: getModerationDisplayName(
+            reportProfilesById.get(reportNotesById.get(reportRow.id).moderator_notes_updated_by),
+            t,
+          ),
+        }
+      : null,
     message: reportMessage,
   };
 
@@ -301,6 +342,17 @@ export default async function AdminReportReviewPage({ params }) {
       ? {
           id: relatedReport.reviewed_by,
           name: getModerationDisplayName(reportProfilesById.get(relatedReport.reviewed_by), t),
+        }
+      : null,
+    moderatorNotes: reportNotesById.get(relatedReport.id)?.moderator_notes ?? null,
+    moderatorNotesUpdatedAt: reportNotesById.get(relatedReport.id)?.moderator_notes_updated_at ?? null,
+    moderatorNotesUpdatedBy: reportNotesById.get(relatedReport.id)?.moderator_notes_updated_by
+      ? {
+          id: reportNotesById.get(relatedReport.id).moderator_notes_updated_by,
+          name: getModerationDisplayName(
+            reportProfilesById.get(reportNotesById.get(relatedReport.id).moderator_notes_updated_by),
+            t,
+          ),
         }
       : null,
   }));
@@ -330,6 +382,7 @@ export default async function AdminReportReviewPage({ params }) {
           messages={messages}
           listingReview={listingReview}
           profileReview={profileReview}
+          notesAvailable={notesAvailable}
           currentUserId={user.id}
         />
       </div>

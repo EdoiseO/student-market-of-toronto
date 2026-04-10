@@ -64,6 +64,13 @@ export const MODERATION_REPORT_SELECT = `
   created_at
 `;
 
+export const MODERATION_REPORT_NOTES_SELECT = `
+  id,
+  moderator_notes,
+  moderator_notes_updated_at,
+  moderator_notes_updated_by
+`;
+
 function normalizeRoleValue(value) {
   if (typeof value !== "string") {
     return null;
@@ -116,6 +123,21 @@ export function isReportsSubjectTypeUnsupported(error) {
   return (
     (error?.code === "23514" || error?.code === "22P02") &&
     message.includes("subject_type")
+  );
+}
+
+export function isReportNotesColumnsMissing(error) {
+  const message = [error?.message, error?.details, error?.hint]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return (
+    error?.code === "42703" ||
+    error?.code === "PGRST204" ||
+    message.includes("moderator_notes") ||
+    message.includes("moderator_notes_updated_at") ||
+    message.includes("moderator_notes_updated_by")
   );
 }
 
