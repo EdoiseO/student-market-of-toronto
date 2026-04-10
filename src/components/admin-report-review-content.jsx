@@ -39,6 +39,82 @@ function ReviewMetadata({ label, children }) {
   );
 }
 
+function ModeratorNotesCard({
+  t,
+  language,
+  notesAvailable,
+  moderatorNotes,
+  setModeratorNotes,
+  report,
+  hasModeratorNotes,
+  isSavingNotes,
+  hasNotesChanges,
+  handleSaveModeratorNotes,
+  compact = false,
+}) {
+  return (
+    <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
+      <CardHeader className={`border-b border-zinc-200 dark:border-border ${compact ? "px-4 py-3.5" : "px-6 py-5"}`}>
+        <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
+          {t.adminModeratorNotesTitle}
+        </CardTitle>
+        <CardDescription>
+          {notesAvailable
+            ? t.adminModeratorNotesDescription
+            : t.adminModeratorNotesSetupDescription}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className={`space-y-3 ${compact ? "px-4 py-3.5" : "px-6 py-5"}`}>
+        {notesAvailable ? (
+          <>
+            <div className="rounded-xl border border-zinc-200 bg-background p-3 shadow-sm dark:border-border dark:bg-background">
+              <Textarea
+                value={moderatorNotes}
+                onChange={(event) => setModeratorNotes(event.target.value)}
+                placeholder={t.adminModeratorNotesPlaceholder}
+                rows={compact ? 3 : 6}
+                maxLength={4000}
+                className={`${compact ? "min-h-20" : "min-h-32"} resize-y border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0`}
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="text-xs text-zinc-500 dark:text-muted-foreground">
+                {report.moderatorNotesUpdatedAt ? (
+                  <span>
+                    {t.adminModeratorNotesUpdatedByPrefix} {report.moderatorNotesUpdatedBy?.name ?? t.unknown} ·{" "}
+                    <ClientFormattedDateTime
+                      value={report.moderatorNotesUpdatedAt}
+                      language={language}
+                    />
+                  </span>
+                ) : hasModeratorNotes ? (
+                  <span>{t.adminModeratorNotesUnsavedHint}</span>
+                ) : (
+                  <span>{t.adminModeratorNotesEmpty}</span>
+                )}
+              </div>
+
+              <Button
+                type="button"
+                className="rounded-xl"
+                disabled={isSavingNotes || !hasNotesChanges}
+                onClick={handleSaveModeratorNotes}
+              >
+                {isSavingNotes ? t.saving : t.saveNotes}
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-5 text-sm text-muted-foreground">
+            {t.adminModeratorNotesSetupHint}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function AdminReportReviewContent({
   report,
   relatedReports = [],
@@ -63,7 +139,6 @@ export function AdminReportReviewContent({
   const isMessageReport = report.subjectType === REPORT_SUBJECT_TYPES.message;
   const isProfileReport = report.subjectType === REPORT_SUBJECT_TYPES.profile;
   const flaggedMessageId = report.message?.id ?? null;
-  const isOpen = report.status === REPORT_STATUS_VALUES.open;
   const sortedRelatedReports = React.useMemo(
     () => [...relatedReports].sort((firstReport, secondReport) => {
       return new Date(secondReport.createdAt ?? 0).getTime() - new Date(firstReport.createdAt ?? 0).getTime();
@@ -162,7 +237,11 @@ export function AdminReportReviewContent({
 
     const { error: listingError } = await supabase
       .from("listings")
-      .update({ status: "inactive" })
+      .update({
+        status: "inactive",
+        moderation_reviewed_at: new Date().toISOString(),
+        moderation_reviewed_by: currentUserId,
+      })
       .eq("id", listingTarget.id);
 
     if (listingError) {
@@ -285,7 +364,7 @@ export function AdminReportReviewContent({
       <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.8fr)]">
         {isMessageReport ? (
           <section className="flex min-h-0 flex-col overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card">
-            <div className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+            <div className="border-b border-zinc-200 px-6 py-4 dark:border-border">
               <p className="text-lg font-semibold text-zinc-950 dark:text-foreground">
                 {t.adminConversationContextLabel}
               </p>
@@ -343,7 +422,23 @@ export function AdminReportReviewContent({
               })}
             </div>
 
-            <div className="border-t border-zinc-200 bg-background px-6 py-5 dark:border-border">
+            <div className="border-t border-zinc-200 bg-background px-5 py-4 dark:border-border">
+              <ModeratorNotesCard
+                t={t}
+                language={language}
+                notesAvailable={notesAvailable}
+                moderatorNotes={moderatorNotes}
+                setModeratorNotes={setModeratorNotes}
+                report={report}
+                hasModeratorNotes={hasModeratorNotes}
+                isSavingNotes={isSavingNotes}
+                hasNotesChanges={hasNotesChanges}
+                handleSaveModeratorNotes={handleSaveModeratorNotes}
+                compact
+              />
+            </div>
+
+            <div className="border-t border-zinc-200 bg-background px-6 py-4 dark:border-border">
               <div className="flex flex-wrap justify-end gap-2">
                 {canRemoveListing ? (
                   <Button
@@ -535,67 +630,22 @@ export function AdminReportReviewContent({
             </div>
           </section>
         )}
-
+      
         <div className="space-y-4">
-          <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-            <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
-              <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
-                {t.adminModeratorNotesTitle}
-              </CardTitle>
-              <CardDescription>
-                {notesAvailable
-                  ? t.adminModeratorNotesDescription
-                  : t.adminModeratorNotesSetupDescription}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 px-6 py-5">
-              {notesAvailable ? (
-                <>
-                  <div className="rounded-xl border border-zinc-200 bg-background p-3 shadow-sm dark:border-border dark:bg-background">
-                    <Textarea
-                      value={moderatorNotes}
-                      onChange={(event) => setModeratorNotes(event.target.value)}
-                      placeholder={t.adminModeratorNotesPlaceholder}
-                      rows={6}
-                      maxLength={4000}
-                      className="min-h-32 resize-y border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0"
-                    />
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="text-xs text-zinc-500 dark:text-muted-foreground">
-                      {report.moderatorNotesUpdatedAt ? (
-                        <span>
-                          {t.adminModeratorNotesUpdatedByPrefix} {report.moderatorNotesUpdatedBy?.name ?? t.unknown} ·{" "}
-                          <ClientFormattedDateTime
-                            value={report.moderatorNotesUpdatedAt}
-                            language={language}
-                          />
-                        </span>
-                      ) : hasModeratorNotes ? (
-                        <span>{t.adminModeratorNotesUnsavedHint}</span>
-                      ) : (
-                        <span>{t.adminModeratorNotesEmpty}</span>
-                      )}
-                    </div>
-
-                    <Button
-                      type="button"
-                      className="rounded-xl"
-                      disabled={isSavingNotes || !hasNotesChanges}
-                      onClick={handleSaveModeratorNotes}
-                    >
-                      {isSavingNotes ? t.saving : t.saveNotes}
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-5 text-sm text-muted-foreground">
-                  {t.adminModeratorNotesSetupHint}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          {!isMessageReport ? (
+            <ModeratorNotesCard
+              t={t}
+              language={language}
+              notesAvailable={notesAvailable}
+              moderatorNotes={moderatorNotes}
+              setModeratorNotes={setModeratorNotes}
+              report={report}
+              hasModeratorNotes={hasModeratorNotes}
+              isSavingNotes={isSavingNotes}
+              hasNotesChanges={hasNotesChanges}
+              handleSaveModeratorNotes={handleSaveModeratorNotes}
+            />
+          ) : null}
 
           <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
             <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">

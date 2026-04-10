@@ -156,7 +156,7 @@ export const translations = {
     passwordsDoNotMatch: "Passwords do not match.",
     accountCreatedSuccess: "Account created! Check your email to verify.",
     createListingDesc:
-      "Add the main item details first. Photos, campus, condition, and tag preview are included here so the page reflects how the listing will look later in the marketplace.",
+      "Add the main item details first. Photos, campus, condition, and tag preview are included here so the page reflects how the listing will look later in the marketplace. Submitted listings now go through moderator review before they go live.",
     title: "Title",
     titlePlaceholder: "e.g. MacBook Air M1",
     category: "Category",
@@ -179,8 +179,14 @@ export const translations = {
     saveDraft: "Save Draft",
     saving: "Saving...",
     publish: "Publish Listing",
+    submitForReview: "Submit for Review",
+    resubmitForReview: "Resubmit for Review",
     draftSaved: "Draft saved successfully.",
     listingPublished: "Listing published successfully.",
+    listingSubmittedForReview: "Listing submitted for review.",
+    listingResubmittedAfterEdit: "Changes saved and listing resubmitted for review.",
+    listingApprovalSetupRequired:
+      "Listing approval is not available in this environment yet.",
     fillFields: "Fill in all required listing fields before continuing.",
     validPrice: "Enter a valid price.",
     mustLogin: "You must be logged in to create a listing.",
@@ -283,6 +289,17 @@ export const translations = {
     reportReasonProfileInappropriate: "Inappropriate profile photo or bio",
     reportProfileDetailsPlaceholder:
       "Example: the profile photo contains explicit content, the bio includes harassment, or the account appears to impersonate another student...",
+    pendingReview: "Pending Review",
+    rejected: "Rejected",
+    listingPendingReviewDescription:
+      "This listing is waiting for moderator approval before it can go live.",
+    listingResubmittedAfterEditDescription:
+      "This listing was resubmitted after edits and is waiting for moderator approval again.",
+    listingPendingReviewSubmittedPrefix: "Submitted",
+    listingPreviousFeedbackPrefix: "Previous feedback:",
+    listingRejectedTitle: "Changes requested before approval",
+    listingRejectedDescription:
+      "A moderator rejected this listing. Review the requested changes, update the listing, then resubmit it for review.",
     viewContext: "View context",
     noMessagesYetTitle: "No messages yet",
     noMessagesYetDescription:
@@ -379,8 +396,12 @@ export const translations = {
     banUser: "Ban User",
     adminReportsDescription:
       "Review incoming listing, message, and profile reports, resolve safe cases, and remove unsuitable listings when needed.",
+    adminListingApprovals: "Listing Approvals",
+    adminPendingListingApprovals: "Pending Listing Approvals",
     adminQueueDescription:
       "Scan incoming reports quickly, then open any row to review the full context before taking action.",
+    adminListingApprovalQueueDescription:
+      "Review submitted listings before they go live.",
     adminReviewQueueDescription: "Open reports waiting for moderator review.",
     adminListingReportsDescription: "Reports linked to marketplace listings.",
     adminMessageReportsDescription: "Reports linked to buyer-seller messages.",
@@ -391,6 +412,13 @@ export const translations = {
     adminNoReportsMatchFilters: "No reports match the current filters.",
     adminNoOpenReportsMatchFilters: "No open reports match the current filters.",
     adminNoReviewedReportsMatchFilters: "No reviewed reports match the current filters.",
+    adminListingApprovalSetupDescription:
+      "Apply the listing approval SQL in Supabase first, then come back here to review submitted listings.",
+    adminNoPendingListingApprovals: "No listings are waiting for approval.",
+    adminRecentListingDecisionsTitle: "Recent Listing Decisions",
+    adminRecentListingDecisionsDescription:
+      "The latest listing approvals and rejections made from this queue.",
+    adminNoRecentListingDecisions: "No listing decisions yet.",
     adminGroupedReports: "Reports",
     adminReasons: "Reasons",
     adminLatestReport: "Latest report",
@@ -404,9 +432,11 @@ export const translations = {
     adminReviewedBy: "Reviewed by",
     adminSubject: "Subject",
     adminReason: "Reason",
+    adminFeedback: "Feedback",
     adminDetails: "Details",
     reportedAt: "Reported at",
     reviewedAt: "Reviewed at",
+    adminSubmittedForReviewAt: "Submitted for review",
     adminMessageContextTitle: "Message report context",
     adminMessageContextDescription:
       "Review the reported message within its conversation before deciding on the moderation outcome.",
@@ -424,6 +454,28 @@ export const translations = {
     adminListingReviewTitle: "Reported listing review",
     adminListingReviewDescription:
       "Inspect the reported listing details and listing owner before deciding on the moderation outcome.",
+    adminListingApprovalReviewTitle: "Review submitted listing",
+    adminListingApprovalReviewDescription:
+      "Review this submitted listing carefully before approving it for the marketplace or sending it back with requested changes.",
+    adminListingApprovalContentTitle: "Listing submission",
+    adminListingApprovalContentDescription:
+      "Check the full listing details, images, and seller context before making an approval decision.",
+    adminListingFeedbackTitle: "Seller feedback",
+    adminListingFeedbackDescription:
+      "If you reject this listing, explain what needs to change before the seller resubmits it.",
+    adminListingFeedbackPlaceholder:
+      "Example: remove prohibited wording, add clearer photos, rewrite misleading price/details, or fix the category before resubmitting...",
+    adminListingDecisionLockedDescription:
+      "This listing already has a moderation decision. Sellers must make changes and resubmit before it returns to the approval queue.",
+    adminApproveListing: "Approve and publish",
+    adminRejectListing: "Reject with changes",
+    adminListingApproved: "Listing approved and published.",
+    adminListingRejected: "Listing rejected with seller feedback.",
+    adminListingResubmittedBadge: "Resubmitted after edits",
+    adminListingApprovalActionError:
+      "We could not update this listing approval right now.",
+    adminListingRejectionFeedbackRequired:
+      "Add seller-facing feedback before rejecting this listing.",
     adminProfileReviewDescription:
       "Inspect the reported profile details and the related reports before deciding on the moderation outcome.",
     backToAdminReports: "Back to reports",
@@ -476,7 +528,7 @@ export const translations = {
     draft: "Draft",
     favourite: "Favourite",
     favouritesPlural: "Favourites",
-    dashboardDescription: "Track live listings, inactive listings, sold items, drafts, and saved items in one place.",
+    dashboardDescription: "Track live listings, listings under review, rejected items, sold items, drafts, and saved items in one place.",
     addListing: "Add Listing",
     noListingsInSection: "No listings found for this section yet.",
     rowsPerPage: "Rows per page",
@@ -775,7 +827,7 @@ export const translations = {
     accountCreatedSuccess:
       "Compte créé ! Vérifiez votre e-mail pour le confirmer.",
     createListingDesc:
-      "Commencez par ajouter les informations principales sur l'article. Les photos, le campus, l'état et l'aperçu des étiquettes sont inclus ici pour vous montrer à quoi l'annonce ressemblera sur la plateforme.",
+      "Commencez par ajouter les informations principales sur l'article. Les photos, le campus, l'état et l'aperçu des étiquettes sont inclus ici pour vous montrer à quoi l'annonce ressemblera sur la plateforme. Les annonces soumises passent maintenant par une révision de modération avant d'être mises en ligne.",
     title: "Titre",
     titlePlaceholder: "ex. MacBook Air M1",
     category: "Catégorie",
@@ -798,8 +850,15 @@ export const translations = {
     saveDraft: "Enregistrer le brouillon",
     saving: "Enregistrement...",
     publish: "Publier l'annonce",
+    submitForReview: "Soumettre pour examen",
+    resubmitForReview: "Soumettre à nouveau",
     draftSaved: "Brouillon enregistré avec succès.",
     listingPublished: "Annonce publiée avec succès.",
+    listingSubmittedForReview: "Annonce soumise pour examen.",
+    listingResubmittedAfterEdit:
+      "Modifications enregistrées et annonce soumise de nouveau pour examen.",
+    listingApprovalSetupRequired:
+      "L'approbation des annonces n'est pas encore disponible dans cet environnement.",
     fillFields:
       "Remplissez tous les champs obligatoires de l'annonce avant de continuer.",
     validPrice: "Entrez un prix valide.",
@@ -911,6 +970,17 @@ export const translations = {
     reportReasonProfileInappropriate: "Photo de profil ou bio inappropriée",
     reportProfileDetailsPlaceholder:
       "Exemple : la photo de profil contient du contenu explicite, la bio contient du harcèlement, ou le compte semble usurper l'identité d'un autre étudiant...",
+    pendingReview: "En attente d'examen",
+    rejected: "Refusé",
+    listingPendingReviewDescription:
+      "Cette annonce attend l'approbation d'un modérateur avant de pouvoir être mise en ligne.",
+    listingResubmittedAfterEditDescription:
+      "Cette annonce a été soumise de nouveau après modifications et attend encore l'approbation d'un modérateur.",
+    listingPendingReviewSubmittedPrefix: "Soumise",
+    listingPreviousFeedbackPrefix: "Commentaire précédent :",
+    listingRejectedTitle: "Modifications demandées avant approbation",
+    listingRejectedDescription:
+      "Un modérateur a refusé cette annonce. Revoyez les changements demandés, mettez l'annonce à jour, puis soumettez-la de nouveau pour examen.",
     viewContext: "Voir le contexte",
     noMessagesYetTitle: "Aucun message pour le moment",
     noMessagesYetDescription:
@@ -1011,8 +1081,12 @@ export const translations = {
     banUser: "Bannir l'utilisateur",
     adminReportsDescription:
       "Examinez les signalements d'annonces, de messages et de profils, résolvez les cas sûrs et retirez les annonces inappropriées au besoin.",
+    adminListingApprovals: "Approbations d'annonces",
+    adminPendingListingApprovals: "Approbations en attente",
     adminQueueDescription:
       "Parcourez rapidement les signalements entrants, puis ouvrez une ligne pour examiner tout le contexte avant d'agir.",
+    adminListingApprovalQueueDescription:
+      "Examinez les annonces soumises avant leur mise en ligne.",
     adminReviewQueueDescription:
       "Signalements ouverts en attente d'examen par un modérateur.",
     adminListingReportsDescription: "Signalements liés aux annonces du marché.",
@@ -1027,6 +1101,13 @@ export const translations = {
       "Aucun signalement ouvert ne correspond aux filtres actuels.",
     adminNoReviewedReportsMatchFilters:
       "Aucun signalement examiné ne correspond aux filtres actuels.",
+    adminListingApprovalSetupDescription:
+      "Appliquez d'abord le SQL d'approbation des annonces dans Supabase, puis revenez ici pour examiner les annonces soumises.",
+    adminNoPendingListingApprovals: "Aucune annonce n'attend une approbation.",
+    adminRecentListingDecisionsTitle: "Décisions récentes sur les annonces",
+    adminRecentListingDecisionsDescription:
+      "Les plus récentes approbations et refus d'annonces depuis cette file.",
+    adminNoRecentListingDecisions: "Aucune décision sur une annonce pour le moment.",
     adminGroupedReports: "Signalements",
     adminReasons: "Raisons",
     adminLatestReport: "Dernier signalement",
@@ -1040,9 +1121,11 @@ export const translations = {
     adminReviewedBy: "Examiné par",
     adminSubject: "Sujet",
     adminReason: "Raison",
+    adminFeedback: "Commentaire",
     adminDetails: "Détails",
     reportedAt: "Signalé le",
     reviewedAt: "Examiné le",
+    adminSubmittedForReviewAt: "Soumise pour examen",
     adminMessageContextTitle: "Contexte du message signalé",
     adminMessageContextDescription:
       "Examinez le message signalé dans sa conversation avant de décider du résultat de modération.",
@@ -1062,6 +1145,28 @@ export const translations = {
     adminListingReviewTitle: "Examiner l'annonce signalée",
     adminListingReviewDescription:
       "Inspectez les détails de l'annonce signalée et le profil du vendeur avant de décider du résultat de modération.",
+    adminListingApprovalReviewTitle: "Examiner l'annonce soumise",
+    adminListingApprovalReviewDescription:
+      "Examinez attentivement cette annonce soumise avant de l'approuver pour le marché ou de la renvoyer avec des changements demandés.",
+    adminListingApprovalContentTitle: "Annonce soumise",
+    adminListingApprovalContentDescription:
+      "Vérifiez les détails complets de l'annonce, les images et le contexte du vendeur avant de prendre une décision.",
+    adminListingFeedbackTitle: "Commentaire au vendeur",
+    adminListingFeedbackDescription:
+      "Si vous refusez cette annonce, expliquez ce qui doit changer avant que le vendeur la soumette de nouveau.",
+    adminListingFeedbackPlaceholder:
+      "Exemple : retirez un libellé interdit, ajoutez des photos plus claires, corrigez un prix ou des détails trompeurs, ou ajustez la catégorie avant de soumettre à nouveau...",
+    adminListingDecisionLockedDescription:
+      "Cette annonce a déjà une décision de modération. Le vendeur doit faire des changements et la soumettre de nouveau avant qu'elle retourne dans la file d'approbation.",
+    adminApproveListing: "Approuver et publier",
+    adminRejectListing: "Refuser avec changements",
+    adminListingApproved: "Annonce approuvée et publiée.",
+    adminListingRejected: "Annonce refusée avec commentaire au vendeur.",
+    adminListingResubmittedBadge: "Soumise de nouveau après modifications",
+    adminListingApprovalActionError:
+      "Nous n'avons pas pu mettre à jour cette approbation d'annonce pour le moment.",
+    adminListingRejectionFeedbackRequired:
+      "Ajoutez un commentaire destiné au vendeur avant de refuser cette annonce.",
     adminProfileReviewDescription:
       "Inspectez les détails du profil signalé et les signalements liés avant de décider du résultat de modération.",
     backToAdminReports: "Retour aux signalements",
@@ -1119,7 +1224,7 @@ export const translations = {
     favourite: "Favori",
     favouritesPlural: "Favoris",
     dashboardDescription:
-      "Suivez les annonces en ligne, inactives ou vendues, ainsi que vos brouillons et vos favoris, au même endroit.",
+      "Suivez les annonces en ligne, en cours d'examen, refusées ou vendues, ainsi que vos brouillons et vos favoris, au même endroit.",
     addListing: "Ajouter une annonce",
     noListingsInSection: "Aucune annonce trouvée pour cette section pour le moment.",
     rowsPerPage: "Lignes par page",

@@ -10,7 +10,7 @@ export function DashboardSearchInput({ value, onValueChange }) {
   const { t } = useLanguage();
 
   return (
-    <div className="relative w-full md:w-[220px] lg:w-[240px]">
+    <div className="relative w-full md:w-[180px] lg:w-[200px]">
       <Label htmlFor="dashboard-search" className="sr-only">
         {t.dashboardSearchLabel}
       </Label>

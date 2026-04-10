@@ -17,6 +17,11 @@ import {
   isModerationRole,
   isReportsTableMissing,
 } from "@/lib/moderation";
+import {
+  LISTING_APPROVAL_STATUS_VALUES,
+  isPendingListingApproval,
+  isListingApprovalSetupMissing,
+} from "@/lib/listing-approval";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
@@ -173,6 +178,130 @@ export default async function AdminPage() {
       : null,
   }));
 
+  let listingApprovalAvailable = true;
+  let pendingListingRows = [];
+  let recentListingDecisionRows = [];
+
+  const [pendingListingResult, recentListingDecisionResult] = await Promise.all([
+    supabase
+      .from("listings")
+      .select(
+        `
+          id,
+          seller_id,
+          slug,
+          title,
+          status,
+          location,
+          submitted_for_review_at,
+          moderation_feedback,
+          moderation_reviewed_at,
+          moderation_reviewed_by
+        `,
+      )
+      .eq("status", LISTING_APPROVAL_STATUS_VALUES.pendingReview)
+      .not("submitted_for_review_at", "is", null)
+      .is("moderation_reviewed_at", null)
+      .order("submitted_for_review_at", { ascending: false })
+      .limit(40),
+    supabase
+      .from("listings")
+      .select(
+        `
+          id,
+          seller_id,
+          slug,
+          title,
+          status,
+          location,
+          submitted_for_review_at,
+          moderation_feedback,
+          moderation_reviewed_at,
+          moderation_reviewed_by
+        `,
+      )
+      .in("status", ["active", LISTING_APPROVAL_STATUS_VALUES.rejected])
+      .not("moderation_reviewed_at", "is", null)
+      .order("moderation_reviewed_at", { ascending: false })
+      .limit(20),
+  ]);
+
+  if (pendingListingResult.error || recentListingDecisionResult.error) {
+    const listingApprovalError = pendingListingResult.error ?? recentListingDecisionResult.error;
+
+    if (isListingApprovalSetupMissing(listingApprovalError)) {
+      listingApprovalAvailable = false;
+    } else if (listingApprovalError) {
+      console.error("Failed to load listing approval queue:", listingApprovalError.message);
+    }
+  } else {
+    pendingListingRows = pendingListingResult.data ?? [];
+    recentListingDecisionRows = recentListingDecisionResult.data ?? [];
+  }
+
+  const listingApprovalProfileIds = buildIdList([
+    ...pendingListingRows.map((listing) => listing.seller_id),
+    ...pendingListingRows.map((listing) => listing.moderation_reviewed_by),
+    ...recentListingDecisionRows.map((listing) => listing.seller_id),
+    ...recentListingDecisionRows.map((listing) => listing.moderation_reviewed_by),
+  ]);
+
+  const { data: listingApprovalProfiles, error: listingApprovalProfilesError } =
+    listingApprovalAvailable && listingApprovalProfileIds.length > 0
+      ? await supabase
+          .from("profiles")
+          .select("id, first_name, last_name")
+          .in("id", listingApprovalProfileIds)
+      : { data: [], error: null };
+
+  if (listingApprovalProfilesError) {
+    console.error(
+      "Failed to load listing approval profiles:",
+      listingApprovalProfilesError.message,
+    );
+  }
+
+  const listingApprovalProfilesById = buildProfileMap(listingApprovalProfiles ?? []);
+
+  function normalizeApprovalListing(listing) {
+    const isPendingReview = isPendingListingApproval({
+      status: listing.status,
+      submitted_for_review_at: listing.submitted_for_review_at,
+      moderation_reviewed_at: listing.moderation_reviewed_at,
+    });
+
+    return {
+      id: listing.id,
+      slug: listing.slug,
+      title: listing.title ?? t.listing,
+      status: listing.status,
+      queueAt:
+        isPendingReview
+          ? listing.submitted_for_review_at ?? listing.moderation_reviewed_at
+          : listing.moderation_reviewed_at ?? listing.submitted_for_review_at,
+      moderationFeedback: listing.moderation_feedback ?? null,
+      submittedForReviewAt: listing.submitted_for_review_at ?? null,
+      moderationReviewedAt: listing.moderation_reviewed_at ?? null,
+      isPendingReview,
+      seller: {
+        id: listing.seller_id,
+        name: getModerationDisplayName(listingApprovalProfilesById.get(listing.seller_id), t),
+      },
+      reviewedBy: listing.moderation_reviewed_by
+        ? {
+            id: listing.moderation_reviewed_by,
+            name: getModerationDisplayName(
+              listingApprovalProfilesById.get(listing.moderation_reviewed_by),
+              t,
+            ),
+          }
+        : null,
+    };
+  }
+
+  const pendingListingApprovals = pendingListingRows.map(normalizeApprovalListing);
+  const recentListingDecisions = recentListingDecisionRows.map(normalizeApprovalListing);
+
   return (
     <main className="min-h-screen bg-zinc-100 p-5 dark:bg-background md:p-6 lg:p-7">
       <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 @container/main">
@@ -190,6 +319,9 @@ export default async function AdminPage() {
             <AdminModerationDashboard
               initialReports={reports}
               reportsAvailable={reportsAvailable}
+              pendingListingApprovals={pendingListingApprovals}
+              recentListingDecisions={recentListingDecisions}
+              listingApprovalAvailable={listingApprovalAvailable}
             />
           </CardContent>
         </Card>

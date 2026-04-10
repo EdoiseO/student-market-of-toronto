@@ -46,6 +46,10 @@ import {
   getTranslatedCategoryValue,
   normalizeCategoryValue,
 } from "@/lib/categories";
+import {
+  LISTING_APPROVAL_STATUS_VALUES,
+  isActiveListingEditReviewEnabled,
+} from "@/lib/listing-approval";
 import { getTranslatedConditionLabel } from "@/lib/search-listings";
 import { cn } from "@/lib/utils";
 
@@ -202,19 +206,41 @@ export function EditListingForm({ listing }) {
 
     const nextPreviousPrice =
       numericPrice !== originalPrice ? originalPrice : listing.previous_price ?? null;
+    const hasMeaningfulFieldChanges =
+      normalizedTitle !== (listing.title ?? "").trim() ||
+      normalizedCategory !== normalizeCategoryValue(listing.category) ||
+      numericPrice !== Number(listing.price ?? 0) ||
+      normalizedDescription !== (listing.description ?? "").trim() ||
+      (normalizedCampus || null) !== (listing.location ?? null) ||
+      normalizedCondition !== (listing.condition ?? "") ||
+      isNegotiable !== Boolean(listing.is_negotiable);
+    const hasMeaningfulPhotoChanges = newPhotos.length > 0 || removedPhotos.length > 0;
+    const shouldResubmitActiveListing =
+      listing.status === "active" &&
+      isActiveListingEditReviewEnabled() &&
+      (hasMeaningfulFieldChanges || hasMeaningfulPhotoChanges);
+
+    const listingUpdateValues = {
+      title: normalizedTitle,
+      category: normalizedCategory,
+      price: numericPrice,
+      previous_price: nextPreviousPrice,
+      description: normalizedDescription,
+      location: normalizedCampus || null,
+      condition: normalizedCondition,
+      is_negotiable: isNegotiable,
+    };
+
+    if (shouldResubmitActiveListing) {
+      Object.assign(listingUpdateValues, {
+        status: LISTING_APPROVAL_STATUS_VALUES.pendingReview,
+        submitted_for_review_at: new Date().toISOString(),
+      });
+    }
 
     const { error: updateError } = await supabase
       .from("listings")
-      .update({
-        title: normalizedTitle,
-        category: normalizedCategory,
-        price: numericPrice,
-        previous_price: nextPreviousPrice,
-        description: normalizedDescription,
-        location: normalizedCampus || null,
-        condition: normalizedCondition,
-        is_negotiable: isNegotiable,
-      })
+      .update(listingUpdateValues)
       .eq("id", listing.id)
       .eq("seller_id", user.id);
 
@@ -327,8 +353,10 @@ export function EditListingForm({ listing }) {
     }
 
     setLoading(false);
-    toast.success(t.listingUpdatedSuccess);
-    router.push(`/listings/${listing.slug}`);
+    toast.success(
+      shouldResubmitActiveListing ? t.listingResubmittedAfterEdit : t.listingUpdatedSuccess,
+    );
+    router.push(shouldResubmitActiveListing ? "/dashboard?tab=inactive" : `/listings/${listing.slug}`);
     router.refresh();
   }
 
@@ -346,6 +374,15 @@ export function EditListingForm({ listing }) {
           </CardHeader>
 
           <CardContent className="p-8">
+            {listing.status === LISTING_APPROVAL_STATUS_VALUES.rejected ? (
+              <div className="mb-6 rounded-[1.5rem] border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200">
+                <p className="font-semibold">{t.listingRejectedTitle}</p>
+                <p className="mt-2 leading-6">
+                  {listing.moderation_feedback || t.listingRejectedDescription}
+                </p>
+              </div>
+            ) : null}
+
             <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(288px,0.85fr)]">
               <FieldGroup>
                 <Field>

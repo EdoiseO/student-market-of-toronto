@@ -193,7 +193,7 @@ export default async function AdminReportReviewPage({ params }) {
         title: listing?.title ?? t.listing,
         location: listing?.location ?? t.torontoMeetup,
         imageUrl: getPrimaryListingImageUrl(listing?.listing_images),
-        status: "active",
+        status: listing?.status ?? "active",
       },
       buyer: {
         id: buyerProfile?.id,

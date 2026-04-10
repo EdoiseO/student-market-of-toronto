@@ -41,7 +41,6 @@ import {
   ChevronRightIcon,
   FolderIcon,
   LayoutGridIcon,
-  LayoutDashboardIcon,
   ListIcon,
   MessageSquareIcon,
   PlusSquareIcon,
@@ -150,11 +149,6 @@ export function AppSidebar({ user, ...props }) {
   ];
 
   const sellingItems = [
-    {
-      title: t.dashboard,
-      url: "/dashboard",
-      icon: LayoutDashboardIcon,
-    },
     {
       title: t.createListing,
       url: "/listings/create",

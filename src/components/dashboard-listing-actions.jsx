@@ -19,9 +19,20 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { useLanguage } from "@/context/LanguageContext"
+import {
+  LISTING_APPROVAL_STATUS_VALUES,
+  isListingApprovalSetupMissing,
+  isPendingListingApproval,
+} from "@/lib/listing-approval"
 import { translations } from "@/lib/translations"
 
-export function DashboardListingActions({ id, slug, status }) {
+export function DashboardListingActions({
+  id,
+  slug,
+  status,
+  submittedForReviewAt = null,
+  moderationReviewedAt = null,
+}) {
   const router = useRouter()
   const supabase = createClient()
   const { language } = useLanguage()
@@ -29,7 +40,14 @@ export function DashboardListingActions({ id, slug, status }) {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const canPostListing = status === "draft"
+  const isPendingReview = isPendingListingApproval({
+    status,
+    submittedForReviewAt,
+    moderationReviewedAt,
+  })
+  const canEditListing = !isPendingReview
+  const canSubmitForReview =
+    status === "draft" || status === LISTING_APPROVAL_STATUS_VALUES.rejected
   const canMarkAsSold = status === "active"
   const canReopenListing = status === "sold"
 
@@ -46,16 +64,28 @@ export function DashboardListingActions({ id, slug, status }) {
       return
     }
 
+    const nextValues = { status: nextStatus }
+
+    if (nextStatus === LISTING_APPROVAL_STATUS_VALUES.pendingReview) {
+      Object.assign(nextValues, {
+        submitted_for_review_at: new Date().toISOString(),
+      })
+    }
+
     const { error } = await supabase
       .from("listings")
-      .update({ status: nextStatus })
+      .update(nextValues)
       .eq("id", id)
       .eq("seller_id", user.id)
 
     setIsUpdatingStatus(false)
 
     if (error) {
-      console.error("Failed to update listing status:", error.message)
+      if (isListingApprovalSetupMissing(error)) {
+        console.error("Listing approval setup is incomplete:", error.message)
+      } else {
+        console.error("Failed to update listing status:", error.message)
+      }
       return
     }
 
@@ -122,24 +152,30 @@ export function DashboardListingActions({ id, slug, status }) {
 
   return (
     <div className="flex flex-wrap items-center justify-end gap-1.5 whitespace-nowrap md:ml-auto md:flex-nowrap">
-      <Button
-        asChild
-        variant="outline"
-        size="xs"
-        className="h-8 rounded-lg bg-white px-2.5 dark:bg-background"
-      >
-        <Link href={`/listings/${slug}/edit`}>{t.editListing}</Link>
-      </Button>
-      {canPostListing ? (
+      {canEditListing ? (
+        <Button
+          asChild
+          variant="outline"
+          size="xs"
+          className="h-8 rounded-lg bg-white px-2.5 dark:bg-background"
+        >
+          <Link href={`/listings/${slug}/edit`}>{t.editListing}</Link>
+        </Button>
+      ) : null}
+      {canSubmitForReview ? (
         <Button
           type="button"
           variant="outline"
           size="xs"
           className="h-8 rounded-lg bg-white px-2.5 dark:bg-background"
-          onClick={() => handleUpdateStatus("active")}
+          onClick={() => handleUpdateStatus(LISTING_APPROVAL_STATUS_VALUES.pendingReview)}
           disabled={isUpdatingStatus}
         >
-          {isUpdatingStatus ? t.saving : t.postListing}
+          {isUpdatingStatus
+            ? t.saving
+            : status === LISTING_APPROVAL_STATUS_VALUES.rejected
+              ? t.resubmitForReview
+              : t.submitForReview}
         </Button>
       ) : null}
       {canMarkAsSold ? (

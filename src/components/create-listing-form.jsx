@@ -36,6 +36,10 @@ import { useFileDropzone } from "@/hooks/use-file-dropzone";
 import { TORONTO_CAMPUS_OPTIONS } from "@/lib/campuses";
 import { CATEGORY_OPTIONS, getTranslatedCategoryValue } from "@/lib/categories";
 import { useLanguage } from "@/context/LanguageContext";
+import {
+  LISTING_APPROVAL_STATUS_VALUES,
+  isListingApprovalSetupMissing,
+} from "@/lib/listing-approval";
 import { getTranslatedConditionLabel } from "@/lib/search-listings";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
@@ -199,6 +203,10 @@ export function CreateListingForm() {
           condition,
           location: campus,
           status,
+          submitted_for_review_at:
+            status === LISTING_APPROVAL_STATUS_VALUES.pendingReview
+              ? new Date().toISOString()
+              : null,
           is_negotiable: isNegotiable,
         })
         .select("id, slug")
@@ -282,10 +290,14 @@ export function CreateListingForm() {
       toast.success(
         status === "draft"
           ? t.draftSaved
-          : t.listingPublished,
+          : t.listingSubmittedForReview,
       );
     } catch (submitError) {
-      setError(submitError.message || t.errorGeneric);
+      setError(
+        isListingApprovalSetupMissing(submitError)
+          ? t.listingApprovalSetupRequired
+          : submitError.message || t.errorGeneric,
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -514,9 +526,9 @@ export function CreateListingForm() {
               <Button
                 type="button"
                 disabled={isSubmitting}
-                onClick={() => handleSubmit("active")}
+                onClick={() => handleSubmit(LISTING_APPROVAL_STATUS_VALUES.pendingReview)}
               >
-                {isSubmitting ? t.saving : t.publish}
+                {isSubmitting ? t.saving : t.submitForReview}
               </Button>
             </div>
           </CardContent>

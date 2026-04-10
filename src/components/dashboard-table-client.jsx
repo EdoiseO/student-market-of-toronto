@@ -4,7 +4,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { CheckIcon } from "lucide-react";
+import { CircleCheckIcon, Loader2Icon } from "lucide-react";
 
 import { DashboardCategoryFilter } from "@/components/dashboard-category-filter";
 import { DashboardSearchInput } from "@/components/dashboard-search-input";
@@ -13,35 +13,58 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DashboardListingActions } from "@/components/dashboard-listing-actions";
 import { CATEGORY_OPTIONS, getTranslatedCategoryValue } from "@/lib/categories";
+import {
+  LISTING_APPROVAL_STATUS_VALUES,
+  isPendingListingApproval,
+  isListingResubmittedAfterEdit,
+} from "@/lib/listing-approval";
 
 const rowsPerPageOptions = [7, 10, 15];
 const readOnlyTabs = new Set(["favourite"]);
-const editableStatuses = new Set(["active", "inactive", "draft", "sold"]);
 
 const statusBadgeClasses = {
   active: "border-zinc-200 bg-white text-zinc-700 dark:border-border dark:bg-background dark:text-foreground",
   inactive:
     "border-zinc-200 bg-white text-zinc-700 dark:border-border dark:bg-background dark:text-foreground",
+  [LISTING_APPROVAL_STATUS_VALUES.rejected]:
+    "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300",
   draft: "border-zinc-200 bg-zinc-100 text-zinc-700 dark:border-border dark:bg-muted dark:text-foreground",
   sold: "border-zinc-200 bg-zinc-100 text-zinc-700 dark:border-border dark:bg-muted dark:text-foreground",
   favourite:
     "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300",
 };
 
-function DashboardStatusBadge({ status, label }) {
-  if (status === "active") {
+function getDashboardStatusBadgeClass(item) {
+  if (isPendingListingApproval(item)) {
+    return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300";
+  }
+
+  return statusBadgeClasses[item.dashboardStatus];
+}
+
+function DashboardStatusBadge({ item, label }) {
+  const badgeClassName = getDashboardStatusBadgeClass(item);
+
+  if (isPendingListingApproval(item)) {
     return (
-      <Badge variant="outline" className={statusBadgeClasses[status]}>
-        <span className="mr-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-white">
-          <CheckIcon className="size-3" />
-        </span>
+      <Badge variant="outline" className={badgeClassName}>
+        <Loader2Icon className="mr-1.5 size-3.5 animate-spin" />
+        {label}
+      </Badge>
+    );
+  }
+
+  if (item.dashboardStatus === "active") {
+    return (
+      <Badge variant="outline" className={badgeClassName}>
+        <CircleCheckIcon className="mr-1.5 size-3.5 text-emerald-600 dark:text-emerald-400" />
         {label}
       </Badge>
     );
   }
 
   return (
-    <Badge variant="outline" className={statusBadgeClasses[status]}>
+    <Badge variant="outline" className={badgeClassName}>
       {label}
     </Badge>
   );
@@ -49,6 +72,43 @@ function DashboardStatusBadge({ status, label }) {
 
 function buildDashboardHref(tab) {
   return tab === "all" ? "/dashboard" : `/dashboard?tab=${tab}`;
+}
+
+function DashboardStatusNote({ item, t, language }) {
+  if (isPendingListingApproval(item)) {
+    return (
+      <p className="mt-2 text-xs leading-5 text-zinc-500 dark:text-muted-foreground">
+        {isListingResubmittedAfterEdit(item)
+          ? t.listingResubmittedAfterEditDescription
+          : t.listingPendingReviewDescription}
+        {item.submittedForReviewAt ? (
+          <>
+            {" "}
+            {t.listingPendingReviewSubmittedPrefix} {new Intl.DateTimeFormat(language === "fr" ? "fr-CA" : "en-CA", {
+              month: "short",
+              day: "numeric",
+            }).format(new Date(item.submittedForReviewAt))}.
+          </>
+        ) : null}
+        {item.moderationFeedback ? (
+          <>
+            {" "}
+            {t.listingPreviousFeedbackPrefix} {item.moderationFeedback}
+          </>
+        ) : null}
+      </p>
+    );
+  }
+
+  if (item.dashboardStatus === LISTING_APPROVAL_STATUS_VALUES.rejected) {
+    return (
+      <p className="mt-2 text-xs leading-5 text-zinc-500 dark:text-muted-foreground">
+        {item.moderationFeedback || t.listingRejectedDescription}
+      </p>
+    );
+  }
+
+  return null;
 }
 
 export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, favouriteCount = 0 }) {
@@ -127,6 +187,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
       { key: "active", label: t.active },
       { key: "inactive", label: t.inactive },
       { key: "sold", label: t.sold },
+      { key: LISTING_APPROVAL_STATUS_VALUES.rejected, label: t.rejected },
       { key: "draft", label: t.draft },
       { key: "favourite", label: t.favourite },
     ],
@@ -137,6 +198,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
     () => ({
       active: t.live,
       inactive: t.inactive,
+      [LISTING_APPROVAL_STATUS_VALUES.rejected]: t.rejected,
       draft: t.draft,
       sold: t.sold,
       favourite: t.favourite,
@@ -171,7 +233,15 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
   );
 
   const showManagementActions = !readOnlyTabs.has(currentTab);
-  const showMessagesColumn = currentTab !== "favourite" && currentTab !== "draft";
+  const showMessagesColumn = ![
+    "favourite",
+    "draft",
+    LISTING_APPROVAL_STATUS_VALUES.rejected,
+  ].includes(currentTab);
+
+  function getStatusLabel(item) {
+    return isPendingListingApproval(item) ? t.pendingReview : statusLabels[item.dashboardStatus];
+  }
 
   return (
     <>
@@ -250,7 +320,8 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                 <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-border dark:bg-muted/40">
                   <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500 dark:text-muted-foreground">{t.status}</p>
                   <div className="mt-2">
-                    <DashboardStatusBadge status={item.dashboardStatus} label={statusLabels[item.dashboardStatus]} />
+                    <DashboardStatusBadge item={item} label={getStatusLabel(item)} />
+                    <DashboardStatusNote item={item} t={t} language={language} />
                   </div>
                 </div>
                 <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-border dark:bg-muted/40">
@@ -273,11 +344,13 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
 
               {showManagementActions ? (
                 <div className="mt-4">
-                  {editableStatuses.has(item.dashboardStatus) ? (
-                    <DashboardListingActions id={item.id} slug={item.slug} status={item.dashboardStatus} />
-                  ) : (
-                    <span className="text-sm text-zinc-400 dark:text-muted-foreground">-</span>
-                  )}
+                  <DashboardListingActions
+                    id={item.id}
+                    slug={item.slug}
+                    status={item.dashboardStatus}
+                    submittedForReviewAt={item.submittedForReviewAt}
+                    moderationReviewedAt={item.moderationReviewedAt}
+                  />
                 </div>
               ) : null}
             </div>
@@ -323,12 +396,12 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
             <thead className="bg-zinc-50 dark:bg-muted/40">
               <tr className="border-b border-zinc-200 text-sm text-zinc-500 dark:border-border dark:text-muted-foreground">
                 <th className="w-[32%] px-5 py-3.5 font-medium">{t.listing}</th>
-                <th className="w-[10%] px-5 py-3.5 font-medium">{t.status}</th>
-                <th className="w-[10%] px-5 py-3.5 font-medium">{t.price}</th>
+                <th className="w-[10%] px-5 py-3.5 text-center font-medium">{t.status}</th>
+                <th className="w-[10%] px-5 py-3.5 text-center font-medium">{t.price}</th>
                 {showMessagesColumn ? (
-                  <th className="w-[9%] px-5 py-3.5 font-medium">{t.messages}</th>
+                  <th className="w-[9%] px-5 py-3.5 text-center font-medium">{t.messages}</th>
                 ) : null}
-                <th className="w-[13%] px-5 py-3.5 font-medium">{t.category}</th>
+                <th className="w-[13%] px-5 py-3.5 text-center font-medium">{t.category}</th>
                 {showManagementActions ? (
                   <th className="w-[26%] px-5 py-3.5 text-right font-medium">{t.actions}</th>
                 ) : null}
@@ -354,23 +427,28 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                       </div>
                     </Link>
                   </td>
-                  <td className="px-5 py-4 align-top whitespace-nowrap">
-                    <DashboardStatusBadge status={item.dashboardStatus} label={statusLabels[item.dashboardStatus]} />
+                  <td className="px-5 py-4 align-middle whitespace-nowrap text-center">
+                    <div className="mx-auto flex max-w-[280px] flex-col items-center text-center">
+                      <DashboardStatusBadge item={item} label={getStatusLabel(item)} />
+                      <DashboardStatusNote item={item} t={t} language={language} />
+                    </div>
                   </td>
-                  <td className="px-5 py-4 align-top font-medium whitespace-nowrap text-zinc-900 dark:text-foreground">{item.price}</td>
+                  <td className="px-5 py-4 align-middle text-center font-medium whitespace-nowrap text-zinc-900 dark:text-foreground">{item.price}</td>
                   {showMessagesColumn ? (
-                    <td className="px-5 py-4 align-top whitespace-nowrap text-zinc-700 dark:text-foreground">{item.messageCount > 0 ? `${item.messageCount}+` : "0"}</td>
+                    <td className="px-5 py-4 align-middle text-center whitespace-nowrap text-zinc-700 dark:text-foreground">{item.messageCount > 0 ? `${item.messageCount}+` : "0"}</td>
                   ) : null}
-                  <td className="px-5 py-4 align-top text-zinc-700 dark:text-foreground">
-                    <span className="line-clamp-2">{getTranslatedCategoryValue(item.category, t, language)}</span>
+                  <td className="px-5 py-4 align-middle text-center text-zinc-700 dark:text-foreground">
+                    <span className="block line-clamp-2 text-center">{getTranslatedCategoryValue(item.category, t, language)}</span>
                   </td>
                   {showManagementActions ? (
                     <td className="px-5 py-4 align-top text-right">
-                      {editableStatuses.has(item.dashboardStatus) ? (
-                        <DashboardListingActions id={item.id} slug={item.slug} status={item.dashboardStatus} />
-                      ) : (
-                        <span className="text-sm text-zinc-400 dark:text-muted-foreground">-</span>
-                      )}
+                      <DashboardListingActions
+                        id={item.id}
+                        slug={item.slug}
+                        status={item.dashboardStatus}
+                        submittedForReviewAt={item.submittedForReviewAt}
+                        moderationReviewedAt={item.moderationReviewedAt}
+                      />
                     </td>
                   ) : null}
                 </tr>

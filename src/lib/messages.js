@@ -13,6 +13,7 @@ export const MESSAGE_CONVERSATION_SELECT = `
     title,
     price,
     location,
+    status,
     listing_images (
       image_url,
       position
