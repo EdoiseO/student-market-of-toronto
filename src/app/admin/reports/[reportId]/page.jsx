@@ -56,7 +56,11 @@ export default async function AdminReportReviewPage({ params }) {
     notFound();
   }
 
-  const profileIds = [reportRow.reporter_user_id, reportRow.reported_user_id].filter(Boolean);
+  const profileIds = [
+    reportRow.reporter_user_id,
+    reportRow.reported_user_id,
+    reportRow.subject_type === REPORT_SUBJECT_TYPES.profile ? reportRow.subject_id : null,
+  ].filter(Boolean);
   const { data: reportProfiles, error: reportProfilesError } = profileIds.length
     ? await supabase
         .from("profiles")
@@ -74,6 +78,7 @@ export default async function AdminReportReviewPage({ params }) {
   let conversation = null;
   let messages = [];
   let listingReview = null;
+  let profileReview = null;
   let reportMessage = null;
 
   if (reportRow.subject_type === REPORT_SUBJECT_TYPES.message) {
@@ -141,7 +146,7 @@ export default async function AdminReportReviewPage({ params }) {
 
     messages = messageRows ?? [];
     reportMessage = messages.find((message) => message.id === reportRow.message_id) ?? null;
-  } else {
+  } else if (reportRow.subject_type === REPORT_SUBJECT_TYPES.listing) {
     const { data: listingRow, error: listingError } = await supabase
       .from("listings")
       .select(
@@ -190,6 +195,32 @@ export default async function AdminReportReviewPage({ params }) {
           }
         : null,
     };
+  } else if (reportRow.subject_type === REPORT_SUBJECT_TYPES.profile) {
+    const { data: profileRow, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, first_name, last_name, school, avatar_preset_id, avatar_url, bio, created_at")
+      .eq("id", reportRow.subject_id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error("Failed to load moderation profile review:", profileError.message);
+    }
+
+    if (!profileRow) {
+      notFound();
+    }
+
+    profileReview = {
+      profile: {
+        id: profileRow.id,
+        name: getConversationDisplayName(profileRow, t),
+        school: profileRow.school ?? t.torontoStudent,
+        avatarPresetId: profileRow.avatar_preset_id ?? null,
+        avatarUrl: profileRow.avatar_url ?? null,
+        bio: profileRow.bio ?? "",
+        createdAt: profileRow.created_at ?? null,
+      },
+    };
   }
 
   const report = {
@@ -233,6 +264,7 @@ export default async function AdminReportReviewPage({ params }) {
           conversation={conversation}
           messages={messages}
           listingReview={listingReview}
+          profileReview={profileReview}
           currentUserId={user.id}
         />
       </div>

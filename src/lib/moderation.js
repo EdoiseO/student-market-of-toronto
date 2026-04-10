@@ -3,6 +3,7 @@ export const MODERATION_ROLE_VALUES = ["admin", "moderator", "staff"];
 export const REPORT_SUBJECT_TYPES = {
   listing: "listing",
   message: "message",
+  profile: "profile",
 };
 
 export const REPORT_STATUS_VALUES = {
@@ -31,6 +32,13 @@ export const REPORT_REASON_VALUES_BY_SUBJECT = {
     REPORT_REASON_VALUES.other,
   ],
   [REPORT_SUBJECT_TYPES.message]: [
+    REPORT_REASON_VALUES.spam,
+    REPORT_REASON_VALUES.scam,
+    REPORT_REASON_VALUES.harassment,
+    REPORT_REASON_VALUES.inappropriate,
+    REPORT_REASON_VALUES.other,
+  ],
+  [REPORT_SUBJECT_TYPES.profile]: [
     REPORT_REASON_VALUES.spam,
     REPORT_REASON_VALUES.scam,
     REPORT_REASON_VALUES.harassment,
@@ -99,7 +107,36 @@ export function isReportsTableMissing(error) {
   );
 }
 
-export function getTranslatedReportReason(reason, t) {
+export function isReportsSubjectTypeUnsupported(error) {
+  const message = [error?.message, error?.details, error?.hint]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return (
+    (error?.code === "23514" || error?.code === "22P02") &&
+    message.includes("subject_type")
+  );
+}
+
+export function getTranslatedReportReason(reason, t, subjectType = null) {
+  if (subjectType === REPORT_SUBJECT_TYPES.profile) {
+    switch (reason) {
+      case REPORT_REASON_VALUES.spam:
+        return t.reportReasonProfileSpam;
+      case REPORT_REASON_VALUES.scam:
+        return t.reportReasonProfileScam;
+      case REPORT_REASON_VALUES.harassment:
+        return t.reportReasonProfileHarassment;
+      case REPORT_REASON_VALUES.inappropriate:
+        return t.reportReasonProfileInappropriate;
+      case REPORT_REASON_VALUES.other:
+        return t.reportReasonOther;
+      default:
+        return reason ?? t.unknown;
+    }
+  }
+
   switch (reason) {
     case REPORT_REASON_VALUES.spam:
       return t.reportReasonSpam;
@@ -136,6 +173,8 @@ export function getTranslatedReportSubjectType(subjectType, t) {
   switch (subjectType) {
     case REPORT_SUBJECT_TYPES.message:
       return t.messages;
+    case REPORT_SUBJECT_TYPES.profile:
+      return t.profile;
     case REPORT_SUBJECT_TYPES.listing:
     default:
       return t.listing;
@@ -145,7 +184,7 @@ export function getTranslatedReportSubjectType(subjectType, t) {
 export function getReportReasonOptions(subjectType, t) {
   return (REPORT_REASON_VALUES_BY_SUBJECT[subjectType] ?? []).map((reason) => ({
     value: reason,
-    label: getTranslatedReportReason(reason, t),
+    label: getTranslatedReportReason(reason, t, subjectType),
   }));
 }
 

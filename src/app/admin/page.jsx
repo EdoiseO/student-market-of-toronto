@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import {
   MODERATION_REPORT_SELECT,
+  REPORT_SUBJECT_TYPES,
   getModerationDisplayName,
   getUserModerationRole,
   isModerationRole,
@@ -71,6 +72,9 @@ export default async function AdminPage() {
     ...(reportRows ?? []).map((report) => report.reporter_user_id),
     ...(reportRows ?? []).map((report) => report.reported_user_id),
     ...(reportRows ?? []).map((report) => report.reviewed_by),
+    ...(reportRows ?? [])
+      .filter((report) => report.subject_type === REPORT_SUBJECT_TYPES.profile)
+      .map((report) => report.subject_id),
   ]);
   const listingIds = buildIdList((reportRows ?? []).map((report) => report.listing_id));
   const messageIds = buildIdList((reportRows ?? []).map((report) => report.message_id));
@@ -135,6 +139,13 @@ export default async function AdminPage() {
       id: report.reported_user_id,
       name: getModerationDisplayName(profilesById.get(report.reported_user_id), t),
     },
+    profile:
+      report.subject_type === REPORT_SUBJECT_TYPES.profile
+        ? {
+            id: report.subject_id,
+            name: getModerationDisplayName(profilesById.get(report.subject_id), t),
+          }
+        : null,
     listing: report.listing_id
       ? listingsById.get(report.listing_id)
         ? {

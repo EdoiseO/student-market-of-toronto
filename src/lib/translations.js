@@ -246,6 +246,12 @@ export const translations = {
     reportMessageTitle: "Report this message",
     reportMessageDescription:
       "Choose the reason that best matches the issue and add extra context if it helps moderation review.",
+    reportProfile: "Report profile",
+    reportProfileTitle: "Report this profile",
+    reportProfileDescription:
+      "Tell the moderation team what looks unsafe, deceptive, or inappropriate about this profile, photo, or bio.",
+    reportProfileReasonDescription:
+      "Pick what stands out most — for example a fake profile, harassment, or an inappropriate photo or bio.",
     reportListingTitle: "Report this listing",
     reportListingDescription:
       "Tell the moderation team what looks unsafe, misleading, or inappropriate about this listing.",
@@ -271,6 +277,12 @@ export const translations = {
     reportReasonHarassment: "Harassment or abuse",
     reportReasonInappropriate: "Inappropriate message",
     reportReasonOther: "Other",
+    reportReasonProfileSpam: "Spam or promo profile",
+    reportReasonProfileScam: "Fake, scam, or impersonation profile",
+    reportReasonProfileHarassment: "Harassment or abusive profile",
+    reportReasonProfileInappropriate: "Inappropriate profile photo or bio",
+    reportProfileDetailsPlaceholder:
+      "Example: the profile photo contains explicit content, the bio includes harassment, or the account appears to impersonate another student...",
     viewContext: "View context",
     noMessagesYetTitle: "No messages yet",
     noMessagesYetDescription:
@@ -372,6 +384,7 @@ export const translations = {
     adminReviewQueueDescription: "Open reports waiting for moderator review.",
     adminListingReportsDescription: "Reports linked to marketplace listings.",
     adminMessageReportsDescription: "Reports linked to buyer-seller messages.",
+    adminProfileReportsDescription: "Reports linked to seller profiles.",
     adminRecentReviewsTitle: "Recent Review Activity",
     adminRecentReviewsDescription: "The latest moderation decisions made from this queue.",
     adminSetupTitle: "Moderation setup is still required",
@@ -394,14 +407,18 @@ export const translations = {
     adminLoadingContext: "Loading conversation context...",
     adminContextEmpty: "No conversation messages are available for this report.",
     adminContextLoadError: "We could not load the conversation context right now.",
-    adminReportReviewTitle: "Review reported conversation",
+    adminReportReviewTitle: "Review report",
     adminReportReviewDescription:
       "Use the flagged message highlight and the full thread history below to make a moderation decision.",
     adminListingReviewTitle: "Reported listing review",
     adminListingReviewDescription:
       "Inspect the reported listing details and listing owner before deciding on the moderation outcome.",
+    adminProfileReviewDescription:
+      "Inspect the reported profile details and current listings before deciding on the moderation outcome.",
     backToAdminReports: "Back to reports",
     adminParticipantsTitle: "Conversation participants",
+    adminReportedProfileTitle: "Reported profile",
+    adminProfileNoListings: "This profile has no active listings right now.",
     adminReportActionError: "We could not update this report right now.",
     adminListingRemovedAndResolved: "Listing removed and report resolved.",
     adminOpenStatus: "Open",
@@ -818,6 +835,12 @@ export const translations = {
     reportMessageTitle: "Signaler ce message",
     reportMessageDescription:
       "Choisissez la raison qui correspond le mieux au problème et ajoutez du contexte si cela peut aider l'équipe de modération.",
+    reportProfile: "Signaler le profil",
+    reportProfileTitle: "Signaler ce profil",
+    reportProfileDescription:
+      "Expliquez à l'équipe de modération ce qui semble dangereux, trompeur ou inapproprié dans ce profil, sa photo ou sa bio.",
+    reportProfileReasonDescription:
+      "Choisissez ce qui ressort le plus — par exemple un faux profil, du harcèlement, ou une photo ou bio inappropriée.",
     reportListingTitle: "Signaler cette annonce",
     reportListingDescription:
       "Expliquez à l'équipe de modération ce qui semble dangereux, trompeur ou inapproprié dans cette annonce.",
@@ -845,6 +868,12 @@ export const translations = {
     reportReasonHarassment: "Harcèlement ou abus",
     reportReasonInappropriate: "Message inapproprié",
     reportReasonOther: "Autre",
+    reportReasonProfileSpam: "Profil pourriel ou promotionnel",
+    reportReasonProfileScam: "Faux profil, arnaque ou usurpation",
+    reportReasonProfileHarassment: "Profil harcelant ou abusif",
+    reportReasonProfileInappropriate: "Photo de profil ou bio inappropriée",
+    reportProfileDetailsPlaceholder:
+      "Exemple : la photo de profil contient du contenu explicite, la bio contient du harcèlement, ou le compte semble usurper l'identité d'un autre étudiant...",
     viewContext: "Voir le contexte",
     noMessagesYetTitle: "Aucun message pour le moment",
     noMessagesYetDescription:
@@ -951,6 +980,7 @@ export const translations = {
       "Signalements ouverts en attente d'examen par un modérateur.",
     adminListingReportsDescription: "Signalements liés aux annonces du marché.",
     adminMessageReportsDescription: "Signalements liés aux messages acheteur-vendeur.",
+    adminProfileReportsDescription: "Signalements liés aux profils vendeurs.",
     adminRecentReviewsTitle: "Activité récente de modération",
     adminRecentReviewsDescription:
       "Les plus récentes décisions de modération prises depuis cette file.",
@@ -976,14 +1006,18 @@ export const translations = {
       "Aucun message de conversation n'est disponible pour ce signalement.",
     adminContextLoadError:
       "Nous n'avons pas pu charger le contexte de conversation pour le moment.",
-    adminReportReviewTitle: "Examiner la conversation signalée",
+    adminReportReviewTitle: "Examiner le signalement",
     adminReportReviewDescription:
       "Utilisez la mise en évidence du message signalé et l'historique complet ci-dessous pour prendre une décision de modération.",
     adminListingReviewTitle: "Examiner l'annonce signalée",
     adminListingReviewDescription:
       "Inspectez les détails de l'annonce signalée et le profil du vendeur avant de décider du résultat de modération.",
+    adminProfileReviewDescription:
+      "Inspectez les détails du profil signalé et ses annonces actives avant de décider du résultat de modération.",
     backToAdminReports: "Retour aux signalements",
     adminParticipantsTitle: "Participants à la conversation",
+    adminReportedProfileTitle: "Profil signalé",
+    adminProfileNoListings: "Ce profil n'a aucune annonce active pour le moment.",
     adminReportActionError:
       "Nous n'avons pas pu mettre ce signalement à jour pour le moment.",
     adminListingRemovedAndResolved: "Annonce supprimée et signalement résolu.",

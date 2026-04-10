@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Flag, MessageSquareWarning, Store } from "lucide-react";
+import { Flag, MessageSquareWarning, Store, UserRound } from "lucide-react";
 
 import { ClientFormattedDateTime } from "@/components/client-formatted-date-time";
 import { Badge } from "@/components/ui/badge";
@@ -68,7 +68,9 @@ function ReportQueueTable({ reports, language, t }) {
             const subjectPreview =
               report.subjectType === REPORT_SUBJECT_TYPES.listing
                 ? report.listing?.title ?? t.unknown
-                : report.message?.body ?? t.unknown;
+                : report.subjectType === REPORT_SUBJECT_TYPES.profile
+                  ? report.profile?.name ?? report.reportedUser.name
+                  : report.message?.body ?? t.unknown;
 
             return (
               <TableRow key={report.id}>
@@ -86,7 +88,7 @@ function ReportQueueTable({ reports, language, t }) {
                     {subjectPreview}
                   </Link>
                 </TableCell>
-                <TableCell>{getTranslatedReportReason(report.reason, t)}</TableCell>
+                <TableCell>{getTranslatedReportReason(report.reason, t, report.subjectType)}</TableCell>
                 <TableCell>{report.reporter.name}</TableCell>
                 <TableCell>{report.reportedUser.name}</TableCell>
                 <TableCell>
@@ -130,6 +132,9 @@ export function AdminModerationDashboard({ initialReports, reportsAvailable }) {
   const messageReportCount = reports.filter(
     (report) => report.subjectType === REPORT_SUBJECT_TYPES.message,
   ).length;
+  const profileReportCount = reports.filter(
+    (report) => report.subjectType === REPORT_SUBJECT_TYPES.profile,
+  ).length;
 
   if (!reportsAvailable) {
     return (
@@ -144,7 +149,7 @@ export function AdminModerationDashboard({ initialReports, reportsAvailable }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
         <SummaryCard
           icon={Flag}
           title={t.pendingReports}
@@ -162,6 +167,12 @@ export function AdminModerationDashboard({ initialReports, reportsAvailable }) {
           title={t.messages}
           value={messageReportCount}
           description={t.adminMessageReportsDescription}
+        />
+        <SummaryCard
+          icon={UserRound}
+          title={t.profile}
+          value={profileReportCount}
+          description={t.adminProfileReportsDescription}
         />
       </div>
 

@@ -43,6 +43,7 @@ export function AdminReportReviewContent({
   conversation = null,
   messages = [],
   listingReview = null,
+  profileReview = null,
   currentUserId,
 }) {
   const router = useRouter();
@@ -50,17 +51,22 @@ export function AdminReportReviewContent({
   const { t, language } = useLanguage();
   const [isProcessing, setIsProcessing] = React.useState(false);
 
+  const isMessageReport = report.subjectType === REPORT_SUBJECT_TYPES.message;
+  const isProfileReport = report.subjectType === REPORT_SUBJECT_TYPES.profile;
   const flaggedMessageId = report.message?.id ?? null;
   const isOpen = report.status === REPORT_STATUS_VALUES.open;
-  const listingTarget = report.subjectType === REPORT_SUBJECT_TYPES.message
-    ? conversation?.listing
-    : listingReview?.listing;
-  const reviewTitle = listingTarget?.title ?? t.listing;
+  const listingTarget = isMessageReport ? conversation?.listing : listingReview?.listing;
+  const profileTarget = profileReview?.profile ?? null;
+  const reviewTitle = isProfileReport
+    ? profileTarget?.name ?? t.profile
+    : listingTarget?.title ?? t.listing;
   const reviewDescription =
-    report.subjectType === REPORT_SUBJECT_TYPES.message
+    isMessageReport
       ? t.adminReportReviewDescription
-      : t.adminListingReviewDescription;
-  const canRemoveListing = listingTarget?.id && listingTarget?.status === "active";
+      : isProfileReport
+        ? t.adminProfileReviewDescription
+        : t.adminListingReviewDescription;
+  const canRemoveListing = !isProfileReport && listingTarget?.id && listingTarget?.status === "active";
 
   async function handleUpdateStatus(nextStatus) {
     if (!report?.id || !currentUserId || isProcessing) {
@@ -144,7 +150,7 @@ export function AdminReportReviewContent({
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
-                  {getTranslatedReportReason(report.reason, t)}
+                  {getTranslatedReportReason(report.reason, t, report.subjectType)}
                 </Badge>
                 <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
                   {getTranslatedReportStatus(report.status, t)}
@@ -170,7 +176,9 @@ export function AdminReportReviewContent({
         <CardContent className="grid gap-4 px-6 py-5 md:grid-cols-2 xl:grid-cols-4">
           <ReviewMetadata label={t.reporter}>{report.reporter.name}</ReviewMetadata>
           <ReviewMetadata label={t.adminReportedUser}>{report.reportedUser.name}</ReviewMetadata>
-          <ReviewMetadata label={t.adminReason}>{getTranslatedReportReason(report.reason, t)}</ReviewMetadata>
+          <ReviewMetadata label={t.adminReason}>
+            {getTranslatedReportReason(report.reason, t, report.subjectType)}
+          </ReviewMetadata>
           <ReviewMetadata label={t.status}>{getTranslatedReportStatus(report.status, t)}</ReviewMetadata>
           {report.details ? (
             <div className="md:col-span-2 xl:col-span-4">
@@ -181,7 +189,7 @@ export function AdminReportReviewContent({
       </Card>
 
       <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.8fr)]">
-        {report.subjectType === REPORT_SUBJECT_TYPES.message ? (
+        {isMessageReport ? (
           <section className="flex min-h-0 flex-col overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card">
             <div className="border-b border-zinc-200 px-6 py-5 dark:border-border">
               <p className="text-lg font-semibold text-zinc-950 dark:text-foreground">
@@ -254,6 +262,81 @@ export function AdminReportReviewContent({
                     {t.removeListing}
                   </Button>
                 ) : null}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-xl"
+                  onClick={() => handleUpdateStatus(REPORT_STATUS_VALUES.dismissed)}
+                  disabled={isProcessing || !isOpen}
+                >
+                  {t.dismiss}
+                </Button>
+                <Button
+                  type="button"
+                  className="rounded-xl"
+                  onClick={() => handleUpdateStatus(REPORT_STATUS_VALUES.resolved)}
+                  disabled={isProcessing || !isOpen}
+                >
+                  {t.resolve}
+                </Button>
+              </div>
+            </div>
+          </section>
+        ) : isProfileReport ? (
+          <section className="flex min-h-0 flex-col overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card">
+            <div className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+              <p className="text-lg font-semibold text-zinc-950 dark:text-foreground">
+                {reviewTitle}
+              </p>
+              <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
+                {reviewDescription}
+              </p>
+            </div>
+
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-zinc-50/70 px-6 py-5 dark:bg-muted/20">
+              <Card className="rounded-[1.75rem] border-zinc-200 bg-white py-0 shadow-none dark:bg-card dark:ring-border">
+                <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+                  <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">
+                    {t.adminReportedProfileTitle}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-6 py-6">
+                  <Link href={`/profile/${profileTarget?.id}`} className="flex items-center gap-4 rounded-2xl bg-zinc-50 p-4 transition hover:bg-background dark:bg-muted/40 dark:hover:bg-background">
+                    <ProfileAvatar
+                      name={profileTarget?.name}
+                      avatarPresetId={profileTarget?.avatarPresetId}
+                      avatarUrl={profileTarget?.avatarUrl}
+                      className="size-16 border border-zinc-200 dark:border-border"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xl font-semibold text-zinc-950 dark:text-foreground">
+                        {profileTarget?.name}
+                      </p>
+                      <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
+                        {profileTarget?.school || t.torontoStudent}
+                      </p>
+                    </div>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-[1.75rem] border-zinc-200 bg-white py-0 shadow-none dark:bg-card dark:ring-border">
+                <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+                  <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">
+                    {t.profileDescriptionTitle}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-6 py-6">
+                  <p className="whitespace-pre-line text-sm leading-6 text-zinc-600 dark:text-muted-foreground">
+                    {profileTarget?.bio || t.profileNoBio}
+                  </p>
+                </CardContent>
+              </Card>
+
+            </div>
+
+            <div className="border-t border-zinc-200 bg-background px-6 py-5 dark:border-border">
+              <div className="flex flex-wrap justify-end gap-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -360,68 +443,104 @@ export function AdminReportReviewContent({
         )}
 
         <div className="space-y-4">
-          <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-            <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
-              <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
-                {t.aboutListing}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 px-6 py-5">
-              <Link href={`/listings/${listingTarget.slug}`} className="block rounded-2xl bg-zinc-50 p-4 transition hover:bg-background dark:bg-muted/40 dark:hover:bg-background">
-                <div className="flex items-center gap-4">
-                  <div className="h-18 w-18 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted">
-                    {listingTarget?.imageUrl ? (
-                      <img
-                        src={listingTarget.imageUrl}
-                        alt={listingTarget.title}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
-                    )}
+          {isProfileReport ? (
+            <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
+              <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+                <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
+                  {t.adminReportedProfileTitle}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 px-6 py-5">
+                <Link href={`/profile/${profileTarget?.id}`} className="flex items-center gap-3 rounded-xl transition hover:bg-zinc-50/80 dark:hover:bg-muted/40">
+                  <ProfileAvatar
+                    name={profileTarget?.name}
+                    avatarPresetId={profileTarget?.avatarPresetId}
+                    avatarUrl={profileTarget?.avatarUrl}
+                    className="size-10 border border-zinc-200 dark:border-border"
+                  />
+                  <div>
+                    <p className="font-medium text-zinc-950 dark:text-foreground">{profileTarget?.name}</p>
+                    <p className="text-sm text-zinc-500 dark:text-muted-foreground">{profileTarget?.school}</p>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-base font-semibold text-zinc-950 dark:text-foreground">
-                      {listingTarget?.title}
-                    </p>
-                    <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
-                      {listingTarget?.location || t.torontoMeetup}
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-            <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
-              <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
-                {report.subjectType === REPORT_SUBJECT_TYPES.message ? t.adminParticipantsTitle : t.seller}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 px-6 py-5">
-              {(report.subjectType === REPORT_SUBJECT_TYPES.message
-                ? [conversation.buyer, conversation.seller]
-                : [listingReview?.seller]
-              ).filter(Boolean).map((participant, index) => (
-                <React.Fragment key={participant.id}>
-                  {index > 0 ? <Separator /> : null}
-                  <Link href={`/profile/${participant.id}`} className="flex items-center gap-3 rounded-xl transition hover:bg-zinc-50/80 dark:hover:bg-muted/40">
-                    <ProfileAvatar
-                      name={participant.name}
-                      avatarPresetId={participant.avatarPresetId}
-                      avatarUrl={participant.avatarUrl}
-                      className="size-10 border border-zinc-200 dark:border-border"
-                    />
-                    <div>
-                      <p className="font-medium text-zinc-950 dark:text-foreground">{participant.name}</p>
-                      <p className="text-sm text-zinc-500 dark:text-muted-foreground">{participant.school}</p>
+                </Link>
+                <Separator />
+                <ReviewMetadata label={t.memberSince}>
+                  {profileTarget?.createdAt ? (
+                    <ClientFormattedDateTime value={profileTarget.createdAt} language={language} />
+                  ) : (
+                    "—"
+                  )}
+                </ReviewMetadata>
+                <Button asChild variant="outline" className="w-full rounded-xl">
+                  <Link href={`/profile/${profileTarget?.id}`}>{t.viewProfile}</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
+                <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+                  <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
+                    {t.aboutListing}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 px-6 py-5">
+                  <Link href={`/listings/${listingTarget.slug}`} className="block rounded-2xl bg-zinc-50 p-4 transition hover:bg-background dark:bg-muted/40 dark:hover:bg-background">
+                    <div className="flex items-center gap-4">
+                      <div className="h-18 w-18 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted">
+                        {listingTarget?.imageUrl ? (
+                          <img
+                            src={listingTarget.imageUrl}
+                            alt={listingTarget.title}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-base font-semibold text-zinc-950 dark:text-foreground">
+                          {listingTarget?.title}
+                        </p>
+                        <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
+                          {listingTarget?.location || t.torontoMeetup}
+                        </p>
+                      </div>
                     </div>
                   </Link>
-                </React.Fragment>
-              ))}
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
+                <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+                  <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
+                    {isMessageReport ? t.adminParticipantsTitle : t.seller}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 px-6 py-5">
+                  {(isMessageReport ? [conversation.buyer, conversation.seller] : [listingReview?.seller])
+                    .filter(Boolean)
+                    .map((participant, index) => (
+                      <React.Fragment key={participant.id}>
+                        {index > 0 ? <Separator /> : null}
+                        <Link href={`/profile/${participant.id}`} className="flex items-center gap-3 rounded-xl transition hover:bg-zinc-50/80 dark:hover:bg-muted/40">
+                          <ProfileAvatar
+                            name={participant.name}
+                            avatarPresetId={participant.avatarPresetId}
+                            avatarUrl={participant.avatarUrl}
+                            className="size-10 border border-zinc-200 dark:border-border"
+                          />
+                          <div>
+                            <p className="font-medium text-zinc-950 dark:text-foreground">{participant.name}</p>
+                            <p className="text-sm text-zinc-500 dark:text-muted-foreground">{participant.school}</p>
+                          </div>
+                        </Link>
+                      </React.Fragment>
+                    ))}
+                </CardContent>
+              </Card>
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -28,6 +28,7 @@ import {
   REPORT_SUBJECT_TYPES,
   getReportReasonOptions,
   isReportsTableMissing,
+  isReportsSubjectTypeUnsupported,
 } from "@/lib/moderation";
 import { createClient } from "@/utils/supabase/client";
 
@@ -52,6 +53,26 @@ export function ReportSheet({
     () => getReportReasonOptions(subjectType, t),
     [subjectType, t],
   );
+  const sheetTitle =
+    subjectType === REPORT_SUBJECT_TYPES.message
+      ? t.reportMessageTitle
+      : subjectType === REPORT_SUBJECT_TYPES.profile
+        ? t.reportProfileTitle
+        : t.reportListingTitle;
+  const sheetDescription =
+    subjectType === REPORT_SUBJECT_TYPES.message
+      ? t.reportMessageDescription
+      : subjectType === REPORT_SUBJECT_TYPES.profile
+        ? t.reportProfileDescription
+        : t.reportListingDescription;
+  const reasonDescription =
+    subjectType === REPORT_SUBJECT_TYPES.profile
+      ? t.reportProfileReasonDescription
+      : t.reportReasonDescription;
+  const detailsPlaceholder =
+    subjectType === REPORT_SUBJECT_TYPES.profile
+      ? t.reportProfileDetailsPlaceholder
+      : t.reportDetailsPlaceholder;
 
   React.useEffect(() => {
     if (!open) {
@@ -97,13 +118,14 @@ export function ReportSheet({
     setIsSubmitting(false);
 
     if (error) {
-      if (!isReportsTableMissing(error)) {
+      const isModerationUnavailable =
+        isReportsTableMissing(error) || isReportsSubjectTypeUnsupported(error);
+
+      if (!isModerationUnavailable) {
         console.error("Failed to submit report:", error.message);
       }
 
-      toast.error(
-        isReportsTableMissing(error) ? t.reportModerationUnavailable : t.reportSubmitError,
-      );
+      toast.error(isModerationUnavailable ? t.reportModerationUnavailable : t.reportSubmitError);
       return;
     }
 
@@ -115,16 +137,8 @@ export function ReportSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-md">
         <SheetHeader className="border-b border-border px-6 py-5">
-          <SheetTitle>
-            {subjectType === REPORT_SUBJECT_TYPES.message
-              ? t.reportMessageTitle
-              : t.reportListingTitle}
-          </SheetTitle>
-          <SheetDescription>
-            {subjectType === REPORT_SUBJECT_TYPES.message
-              ? t.reportMessageDescription
-              : t.reportListingDescription}
-          </SheetDescription>
+          <SheetTitle>{sheetTitle}</SheetTitle>
+          <SheetDescription>{sheetDescription}</SheetDescription>
         </SheetHeader>
 
         {!currentUserId ? (
@@ -143,7 +157,7 @@ export function ReportSheet({
                 <Field orientation="vertical" className="items-stretch gap-2">
                   <FieldContent>
                     <FieldTitle className="text-foreground">{t.reportReasonLabel}</FieldTitle>
-                    <FieldDescription>{t.reportReasonDescription}</FieldDescription>
+                    <FieldDescription>{reasonDescription}</FieldDescription>
                   </FieldContent>
                   <FieldLabel htmlFor="report-reason" className="sr-only">
                     {t.reportReasonLabel}
@@ -172,7 +186,7 @@ export function ReportSheet({
                     <Textarea
                       value={details}
                       onChange={(event) => setDetails(event.target.value)}
-                      placeholder={t.reportDetailsPlaceholder}
+                      placeholder={detailsPlaceholder}
                       rows={2}
                       className="min-h-16 resize-none border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0"
                       maxLength={600}
