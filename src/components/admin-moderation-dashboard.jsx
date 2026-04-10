@@ -1,7 +1,8 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
-import { Flag, MessageSquareWarning, Store, UserRound } from "lucide-react";
+import { Flag, MessageSquareWarning, Search, Store, UserRound } from "lucide-react";
 
 import { ClientFormattedDateTime } from "@/components/client-formatted-date-time";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -29,6 +31,7 @@ import {
   getTranslatedReportStatus,
   getTranslatedReportSubjectType,
 } from "@/lib/moderation";
+import { cn } from "@/lib/utils";
 
 function SummaryCard({ icon: Icon, title, value, description }) {
   return (
@@ -45,6 +48,31 @@ function SummaryCard({ icon: Icon, title, value, description }) {
       </CardContent>
     </Card>
   );
+}
+
+function getReportSubjectPreview(report, t) {
+  if (report.subjectType === REPORT_SUBJECT_TYPES.listing) {
+    return report.listing?.title ?? t.unknown;
+  }
+
+  if (report.subjectType === REPORT_SUBJECT_TYPES.profile) {
+    return report.profile?.name ?? report.reportedUser.name;
+  }
+
+  return report.message?.body ?? t.unknown;
+}
+
+function getReportSearchText(report, t) {
+  return [
+    getReportSubjectPreview(report, t),
+    report.reporter.name,
+    report.reportedUser.name,
+    getTranslatedReportReason(report.reason, t, report.subjectType),
+    getTranslatedReportSubjectType(report.subjectType, t),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
 }
 
 function ReportQueueTable({ reports, language, t }) {
@@ -65,12 +93,7 @@ function ReportQueueTable({ reports, language, t }) {
       <TableBody>
         {reports.length > 0 ? (
           reports.map((report) => {
-            const subjectPreview =
-              report.subjectType === REPORT_SUBJECT_TYPES.listing
-                ? report.listing?.title ?? t.unknown
-                : report.subjectType === REPORT_SUBJECT_TYPES.profile
-                  ? report.profile?.name ?? report.reportedUser.name
-                  : report.message?.body ?? t.unknown;
+            const subjectPreview = getReportSubjectPreview(report, t);
 
             return (
               <TableRow key={report.id}>
@@ -121,10 +144,32 @@ function ReportQueueTable({ reports, language, t }) {
 
 export function AdminModerationDashboard({ initialReports, reportsAvailable }) {
   const { t, language } = useLanguage();
+  const [typeFilter, setTypeFilter] = React.useState("all");
+  const [searchQuery, setSearchQuery] = React.useState("");
 
-  const reports = initialReports ?? [];
-  const openReports = reports.filter((report) => report.status === REPORT_STATUS_VALUES.open);
-  const reviewedReports = reports.filter((report) => report.status !== REPORT_STATUS_VALUES.open);
+  const reports = React.useMemo(() => initialReports ?? [], [initialReports]);
+
+  const filteredReports = React.useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    return reports.filter((report) => {
+      const matchesType = typeFilter === "all" || report.subjectType === typeFilter;
+      const matchesQuery =
+        normalizedQuery.length === 0 || getReportSearchText(report, t).includes(normalizedQuery);
+
+      return matchesType && matchesQuery;
+    });
+  }, [reports, searchQuery, t, typeFilter]);
+
+  const openReports = filteredReports.filter(
+    (report) => report.status === REPORT_STATUS_VALUES.open,
+  );
+  const reviewedReports = filteredReports.filter(
+    (report) => report.status !== REPORT_STATUS_VALUES.open,
+  );
+  const totalOpenReports = reports.filter(
+    (report) => report.status === REPORT_STATUS_VALUES.open,
+  );
 
   const listingReportCount = reports.filter(
     (report) => report.subjectType === REPORT_SUBJECT_TYPES.listing,
@@ -135,6 +180,18 @@ export function AdminModerationDashboard({ initialReports, reportsAvailable }) {
   const profileReportCount = reports.filter(
     (report) => report.subjectType === REPORT_SUBJECT_TYPES.profile,
   ).length;
+  const hasActiveFilters = typeFilter !== "all" || searchQuery.trim().length > 0;
+  const filterOptions = [
+    { value: "all", label: t.all },
+    { value: REPORT_SUBJECT_TYPES.listing, label: t.adminListings },
+    { value: REPORT_SUBJECT_TYPES.message, label: t.messages },
+    { value: REPORT_SUBJECT_TYPES.profile, label: t.profile },
+  ];
+
+  function clearFilters() {
+    setTypeFilter("all");
+    setSearchQuery("");
+  }
 
   if (!reportsAvailable) {
     return (
@@ -153,7 +210,7 @@ export function AdminModerationDashboard({ initialReports, reportsAvailable }) {
         <SummaryCard
           icon={Flag}
           title={t.pendingReports}
-          value={openReports.length}
+          value={totalOpenReports.length}
           description={t.adminReviewQueueDescription}
         />
         <SummaryCard
@@ -180,13 +237,53 @@ export function AdminModerationDashboard({ initialReports, reportsAvailable }) {
         <CardHeader className="border-b border-border px-6 py-6">
           <CardTitle className="text-2xl text-foreground">{t.adminReports}</CardTitle>
           <CardDescription>{t.adminQueueDescription}</CardDescription>
+
+          <div className="mt-4 flex flex-col gap-3">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-wrap gap-2">
+                {filterOptions.map((option) => {
+                  const isActive = typeFilter === option.value;
+
+                  return (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      variant={isActive ? "default" : "outline"}
+                      size="sm"
+                      className={cn("rounded-full px-3", !isActive && "bg-background")}
+                      onClick={() => setTypeFilter(option.value)}
+                    >
+                      {option.label}
+                    </Button>
+                  );
+                })}
+
+                {hasActiveFilters ? (
+                  <Button type="button" variant="ghost" size="sm" className="rounded-full px-3" onClick={clearFilters}>
+                    {t.clearFilters}
+                  </Button>
+                ) : null}
+              </div>
+
+              <div className="relative w-full lg:max-w-sm">
+                <Search className="pointer-events-none absolute top-0 bottom-0 left-3 my-auto size-4 text-muted-foreground" />
+                <Input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder={t.adminSearchReportsPlaceholder}
+                  className="h-10 rounded-full bg-background pl-9"
+                  aria-label={t.adminSearchReportsPlaceholder}
+                />
+              </div>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="px-6 py-6">
           {openReports.length > 0 ? (
             <ReportQueueTable reports={openReports} language={language} t={t} />
           ) : (
             <div className="rounded-3xl border border-dashed border-border bg-muted/30 px-5 py-10 text-center text-sm text-muted-foreground">
-              {t.noPendingReports}
+              {hasActiveFilters ? t.adminNoOpenReportsMatchFilters : t.noPendingReports}
             </div>
           )}
         </CardContent>
@@ -202,7 +299,7 @@ export function AdminModerationDashboard({ initialReports, reportsAvailable }) {
             <ReportQueueTable reports={reviewedReports.slice(0, 20)} language={language} t={t} />
           ) : (
             <div className="rounded-3xl border border-dashed border-border bg-muted/30 px-5 py-10 text-center text-sm text-muted-foreground">
-              {t.noReports}
+              {hasActiveFilters ? t.adminNoReviewedReportsMatchFilters : t.noReports}
             </div>
           )}
         </CardContent>

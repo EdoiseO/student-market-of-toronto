@@ -387,6 +387,10 @@ export const translations = {
     adminProfileReportsDescription: "Reports linked to seller profiles.",
     adminRecentReviewsTitle: "Recent Review Activity",
     adminRecentReviewsDescription: "The latest moderation decisions made from this queue.",
+    adminSearchReportsPlaceholder: "Search reports, people, or subjects",
+    adminNoReportsMatchFilters: "No reports match the current filters.",
+    adminNoOpenReportsMatchFilters: "No open reports match the current filters.",
+    adminNoReviewedReportsMatchFilters: "No reviewed reports match the current filters.",
     adminSetupTitle: "Moderation setup is still required",
     adminSetupDescription:
       "Apply the moderation SQL in Supabase first, then come back here to review live reports.",
@@ -984,6 +988,12 @@ export const translations = {
     adminRecentReviewsTitle: "Activité récente de modération",
     adminRecentReviewsDescription:
       "Les plus récentes décisions de modération prises depuis cette file.",
+    adminSearchReportsPlaceholder: "Rechercher des signalements, personnes ou sujets",
+    adminNoReportsMatchFilters: "Aucun signalement ne correspond aux filtres actuels.",
+    adminNoOpenReportsMatchFilters:
+      "Aucun signalement ouvert ne correspond aux filtres actuels.",
+    adminNoReviewedReportsMatchFilters:
+      "Aucun signalement examiné ne correspond aux filtres actuels.",
     adminSetupTitle: "La configuration de la modération est encore requise",
     adminSetupDescription:
       "Appliquez d'abord le SQL de modération dans Supabase, puis revenez ici pour examiner les signalements en direct.",
