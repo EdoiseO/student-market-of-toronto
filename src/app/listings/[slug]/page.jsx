@@ -252,6 +252,7 @@ export default async function ListingDetailPage({ params }) {
                   <StartConversationButton
                     listingId={listing.id}
                     listingTitle={listing.title}
+                    listingStatus={listing.status}
                     sellerId={listing.seller_id}
                     currentUserId={user?.id ?? null}
                     className="w-full sm:w-auto"

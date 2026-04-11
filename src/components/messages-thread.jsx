@@ -29,7 +29,14 @@ import {
 import { ClientFormattedDateTime } from "@/components/client-formatted-date-time";
 import { ReportSheet } from "@/components/report-sheet";
 import { useLanguage } from "@/context/LanguageContext";
-import { isConversationUserStateTableMissing } from "@/lib/messages";
+import {
+  getListingMessagingUnavailableText,
+  getListingMessagingUnavailableStatusFromError,
+  isConversationUserStateTableMissing,
+  isListingMessagingAvailable,
+  isListingMessagingUnavailableError,
+  MESSAGE_CONVERSATION_SELECT,
+} from "@/lib/messages";
 import { createClient } from "@/utils/supabase/client";
 
 function formatPrice(price, language) {
@@ -48,6 +55,8 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
   const [draft, setDraft] = React.useState("");
   const [isSending, setIsSending] = React.useState(false);
   const [reportMessageTarget, setReportMessageTarget] = React.useState(null);
+  const isMessagingAvailable = isListingMessagingAvailable(conversation.listing.status);
+  const messagingUnavailableText = getListingMessagingUnavailableText(conversation.listing.status, t);
 
   React.useEffect(() => {
     setMessages(initialMessages ?? []);
@@ -104,7 +113,36 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
       return;
     }
 
+    if (!isMessagingAvailable) {
+      toast.error(messagingUnavailableText);
+      return;
+    }
+
     setIsSending(true);
+
+    const { data: conversationRow, error: conversationStatusError } = await supabase
+      .from("conversations")
+      .select(MESSAGE_CONVERSATION_SELECT)
+      .eq("id", conversation.id)
+      .maybeSingle();
+
+    if (conversationStatusError) {
+      console.error(
+        "Failed to refresh conversation listing status before send:",
+        conversationStatusError.message,
+      );
+    } else {
+      const listing = Array.isArray(conversationRow?.listings)
+        ? conversationRow.listings[0]
+        : conversationRow?.listings;
+      const latestListingStatus = listing?.status ?? null;
+
+      if (!isListingMessagingAvailable(latestListingStatus) || !listing) {
+        setIsSending(false);
+        toast.error(getListingMessagingUnavailableText(latestListingStatus, t));
+        return;
+      }
+    }
 
     const { data, error } = await supabase.rpc("send_conversation_message", {
       p_conversation_id: conversation.id,
@@ -114,7 +152,14 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
     setIsSending(false);
 
     if (error) {
-      toast.error(t.messageSendError);
+      toast.error(
+        isListingMessagingUnavailableError(error)
+          ? getListingMessagingUnavailableText(
+              getListingMessagingUnavailableStatusFromError(error),
+              t,
+            )
+          : t.messageSendError,
+      );
       console.error("Failed to send message:", error.message);
       return;
     }
@@ -332,6 +377,9 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
 
       <form onSubmit={handleSubmit} className="border-t border-zinc-200 p-6 dark:border-border">
         <div className="rounded-[1.75rem] border border-zinc-200 bg-background p-3 shadow-sm dark:border-border dark:bg-background">
+          {!isMessagingAvailable ? (
+            <p className="px-2 pb-3 text-sm text-muted-foreground">{messagingUnavailableText}</p>
+          ) : null}
           <Textarea
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
@@ -340,6 +388,7 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
             rows={2}
             className="min-h-16 resize-none border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0"
             maxLength={2000}
+            disabled={!isMessagingAvailable || isSending}
           />
 
           <div className="mt-2 flex items-center justify-between gap-3 border-t border-zinc-200 px-2 pt-3 dark:border-border">
@@ -391,7 +440,7 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
 
             <Button
               type="submit"
-              disabled={isSending || !draft.trim()}
+              disabled={!isMessagingAvailable || isSending || !draft.trim()}
               size="icon-lg"
               className="rounded-full"
               aria-label={isSending ? t.sendingMessage : t.sendMessage}

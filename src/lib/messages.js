@@ -49,6 +49,49 @@ export function getConversationDisplayName(profile, t) {
   return [profile?.first_name, profile?.last_name].filter(Boolean).join(" ").trim() || t.student;
 }
 
+export function isListingMessagingAvailable(status) {
+  return status === "active";
+}
+
+export function getListingMessagingUnavailableText(status, t) {
+  if (status === "sold") {
+    return t.listingSoldMessagingUnavailable;
+  }
+
+  if (status === "inactive") {
+    return t.listingInactiveMessagingUnavailable;
+  }
+
+  return t.listingMessagingUnavailable;
+}
+
+export function getListingMessagingUnavailableStatusFromError(error) {
+  const detail = [error?.details, error?.hint].find(
+    (value) => typeof value === "string" && value.includes("listing_status="),
+  );
+
+  if (!detail) {
+    return null;
+  }
+
+  const matchedStatus = detail.match(/listing_status=([a-z_]+)/i)?.[1]?.toLowerCase() ?? null;
+
+  if (matchedStatus === "sold" || matchedStatus === "inactive") {
+    return matchedStatus;
+  }
+
+  return null;
+}
+
+export function isListingMessagingUnavailableError(error) {
+  const message = [error?.message, error?.details, error?.hint]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return message.includes("listing_messaging_unavailable");
+}
+
 function getPrimaryListingImageUrl(listingImages) {
   return (listingImages ?? [])
     .slice()
@@ -82,6 +125,7 @@ export function normalizeConversationRow(conversation, currentUserId, t, unreadC
       title: listing?.title ?? t.listing,
       price: listing?.price ?? 0,
       location: listing?.location ?? t.torontoMeetup,
+      status: listing?.status ?? null,
       imageUrl: getPrimaryListingImageUrl(listing?.listing_images),
     },
     otherParticipant: {

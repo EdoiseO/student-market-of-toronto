@@ -108,6 +108,7 @@ npm run start
 - listing detail pages
 - listing-to-seller messaging
 - conversations inbox and dedicated thread pages
+- messaging disabled for sold or unavailable listings while keeping old conversation history readable
 - per-user conversation hide/remove-from-inbox state
 - header message notifications
 - create listing

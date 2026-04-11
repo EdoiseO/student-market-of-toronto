@@ -16,12 +16,19 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { isConversationUserStateTableMissing } from "@/lib/messages";
+import {
+  getListingMessagingUnavailableText,
+  getListingMessagingUnavailableStatusFromError,
+  isConversationUserStateTableMissing,
+  isListingMessagingAvailable,
+  isListingMessagingUnavailableError,
+} from "@/lib/messages";
 import { createClient } from "@/utils/supabase/client";
 
 export function StartConversationButton({
   listingId,
   listingTitle,
+  listingStatus,
   sellerId,
   currentUserId,
   className,
@@ -33,6 +40,56 @@ export function StartConversationButton({
   const [isComposerOpen, setIsComposerOpen] = React.useState(false);
   const [draft, setDraft] = React.useState("");
   const [isSendingFirstMessage, setIsSendingFirstMessage] = React.useState(false);
+  const isMessagingAvailable = isListingMessagingAvailable(listingStatus);
+
+  async function getLatestListingStatus() {
+    const { data, error } = await supabase
+      .from("listings")
+      .select("status")
+      .eq("id", listingId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Failed to load latest listing status for messaging:", error.message);
+      return { status: listingStatus ?? null, hasError: true };
+    }
+
+    return { status: data?.status ?? null, hasError: false };
+  }
+
+  async function ensureListingMessagingAvailable() {
+    if (!isMessagingAvailable) {
+      toast.error(getListingMessagingUnavailableText(listingStatus, t));
+      return false;
+    }
+
+    const { status, hasError } = await getLatestListingStatus();
+
+    if (!isListingMessagingAvailable(status) || (!hasError && !status)) {
+      toast.error(getListingMessagingUnavailableText(status, t));
+      return false;
+    }
+
+    return true;
+  }
+
+  if (currentUserId === sellerId) {
+    return (
+      <Button type="button" disabled className={className}>
+        <MessageCircle className="size-4" />
+        <span>{t.thisIsYourListing}</span>
+      </Button>
+    );
+  }
+
+  if (!isMessagingAvailable) {
+    return (
+      <Button type="button" disabled className={className}>
+        <MessageCircle className="size-4" />
+        <span>{t.messagingUnavailable}</span>
+      </Button>
+    );
+  }
 
   if (!currentUserId) {
     return (
@@ -45,17 +102,19 @@ export function StartConversationButton({
     );
   }
 
-  if (currentUserId === sellerId) {
-    return (
-      <Button type="button" disabled className={className}>
-        <MessageCircle className="size-4" />
-        <span>{t.thisIsYourListing}</span>
-      </Button>
-    );
-  }
-
   async function handleStartConversation() {
+    if (isStarting) {
+      return;
+    }
+
     setIsStarting(true);
+
+    const canMessageListing = await ensureListingMessagingAvailable();
+
+    if (!canMessageListing) {
+      setIsStarting(false);
+      return;
+    }
 
     const { data, error } = await supabase
       .from("conversations")
@@ -103,6 +162,13 @@ export function StartConversationButton({
 
     setIsSendingFirstMessage(true);
 
+    const canMessageListing = await ensureListingMessagingAvailable();
+
+    if (!canMessageListing) {
+      setIsSendingFirstMessage(false);
+      return;
+    }
+
     const body = draft.trim();
     const { data: conversationData, error: conversationError } = await supabase.rpc(
       "create_or_get_listing_conversation",
@@ -115,7 +181,14 @@ export function StartConversationButton({
 
     if (conversationError || !conversation?.id) {
       setIsSendingFirstMessage(false);
-      toast.error(t.conversationStartError);
+      toast.error(
+        isListingMessagingUnavailableError(conversationError)
+          ? getListingMessagingUnavailableText(
+              getListingMessagingUnavailableStatusFromError(conversationError),
+              t,
+            )
+          : t.conversationStartError,
+      );
       console.error(
         "Failed to create or load conversation for first message:",
         conversationError?.message,
@@ -140,7 +213,14 @@ export function StartConversationButton({
       }
 
       setIsSendingFirstMessage(false);
-      toast.error(t.messageSendError);
+      toast.error(
+        isListingMessagingUnavailableError(sendError)
+          ? getListingMessagingUnavailableText(
+              getListingMessagingUnavailableStatusFromError(sendError),
+              t,
+            )
+          : t.messageSendError,
+      );
       console.error("Failed to send first message:", sendError.message);
       return;
     }

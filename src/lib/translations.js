@@ -228,10 +228,17 @@ export const translations = {
     photo: "Photo",
     torontoMeetup: "Toronto meetup",
     chatWithSeller: "Chat with Seller",
+    messagingUnavailable: "Messaging unavailable",
     signInToMessageSeller: "Sign in to message seller",
     startingConversation: "Opening conversation...",
     conversationStartError: "We could not open this conversation right now.",
     thisIsYourListing: "This is your listing",
+    listingMessagingUnavailable:
+      "This listing is not available for new messages right now.",
+    listingSoldMessagingUnavailable:
+      "This listing was marked sold. New messages are disabled.",
+    listingInactiveMessagingUnavailable:
+      "This listing is no longer available. New messages are disabled.",
     you: "You",
     created: "Created",
     updated: "Updated",
@@ -925,11 +932,18 @@ export const translations = {
     photo: "Photo",
     torontoMeetup: "Rencontre à Toronto",
     chatWithSeller: "Discuter avec le vendeur",
+    messagingUnavailable: "Messagerie indisponible",
     signInToMessageSeller: "Connectez-vous pour écrire au vendeur",
     startingConversation: "Ouverture de la conversation...",
     conversationStartError:
       "Nous n'avons pas pu ouvrir cette conversation pour le moment.",
     thisIsYourListing: "C'est votre annonce",
+    listingMessagingUnavailable:
+      "Cette annonce n'est pas disponible pour de nouveaux messages pour le moment.",
+    listingSoldMessagingUnavailable:
+      "Cette annonce a été marquée comme vendue. Les nouveaux messages sont désactivés.",
+    listingInactiveMessagingUnavailable:
+      "Cette annonce n'est plus disponible. Les nouveaux messages sont désactivés.",
     you: "Vous",
     created: "Créé",
     updated: "Mis à jour",
