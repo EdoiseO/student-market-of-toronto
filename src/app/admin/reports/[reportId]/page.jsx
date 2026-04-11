@@ -360,8 +360,8 @@ export default async function AdminReportReviewPage({ params }) {
   const ReviewIcon = reviewIcon;
 
   return (
-    <main className="h-full min-h-0 overflow-hidden bg-zinc-100 px-5 pt-3 pb-5 dark:bg-background md:px-6 md:pt-3 md:pb-6 lg:px-7 lg:pt-4 lg:pb-7">
-      <div className="mx-auto flex h-full min-h-0 w-full max-w-[1280px] flex-col gap-3 overflow-hidden">
+    <main className="bg-zinc-100 px-5 pt-3 pb-5 dark:bg-background md:px-6 md:pt-3 md:pb-6 lg:px-7 lg:pt-4 lg:pb-7">
+      <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Button asChild variant="ghost" className="h-9 rounded-full px-3">
             <Link href="/admin">

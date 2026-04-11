@@ -161,7 +161,7 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
   }
 
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card">
+    <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card">
       <div className="border-b border-zinc-200 p-6 dark:border-border">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <Link

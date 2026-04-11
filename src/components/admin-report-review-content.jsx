@@ -298,7 +298,7 @@ export function AdminReportReviewContent({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+    <div className="flex flex-col gap-4">
       <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
         <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -361,9 +361,9 @@ export function AdminReportReviewContent({
         </CardContent>
       </Card>
 
-      <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.8fr)]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.8fr)]">
         {isMessageReport ? (
-          <section className="flex min-h-0 flex-col overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card">
+          <section className="flex flex-col overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card">
             <div className="border-b border-zinc-200 px-6 py-4 dark:border-border">
               <p className="text-lg font-semibold text-zinc-950 dark:text-foreground">
                 {t.adminConversationContextLabel}
@@ -373,7 +373,7 @@ export function AdminReportReviewContent({
               </p>
             </div>
 
-            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto bg-zinc-50/70 px-6 py-5 dark:bg-muted/20">
+            <div className="max-h-[60vh] space-y-5 overflow-y-auto bg-zinc-50/70 px-6 py-5 dark:bg-muted/20">
               {messages.map((message) => {
                 const isBuyer = message.sender_id === conversation.buyer.id;
                 const sender = isBuyer ? conversation.buyer : conversation.seller;
@@ -472,7 +472,7 @@ export function AdminReportReviewContent({
             </div>
           </section>
         ) : isProfileReport ? (
-          <section className="flex min-h-0 flex-col overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card">
+          <section className="flex flex-col overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card">
             <div className="border-b border-zinc-200 px-6 py-5 dark:border-border">
               <p className="text-lg font-semibold text-zinc-950 dark:text-foreground">
                 {reviewTitle}
@@ -547,7 +547,7 @@ export function AdminReportReviewContent({
             </div>
           </section>
         ) : (
-          <section className="flex min-h-0 flex-col overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card">
+          <section className="flex flex-col overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card">
             <div className="border-b border-zinc-200 px-6 py-5 dark:border-border">
               <p className="text-lg font-semibold text-zinc-950 dark:text-foreground">
                 {t.adminListingReviewTitle}
