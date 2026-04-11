@@ -75,6 +75,9 @@ export const translations = {
       "Your listing needs changes before it can go live.",
     notificationListingRejectedWithFeedback:
       "Your listing needs changes before it can go live. Feedback: {feedback}",
+    notificationModeratorRoleGrantedTitle: "Moderator role granted",
+    notificationModeratorRoleGrantedDescription:
+      "You were granted moderator access. Open the admin area to review reports and user-management tools.",
     settingsProfileTitle: "Profile",
     settingsProfileDescription:
       "Control the softer profile details that appear on listing pages while keeping seller identity visible.",
@@ -420,7 +423,7 @@ export const translations = {
     adminOverview: "Overview",
     adminReports: "Reports",
     adminListings: "Listings",
-    adminUsers: "Users",
+    adminUsers: "User Management",
     adminUsersPageDescription:
       "Browse the current account list, search by person or email, and prepare moderation-role or account-status actions from one place.",
     adminUsersPageHeaderDescription:
@@ -439,6 +442,12 @@ export const translations = {
     adminUserRoleStaff: "Staff",
     adminUserStatusActive: "Active",
     adminUserStatusBanned: "Banned",
+    adminTransferAdmin: "Transfer admin",
+    adminTransferAdminTitle: "Transfer admin access?",
+    adminTransferAdminDescription:
+      "This user will become an admin, and your account will be changed to moderator.",
+    adminTransferAdminSuccess: "Admin access transferred.",
+    adminUserRoleActionError: "We could not update this user role right now.",
     adminAnnounce: "Announcements",
     totalListings: "Total Listings",
     students: "Students",
@@ -833,6 +842,9 @@ export const translations = {
       "Votre annonce doit être modifiée avant de pouvoir être mise en ligne.",
     notificationListingRejectedWithFeedback:
       "Votre annonce doit être modifiée avant de pouvoir être mise en ligne. Commentaire : {feedback}",
+    notificationModeratorRoleGrantedTitle: "Rôle de modérateur accordé",
+    notificationModeratorRoleGrantedDescription:
+      "Vous avez reçu l'accès modérateur. Ouvrez l'espace admin pour examiner les signalements et les outils de gestion des utilisateurs.",
     settingsProfileTitle: "Profil",
     settingsProfileDescription:
       "Gérez les détails plus personnels affichés sur vos pages d'annonce tout en gardant l'identité du vendeur visible.",
@@ -1204,7 +1216,7 @@ export const translations = {
     adminOverview: "Aperçu",
     adminReports: "Signalements",
     adminListings: "Annonces",
-    adminUsers: "Utilisateurs",
+    adminUsers: "Gestion des utilisateurs",
     adminUsersPageDescription:
       "Parcourez la liste actuelle des comptes, recherchez par personne ou courriel, et préparez les actions liées aux rôles de modération ou au statut du compte depuis un seul endroit.",
     adminUsersPageHeaderDescription:
@@ -1228,6 +1240,13 @@ export const translations = {
     adminUserRoleStaff: "Staff",
     adminUserStatusActive: "Actif",
     adminUserStatusBanned: "Banni",
+    adminTransferAdmin: "Transférer l'accès admin",
+    adminTransferAdminTitle: "Transférer l'accès admin ?",
+    adminTransferAdminDescription:
+      "Cet utilisateur deviendra admin, et votre propre compte sera changé en modérateur.",
+    adminTransferAdminSuccess: "L'accès admin a été transféré.",
+    adminUserRoleActionError:
+      "Nous n'avons pas pu mettre à jour le rôle de cet utilisateur pour le moment.",
     adminAnnounce: "Communiqués",
     totalListings: "Total des annonces",
     students: "Étudiants",

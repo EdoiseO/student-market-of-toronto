@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { Search } from "lucide-react";
+import { toast } from "sonner";
 
 import { ClientFormattedDateTime } from "@/components/client-formatted-date-time";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +12,17 @@ import {
   Card,
   CardContent,
 } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -21,6 +33,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useLanguage } from "@/context/LanguageContext";
+import { createClient } from "@/utils/supabase/client";
 import { cn } from "@/lib/utils";
 
 function getRoleLabel(role, t) {
@@ -65,15 +78,127 @@ function SummaryCard({ title, value, description }) {
   );
 }
 
-export function AdminUsersManagement({ users }) {
+function UserRoleActions({ user, currentUserId, currentUserRole, onRoleUpdated }) {
+  const { t } = useLanguage();
+  const supabase = React.useMemo(() => createClient(), []);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  if (currentUserRole !== "admin") {
+    return <span className="text-sm text-muted-foreground">—</span>;
+  }
+
+  if (user.role === "staff") {
+    return <span className="text-sm text-muted-foreground">—</span>;
+  }
+
+  async function handleRoleAction(action) {
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(`/api/admin/users/${user.id}/role`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action }),
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload?.error || t.adminUserRoleActionError);
+      }
+
+      await supabase.auth.refreshSession();
+      onRoleUpdated?.(user.id, payload);
+
+      if (action === "transfer_admin") {
+        toast.success(t.adminTransferAdminSuccess);
+      } else {
+        const nextRoleLabel = getRoleLabel(payload?.nextRole ?? null, t);
+        toast.success(`${t.roleUpdatedTo} ${nextRoleLabel}`);
+      }
+    } catch (error) {
+      console.error("Failed to update admin user role:", error);
+      toast.error(error.message || t.adminUserRoleActionError);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap justify-end gap-2">
+      {user.role === "moderator" ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="rounded-xl"
+          onClick={() => handleRoleAction("remove_moderator")}
+          disabled={isSubmitting}
+        >
+          {t.removeMod}
+        </Button>
+      ) : user.role !== "admin" ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="rounded-xl"
+          onClick={() => handleRoleAction("make_moderator")}
+          disabled={isSubmitting || user.id === currentUserId}
+        >
+          {t.makeMod}
+        </Button>
+      ) : null}
+
+      {user.id !== currentUserId && user.role !== "admin" ? (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button type="button" size="sm" className="rounded-xl" disabled={isSubmitting}>
+              {t.adminTransferAdmin}
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t.adminTransferAdminTitle}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {t.adminTransferAdminDescription}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isSubmitting}>{t.cancel}</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => handleRoleAction("transfer_admin")}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? t.saving : t.adminTransferAdmin}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      ) : null}
+    </div>
+  );
+}
+
+export function AdminUsersManagement({ users, currentUserId, currentUserRole }) {
   const { t, language } = useLanguage();
+  const [userRows, setUserRows] = React.useState(users);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [roleFilter, setRoleFilter] = React.useState("all");
+
+  React.useEffect(() => {
+    setUserRows(users);
+  }, [users]);
 
   const filteredUsers = React.useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
-    return users.filter((user) => {
+    return userRows.filter((user) => {
       if (roleFilter !== "all") {
         if (roleFilter === "standard" && user.role) {
           return false;
@@ -90,7 +215,7 @@ export function AdminUsersManagement({ users }) {
 
       return getSearchText(user, t).includes(normalizedQuery);
     });
-  }, [roleFilter, searchQuery, t, users]);
+  }, [roleFilter, searchQuery, t, userRows]);
 
   const roleFilterOptions = [
     { value: "all", label: t.all },
@@ -100,15 +225,37 @@ export function AdminUsersManagement({ users }) {
     { value: "staff", label: t.adminUserRoleStaff },
   ];
 
-  const bannedCount = users.filter((user) => user.isBanned).length;
-  const moderationUsersCount = users.filter((user) => Boolean(user.role)).length;
+  const bannedCount = userRows.filter((user) => user.isBanned).length;
+  const moderationUsersCount = userRows.filter((user) => Boolean(user.role)).length;
+
+  function handleRoleUpdated(userId, payload) {
+    setUserRows((currentUsers) =>
+      currentUsers.map((user) => {
+        if (user.id === userId) {
+          return {
+            ...user,
+            role: payload?.nextRole ?? null,
+          };
+        }
+
+        if (user.id === currentUserId && payload?.currentUserNextRole !== undefined) {
+          return {
+            ...user,
+            role: payload.currentUserNextRole,
+          };
+        }
+
+        return user;
+      }),
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="grid gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-3">
         <SummaryCard
           title={t.students}
-          value={users.length}
+          value={userRows.length}
           description={t.adminUsersSummaryDescription}
         />
         <SummaryCard
@@ -197,13 +344,19 @@ export function AdminUsersManagement({ users }) {
                       />
                     </TableCell>
                     <TableCell className="text-right">
-                      {user.profileExists ? (
-                        <Button asChild variant="outline" size="sm" className="rounded-xl">
-                          <Link href={`/profile/${user.id}`}>{t.viewProfile}</Link>
-                        </Button>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">—</span>
-                      )}
+                      <div className="flex flex-wrap justify-end gap-2">
+                        {user.profileExists ? (
+                          <Button asChild variant="outline" size="sm" className="rounded-xl">
+                            <Link href={`/profile/${user.id}`}>{t.viewProfile}</Link>
+                          </Button>
+                        ) : null}
+                        <UserRoleActions
+                          user={user}
+                          currentUserId={currentUserId}
+                          currentUserRole={currentUserRole}
+                          onRoleUpdated={handleRoleUpdated}
+                        />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

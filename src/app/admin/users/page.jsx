@@ -168,7 +168,11 @@ export default async function AdminUsersPage() {
           </div>
 
           <div className="p-8 pt-6">
-            <AdminUsersManagement users={users} />
+            <AdminUsersManagement
+              users={users}
+              currentUserId={user.id}
+              currentUserRole={getUserModerationRole(user)}
+            />
           </div>
         </div>
       </div>
