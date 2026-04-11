@@ -123,30 +123,32 @@ export default async function PublicProfilePage({ params }) {
                 </div>
 
                 <div className="flex min-w-0 flex-col gap-3 lg:max-w-[304px] lg:items-end">
-                  <ProfileReportButton profileId={profile.id} currentUserId={user.id} />
+                  <div className="flex w-full items-center gap-3">
+                    <div className="grid flex-1 gap-3 sm:grid-cols-2">
+                      <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-border dark:bg-muted/40">
+                        <ListIcon className="size-4 text-zinc-500 dark:text-muted-foreground" />
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-muted-foreground">
+                            {t.activeListingsTitle}
+                          </p>
+                          <p className="mt-1 text-zinc-900 dark:text-foreground">{sellerListings.length}</p>
+                        </div>
+                      </div>
 
-                  <div className="grid w-full gap-3 sm:grid-cols-2">
-                    <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-border dark:bg-muted/40">
-                      <ListIcon className="size-4 text-zinc-500 dark:text-muted-foreground" />
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-muted-foreground">
-                          {t.activeListingsTitle}
-                        </p>
-                        <p className="mt-1 text-zinc-900 dark:text-foreground">{sellerListings.length}</p>
+                      <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-border dark:bg-muted/40">
+                        <Clock3 className="size-4 text-zinc-500 dark:text-muted-foreground" />
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-muted-foreground">
+                            {t.memberSince}
+                          </p>
+                          <p className="mt-1 text-zinc-900 dark:text-foreground">
+                            {profile.created_at ? formatDate(profile.created_at, language) : "—"}
+                          </p>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-border dark:bg-muted/40">
-                      <Clock3 className="size-4 text-zinc-500 dark:text-muted-foreground" />
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-muted-foreground">
-                          {t.memberSince}
-                        </p>
-                        <p className="mt-1 text-zinc-900 dark:text-foreground">
-                          {profile.created_at ? formatDate(profile.created_at, language) : "—"}
-                        </p>
-                      </div>
-                    </div>
+                    <ProfileReportButton profileId={profile.id} currentUserId={user.id} />
                   </div>
                 </div>
               </div>

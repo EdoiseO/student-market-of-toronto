@@ -27,8 +27,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ClientFormattedDateTime } from "@/components/client-formatted-date-time";
+import { BlockUserButton } from "@/components/block-user-button";
 import { ReportSheet } from "@/components/report-sheet";
 import { useLanguage } from "@/context/LanguageContext";
+import { getMessagingBlockReason, getUserBlockState } from "@/lib/blocks";
 import {
   getListingMessagingUnavailableText,
   getListingMessagingUnavailableStatusFromError,
@@ -55,13 +57,46 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
   const [draft, setDraft] = React.useState("");
   const [isSending, setIsSending] = React.useState(false);
   const [reportMessageTarget, setReportMessageTarget] = React.useState(null);
+  const [blockState, setBlockState] = React.useState({
+    blockedByCurrentUser: false,
+    blockedCurrentUser: false,
+    available: true,
+  });
   const isMessagingAvailable = isListingMessagingAvailable(conversation.listing.status);
   const messagingUnavailableText = getListingMessagingUnavailableText(conversation.listing.status, t);
+  const blockReason = getMessagingBlockReason(blockState, t);
   const hasListingLink = Boolean(conversation.listing.slug);
 
   React.useEffect(() => {
     setMessages(initialMessages ?? []);
   }, [conversation.id, initialMessages]);
+
+  React.useEffect(() => {
+    let isMounted = true;
+
+    async function loadBlockState() {
+      const nextBlockState = await getUserBlockState(
+        supabase,
+        currentUserId,
+        conversation.otherParticipant.id,
+      );
+
+      if (nextBlockState.error) {
+        console.error("Failed to load conversation block state:", nextBlockState.error.message);
+        return;
+      }
+
+      if (isMounted) {
+        setBlockState(nextBlockState);
+      }
+    }
+
+    loadBlockState();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [conversation.otherParticipant.id, currentUserId, supabase]);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -112,6 +147,24 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
 
     if (!draft.trim()) {
       return;
+    }
+
+    const latestBlockState = await getUserBlockState(
+      supabase,
+      currentUserId,
+      conversation.otherParticipant.id,
+    );
+
+    if (latestBlockState.error) {
+      console.error("Failed to refresh conversation block state before send:", latestBlockState.error.message);
+    } else {
+      setBlockState(latestBlockState);
+      const latestBlockReason = getMessagingBlockReason(latestBlockState, t);
+
+      if (latestBlockReason) {
+        toast.error(latestBlockReason);
+        return;
+      }
     }
 
     if (!isMessagingAvailable) {
@@ -261,26 +314,35 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
           )}
 
           {conversation.otherParticipant.id ? (
-            <Link
-              href={`/profile/${conversation.otherParticipant.id}`}
-              className="flex items-center gap-3 rounded-xl transition hover:bg-zinc-50/80 dark:hover:bg-muted/40 lg:self-center"
-            >
-              <ProfileAvatar
-                name={conversation.otherParticipant.name}
-                avatarPresetId={conversation.otherParticipant.avatarPresetId}
-                avatarUrl={conversation.otherParticipant.avatarUrl}
-                className="size-10 border border-zinc-200 dark:border-border"
-              />
+            <div className="flex flex-col gap-3 lg:items-end">
+              <Link
+                href={`/profile/${conversation.otherParticipant.id}`}
+                className="flex items-center gap-3 rounded-xl transition hover:bg-zinc-50/80 dark:hover:bg-muted/40 lg:self-center"
+              >
+                <ProfileAvatar
+                  name={conversation.otherParticipant.name}
+                  avatarPresetId={conversation.otherParticipant.avatarPresetId}
+                  avatarUrl={conversation.otherParticipant.avatarUrl}
+                  className="size-10 border border-zinc-200 dark:border-border"
+                />
 
-              <div>
-                <h1 className="text-lg font-semibold text-zinc-950 dark:text-foreground">
-                  {conversation.otherParticipant.name}
-                </h1>
-                <p className="text-xs text-zinc-500 dark:text-muted-foreground">
-                  {conversation.otherParticipant.school || t.torontoStudent}
-                </p>
-              </div>
-            </Link>
+                <div>
+                  <h1 className="text-lg font-semibold text-zinc-950 dark:text-foreground">
+                    {conversation.otherParticipant.name}
+                  </h1>
+                  <p className="text-xs text-zinc-500 dark:text-muted-foreground">
+                    {conversation.otherParticipant.school || t.torontoStudent}
+                  </p>
+                </div>
+              </Link>
+
+              <BlockUserButton
+                currentUserId={currentUserId}
+                targetUserId={conversation.otherParticipant.id}
+                onBlockStateChange={setBlockState}
+                className="rounded-xl"
+              />
+            </div>
           ) : (
             <div className="flex items-center gap-3 lg:self-center">
               <ProfileAvatar
@@ -397,6 +459,9 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
 
       <form onSubmit={handleSubmit} className="border-t border-zinc-200 p-6 dark:border-border">
         <div className="rounded-[1.75rem] border border-zinc-200 bg-background p-3 shadow-sm dark:border-border dark:bg-background">
+          {blockReason ? (
+            <p className="px-2 pb-3 text-sm text-muted-foreground">{blockReason}</p>
+          ) : null}
           {!isMessagingAvailable ? (
             <p className="px-2 pb-3 text-sm text-muted-foreground">{messagingUnavailableText}</p>
           ) : null}
@@ -408,7 +473,7 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
             rows={2}
             className="min-h-16 resize-none border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0"
             maxLength={2000}
-            disabled={!isMessagingAvailable || isSending}
+            disabled={!isMessagingAvailable || Boolean(blockReason) || isSending}
           />
 
           <div className="mt-2 flex items-center justify-between gap-3 border-t border-zinc-200 px-2 pt-3 dark:border-border">
@@ -460,7 +525,7 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
 
             <Button
               type="submit"
-              disabled={!isMessagingAvailable || isSending || !draft.trim()}
+              disabled={!isMessagingAvailable || Boolean(blockReason) || isSending || !draft.trim()}
               size="icon-lg"
               className="rounded-full"
               aria-label={isSending ? t.sendingMessage : t.sendMessage}

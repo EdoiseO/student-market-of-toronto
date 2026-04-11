@@ -310,6 +310,21 @@ export const translations = {
     reportProfileTitle: "Report this profile",
     reportProfileDescription:
       "Tell the moderation team what looks unsafe, deceptive, or inappropriate about this profile, photo, or bio.",
+    blockUser: "Block user",
+    unblockUser: "Unblock user",
+    userBlocked: "User blocked",
+    blockUserTitle: "Block this user?",
+    blockUserDescription:
+      "You will no longer be able to start or send messages with this user. Existing conversation history will stay visible until you unblock them.",
+    unblockUserTitle: "Unblock this user?",
+    unblockUserDescription:
+      "You will be able to message this user again if the related listing is still available.",
+    blockUserSuccess: "User blocked.",
+    unblockUserSuccess: "User unblocked.",
+    blockUserError: "We could not update this block right now.",
+    blockUserUnavailable: "User blocking is not available in this environment yet.",
+    messagingBlockedByYou: "You blocked this user. Unblock them to send messages.",
+    messagingBlockedByOtherUser: "This user blocked you. Messaging is unavailable.",
     reportProfileReasonDescription:
       "Pick what stands out most — for example a fake profile, harassment, or an inappropriate photo or bio.",
     reportListingTitle: "Report this listing",
@@ -1052,6 +1067,25 @@ export const translations = {
     reportProfileTitle: "Signaler ce profil",
     reportProfileDescription:
       "Expliquez à l'équipe de modération ce qui semble dangereux, trompeur ou inapproprié dans ce profil, sa photo ou sa bio.",
+    blockUser: "Bloquer l'utilisateur",
+    unblockUser: "Débloquer l'utilisateur",
+    userBlocked: "Utilisateur bloqué",
+    blockUserTitle: "Bloquer cet utilisateur ?",
+    blockUserDescription:
+      "Vous ne pourrez plus démarrer ni envoyer de messages avec cet utilisateur. L'historique de conversation existant restera visible jusqu'à ce que vous le débloquiez.",
+    unblockUserTitle: "Débloquer cet utilisateur ?",
+    unblockUserDescription:
+      "Vous pourrez envoyer de nouveau des messages à cet utilisateur si l'annonce liée est encore disponible.",
+    blockUserSuccess: "Utilisateur bloqué.",
+    unblockUserSuccess: "Utilisateur débloqué.",
+    blockUserError:
+      "Nous n'avons pas pu mettre à jour ce blocage pour le moment.",
+    blockUserUnavailable:
+      "Le blocage d'utilisateurs n'est pas encore disponible dans cet environnement.",
+    messagingBlockedByYou:
+      "Vous avez bloqué cet utilisateur. Débloquez-le pour envoyer des messages.",
+    messagingBlockedByOtherUser:
+      "Cet utilisateur vous a bloqué. La messagerie est indisponible.",
     reportProfileReasonDescription:
       "Choisissez ce qui ressort le plus — par exemple un faux profil, du harcèlement, ou une photo ou bio inappropriée.",
     reportListingTitle: "Signaler cette annonce",

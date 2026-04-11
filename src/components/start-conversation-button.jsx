@@ -23,6 +23,7 @@ import {
   isListingMessagingAvailable,
   isListingMessagingUnavailableError,
 } from "@/lib/messages";
+import { getMessagingBlockReason, getUserBlockState } from "@/lib/blocks";
 import { createClient } from "@/utils/supabase/client";
 
 export function StartConversationButton({
@@ -41,6 +42,39 @@ export function StartConversationButton({
   const [draft, setDraft] = React.useState("");
   const [isSendingFirstMessage, setIsSendingFirstMessage] = React.useState(false);
   const isMessagingAvailable = isListingMessagingAvailable(listingStatus);
+  const [blockState, setBlockState] = React.useState({
+    blockedByCurrentUser: false,
+    blockedCurrentUser: false,
+    available: true,
+  });
+  const messagingBlockReason = getMessagingBlockReason(blockState, t);
+
+  React.useEffect(() => {
+    let isMounted = true;
+
+    async function loadBlockState() {
+      if (!currentUserId || !sellerId || currentUserId === sellerId) {
+        return;
+      }
+
+      const nextBlockState = await getUserBlockState(supabase, currentUserId, sellerId);
+
+      if (nextBlockState.error) {
+        console.error("Failed to load listing message block state:", nextBlockState.error.message);
+        return;
+      }
+
+      if (isMounted) {
+        setBlockState(nextBlockState);
+      }
+    }
+
+    loadBlockState();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUserId, sellerId, supabase]);
 
   async function getLatestListingStatus() {
     const { data, error } = await supabase
@@ -58,6 +92,21 @@ export function StartConversationButton({
   }
 
   async function ensureListingMessagingAvailable() {
+    const latestBlockState = await getUserBlockState(supabase, currentUserId, sellerId);
+
+    if (latestBlockState.error) {
+      console.error("Failed to refresh listing message block state:", latestBlockState.error.message);
+    } else {
+      setBlockState(latestBlockState);
+
+      const latestBlockReason = getMessagingBlockReason(latestBlockState, t);
+
+      if (latestBlockReason) {
+        toast.error(latestBlockReason);
+        return false;
+      }
+    }
+
     if (!isMessagingAvailable) {
       toast.error(getListingMessagingUnavailableText(listingStatus, t));
       return false;
@@ -87,6 +136,15 @@ export function StartConversationButton({
       <Button type="button" disabled className={className}>
         <MessageCircle className="size-4" />
         <span>{t.messagingUnavailable}</span>
+      </Button>
+    );
+  }
+
+  if (messagingBlockReason) {
+    return (
+      <Button type="button" disabled className={className}>
+        <MessageCircle className="size-4" />
+        <span>{blockState.blockedByCurrentUser ? t.userBlocked : t.messagingUnavailable}</span>
       </Button>
     );
   }
