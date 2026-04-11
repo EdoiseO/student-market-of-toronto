@@ -47,7 +47,6 @@ import {
   StarIcon,
   Settings2Icon,
   ShieldCheckIcon,
-  TerminalIcon,
   UserIcon,
   FileTextIcon,
 } from "lucide-react";
@@ -212,9 +211,6 @@ export function AppSidebar({ user, ...props }) {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/">
-                <div className="flex aspect-square size-10 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground">
-                  <TerminalIcon className="size-5" />
-                </div>
                 <div className="grid flex-1 text-left text-base leading-tight">
                   <span className="truncate font-semibold">
                     {t.studentMarket}

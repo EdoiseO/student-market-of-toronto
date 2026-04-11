@@ -25,8 +25,8 @@ export function AppLayoutShell({ children, user }) {
         <div
           className={
             isMessagesConversationPage
-              ? "h-svh overflow-hidden [--header-height:calc(--spacing(16))]"
-              : "[--header-height:calc(--spacing(16))]"
+              ? "h-svh overflow-hidden [--header-height:57px]"
+              : "[--header-height:57px]"
           }
         >
           <SidebarProvider

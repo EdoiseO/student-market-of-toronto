@@ -47,6 +47,15 @@ function getInitialSellerFeedbackValue(listing) {
   return isPendingListingApproval(listing) ? "" : (listing?.moderationFeedback ?? "");
 }
 
+function getListingFeedbackResetValue(listing) {
+  return getInitialSellerFeedbackValue({
+    status: listing.status,
+    moderationFeedback: listing.moderationFeedback,
+    submittedForReviewAt: listing.submittedForReviewAt,
+    moderationReviewedAt: listing.moderationReviewedAt,
+  });
+}
+
 function isModerateListingDecisionRpcMissing(error) {
   const message = [error?.message, error?.details, error?.hint]
     .filter(Boolean)
@@ -60,14 +69,32 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
   const router = useRouter();
   const supabase = React.useMemo(() => createClient(), []);
   const { t, language } = useLanguage();
-  const [feedback, setFeedback] = React.useState(getInitialSellerFeedbackValue(listing));
+  const listingId = listing.id;
+  const listingStatus = listing.status;
+  const listingModerationFeedback = listing.moderationFeedback;
+  const listingSubmittedForReviewAt = listing.submittedForReviewAt;
+  const listingModerationReviewedAt = listing.moderationReviewedAt;
+  const [feedback, setFeedback] = React.useState(() => getListingFeedbackResetValue(listing));
   const [isProcessing, setIsProcessing] = React.useState(false);
 
   const isPendingReview = isPendingListingApproval(listing);
 
   React.useEffect(() => {
-    setFeedback(getInitialSellerFeedbackValue(listing));
-  }, [listing]);
+    setFeedback(
+      getInitialSellerFeedbackValue({
+        status: listingStatus,
+        moderationFeedback: listingModerationFeedback,
+        submittedForReviewAt: listingSubmittedForReviewAt,
+        moderationReviewedAt: listingModerationReviewedAt,
+      }),
+    );
+  }, [
+    listingId,
+    listingStatus,
+    listingModerationFeedback,
+    listingSubmittedForReviewAt,
+    listingModerationReviewedAt,
+  ]);
 
   async function handleModerationDecision(action, nextFeedback = null) {
     setIsProcessing(true);

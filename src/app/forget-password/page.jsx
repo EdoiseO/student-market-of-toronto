@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { AuthPageBrand } from "@/components/auth-page-brand";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -44,8 +45,9 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="flex min-h-svh w-full items-center justify-center bg-zinc-100 p-6 dark:bg-background md:p-10">
-      <div className="w-full max-w-sm">
+    <main className="flex h-svh w-full items-center justify-center overflow-hidden bg-zinc-100 p-4 dark:bg-background md:p-6">
+      <div className="flex w-full max-w-sm flex-col gap-4">
+        <AuthPageBrand />
         <Card>
           <CardHeader>
             <CardTitle className="text-center">{t.forgotPasswordTitle}</CardTitle>

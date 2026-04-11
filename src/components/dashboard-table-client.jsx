@@ -205,18 +205,6 @@ function buildDashboardHref(tab) {
   return tab === "all" ? "/dashboard" : `/dashboard?tab=${tab}`;
 }
 
-function DashboardStatusNote({ item, t }) {
-  if (isPendingListingApproval(item)) {
-    return null;
-  }
-
-  if (item.dashboardStatus === LISTING_APPROVAL_STATUS_VALUES.rejected) {
-    return null;
-  }
-
-  return null;
-}
-
 export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, favouriteCount = 0 }) {
   const { t, language } = useLanguage();
   const [dashboardSearch, setDashboardSearch] = React.useState("");
@@ -427,7 +415,6 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                   <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500 dark:text-muted-foreground">{t.status}</p>
                   <div className="mt-2">
                     <DashboardStatusBadge item={item} label={getStatusLabel(item)} t={t} language={language} />
-                    <DashboardStatusNote item={item} t={t} language={language} />
                   </div>
                 </div>
                 <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-border dark:bg-muted/40">
@@ -536,7 +523,6 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                   <td className="px-5 py-4 align-middle whitespace-nowrap text-center">
                     <div className="mx-auto flex max-w-[280px] flex-col items-center text-center">
                       <DashboardStatusBadge item={item} label={getStatusLabel(item)} t={t} language={language} />
-                      <DashboardStatusNote item={item} t={t} language={language} />
                     </div>
                   </td>
                   <td className="px-5 py-4 align-middle text-center font-medium whitespace-nowrap text-zinc-900 dark:text-foreground">{item.price}</td>
