@@ -421,6 +421,24 @@ export const translations = {
     adminReports: "Reports",
     adminListings: "Listings",
     adminUsers: "Users",
+    adminUsersPageDescription:
+      "Browse the current account list, search by person or email, and prepare moderation-role or account-status actions from one place.",
+    adminUsersPageHeaderDescription:
+      "Review the full user directory for moderation follow-up, role changes, and future account management actions.",
+    adminUsersSummaryDescription: "All accounts currently available to the admin directory.",
+    adminModerationTeamTitle: "Moderation team",
+    adminModerationTeamDescription: "Accounts with admin, moderator, or staff access.",
+    adminBannedUsersDescription: "Accounts currently marked as banned in auth.",
+    adminUsersSetupDescription:
+      "Add the Supabase service-role key on the server first, then return here to load the full admin user directory.",
+    adminSearchUsersPlaceholder: "Search users, email, school, or role",
+    adminNoUsersMatchFilters: "No users match the current filters.",
+    adminUserRoleStandard: "Student",
+    adminUserRoleAdmin: "Admin",
+    adminUserRoleModerator: "Moderator",
+    adminUserRoleStaff: "Staff",
+    adminUserStatusActive: "Active",
+    adminUserStatusBanned: "Banned",
     adminAnnounce: "Announcements",
     totalListings: "Total Listings",
     students: "Students",
@@ -1187,6 +1205,29 @@ export const translations = {
     adminReports: "Signalements",
     adminListings: "Annonces",
     adminUsers: "Utilisateurs",
+    adminUsersPageDescription:
+      "Parcourez la liste actuelle des comptes, recherchez par personne ou courriel, et préparez les actions liées aux rôles de modération ou au statut du compte depuis un seul endroit.",
+    adminUsersPageHeaderDescription:
+      "Examinez l'ensemble de l'annuaire des utilisateurs pour le suivi de modération, les changements de rôle et les futures actions de gestion des comptes.",
+    adminUsersSummaryDescription:
+      "Tous les comptes actuellement visibles dans l'annuaire administrateur.",
+    adminModerationTeamTitle: "Équipe de modération",
+    adminModerationTeamDescription:
+      "Comptes ayant un accès admin, modérateur ou staff.",
+    adminBannedUsersDescription:
+      "Comptes actuellement marqués comme bannis dans l'authentification.",
+    adminUsersSetupDescription:
+      "Ajoutez d'abord la clé Supabase de rôle de service côté serveur, puis revenez ici pour charger l'annuaire complet des utilisateurs admin.",
+    adminSearchUsersPlaceholder:
+      "Rechercher des utilisateurs, courriels, établissements ou rôles",
+    adminNoUsersMatchFilters:
+      "Aucun utilisateur ne correspond aux filtres actuels.",
+    adminUserRoleStandard: "Étudiant",
+    adminUserRoleAdmin: "Admin",
+    adminUserRoleModerator: "Modérateur",
+    adminUserRoleStaff: "Staff",
+    adminUserStatusActive: "Actif",
+    adminUserStatusBanned: "Banni",
     adminAnnounce: "Communiqués",
     totalListings: "Total des annonces",
     students: "Étudiants",

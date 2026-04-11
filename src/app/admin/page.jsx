@@ -1,7 +1,9 @@
 import { cookies } from "next/headers";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AdminModerationDashboard } from "@/components/admin-moderation-dashboard";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -306,12 +308,20 @@ export default async function AdminPage() {
       <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 @container/main">
         <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
           <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border lg:px-7">
-            <CardTitle className="text-3xl font-bold tracking-tight text-zinc-950 dark:text-foreground lg:text-4xl">
-              {t.adminDashboard}
-            </CardTitle>
-            <CardDescription className="max-w-3xl text-base text-zinc-600 dark:text-muted-foreground">
-              {t.adminReportsDescription}
-            </CardDescription>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <CardTitle className="text-3xl font-bold tracking-tight text-zinc-950 dark:text-foreground lg:text-4xl">
+                  {t.adminDashboard}
+                </CardTitle>
+                <CardDescription className="mt-2 max-w-3xl text-base text-zinc-600 dark:text-muted-foreground">
+                  {t.adminReportsDescription}
+                </CardDescription>
+              </div>
+
+              <Button asChild variant="outline" className="rounded-xl">
+                <Link href="/admin/users">{t.adminUsers}</Link>
+              </Button>
+            </div>
           </CardHeader>
 
           <CardContent className="space-y-6 p-8 pt-6">
