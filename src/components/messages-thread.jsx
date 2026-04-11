@@ -23,6 +23,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,10 +39,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ClientFormattedDateTime } from "@/components/client-formatted-date-time";
-import { BlockUserButton } from "@/components/block-user-button";
 import { ReportSheet } from "@/components/report-sheet";
 import { useLanguage } from "@/context/LanguageContext";
-import { getMessagingBlockReason, getUserBlockState } from "@/lib/blocks";
+import {
+  getMessagingBlockReason,
+  getUserBlockState,
+  isBlockedUsersTableMissing,
+} from "@/lib/blocks";
 import {
   getListingMessagingUnavailableText,
   getListingMessagingUnavailableStatusFromError,
@@ -76,6 +80,55 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
   const isMessagingAvailable = isListingMessagingAvailable(conversation.listing.status);
   const [isHideDialogOpen, setIsHideDialogOpen] = React.useState(false);
   const [isHiding, setIsHiding] = React.useState(false);
+  const [isBlockDialogOpen, setIsBlockDialogOpen] = React.useState(false);
+  const [isUpdatingBlockState, setIsUpdatingBlockState] = React.useState(false);
+
+  async function handleUpdateBlockState() {
+    if (isUpdatingBlockState) {
+      return;
+    }
+
+    setIsUpdatingBlockState(true);
+
+    const isBlocking = !blockState.blockedByCurrentUser;
+    const operation = isBlocking
+      ? supabase.from("blocked_users").insert({
+          blocker_user_id: currentUserId,
+          blocked_user_id: conversation.otherParticipant.id,
+        })
+      : supabase
+          .from("blocked_users")
+          .delete()
+          .eq("blocker_user_id", currentUserId)
+          .eq("blocked_user_id", conversation.otherParticipant.id);
+
+    const { error } = await operation;
+
+    if (error) {
+      if (isBlockedUsersTableMissing(error)) {
+        toast.error(t.blockUserUnavailable);
+      } else {
+        console.error("Failed to update block state:", error.message);
+        toast.error(t.blockUserError);
+      }
+      setIsUpdatingBlockState(false);
+      return;
+    }
+
+    const nextBlockState = await getUserBlockState(
+      supabase,
+      currentUserId,
+      conversation.otherParticipant.id,
+    );
+
+    if (!nextBlockState.error) {
+      setBlockState(nextBlockState);
+    }
+
+    setIsUpdatingBlockState(false);
+    setIsBlockDialogOpen(false);
+    toast.success(isBlocking ? t.blockUserSuccess : t.unblockUserSuccess);
+  }
 
   async function handleHideConversation() {
     if (isHiding) return;
@@ -353,10 +406,10 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
           )}
 
           {conversation.otherParticipant.id ? (
-            <div className="flex flex-col gap-3 lg:items-end">
+            <div className="flex items-center gap-2 lg:self-center">
               <Link
                 href={`/profile/${conversation.otherParticipant.id}`}
-                className="flex items-center gap-3 rounded-xl transition hover:bg-zinc-50/80 dark:hover:bg-muted/40 lg:self-center"
+                className="flex items-center gap-3 rounded-xl transition hover:bg-zinc-50/80 dark:hover:bg-muted/40"
               >
                 <ProfileAvatar
                   name={conversation.otherParticipant.name}
@@ -375,24 +428,40 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
                 </div>
               </Link>
 
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-xl"
-                  onClick={() => setIsHideDialogOpen(true)}
-                  disabled={isHiding}
-                >
-                  <EyeOff className="size-4" />
-                  <span>{t.hideConversation}</span>
-                </Button>
-                <BlockUserButton
-                  currentUserId={currentUserId}
-                  targetUserId={conversation.otherParticipant.id}
-                  onBlockStateChange={setBlockState}
-                  className="rounded-xl"
-                />
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    className="rounded-full"
+                    aria-label={t.moreActions}
+                    disabled={isHiding || isUpdatingBlockState}
+                  >
+                    <EllipsisVertical className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48 rounded-2xl">
+                  <DropdownMenuItem
+                    onSelect={(event) => {
+                      event.preventDefault();
+                      setIsHideDialogOpen(true);
+                    }}
+                  >
+                    <EyeOff className="size-4" />
+                    <span>{t.hideConversation}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={(event) => {
+                      event.preventDefault();
+                      setIsBlockDialogOpen(true);
+                    }}
+                  >
+                    <Flag className="size-4" />
+                    <span>{blockState.blockedByCurrentUser ? t.unblockUser : t.blockUser}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           ) : (
             <div className="flex items-center gap-3 lg:self-center">
@@ -612,6 +681,29 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
             <AlertDialogCancel disabled={isHiding}>{t.cancel}</AlertDialogCancel>
             <AlertDialogAction onClick={handleHideConversation} disabled={isHiding}>
               {isHiding ? t.saving : t.hideConversation}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isBlockDialogOpen} onOpenChange={setIsBlockDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {blockState.blockedByCurrentUser ? t.unblockUserTitle : t.blockUserTitle}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {blockState.blockedByCurrentUser ? t.unblockUserDescription : t.blockUserDescription}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isUpdatingBlockState}>{t.cancel}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleUpdateBlockState} disabled={isUpdatingBlockState}>
+              {isUpdatingBlockState
+                ? t.saving
+                : blockState.blockedByCurrentUser
+                  ? t.unblockUser
+                  : t.blockUser}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
