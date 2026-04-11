@@ -43,7 +43,7 @@ const statusBadgeClasses = {
 
 function getDashboardStatusBadgeClass(item) {
   if (isPendingListingApproval(item)) {
-    return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300";
+    return "border-zinc-200 bg-white text-zinc-700 dark:border-border dark:bg-background dark:text-foreground";
   }
 
   return statusBadgeClasses[item.dashboardStatus];
@@ -84,7 +84,7 @@ function PendingReviewHelpButton({ item, t, language }) {
         <button
           type="button"
           aria-label={t.viewContext}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-700 transition hover:bg-amber-100 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-950/60"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-700 transition hover:bg-zinc-100 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted"
         >
           <InfoIcon className="size-3.5" />
         </button>

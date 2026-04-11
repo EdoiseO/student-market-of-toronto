@@ -298,7 +298,7 @@ export const translations = {
     reportReasonProfileInappropriate: "Inappropriate profile photo or bio",
     reportProfileDetailsPlaceholder:
       "Example: the profile photo contains explicit content, the bio includes harassment, or the account appears to impersonate another student...",
-    pendingReview: "Pending Review",
+    pendingReview: "Pending",
     rejected: "Rejected",
     listingPendingReviewDescription:
       "This listing is waiting for moderator approval before it can go live.",
@@ -988,7 +988,7 @@ export const translations = {
     reportReasonProfileInappropriate: "Photo de profil ou bio inappropriée",
     reportProfileDetailsPlaceholder:
       "Exemple : la photo de profil contient du contenu explicite, la bio contient du harcèlement, ou le compte semble usurper l'identité d'un autre étudiant...",
-    pendingReview: "En attente d'examen",
+    pendingReview: "En attente",
     rejected: "Refusé",
     listingPendingReviewDescription:
       "Cette annonce attend l'approbation d'un modérateur avant de pouvoir être mise en ligne.",
