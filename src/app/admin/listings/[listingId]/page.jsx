@@ -50,7 +50,22 @@ export default async function AdminListingApprovalReviewPage({ params }) {
     notFound();
   }
 
-  const profileIds = [listingRow.seller_id, listingRow.moderation_reviewed_by].filter(Boolean);
+  const { data: historyRows, error: historyError } = await supabase
+    .from("listing_moderation_history")
+    .select("id, action, feedback, decided_by, decided_at")
+    .eq("listing_id", listingRow.id)
+    .order("decided_at", { ascending: false })
+    .limit(12);
+
+  if (historyError) {
+    console.error("Failed to load listing moderation history:", historyError.message);
+  }
+
+  const profileIds = [
+    listingRow.seller_id,
+    listingRow.moderation_reviewed_by,
+    ...((historyRows ?? []).map((entry) => entry.decided_by)),
+  ].filter(Boolean);
   const { data: profiles, error: profilesError } = profileIds.length
     ? await supabase
         .from("profiles")
@@ -83,6 +98,13 @@ export default async function AdminListingApprovalReviewPage({ params }) {
     submittedForReviewAt: listingRow.submitted_for_review_at,
     moderationFeedback: listingRow.moderation_feedback ?? null,
     moderationReviewedAt: listingRow.moderation_reviewed_at ?? null,
+    history: (historyRows ?? []).map((entry) => ({
+      id: entry.id,
+      action: entry.action,
+      feedback: entry.feedback ?? null,
+      decidedAt: entry.decided_at,
+      decidedByName: getModerationDisplayName(profilesById.get(entry.decided_by), t),
+    })),
     reviewedBy: reviewerProfile
       ? {
           id: reviewerProfile.id,

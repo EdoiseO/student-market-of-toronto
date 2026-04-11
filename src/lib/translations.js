@@ -487,6 +487,12 @@ export const translations = {
     adminListingApproved: "Listing approved and published.",
     adminListingRejected: "Listing rejected with seller feedback.",
     adminListingResubmittedBadge: "Resubmitted after edits",
+    adminListingHistoryTitle: "Decision history",
+    adminListingHistoryDescription:
+      "Review previous approval and rejection decisions for this listing.",
+    adminListingHistoryEmpty: "No past listing decisions yet.",
+    adminListingDecisionApprovedLabel: "Approved",
+    adminListingDecisionRejectedLabel: "Rejected",
     adminListingApprovalActionError:
       "We could not update this listing approval right now.",
     adminListingRejectionFeedbackRequired:
@@ -1193,6 +1199,12 @@ export const translations = {
     adminListingApproved: "Annonce approuvée et publiée.",
     adminListingRejected: "Annonce refusée avec commentaire au vendeur.",
     adminListingResubmittedBadge: "Soumise de nouveau après modifications",
+    adminListingHistoryTitle: "Historique des décisions",
+    adminListingHistoryDescription:
+      "Consultez les décisions précédentes d'approbation et de refus pour cette annonce.",
+    adminListingHistoryEmpty: "Aucune décision précédente pour cette annonce pour le moment.",
+    adminListingDecisionApprovedLabel: "Approuvée",
+    adminListingDecisionRejectedLabel: "Refusée",
     adminListingApprovalActionError:
       "Nous n'avons pas pu mettre à jour cette approbation d'annonce pour le moment.",
     adminListingRejectionFeedbackRequired:

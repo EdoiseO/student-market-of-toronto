@@ -42,18 +42,28 @@ function ReviewMetadata({ label, children }) {
   );
 }
 
+function getHistoryActionLabel(action, t) {
+  return action === "approved"
+    ? t.adminListingDecisionApprovedLabel
+    : t.adminListingDecisionRejectedLabel;
+}
+
+function getInitialSellerFeedbackValue(listing) {
+  return isPendingListingApproval(listing) ? "" : (listing?.moderationFeedback ?? "");
+}
+
 export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
   const router = useRouter();
   const supabase = React.useMemo(() => createClient(), []);
   const { t, language } = useLanguage();
-  const [feedback, setFeedback] = React.useState(listing.moderationFeedback ?? "");
+  const [feedback, setFeedback] = React.useState(getInitialSellerFeedbackValue(listing));
   const [isProcessing, setIsProcessing] = React.useState(false);
 
   const isPendingReview = isPendingListingApproval(listing);
 
   React.useEffect(() => {
-    setFeedback(listing.moderationFeedback ?? "");
-  }, [listing.id, listing.moderationFeedback]);
+    setFeedback(getInitialSellerFeedbackValue(listing));
+  }, [listing]);
 
   async function notifySellerOfDecision(type, nextFeedback = null) {
     const sellerId = listing?.seller?.id;
@@ -89,6 +99,23 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
     }
   }
 
+  async function recordModerationHistory(action, nextFeedback = null) {
+    if (!listing?.id || !currentUserId) {
+      return;
+    }
+
+    const { error } = await supabase.from("listing_moderation_history").insert({
+      listing_id: listing.id,
+      action,
+      feedback: nextFeedback,
+      decided_by: currentUserId,
+    });
+
+    if (error) {
+      console.error("Failed to save listing moderation history:", error.message);
+    }
+  }
+
   async function handleApprove() {
     if (!currentUserId || !listing?.id || isProcessing || !isPendingReview) {
       return;
@@ -114,6 +141,7 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
       return;
     }
 
+    await recordModerationHistory("approved");
     await notifySellerOfDecision(LISTING_APPROVED_NOTIFICATION_TYPE);
 
     toast.success(t.adminListingApproved);
@@ -153,6 +181,7 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
       return;
     }
 
+    await recordModerationHistory("rejected", trimmedFeedback);
     await notifySellerOfDecision(LISTING_REJECTED_NOTIFICATION_TYPE, trimmedFeedback);
 
     toast.success(t.adminListingRejected);
@@ -329,6 +358,48 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
                   <p className="text-sm text-zinc-500 dark:text-muted-foreground">{listing.seller.school}</p>
                 </div>
               </Link>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
+            <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+              <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
+                {t.adminListingHistoryTitle}
+              </CardTitle>
+              <CardDescription>{t.adminListingHistoryDescription}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 px-6 py-5">
+              {listing.history?.length > 0 ? (
+                listing.history.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-border dark:bg-muted/30"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
+                        {getHistoryActionLabel(entry.action, t)}
+                      </Badge>
+                      <ClientFormattedDateTime
+                        value={entry.decidedAt}
+                        language={language}
+                        className="text-xs text-muted-foreground"
+                      />
+                    </div>
+                    <p className="mt-2 text-sm text-foreground">
+                      {t.adminReviewedBy}: {entry.decidedByName}
+                    </p>
+                    {entry.feedback ? (
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        {entry.feedback}
+                      </p>
+                    ) : null}
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {t.adminListingHistoryEmpty}
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>

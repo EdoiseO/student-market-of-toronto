@@ -322,27 +322,25 @@ export function NotificationsButton({ user }) {
                 onClick={(event) => handleNotificationClick(event, notification)}
                 className="block rounded-xl px-3 py-3 pr-10 transition hover:bg-muted/60"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="truncate font-medium text-foreground">
-                        {notification.title}
-                      </p>
-                      {notification.unreadCount > 1 ? (
-                        <Badge variant="outline" className="rounded-full border-border bg-background px-2 py-0 text-[0.65rem] text-foreground">
-                          {notification.unreadCount}
-                        </Badge>
-                      ) : null}
-                    </div>
-                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                      {notification.description}
+                <div className="min-w-0">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <p className="truncate font-medium text-foreground">
+                      {notification.title}
                     </p>
+                    {notification.unreadCount > 1 ? (
+                      <Badge variant="outline" className="shrink-0 rounded-full border-border bg-background px-2 py-0 text-[0.65rem] text-foreground">
+                        {notification.unreadCount}
+                      </Badge>
+                    ) : null}
+                    <ClientFormattedDateTime
+                      value={notification.createdAt}
+                      language={language}
+                      className="ml-auto shrink-0 whitespace-nowrap text-xs text-muted-foreground"
+                    />
                   </div>
-                  <ClientFormattedDateTime
-                    value={notification.createdAt}
-                    language={language}
-                    className="shrink-0 text-xs text-muted-foreground"
-                  />
+                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                    {notification.description}
+                  </p>
                 </div>
               </Link>
             </div>
