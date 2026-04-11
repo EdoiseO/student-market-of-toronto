@@ -20,15 +20,10 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useLanguage } from "@/context/LanguageContext";
 import {
-  LISTING_APPROVAL_STATUS_VALUES,
   getTranslatedListingApprovalStatus,
   isPendingListingApproval,
   isListingResubmittedAfterEdit,
 } from "@/lib/listing-approval";
-import {
-  LISTING_APPROVED_NOTIFICATION_TYPE,
-  LISTING_REJECTED_NOTIFICATION_TYPE,
-} from "@/lib/notifications";
 import { createClient } from "@/utils/supabase/client";
 
 function ReviewMetadata({ label, children }) {
@@ -52,6 +47,15 @@ function getInitialSellerFeedbackValue(listing) {
   return isPendingListingApproval(listing) ? "" : (listing?.moderationFeedback ?? "");
 }
 
+function isModerateListingDecisionRpcMissing(error) {
+  const message = [error?.message, error?.details, error?.hint]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return error?.code === "PGRST202" || message.includes("moderate_listing_decision");
+}
+
 export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
   const router = useRouter();
   const supabase = React.useMemo(() => createClient(), []);
@@ -65,55 +69,28 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
     setFeedback(getInitialSellerFeedbackValue(listing));
   }, [listing]);
 
-  async function notifySellerOfDecision(type, nextFeedback = null) {
-    const sellerId = listing?.seller?.id;
+  async function handleModerationDecision(action, nextFeedback = null) {
+    setIsProcessing(true);
 
-    if (!sellerId || !listing?.id) {
-      return;
-    }
-
-    const metadata = {
-      listing_title: listing.title,
-      listing_slug: listing.slug,
-      href:
-        type === LISTING_REJECTED_NOTIFICATION_TYPE && listing.slug
-          ? `/listings/${listing.slug}/edit`
-          : listing.slug
-            ? `/listings/${listing.slug}`
-            : "/dashboard?tab=inactive",
-    };
-
-    if (type === LISTING_REJECTED_NOTIFICATION_TYPE && nextFeedback?.trim()) {
-      metadata.feedback = nextFeedback.trim();
-    }
-
-    const { error } = await supabase.from("notifications").insert({
-      user_id: sellerId,
-      type,
-      listing_id: listing.id,
-      metadata,
+    const { error } = await supabase.rpc("moderate_listing_decision", {
+      p_listing_id: listing.id,
+      p_action: action,
+      p_feedback: nextFeedback,
     });
 
-    if (error) {
-      console.error("Failed to create seller listing decision notification:", error.message);
-    }
-  }
-
-  async function recordModerationHistory(action, nextFeedback = null) {
-    if (!listing?.id || !currentUserId) {
-      return;
-    }
-
-    const { error } = await supabase.from("listing_moderation_history").insert({
-      listing_id: listing.id,
-      action,
-      feedback: nextFeedback,
-      decided_by: currentUserId,
-    });
+    setIsProcessing(false);
 
     if (error) {
-      console.error("Failed to save listing moderation history:", error.message);
+      console.error("Failed to moderate listing decision:", error.message);
+      toast.error(
+        isModerateListingDecisionRpcMissing(error)
+          ? t.adminListingDecisionRpcRequired
+          : t.adminListingApprovalActionError,
+      );
+      return false;
     }
+
+    return true;
   }
 
   async function handleApprove() {
@@ -121,28 +98,11 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
       return;
     }
 
-    setIsProcessing(true);
+    const wasSuccessful = await handleModerationDecision("approved");
 
-    const { error } = await supabase
-      .from("listings")
-      .update({
-        status: "active",
-        moderation_feedback: null,
-        moderation_reviewed_at: new Date().toISOString(),
-        moderation_reviewed_by: currentUserId,
-      })
-      .eq("id", listing.id);
-
-    setIsProcessing(false);
-
-    if (error) {
-      console.error("Failed to approve listing:", error.message);
-      toast.error(t.adminListingApprovalActionError);
+    if (!wasSuccessful) {
       return;
     }
-
-    await recordModerationHistory("approved");
-    await notifySellerOfDecision(LISTING_APPROVED_NOTIFICATION_TYPE);
 
     toast.success(t.adminListingApproved);
     router.push("/admin");
@@ -161,28 +121,11 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
 
     const trimmedFeedback = feedback.trim();
 
-    setIsProcessing(true);
+    const wasSuccessful = await handleModerationDecision("rejected", trimmedFeedback);
 
-    const { error } = await supabase
-      .from("listings")
-      .update({
-        status: LISTING_APPROVAL_STATUS_VALUES.rejected,
-        moderation_feedback: trimmedFeedback,
-        moderation_reviewed_at: new Date().toISOString(),
-        moderation_reviewed_by: currentUserId,
-      })
-      .eq("id", listing.id);
-
-    setIsProcessing(false);
-
-    if (error) {
-      console.error("Failed to reject listing:", error.message);
-      toast.error(t.adminListingApprovalActionError);
+    if (!wasSuccessful) {
       return;
     }
-
-    await recordModerationHistory("rejected", trimmedFeedback);
-    await notifySellerOfDecision(LISTING_REJECTED_NOTIFICATION_TYPE, trimmedFeedback);
 
     toast.success(t.adminListingRejected);
     router.push("/admin");

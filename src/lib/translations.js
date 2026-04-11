@@ -493,6 +493,8 @@ export const translations = {
     adminListingHistoryEmpty: "No past listing decisions yet.",
     adminListingDecisionApprovedLabel: "Approved",
     adminListingDecisionRejectedLabel: "Rejected",
+    adminListingDecisionRpcRequired:
+      "Listing moderation decisions are not available in this environment yet.",
     adminListingApprovalActionError:
       "We could not update this listing approval right now.",
     adminListingRejectionFeedbackRequired:
@@ -1205,6 +1207,8 @@ export const translations = {
     adminListingHistoryEmpty: "Aucune décision précédente pour cette annonce pour le moment.",
     adminListingDecisionApprovedLabel: "Approuvée",
     adminListingDecisionRejectedLabel: "Refusée",
+    adminListingDecisionRpcRequired:
+      "Les décisions de modération des annonces ne sont pas encore disponibles dans cet environnement.",
     adminListingApprovalActionError:
       "Nous n'avons pas pu mettre à jour cette approbation d'annonce pour le moment.",
     adminListingRejectionFeedbackRequired:
