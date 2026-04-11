@@ -54,9 +54,12 @@ Then add your Supabase values to `.env.local`:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
 ```
 
 These values come from your Supabase project settings.
+
+`SUPABASE_SERVICE_ROLE_KEY` is required for server-side destructive account actions such as full account deletion from `/dashboard/settings`.
 
 ## Install Dependencies
 

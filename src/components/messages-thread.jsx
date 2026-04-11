@@ -57,6 +57,7 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
   const [reportMessageTarget, setReportMessageTarget] = React.useState(null);
   const isMessagingAvailable = isListingMessagingAvailable(conversation.listing.status);
   const messagingUnavailableText = getListingMessagingUnavailableText(conversation.listing.status, t);
+  const hasListingLink = Boolean(conversation.listing.slug);
 
   React.useEffect(() => {
     setMessages(initialMessages ?? []);
@@ -209,36 +210,55 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
     <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card">
       <div className="border-b border-zinc-200 p-6 dark:border-border">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <Link
-            href={`/listings/${conversation.listing.slug}`}
-            className="block rounded-2xl bg-zinc-50 p-4 transition hover:bg-background dark:bg-muted/40 dark:hover:bg-background lg:w-full lg:max-w-md"
-          >
-            <div className="flex items-center gap-4">
-              <div className="h-18 w-18 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted">
-                {conversation.listing.imageUrl ? (
-                  <img
-                    src={conversation.listing.imageUrl}
-                    alt={conversation.listing.title}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
-                )}
-              </div>
+          {hasListingLink ? (
+            <Link
+              href={`/listings/${conversation.listing.slug}`}
+              className="block rounded-2xl bg-zinc-50 p-4 transition hover:bg-background dark:bg-muted/40 dark:hover:bg-background lg:w-full lg:max-w-md"
+            >
+              <div className="flex items-center gap-4">
+                <div className="h-18 w-18 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted">
+                  {conversation.listing.imageUrl ? (
+                    <img
+                      src={conversation.listing.imageUrl}
+                      alt={conversation.listing.title}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
+                  )}
+                </div>
 
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-base font-semibold text-zinc-950 dark:text-foreground">
-                  {conversation.listing.title}
-                </p>
-                <p className="mt-1 truncate text-sm font-medium text-zinc-900 dark:text-foreground">
-                  {formatPrice(conversation.listing.price, language)}
-                </p>
-                <p className="mt-1 truncate text-sm text-zinc-500 dark:text-muted-foreground">
-                  {conversation.listing.location || t.torontoMeetup}
-                </p>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-base font-semibold text-zinc-950 dark:text-foreground">
+                    {conversation.listing.title}
+                  </p>
+                  <p className="mt-1 truncate text-sm font-medium text-zinc-900 dark:text-foreground">
+                    {formatPrice(conversation.listing.price, language)}
+                  </p>
+                  <p className="mt-1 truncate text-sm text-zinc-500 dark:text-muted-foreground">
+                    {conversation.listing.location || t.torontoMeetup}
+                  </p>
+                </div>
+              </div>
+            </Link>
+          ) : (
+            <div className="block rounded-2xl bg-zinc-50 p-4 dark:bg-muted/40 lg:w-full lg:max-w-md">
+              <div className="flex items-center gap-4">
+                <div className="h-18 w-18 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted">
+                  <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-base font-semibold text-zinc-950 dark:text-foreground">
+                    {t.deletedListingTitle}
+                  </p>
+                  <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
+                    {t.deletedListingDescription}
+                  </p>
+                </div>
               </div>
             </div>
-          </Link>
+          )}
 
           {conversation.otherParticipant.id ? (
             <Link

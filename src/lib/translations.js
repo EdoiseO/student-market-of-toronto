@@ -23,6 +23,9 @@ export const translations = {
     settingsPreviewBadge: "Preview",
     settingsDescription:
       "Manage the settings that are live today, including saved marketplace notification preferences and other supported account controls.",
+    settingsDangerZoneTitle: "Danger zone",
+    settingsDangerZoneDescription:
+      "Permanent account actions live here. Review the consequences carefully before continuing.",
     settingsAppearanceTitle: "Appearance",
     settingsAppearanceDescription:
       "Choose how Student Market looks across supported pages and shared app surfaces.",
@@ -82,6 +85,32 @@ export const translations = {
       "Your name, school, and profile photo stay visible so buyers can still see who they are dealing with.",
     settingsNoBioYet:
       "You do not have a bio yet, but this preference will apply once you add one on your profile page.",
+    settingsDeleteAccountTitle: "Delete account",
+    settingsDeleteAccountDescription:
+      "Permanently remove your account and the data tied to it from Student Market of Toronto.",
+    settingsDeleteAccountConsequencesTitle: "This action cannot be undone.",
+    settingsDeleteAccountConsequenceListings:
+      "Your listings and any listing images you uploaded will be deleted.",
+    settingsDeleteAccountConsequenceMessages:
+      "You will lose access to your conversations, while the other participant keeps shared message history.",
+    settingsDeleteAccountConsequenceProfile:
+      "Your profile information, profile photo, favourites, and saved account data will be removed.",
+    settingsDeleteAccountConsequencePreferences:
+      "Your notification settings and related account activity records will be cleared.",
+    settingsDeleteAccountButton: "Delete account",
+    settingsDeleteAccountDialogTitle: "Delete your account permanently?",
+    settingsDeleteAccountDialogDescription:
+      "This permanently removes your account from Student Market of Toronto. Review the consequences below before confirming.",
+    settingsDeleteAccountConfirmLabel:
+      "Type your account email to confirm deletion.",
+    settingsDeleteAccountConfirmEmailHelp: "Type ",
+    settingsDeleteAccountConfirmEmailSuffix: " to confirm.",
+    settingsDeleteAccountAction: "Delete my account",
+    settingsDeletingAccount: "Deleting account...",
+    settingsDeleteAccountSuccess: "Your account was deleted.",
+    settingsDeleteAccountError: "We could not delete your account right now.",
+    settingsDeleteAccountUnavailable:
+      "Account deletion is not available in this environment yet. Add the Supabase service-role key on the server first.",
     settingsSaveChanges: "Save changes",
     settingsBioVisibilitySaved: "Listing bio visibility updated.",
     settingsBioVisibilityError: "We could not save your bio visibility right now.",
@@ -239,6 +268,9 @@ export const translations = {
       "This listing was marked sold. New messages are disabled.",
     listingInactiveMessagingUnavailable:
       "This listing is no longer available. New messages are disabled.",
+    deletedListingTitle: "Deleted listing",
+    deletedListingDescription:
+      "This listing was removed, but this conversation history is still available.",
     you: "You",
     created: "Created",
     updated: "Updated",
@@ -714,6 +746,9 @@ export const translations = {
     settingsPreviewBadge: "Aperçu",
     settingsDescription:
       "Gérez les réglages déjà actifs aujourd'hui, y compris les préférences enregistrées pour les notifications du marché et les autres contrôles de compte pris en charge.",
+    settingsDangerZoneTitle: "Zone sensible",
+    settingsDangerZoneDescription:
+      "Les actions permanentes liées au compte se trouvent ici. Vérifiez bien les conséquences avant de continuer.",
     settingsAppearanceTitle: "Apparence",
     settingsAppearanceDescription:
       "Choisissez l'apparence de Student Market sur les pages prises en charge et les surfaces partagées de l'application.",
@@ -775,6 +810,33 @@ export const translations = {
       "Votre nom, votre école et votre photo de profil restent visibles afin que les acheteurs sachent toujours à qui ils ont affaire.",
     settingsNoBioYet:
       "Vous n'avez pas encore de bio, mais cette préférence s'appliquera dès que vous en ajouterez une sur votre page de profil.",
+    settingsDeleteAccountTitle: "Supprimer le compte",
+    settingsDeleteAccountDescription:
+      "Supprimez définitivement votre compte et les données qui y sont liées de Student Market of Toronto.",
+    settingsDeleteAccountConsequencesTitle: "Cette action est irréversible.",
+    settingsDeleteAccountConsequenceListings:
+      "Vos annonces et les images d'annonces que vous avez téléversées seront supprimées.",
+    settingsDeleteAccountConsequenceMessages:
+      "Vous perdrez l'accès à vos conversations, tandis que l'autre participant conservera l'historique partagé des messages.",
+    settingsDeleteAccountConsequenceProfile:
+      "Les informations de votre profil, votre photo de profil, vos favoris et vos données enregistrées seront supprimés.",
+    settingsDeleteAccountConsequencePreferences:
+      "Vos paramètres de notification et les enregistrements d'activité liés au compte seront effacés.",
+    settingsDeleteAccountButton: "Supprimer le compte",
+    settingsDeleteAccountDialogTitle: "Supprimer définitivement votre compte ?",
+    settingsDeleteAccountDialogDescription:
+      "Cette action supprime définitivement votre compte de Student Market of Toronto. Vérifiez les conséquences ci-dessous avant de confirmer.",
+    settingsDeleteAccountConfirmLabel:
+      "Saisissez l'adresse e-mail de votre compte pour confirmer la suppression.",
+    settingsDeleteAccountConfirmEmailHelp: "Saisissez ",
+    settingsDeleteAccountConfirmEmailSuffix: " pour confirmer.",
+    settingsDeleteAccountAction: "Supprimer mon compte",
+    settingsDeletingAccount: "Suppression du compte...",
+    settingsDeleteAccountSuccess: "Votre compte a été supprimé.",
+    settingsDeleteAccountError:
+      "Nous n'avons pas pu supprimer votre compte pour le moment.",
+    settingsDeleteAccountUnavailable:
+      "La suppression de compte n'est pas encore disponible dans cet environnement. Ajoutez d'abord la clé de rôle de service Supabase sur le serveur.",
     settingsSaveChanges: "Enregistrer les modifications",
     settingsBioVisibilitySaved: "La visibilité de la bio sur les annonces a été mise à jour.",
     settingsBioVisibilityError:
@@ -944,6 +1006,9 @@ export const translations = {
       "Cette annonce a été marquée comme vendue. Les nouveaux messages sont désactivés.",
     listingInactiveMessagingUnavailable:
       "Cette annonce n'est plus disponible. Les nouveaux messages sont désactivés.",
+    deletedListingTitle: "Annonce supprimée",
+    deletedListingDescription:
+      "Cette annonce a été supprimée, mais l'historique de cette conversation reste disponible.",
     you: "Vous",
     created: "Créé",
     updated: "Mis à jour",

@@ -122,7 +122,7 @@ export function normalizeConversationRow(conversation, currentUserId, t, unreadC
     listing: {
       id: listing?.id,
       slug: listing?.slug,
-      title: listing?.title ?? t.listing,
+      title: listing?.title ?? t.deletedListingTitle ?? t.listing,
       price: listing?.price ?? 0,
       location: listing?.location ?? t.torontoMeetup,
       status: listing?.status ?? null,
