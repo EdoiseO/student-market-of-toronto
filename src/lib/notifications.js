@@ -21,7 +21,7 @@ export const FAVOURITE_NOTIFICATION_ROW_TYPES = [
   FAVOURITE_PRICE_CHANGE_NOTIFICATION_TYPE,
 ];
 
-export const SOLD_NOTIFICATION_ROW_TYPES = [
+export const LISTING_UPDATE_NOTIFICATION_ROW_TYPES = [
   LISTING_SOLD_NOTIFICATION_TYPE,
   LISTING_APPROVED_NOTIFICATION_TYPE,
   LISTING_REJECTED_NOTIFICATION_TYPE,
@@ -34,7 +34,7 @@ export const NOTIFICATION_PREFERENCE_TYPES = [
 ];
 
 const NOTIFICATION_ROW_TYPES_BY_PREFERENCE = {
-  [SOLD_NOTIFICATION_TYPE]: SOLD_NOTIFICATION_ROW_TYPES,
+  [SOLD_NOTIFICATION_TYPE]: LISTING_UPDATE_NOTIFICATION_ROW_TYPES,
   [FAVOURITE_NOTIFICATION_TYPE]: FAVOURITE_NOTIFICATION_ROW_TYPES,
   [MESSAGE_NOTIFICATION_TYPE]: MESSAGE_NOTIFICATION_ROW_TYPES,
 };
@@ -182,7 +182,11 @@ function formatNotificationPrice(value, language) {
   }).format(numericValue);
 }
 
-function getListingNotificationHref(metadata) {
+function isFavouriteListingNotificationType(type) {
+  return FAVOURITE_NOTIFICATION_ROW_TYPES.includes(type);
+}
+
+function getListingNotificationHref(notification, metadata) {
   if (typeof metadata.href === "string" && metadata.href.trim().length > 0) {
     return metadata.href;
   }
@@ -191,7 +195,9 @@ function getListingNotificationHref(metadata) {
     return `/listings/${metadata.listing_slug}`;
   }
 
-  return "/dashboard?tab=favourite";
+  return isFavouriteListingNotificationType(notification?.type)
+    ? "/dashboard?tab=favourite"
+    : "/dashboard";
 }
 
 function getListingNotificationDescription(notification, t, language) {
@@ -241,7 +247,7 @@ function getListingNotificationDescription(notification, t, language) {
 }
 
 function isListingNotificationType(type) {
-  return [...FAVOURITE_NOTIFICATION_ROW_TYPES, ...SOLD_NOTIFICATION_ROW_TYPES].includes(type);
+  return [...FAVOURITE_NOTIFICATION_ROW_TYPES, ...LISTING_UPDATE_NOTIFICATION_ROW_TYPES].includes(type);
 }
 
 function getMessageNotificationBase(notification, currentUserId, t) {
@@ -283,7 +289,7 @@ function getNotificationBase(notification, currentUserId, t, language = "en") {
       readAt: notification.read_at,
       createdAt: notification.created_at,
       conversationId: null,
-      href: getListingNotificationHref(metadata),
+      href: getListingNotificationHref(notification, metadata),
       title:
         typeof metadata.listing_title === "string" && metadata.listing_title.trim().length > 0
           ? metadata.listing_title
