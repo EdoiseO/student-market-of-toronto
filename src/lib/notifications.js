@@ -7,6 +7,8 @@ export const FAVOURITE_SOLD_NOTIFICATION_TYPE = "favourite_sold";
 export const FAVOURITE_UNAVAILABLE_NOTIFICATION_TYPE = "favourite_unavailable";
 export const FAVOURITE_PRICE_CHANGE_NOTIFICATION_TYPE = "favourite_price_change";
 export const LISTING_SOLD_NOTIFICATION_TYPE = "listing_sold";
+export const LISTING_APPROVED_NOTIFICATION_TYPE = "listing_approved";
+export const LISTING_REJECTED_NOTIFICATION_TYPE = "listing_rejected";
 
 export const MESSAGE_NOTIFICATION_ROW_TYPES = [
   LEGACY_MESSAGE_NOTIFICATION_TYPE,
@@ -19,7 +21,11 @@ export const FAVOURITE_NOTIFICATION_ROW_TYPES = [
   FAVOURITE_PRICE_CHANGE_NOTIFICATION_TYPE,
 ];
 
-export const SOLD_NOTIFICATION_ROW_TYPES = [LISTING_SOLD_NOTIFICATION_TYPE];
+export const SOLD_NOTIFICATION_ROW_TYPES = [
+  LISTING_SOLD_NOTIFICATION_TYPE,
+  LISTING_APPROVED_NOTIFICATION_TYPE,
+  LISTING_REJECTED_NOTIFICATION_TYPE,
+];
 
 export const NOTIFICATION_PREFERENCE_TYPES = [
   SOLD_NOTIFICATION_TYPE,
@@ -201,6 +207,21 @@ function getListingNotificationDescription(notification, t, language) {
 
   if (notification.type === LISTING_SOLD_NOTIFICATION_TYPE) {
     return t.notificationListingSoldDescription;
+  }
+
+  if (notification.type === LISTING_APPROVED_NOTIFICATION_TYPE) {
+    return t.notificationListingApprovedDescription;
+  }
+
+  if (notification.type === LISTING_REJECTED_NOTIFICATION_TYPE) {
+    if (typeof metadata.feedback === "string" && metadata.feedback.trim().length > 0) {
+      return t.notificationListingRejectedWithFeedback.replace(
+        "{feedback}",
+        metadata.feedback.trim(),
+      );
+    }
+
+    return t.notificationListingRejectedDescription;
   }
 
   if (notification.type === FAVOURITE_PRICE_CHANGE_NOTIFICATION_TYPE) {

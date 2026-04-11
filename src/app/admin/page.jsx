@@ -201,7 +201,6 @@ export default async function AdminPage() {
       )
       .eq("status", LISTING_APPROVAL_STATUS_VALUES.pendingReview)
       .not("submitted_for_review_at", "is", null)
-      .is("moderation_reviewed_at", null)
       .order("submitted_for_review_at", { ascending: false })
       .limit(40),
     supabase

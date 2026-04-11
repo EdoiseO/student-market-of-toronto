@@ -12,6 +12,16 @@ import { useLanguage } from "@/context/LanguageContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Popover,
   PopoverContent,
   PopoverDescription,
@@ -77,6 +87,10 @@ function getPendingReviewTooltipText(item, t, language) {
   return text;
 }
 
+function getRejectedListingHelpText(item, t) {
+  return item.moderationFeedback || t.listingRejectedDescription;
+}
+
 function PendingReviewHelpButton({ item, t, language }) {
   return (
     <Popover>
@@ -95,6 +109,33 @@ function PendingReviewHelpButton({ item, t, language }) {
         </PopoverDescription>
       </PopoverContent>
     </Popover>
+  );
+}
+
+function RejectedListingReasonButton({ item, t }) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <button
+          type="button"
+          aria-label={t.viewContext}
+          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-950/60"
+        >
+          <InfoIcon className="size-3.5" />
+        </button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t.listingRejectedTitle}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {getRejectedListingHelpText(item, t)}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{t.close ?? t.cancel}</AlertDialogCancel>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
@@ -133,6 +174,26 @@ function DashboardStatusBadge({ item, label, t, language }) {
     );
   }
 
+  if (item.dashboardStatus === LISTING_APPROVAL_STATUS_VALUES.rejected) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex">
+              <Badge variant="outline" className={badgeClassName}>
+                {label}
+              </Badge>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top" sideOffset={8} className="hidden max-w-[260px] text-center leading-5 md:inline-flex">
+            {getRejectedListingHelpText(item, t)}
+          </TooltipContent>
+        </Tooltip>
+        <RejectedListingReasonButton item={item} t={t} />
+      </div>
+    );
+  }
+
   return (
     <Badge variant="outline" className={badgeClassName}>
       {label}
@@ -150,11 +211,7 @@ function DashboardStatusNote({ item, t }) {
   }
 
   if (item.dashboardStatus === LISTING_APPROVAL_STATUS_VALUES.rejected) {
-    return (
-      <p className="mt-2 text-xs leading-5 text-zinc-500 dark:text-muted-foreground">
-        {item.moderationFeedback || t.listingRejectedDescription}
-      </p>
-    );
+    return null;
   }
 
   return null;

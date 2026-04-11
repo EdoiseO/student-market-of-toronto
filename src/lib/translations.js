@@ -41,7 +41,7 @@ export const translations = {
     settingsThemeSaved: "Theme updated for this device.",
     settingsNotificationsTitle: "Notifications",
     settingsNotificationsDescription:
-      "Manage saved marketplace notification preferences across messages, favourites, and sold listing updates.",
+      "Manage saved marketplace notification preferences across messages, favourites, and your listing updates.",
     notifications: "Notifications",
     notificationsButtonLabel: "Open notifications",
     loadingNotifications: "Loading notifications...",
@@ -66,6 +66,12 @@ export const translations = {
       "Price changed from {oldPrice} to {newPrice}.",
     notificationListingSoldDescription:
       "One of your listings was marked sold.",
+    notificationListingApprovedDescription:
+      "Your listing was approved and is now live.",
+    notificationListingRejectedDescription:
+      "Your listing needs changes before it can go live.",
+    notificationListingRejectedWithFeedback:
+      "Your listing needs changes before it can go live. Feedback: {feedback}",
     settingsProfileTitle: "Profile",
     settingsProfileDescription:
       "Control the softer profile details that appear on listing pages while keeping seller identity visible.",
@@ -82,9 +88,9 @@ export const translations = {
     settingsNotificationTypesTitle: "Notification types",
     settingsNotificationTypesDescription:
       "Choose the marketplace activity you want to hear about across email and in-app alerts.",
-    settingsSoldNotificationsTitle: "Sold listing updates",
+    settingsSoldNotificationsTitle: "My listing updates",
     settingsSoldNotificationsDescription:
-      "Get notified when one of your listings is marked sold or needs a final follow-up.",
+      "Get notified when one of your listings is approved, sent back with changes, or marked sold.",
     settingsFavouriteNotificationsTitle: "Favourited item activity",
     settingsFavouriteNotificationsDescription:
       "Get notified when an item you favourited changes price, gets marked sold, or becomes unavailable.",
@@ -105,7 +111,7 @@ export const translations = {
     settingsNotificationPreviewNote:
       "Sold listing and favourite activity notifications still stay preview-only for now.",
     settingsNotificationPreferencesLiveNote:
-      "Notification preferences save to your account. In-app message and favourite alerts affect the header bell today, sold listing preferences are saved for future seller-side alerts, and email preferences are saved for future delivery support.",
+      "Notification preferences save to your account. In-app message alerts affect the header bell today, listing approval decision alerts use your listing updates preference, and email preferences are saved for future delivery support.",
     settingsNotificationPreferencesUnavailableNote:
       "Notification preferences are not available in this environment yet.",
     settingsNotificationPreferencesSaved: "Notification preferences saved.",
@@ -711,7 +717,7 @@ export const translations = {
     settingsThemeSaved: "Le thème a été mis à jour pour cet appareil.",
     settingsNotificationsTitle: "Notifications",
     settingsNotificationsDescription:
-      "Gérez les préférences enregistrées pour les notifications du marché liées aux messages, aux favoris et aux annonces vendues.",
+      "Gérez les préférences enregistrées pour les notifications du marché liées aux messages, aux favoris et aux mises à jour de vos annonces.",
     notifications: "Notifications",
     notificationsButtonLabel: "Ouvrir les notifications",
     loadingNotifications: "Chargement des notifications...",
@@ -738,6 +744,12 @@ export const translations = {
       "Le prix est passé de {oldPrice} à {newPrice}.",
     notificationListingSoldDescription:
       "Une de vos annonces a été marquée comme vendue.",
+    notificationListingApprovedDescription:
+      "Votre annonce a été approuvée et est maintenant en ligne.",
+    notificationListingRejectedDescription:
+      "Votre annonce doit être modifiée avant de pouvoir être mise en ligne.",
+    notificationListingRejectedWithFeedback:
+      "Votre annonce doit être modifiée avant de pouvoir être mise en ligne. Commentaire : {feedback}",
     settingsProfileTitle: "Profil",
     settingsProfileDescription:
       "Gérez les détails plus personnels affichés sur vos pages d'annonce tout en gardant l'identité du vendeur visible.",
@@ -755,9 +767,9 @@ export const translations = {
     settingsNotificationTypesTitle: "Types de notifications",
     settingsNotificationTypesDescription:
       "Choisissez les activités du marché pour lesquelles vous souhaitez recevoir des alertes par e-mail ou dans l'application.",
-    settingsSoldNotificationsTitle: "Mises à jour des annonces vendues",
+    settingsSoldNotificationsTitle: "Mises à jour de mes annonces",
     settingsSoldNotificationsDescription:
-      "Recevez une alerte lorsqu'une de vos annonces est marquée comme vendue ou nécessite un dernier suivi.",
+      "Recevez une alerte lorsqu'une de vos annonces est approuvée, renvoyée avec des changements demandés ou marquée comme vendue.",
     settingsFavouriteNotificationsTitle: "Activité des favoris",
     settingsFavouriteNotificationsDescription:
       "Recevez une alerte lorsqu'un article de vos favoris change de prix, est marqué comme vendu ou devient indisponible.",
@@ -778,7 +790,7 @@ export const translations = {
     settingsNotificationPreviewNote:
       "Les notifications liées aux annonces vendues et à l'activité des favoris restent un aperçu pour le moment.",
     settingsNotificationPreferencesLiveNote:
-      "Les préférences de notifications sont enregistrées sur votre compte. Les alertes de messages et de favoris dans l'application affectent déjà la cloche d'en-tête aujourd'hui, les préférences pour les annonces vendues sont enregistrées pour de futures alertes côté vendeur, et les préférences e-mail sont enregistrées pour une future prise en charge.",
+      "Les préférences de notifications sont enregistrées sur votre compte. Les alertes de messages dans l'application affectent déjà la cloche d'en-tête, les décisions d'approbation d'annonces utilisent la préférence de mises à jour de vos annonces, et les préférences e-mail sont enregistrées pour une future prise en charge.",
     settingsNotificationPreferencesUnavailableNote:
       "Les préférences de notifications ne sont pas encore disponibles dans cet environnement.",
     settingsNotificationPreferencesSaved:
