@@ -157,6 +157,15 @@ export const translations = {
     accountCreatedSuccess: "Account created! Check your email to verify.",
     createListingDesc:
       "Add the main item details first. Photos, campus, condition, and tag preview are included here so the page reflects how the listing will look later in the marketplace. Submitted listings now go through moderator review before they go live.",
+    createListingRestrictionsTitle: "Marketplace restrictions",
+    createListingRestrictionsDescription:
+      "Do not list drugs, animals, sexual items, weapons, alcohol, or other prohibited or unsafe items.",
+    createListingWarningDialogTitle: "Confirm listing restrictions",
+    createListingWarningDialogDescription:
+      "Before submitting, confirm that your listing follows the marketplace rules.",
+    createListingRestrictionsConfirmLabel:
+      "I confirm that this listing does not include prohibited or unsafe items.",
+    createListingRestrictionsConfirmAction: "Confirm and submit",
     title: "Title",
     titlePlaceholder: "e.g. MacBook Air M1",
     category: "Category",
@@ -828,6 +837,15 @@ export const translations = {
       "Compte créé ! Vérifiez votre e-mail pour le confirmer.",
     createListingDesc:
       "Commencez par ajouter les informations principales sur l'article. Les photos, le campus, l'état et l'aperçu des étiquettes sont inclus ici pour vous montrer à quoi l'annonce ressemblera sur la plateforme. Les annonces soumises passent maintenant par une révision de modération avant d'être mises en ligne.",
+    createListingRestrictionsTitle: "Restrictions du marché",
+    createListingRestrictionsDescription:
+      "N'affichez pas de drogues, d'animaux, d'articles sexuels, d'armes, d'alcool ni d'autres articles interdits ou dangereux.",
+    createListingWarningDialogTitle: "Confirmer les restrictions de l'annonce",
+    createListingWarningDialogDescription:
+      "Avant de soumettre l'annonce, confirmez qu'elle respecte les règles du marché.",
+    createListingRestrictionsConfirmLabel:
+      "Je confirme que cette annonce ne contient aucun article interdit ou dangereux.",
+    createListingRestrictionsConfirmAction: "Confirmer et soumettre",
     title: "Titre",
     titlePlaceholder: "ex. MacBook Air M1",
     category: "Catégorie",

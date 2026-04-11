@@ -68,6 +68,7 @@ function normalizeDashboardListing(
     imageUrl: getPrimaryImageUrl(listing.listing_images),
     price: `$${Number(listing.price).toFixed(2)}`,
     category: normalizeCategoryValue(listing.category),
+    status: listing.status,
     dashboardStatus,
     moderationFeedback: listing.moderation_feedback ?? null,
     moderationReviewedAt: listing.moderation_reviewed_at ?? null,

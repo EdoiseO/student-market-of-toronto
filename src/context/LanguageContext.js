@@ -3,7 +3,11 @@ import { createContext, useContext, useEffect, useState, useTransition } from "r
 import { useRouter } from "next/navigation";
 import { translations } from "@/lib/translations";
 
-const LanguageContext = createContext();
+const LanguageContext = createContext({
+  t: translations.en,
+  language: "en",
+  setLanguage: () => {},
+});
 
 export function LanguageProvider({ children, initialLanguage = "en" }) {
   const router = useRouter();

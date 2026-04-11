@@ -4,13 +4,20 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { CircleCheckIcon, Loader2Icon } from "lucide-react";
+import { CircleCheckIcon, InfoIcon, Loader2Icon } from "lucide-react";
 
 import { DashboardCategoryFilter } from "@/components/dashboard-category-filter";
 import { DashboardSearchInput } from "@/components/dashboard-search-input";
 import { useLanguage } from "@/context/LanguageContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DashboardListingActions } from "@/components/dashboard-listing-actions";
 import { CATEGORY_OPTIONS, getTranslatedCategoryValue } from "@/lib/categories";
 import {
@@ -42,15 +49,78 @@ function getDashboardStatusBadgeClass(item) {
   return statusBadgeClasses[item.dashboardStatus];
 }
 
-function DashboardStatusBadge({ item, label }) {
+function formatPendingReviewDate(value, language) {
+  if (!value) {
+    return null;
+  }
+
+  return new Intl.DateTimeFormat(language === "fr" ? "fr-CA" : "en-CA", {
+    month: "short",
+    day: "numeric",
+  }).format(new Date(value));
+}
+
+function getPendingReviewTooltipText(item, t, language) {
+  const submittedDate = formatPendingReviewDate(item.submittedForReviewAt, language);
+  let text = isListingResubmittedAfterEdit(item)
+    ? t.listingResubmittedAfterEditDescription
+    : t.listingPendingReviewDescription;
+
+  if (submittedDate) {
+    text = `${text} ${t.listingPendingReviewSubmittedPrefix} ${submittedDate}.`;
+  }
+
+  if (item.moderationFeedback) {
+    text = `${text} ${t.listingPreviousFeedbackPrefix} ${item.moderationFeedback}`;
+  }
+
+  return text;
+}
+
+function PendingReviewHelpButton({ item, t, language }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={t.viewContext}
+          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-700 transition hover:bg-amber-100 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-950/60"
+        >
+          <InfoIcon className="size-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="center" side="top" sideOffset={8} className="w-[min(18rem,calc(100vw-2rem))]">
+        <PopoverDescription className="text-sm leading-5 text-foreground">
+          {getPendingReviewTooltipText(item, t, language)}
+        </PopoverDescription>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function DashboardStatusBadge({ item, label, t, language }) {
   const badgeClassName = getDashboardStatusBadgeClass(item);
 
   if (isPendingListingApproval(item)) {
     return (
-      <Badge variant="outline" className={badgeClassName}>
-        <Loader2Icon className="mr-1.5 size-3.5 animate-spin" />
-        {label}
-      </Badge>
+      <div className="flex items-center gap-1.5">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex">
+              <Badge variant="outline" className={badgeClassName}>
+                <Loader2Icon className="mr-1.5 size-3.5 animate-spin" />
+                {label}
+              </Badge>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top" sideOffset={8} className="hidden max-w-[260px] text-center leading-5 md:inline-flex">
+            {getPendingReviewTooltipText(item, t, language)}
+          </TooltipContent>
+        </Tooltip>
+        <div className="md:hidden">
+          <PendingReviewHelpButton item={item} t={t} language={language} />
+        </div>
+      </div>
     );
   }
 
@@ -74,30 +144,9 @@ function buildDashboardHref(tab) {
   return tab === "all" ? "/dashboard" : `/dashboard?tab=${tab}`;
 }
 
-function DashboardStatusNote({ item, t, language }) {
+function DashboardStatusNote({ item, t }) {
   if (isPendingListingApproval(item)) {
-    return (
-      <p className="mt-2 text-xs leading-5 text-zinc-500 dark:text-muted-foreground">
-        {isListingResubmittedAfterEdit(item)
-          ? t.listingResubmittedAfterEditDescription
-          : t.listingPendingReviewDescription}
-        {item.submittedForReviewAt ? (
-          <>
-            {" "}
-            {t.listingPendingReviewSubmittedPrefix} {new Intl.DateTimeFormat(language === "fr" ? "fr-CA" : "en-CA", {
-              month: "short",
-              day: "numeric",
-            }).format(new Date(item.submittedForReviewAt))}.
-          </>
-        ) : null}
-        {item.moderationFeedback ? (
-          <>
-            {" "}
-            {t.listingPreviousFeedbackPrefix} {item.moderationFeedback}
-          </>
-        ) : null}
-      </p>
-    );
+    return null;
   }
 
   if (item.dashboardStatus === LISTING_APPROVAL_STATUS_VALUES.rejected) {
@@ -320,7 +369,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                 <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-border dark:bg-muted/40">
                   <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500 dark:text-muted-foreground">{t.status}</p>
                   <div className="mt-2">
-                    <DashboardStatusBadge item={item} label={getStatusLabel(item)} />
+                    <DashboardStatusBadge item={item} label={getStatusLabel(item)} t={t} language={language} />
                     <DashboardStatusNote item={item} t={t} language={language} />
                   </div>
                 </div>
@@ -429,7 +478,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                   </td>
                   <td className="px-5 py-4 align-middle whitespace-nowrap text-center">
                     <div className="mx-auto flex max-w-[280px] flex-col items-center text-center">
-                      <DashboardStatusBadge item={item} label={getStatusLabel(item)} />
+                      <DashboardStatusBadge item={item} label={getStatusLabel(item)} t={t} language={language} />
                       <DashboardStatusNote item={item} t={t} language={language} />
                     </div>
                   </td>
