@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   EllipsisVertical,
+  EyeOff,
   Flag,
   Paperclip,
   SendHorizontal,
@@ -13,6 +14,16 @@ import {
 import { toast } from "sonner";
 
 import { ProfileAvatar } from "@/components/profile-avatar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -63,6 +74,34 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
     available: true,
   });
   const isMessagingAvailable = isListingMessagingAvailable(conversation.listing.status);
+  const [isHideDialogOpen, setIsHideDialogOpen] = React.useState(false);
+  const [isHiding, setIsHiding] = React.useState(false);
+
+  async function handleHideConversation() {
+    if (isHiding) return;
+    setIsHiding(true);
+
+    const { error } = await supabase.from("conversation_user_state").upsert(
+      {
+        conversation_id: conversation.id,
+        user_id: currentUserId,
+        hidden_at: new Date().toISOString(),
+      },
+      { onConflict: "conversation_id,user_id" },
+    );
+
+    if (error && !isConversationUserStateTableMissing(error)) {
+      console.error("Failed to hide conversation:", error.message);
+      toast.error(t.hideConversationError);
+      setIsHiding(false);
+      return;
+    }
+
+    setIsHiding(false);
+    setIsHideDialogOpen(false);
+    router.push("/messages");
+    router.refresh();
+  }
   const messagingUnavailableText = getListingMessagingUnavailableText(conversation.listing.status, t);
   const blockReason = getMessagingBlockReason(blockState, t);
   const hasListingLink = Boolean(conversation.listing.slug);
@@ -336,12 +375,24 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
                 </div>
               </Link>
 
-              <BlockUserButton
-                currentUserId={currentUserId}
-                targetUserId={conversation.otherParticipant.id}
-                onBlockStateChange={setBlockState}
-                className="rounded-xl"
-              />
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-xl"
+                  onClick={() => setIsHideDialogOpen(true)}
+                  disabled={isHiding}
+                >
+                  <EyeOff className="size-4" />
+                  <span>{t.hideConversation}</span>
+                </Button>
+                <BlockUserButton
+                  currentUserId={currentUserId}
+                  targetUserId={conversation.otherParticipant.id}
+                  onBlockStateChange={setBlockState}
+                  className="rounded-xl"
+                />
+              </div>
             </div>
           ) : (
             <div className="flex items-center gap-3 lg:self-center">
@@ -550,6 +601,21 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
         currentUserId={currentUserId}
         reportedUserId={reportMessageTarget?.sender_id ?? null}
       />
+
+      <AlertDialog open={isHideDialogOpen} onOpenChange={setIsHideDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.hideConversationTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{t.hideConversationDescription}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isHiding}>{t.cancel}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleHideConversation} disabled={isHiding}>
+              {isHiding ? t.saving : t.hideConversation}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }

@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Ellipsis, Trash2 } from "lucide-react";
+import { Ellipsis, Eye, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { ClientFormattedDateTime } from "@/components/client-formatted-date-time";
@@ -31,30 +31,47 @@ import { useLanguage } from "@/context/LanguageContext";
 import { isConversationUserStateTableMissing } from "@/lib/messages";
 import { createClient } from "@/utils/supabase/client";
 
-export function ConversationListItem({ conversation, dateValue }) {
+export function ConversationListItem({ conversation, dateValue, showHidden = false }) {
   const router = useRouter();
   const supabase = React.useMemo(() => createClient(), []);
   const { t, language } = useLanguage();
+  const [isUpdatingVisibility, setIsUpdatingVisibility] = React.useState(false);
 
-  async function handleHideConversation() {
+  async function handleUpdateConversationVisibility(hiddenAt) {
+    if (isUpdatingVisibility) {
+      return;
+    }
+
+    setIsUpdatingVisibility(true);
+
     const { error } = await supabase.from("conversation_user_state").upsert(
       {
         conversation_id: conversation.id,
         user_id: conversation.currentParticipant.id,
-        hidden_at: new Date().toISOString(),
+        hidden_at: hiddenAt,
       },
       { onConflict: "conversation_id,user_id" },
     );
 
     if (error) {
       if (!isConversationUserStateTableMissing(error)) {
-        console.error("Failed to hide conversation:", error.message);
+        console.error("Failed to update conversation visibility:", error.message);
       }
-      toast.error(t.hideConversationError);
+      toast.error(showHidden ? t.restoreConversationError : t.hideConversationError);
+      setIsUpdatingVisibility(false);
       return;
     }
 
+    setIsUpdatingVisibility(false);
     router.refresh();
+  }
+
+  async function handleHideConversation() {
+    return handleUpdateConversationVisibility(new Date().toISOString());
+  }
+
+  async function handleRestoreConversation() {
+    return handleUpdateConversationVisibility(null);
   }
 
   return (
@@ -123,8 +140,8 @@ export function ConversationListItem({ conversation, dateValue }) {
                   <DropdownMenuContent align="end" className="w-48 rounded-2xl">
                     <AlertDialogTrigger asChild>
                       <DropdownMenuItem onSelect={(event) => event.preventDefault()}>
-                        <Trash2 className="size-4" />
-                        <span>{t.hideConversation}</span>
+                        {showHidden ? <Eye className="size-4" /> : <Trash2 className="size-4" />}
+                        <span>{showHidden ? t.restoreConversation : t.hideConversation}</span>
                       </DropdownMenuItem>
                     </AlertDialogTrigger>
                   </DropdownMenuContent>
@@ -132,15 +149,20 @@ export function ConversationListItem({ conversation, dateValue }) {
 
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>{t.hideConversationTitle}</AlertDialogTitle>
+                    <AlertDialogTitle>
+                      {showHidden ? t.restoreConversationTitle : t.hideConversationTitle}
+                    </AlertDialogTitle>
                     <AlertDialogDescription>
-                      {t.hideConversationDescription}
+                      {showHidden ? t.restoreConversationDescription : t.hideConversationDescription}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleHideConversation}>
-                      {t.hideConversation}
+                    <AlertDialogCancel disabled={isUpdatingVisibility}>{t.cancel}</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={showHidden ? handleRestoreConversation : handleHideConversation}
+                      disabled={isUpdatingVisibility}
+                    >
+                      {showHidden ? t.restoreConversation : t.hideConversation}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>

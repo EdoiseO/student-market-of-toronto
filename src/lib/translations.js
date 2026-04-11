@@ -286,11 +286,19 @@ export const translations = {
     conversationsDescription:
       "Each thread stays linked to the listing it started from.",
     backToMessages: "Back to messages",
+    hiddenMessages: "Hidden messages",
+    noHiddenConversationsTitle: "No hidden conversations",
+    noHiddenConversationsDescription: "Conversations you hide from your inbox will appear here.",
     hideConversation: "Hide conversation",
     hideConversationTitle: "Remove this conversation from your inbox?",
     hideConversationDescription:
       "This only removes the conversation from your inbox. The other person can still see it, and it will reappear if a new message arrives.",
     hideConversationError: "We could not hide this conversation right now.",
+    restoreConversation: "Restore conversation",
+    restoreConversationTitle: "Restore this conversation to your inbox?",
+    restoreConversationDescription:
+      "This puts the conversation back in your main inbox list.",
+    restoreConversationError: "We could not restore this conversation right now.",
     conversationNoMessagesYet: "No messages yet. Send the first message when you are ready.",
     noConversationsTitle: "No conversations yet",
     noConversationsDescription:
@@ -442,12 +450,21 @@ export const translations = {
     adminUserRoleStaff: "Staff",
     adminUserStatusActive: "Active",
     adminUserStatusBanned: "Banned",
+    adminBannedUntilPrefix: "Banned until",
     adminTransferAdmin: "Transfer admin",
     adminTransferAdminTitle: "Transfer admin access?",
     adminTransferAdminDescription:
       "This user will become an admin, and your account will be changed to moderator.",
     adminTransferAdminSuccess: "Admin access transferred.",
     adminUserRoleActionError: "We could not update this user role right now.",
+    adminBanUserTitle: "Ban this user?",
+    adminBanUserDescription:
+      "Choose a temporary or long-term ban duration. The user will lose access to their account until the ban expires or is removed.",
+    adminBanDuration24Hours: "Ban for 24 hours",
+    adminBanDuration7Days: "Ban for 7 days",
+    adminBanDuration30Days: "Ban for 30 days",
+    adminBanDurationPermanent: "Ban indefinitely",
+    adminUserBanActionError: "We could not update this user ban right now.",
     adminAnnounce: "Announcements",
     totalListings: "Total Listings",
     students: "Students",
@@ -1066,12 +1083,21 @@ export const translations = {
     conversationsDescription:
       "Chaque conversation reste liée à l'annonce depuis laquelle elle a commencé.",
     backToMessages: "Retour aux messages",
+    hiddenMessages: "Messages masqués",
+    noHiddenConversationsTitle: "Aucune conversation masquée",
+    noHiddenConversationsDescription: "Les conversations que vous masquez de votre boîte de réception apparaîtront ici.",
     hideConversation: "Masquer la conversation",
     hideConversationTitle: "Retirer cette conversation de votre boîte de réception ?",
     hideConversationDescription:
       "Cela retire seulement la conversation de votre boîte de réception. L'autre personne pourra toujours la voir, et elle réapparaîtra lorsqu'un nouveau message arrivera.",
     hideConversationError:
       "Nous n'avons pas pu masquer cette conversation pour le moment.",
+    restoreConversation: "Restaurer la conversation",
+    restoreConversationTitle: "Restaurer cette conversation dans votre boîte de réception ?",
+    restoreConversationDescription:
+      "Cela remet la conversation dans votre liste principale de messages.",
+    restoreConversationError:
+      "Nous n'avons pas pu restaurer cette conversation pour le moment.",
     conversationNoMessagesYet:
       "Aucun message pour le moment. Envoyez le premier message quand vous êtes prêt.",
     noConversationsTitle: "Aucune conversation pour le moment",
@@ -1240,6 +1266,7 @@ export const translations = {
     adminUserRoleStaff: "Staff",
     adminUserStatusActive: "Actif",
     adminUserStatusBanned: "Banni",
+    adminBannedUntilPrefix: "Banni jusqu'au",
     adminTransferAdmin: "Transférer l'accès admin",
     adminTransferAdminTitle: "Transférer l'accès admin ?",
     adminTransferAdminDescription:
@@ -1247,6 +1274,15 @@ export const translations = {
     adminTransferAdminSuccess: "L'accès admin a été transféré.",
     adminUserRoleActionError:
       "Nous n'avons pas pu mettre à jour le rôle de cet utilisateur pour le moment.",
+    adminBanUserTitle: "Bannir cet utilisateur ?",
+    adminBanUserDescription:
+      "Choisissez une durée de bannissement temporaire ou prolongée. L'utilisateur perdra l'accès à son compte jusqu'à l'expiration ou la levée du bannissement.",
+    adminBanDuration24Hours: "Bannir pendant 24 heures",
+    adminBanDuration7Days: "Bannir pendant 7 jours",
+    adminBanDuration30Days: "Bannir pendant 30 jours",
+    adminBanDurationPermanent: "Bannir indéfiniment",
+    adminUserBanActionError:
+      "Nous n'avons pas pu mettre à jour le bannissement de cet utilisateur pour le moment.",
     adminAnnounce: "Communiqués",
     totalListings: "Total des annonces",
     students: "Étudiants",

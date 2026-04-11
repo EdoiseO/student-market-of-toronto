@@ -132,6 +132,7 @@ export default async function AdminUsersPage() {
         role,
         createdAt: authUser.created_at,
         isBanned: Boolean(authUser.banned_until),
+        bannedUntil: authUser.banned_until ?? null,
         profileExists: Boolean(profile),
       };
     })

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { toast } from "sonner";
 
@@ -23,6 +24,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -80,6 +87,7 @@ function SummaryCard({ title, value, description }) {
 
 function UserRoleActions({ user, currentUserId, currentUserRole, onRoleUpdated }) {
   const { t } = useLanguage();
+  const router = useRouter();
   const supabase = React.useMemo(() => createClient(), []);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -114,6 +122,7 @@ function UserRoleActions({ user, currentUserId, currentUserRole, onRoleUpdated }
 
       await supabase.auth.refreshSession();
       onRoleUpdated?.(user.id, payload);
+      router.refresh();
 
       if (action === "transfer_admin") {
         toast.success(t.adminTransferAdminSuccess);
@@ -185,15 +194,153 @@ function UserRoleActions({ user, currentUserId, currentUserRole, onRoleUpdated }
   );
 }
 
+function UserBanActions({ user, currentUserId, currentUserRole, onBanUpdated }) {
+  const { t } = useLanguage();
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [pendingBanDuration, setPendingBanDuration] = React.useState(null);
+
+  if (currentUserRole !== "admin") {
+    return null;
+  }
+
+  if (user.id === currentUserId || user.role === "admin") {
+    return null;
+  }
+
+  async function submitBanAction(action, duration = null) {
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(`/api/admin/users/${user.id}/ban`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action, duration }),
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload?.error || t.adminUserBanActionError);
+      }
+
+      onBanUpdated?.(user.id, payload);
+      toast.success(action === "unban" ? t.userUnbanned : t.userBanned);
+    } catch (error) {
+      console.error("Failed to update user ban state:", error);
+      toast.error(error.message || t.adminUserBanActionError);
+    } finally {
+      setIsSubmitting(false);
+      setPendingBanDuration(null);
+      setIsDialogOpen(false);
+    }
+  }
+
+  if (user.isBanned) {
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="rounded-xl"
+        onClick={() => submitBanAction("unban")}
+        disabled={isSubmitting}
+      >
+        {t.unban}
+      </Button>
+    );
+  }
+
+  return (
+    <AlertDialog
+      open={isDialogOpen}
+      onOpenChange={(open) => {
+        setIsDialogOpen(open);
+        if (!open) {
+          setPendingBanDuration(null);
+        }
+      }}
+    >
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button type="button" variant="outline" size="sm" className="rounded-xl" disabled={isSubmitting}>
+            {t.banUser}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48 rounded-2xl">
+          <DropdownMenuItem
+            onClick={() => {
+              setPendingBanDuration("24h");
+              setIsDialogOpen(true);
+            }}
+          >
+            {t.adminBanDuration24Hours}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              setPendingBanDuration("7d");
+              setIsDialogOpen(true);
+            }}
+          >
+            {t.adminBanDuration7Days}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              setPendingBanDuration("30d");
+              setIsDialogOpen(true);
+            }}
+          >
+            {t.adminBanDuration30Days}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              setPendingBanDuration("permanent");
+              setIsDialogOpen(true);
+            }}
+          >
+            {t.adminBanDurationPermanent}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t.adminBanUserTitle}</AlertDialogTitle>
+          <AlertDialogDescription>{t.adminBanUserDescription}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isSubmitting}>{t.cancel}</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => submitBanAction("ban", pendingBanDuration)}
+            disabled={isSubmitting || !pendingBanDuration}
+          >
+            {isSubmitting ? t.saving : t.ban}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 export function AdminUsersManagement({ users, currentUserId, currentUserRole }) {
   const { t, language } = useLanguage();
   const [userRows, setUserRows] = React.useState(users);
+  const [currentViewerRole, setCurrentViewerRole] = React.useState(currentUserRole);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [roleFilter, setRoleFilter] = React.useState("all");
 
   React.useEffect(() => {
     setUserRows(users);
   }, [users]);
+
+  React.useEffect(() => {
+    setCurrentViewerRole(currentUserRole);
+  }, [currentUserRole]);
 
   const filteredUsers = React.useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -239,6 +386,7 @@ export function AdminUsersManagement({ users, currentUserId, currentUserRole }) 
         }
 
         if (user.id === currentUserId && payload?.currentUserNextRole !== undefined) {
+          setCurrentViewerRole(payload.currentUserNextRole);
           return {
             ...user,
             role: payload.currentUserNextRole,
@@ -246,6 +394,22 @@ export function AdminUsersManagement({ users, currentUserId, currentUserRole }) 
         }
 
         return user;
+      }),
+    );
+  }
+
+  function handleBanUpdated(userId, payload) {
+    setUserRows((currentUsers) =>
+      currentUsers.map((user) => {
+        if (user.id !== userId) {
+          return user;
+        }
+
+        return {
+          ...user,
+          isBanned: Boolean(payload?.isBanned),
+          bannedUntil: payload?.bannedUntil ?? null,
+        };
       }),
     );
   }
@@ -335,6 +499,11 @@ export function AdminUsersManagement({ users, currentUserId, currentUserRole }) 
                           {getRoleLabel(user.role, t)}
                         </Badge>
                       </div>
+                      {user.isBanned && user.bannedUntil ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {t.adminBannedUntilPrefix} <ClientFormattedDateTime value={user.bannedUntil} language={language} />
+                        </p>
+                      ) : null}
                     </TableCell>
                     <TableCell>
                       <ClientFormattedDateTime
@@ -353,8 +522,14 @@ export function AdminUsersManagement({ users, currentUserId, currentUserRole }) 
                         <UserRoleActions
                           user={user}
                           currentUserId={currentUserId}
-                          currentUserRole={currentUserRole}
+                          currentUserRole={currentViewerRole}
                           onRoleUpdated={handleRoleUpdated}
+                        />
+                        <UserBanActions
+                          user={user}
+                          currentUserId={currentUserId}
+                          currentUserRole={currentViewerRole}
+                          onBanUpdated={handleBanUpdated}
                         />
                       </div>
                     </TableCell>

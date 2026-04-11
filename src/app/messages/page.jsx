@@ -1,4 +1,4 @@
-import { MessageSquare } from "lucide-react";
+import { EyeOff, MessageSquare } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -19,7 +19,10 @@ import {
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
-export default async function MessagesPage() {
+export default async function MessagesPage({ searchParams }) {
+  const resolvedSearchParams = await searchParams;
+  const showHidden = resolvedSearchParams?.hidden === "1";
+
   const cookieStore = await cookies();
   const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
   const t = translations[language] || translations.en;
@@ -62,13 +65,20 @@ export default async function MessagesPage() {
     (hiddenConversationRows ?? []).map((conversationState) => conversationState.conversation_id),
   );
 
-  const visibleConversationRows = (conversationRows ?? []).filter(
+  const allConversationRows = conversationRows ?? [];
+
+  const visibleConversationRows = allConversationRows.filter(
     (conversation) =>
       Boolean(conversation.last_message_at || conversation.last_message_preview) &&
       !hiddenConversationIds.has(conversation.id),
   );
 
-  const conversationIds = visibleConversationRows.map((conversation) => conversation.id);
+  const hiddenConversationRows2 = allConversationRows.filter(
+    (conversation) => hiddenConversationIds.has(conversation.id),
+  );
+
+  const activeConversationRows = showHidden ? hiddenConversationRows2 : visibleConversationRows;
+  const conversationIds = activeConversationRows.map((conversation) => conversation.id);
 
   const { data: unreadRows, error: unreadError } = conversationIds.length
     ? await supabase
@@ -88,7 +98,7 @@ export default async function MessagesPage() {
     return counts;
   }, {});
 
-  const conversations = visibleConversationRows.map((conversation) =>
+  const conversations = activeConversationRows.map((conversation) =>
     normalizeConversationRow(
       conversation,
       user.id,
@@ -97,14 +107,38 @@ export default async function MessagesPage() {
     )
   );
 
+  const hiddenCount = hiddenConversationIds.size;
+
   return (
     <main className="min-h-screen bg-zinc-100 p-5 dark:bg-background md:p-6 lg:p-7">
       <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6">
         <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:border-border dark:bg-card">
           <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border lg:px-7">
-            <CardTitle className="text-3xl font-bold tracking-tight text-zinc-950 dark:text-foreground lg:text-4xl">
-              {t.messages}
-            </CardTitle>
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="text-3xl font-bold tracking-tight text-zinc-950 dark:text-foreground lg:text-4xl">
+                {showHidden ? t.hiddenMessages : t.messages}
+              </CardTitle>
+              {showHidden ? (
+                <Button asChild variant="outline" className="rounded-xl">
+                  <Link href="/messages">
+                    <MessageSquare className="size-4" />
+                    <span>{t.backToMessages}</span>
+                  </Link>
+                </Button>
+              ) : (
+                <Button asChild variant="outline" className="rounded-xl" disabled={hiddenCount === 0}>
+                  <Link href={hiddenCount > 0 ? "/messages?hidden=1" : "#"} aria-disabled={hiddenCount === 0}>
+                    <EyeOff className="size-4" />
+                    <span>{t.hiddenMessages}</span>
+                    {hiddenCount > 0 && (
+                      <span className="ml-1 flex size-5 items-center justify-center rounded-full bg-zinc-100 text-xs font-medium text-zinc-600 dark:bg-muted dark:text-muted-foreground">
+                        {hiddenCount}
+                      </span>
+                    )}
+                  </Link>
+                </Button>
+              )}
+            </div>
           </CardHeader>
 
           <CardContent className="p-6 lg:p-7">
@@ -133,6 +167,7 @@ export default async function MessagesPage() {
                       key={conversation.id}
                       conversation={conversation}
                       dateValue={conversation.lastMessageAt || conversation.updatedAt}
+                      showHidden={showHidden}
                     />
                   ))}
                 </div>
@@ -141,17 +176,23 @@ export default async function MessagesPage() {
               <section className="flex min-h-[420px] items-center justify-center rounded-[2rem] border border-dashed border-zinc-300 bg-zinc-50 p-8 text-center dark:border-border dark:bg-muted/40">
                 <div className="max-w-xl">
                   <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-background text-foreground shadow-sm">
-                    <MessageSquare className="size-6" />
+                    {showHidden ? <EyeOff className="size-6" /> : <MessageSquare className="size-6" />}
                   </div>
                   <h2 className="mt-5 text-2xl font-semibold text-zinc-950 dark:text-foreground">
-                    {t.noConversationsTitle}
+                    {showHidden ? t.noHiddenConversationsTitle : t.noConversationsTitle}
                   </h2>
                   <p className="mt-3 text-sm leading-7 text-zinc-500 dark:text-muted-foreground">
-                    {t.noConversationsDescription}
+                    {showHidden ? t.noHiddenConversationsDescription : t.noConversationsDescription}
                   </p>
-                  <Button asChild className="mt-6">
-                    <Link href="/">{t.browseListings}</Link>
-                  </Button>
+                  {showHidden ? (
+                    <Button asChild variant="outline" className="mt-6">
+                      <Link href="/messages">{t.backToMessages}</Link>
+                    </Button>
+                  ) : (
+                    <Button asChild className="mt-6">
+                      <Link href="/">{t.browseListings}</Link>
+                    </Button>
+                  )}
                 </div>
               </section>
             )}
