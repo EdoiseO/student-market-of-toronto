@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { AdminUsersManagement } from "@/components/admin-users-management";
 import { Button } from "@/components/ui/button";
 import { getUserModerationRole, isModerationRole } from "@/lib/moderation";
-import { createAdminClient } from "@/lib/supabase-admin";
+import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
@@ -59,7 +59,9 @@ export default async function AdminUsersPage() {
     redirect("/login");
   }
 
-  if (!isModerationRole(getUserModerationRole(user))) {
+  const accessUser = (await getLatestAuthUser(admin, user.id, "admin users access")) ?? user;
+
+  if (!isModerationRole(getUserModerationRole(accessUser))) {
     redirect("/");
   }
 
@@ -91,7 +93,7 @@ export default async function AdminUsersPage() {
   const authUsers = await listAllUsers(admin);
   const profileIds = authUsers.map((authUser) => authUser.id);
   const { data: profiles, error: profilesError } = profileIds.length
-    ? await supabase
+    ? await (admin ?? supabase)
         .from("profiles")
         .select("id, first_name, last_name, school")
         .in("id", profileIds)
@@ -156,7 +158,7 @@ export default async function AdminUsersPage() {
             <AdminUsersManagement
               users={users}
               currentUserId={user.id}
-              currentUserRole={getUserModerationRole(user)}
+              currentUserRole={getUserModerationRole(accessUser)}
             />
           </div>
         </div>

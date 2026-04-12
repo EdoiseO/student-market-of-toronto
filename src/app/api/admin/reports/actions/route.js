@@ -6,7 +6,7 @@ import {
   getUserModerationRole,
   REPORT_STATUS_VALUES,
 } from "@/lib/moderation";
-import { createAdminClient } from "@/lib/supabase-admin";
+import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { createClient } from "@/utils/supabase/server";
 
 function isReportNotesColumnsMissing(error) {
@@ -55,19 +55,8 @@ async function requireModerationUser() {
       };
     }
 
-    const {
-      data: { user: latestAuthUser },
-      error: latestAuthUserError,
-    } = await admin.auth.admin.getUserById(requestUser.id);
-
-  if (latestAuthUserError || !latestAuthUser) {
-    console.error(
-      "Falling back to session role check for moderation actions:",
-      latestAuthUserError?.message ?? "Missing latest auth user",
-    );
-  }
-
-  const moderationUser = latestAuthUser ?? requestUser;
+  const moderationUser =
+    (await getLatestAuthUser(admin, requestUser.id, "moderation actions")) ?? requestUser;
 
   if (!isModerationRole(getUserModerationRole(moderationUser))) {
     return {

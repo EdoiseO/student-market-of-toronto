@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 import { getUserModerationRole } from "@/lib/moderation";
-import { createAdminClient } from "@/lib/supabase-admin";
+import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { isUserStatusTableMissing } from "@/lib/user-status";
 import { createClient } from "@/utils/supabase/server";
 
@@ -71,7 +71,9 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
     }
 
-    if (getUserModerationRole(user) !== "admin") {
+    const accessUser = (await getLatestAuthUser(admin, user.id, "admin ban management")) ?? user;
+
+    if (getUserModerationRole(accessUser) !== "admin") {
       return NextResponse.json({ error: "Only admins can manage bans." }, { status: 403 });
     }
 
@@ -82,7 +84,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: "Missing target user." }, { status: 400 });
     }
 
-    if (targetUserId === user.id) {
+    if (targetUserId === accessUser.id) {
       return NextResponse.json({ error: "You cannot ban your own account." }, { status: 400 });
     }
 

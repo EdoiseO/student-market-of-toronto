@@ -326,7 +326,7 @@ export function AdminReportReviewContent({
                   {getTranslatedReportStatus(report.status, t)}
                 </Badge>
                 {flaggedMessageId ? (
-                  <Badge className="rounded-full bg-yellow-500 px-2.5 py-0.5 text-zinc-950 shadow-none">
+                  <Badge className="rounded-full bg-amber-100 px-2.5 py-0.5 text-amber-900 shadow-none dark:bg-amber-500/15 dark:text-amber-200">
                     {t.adminReportedMessageBadge}
                   </Badge>
                 ) : null}
@@ -414,7 +414,7 @@ export function AdminReportReviewContent({
                       >
                         {isFlagged ? (
                           <div className="mb-2">
-                            <Badge className="rounded-full bg-yellow-500 px-2 py-0 text-zinc-950 shadow-none">
+                            <Badge className="rounded-full bg-amber-100 px-2 py-0 text-amber-900 shadow-none dark:bg-amber-500/15 dark:text-amber-200">
                               {t.adminReportedMessageBadge}
                             </Badge>
                           </div>
@@ -566,7 +566,7 @@ export function AdminReportReviewContent({
             <div className="min-h-0 flex-1 overflow-y-auto bg-zinc-50/70 px-6 py-5 dark:bg-muted/20">
               <div className="space-y-5">
                 <div className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 dark:border-border dark:bg-card">
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-start gap-4">
                     <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted">
                       {listingReview?.listing?.imageUrl ? (
                         <img

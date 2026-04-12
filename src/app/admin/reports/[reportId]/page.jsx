@@ -16,7 +16,7 @@ import {
   isModerationRole,
   isReportsTableMissing,
 } from "@/lib/moderation";
-import { createAdminClient } from "@/lib/supabase-admin";
+import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
@@ -43,7 +43,9 @@ export default async function AdminReportReviewPage({ params }) {
     redirect("/login");
   }
 
-  if (!isModerationRole(getUserModerationRole(user))) {
+  const accessUser = (await getLatestAuthUser(admin, user.id, "report review access")) ?? user;
+
+  if (!isModerationRole(getUserModerationRole(accessUser))) {
     redirect("/");
   }
 
@@ -266,7 +268,7 @@ export default async function AdminReportReviewPage({ params }) {
         : null,
     };
   } else if (reportRow.subject_type === REPORT_SUBJECT_TYPES.profile) {
-    const { data: profileRow, error: profileError } = await supabase
+    const { data: profileRow, error: profileError } = await dataClient
       .from("profiles")
       .select("id, first_name, last_name, school, avatar_preset_id, avatar_url, bio, created_at")
       .eq("id", reportRow.subject_id)

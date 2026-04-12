@@ -6,7 +6,8 @@ import {
   LISTING_APPROVED_NOTIFICATION_TYPE,
   LISTING_REJECTED_NOTIFICATION_TYPE,
 } from "@/lib/notifications";
-import { createAdminClient } from "@/lib/supabase-admin";
+import { isPendingListingApproval } from "@/lib/listing-approval";
+import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { createClient } from "@/utils/supabase/server";
 
 function isListingModerationHistoryMissing(error) {
@@ -118,19 +119,8 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
     }
 
-    const {
-      data: { user: latestAuthUser },
-      error: latestAuthUserError,
-    } = await admin.auth.admin.getUserById(requestUser.id);
-
-    if (latestAuthUserError || !latestAuthUser) {
-      console.error(
-        "Falling back to session role check for listing moderation:",
-        latestAuthUserError?.message ?? "Missing latest auth user",
-      );
-    }
-
-    const moderationUser = latestAuthUser ?? requestUser;
+    const moderationUser =
+      (await getLatestAuthUser(admin, requestUser.id, "listing moderation")) ?? requestUser;
 
     if (!isModerationRole(getUserModerationRole(moderationUser))) {
       return NextResponse.json({ error: "Moderator role required" }, { status: 403 });
@@ -158,12 +148,21 @@ export async function POST(request, { params }) {
 
     const { data: listing, error: listingError } = await admin
       .from("listings")
-      .select("id, seller_id, slug, title, status")
+      .select(
+        "id, seller_id, slug, title, status, submitted_for_review_at, moderation_reviewed_at"
+      )
       .eq("id", listingId)
       .maybeSingle();
 
     if (listingError || !listing) {
       throw listingError ?? new Error("listing_lookup_failed");
+    }
+
+    if (!isPendingListingApproval(listing)) {
+      return NextResponse.json(
+        { error: "This listing is no longer pending review." },
+        { status: 409 },
+      );
     }
 
     const decidedAt = new Date().toISOString();

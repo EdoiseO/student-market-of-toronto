@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 
 import { getUserModerationRole } from "@/lib/moderation";
 import { MODERATOR_ROLE_GRANTED_NOTIFICATION_TYPE } from "@/lib/notifications";
-import { createAdminClient } from "@/lib/supabase-admin";
+import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { createClient } from "@/utils/supabase/server";
 
 function buildAppMetadata(currentAppMetadata, nextRole) {
@@ -101,7 +101,9 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
     }
 
-    if (getUserModerationRole(user) !== "admin") {
+    const accessUser = (await getLatestAuthUser(admin, user.id, "admin role management")) ?? user;
+
+    if (getUserModerationRole(accessUser) !== "admin") {
       return NextResponse.json({ error: "Only admins can update moderation roles." }, { status: 403 });
     }
 
@@ -124,12 +126,12 @@ export async function POST(request, { params }) {
     }
 
     if (action === "transfer_admin") {
-      if (targetUserId === user.id) {
+      if (targetUserId === accessUser.id) {
         return NextResponse.json({ error: "You already have the admin role." }, { status: 400 });
       }
 
       await updateUserRole(admin, targetUserId, "admin");
-      await updateUserRole(admin, user.id, "moderator");
+      await updateUserRole(admin, accessUser.id, "moderator");
 
       return NextResponse.json({
         success: true,

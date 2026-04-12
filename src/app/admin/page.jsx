@@ -2,7 +2,6 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { AdminAnnouncementSheet } from "@/components/admin-announcement-sheet";
 import { AdminModerationDashboard } from "@/components/admin-moderation-dashboard";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,7 +24,7 @@ import {
   isPendingListingApproval,
   isListingApprovalSetupMissing,
 } from "@/lib/listing-approval";
-import { createAdminClient } from "@/lib/supabase-admin";
+import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
@@ -61,7 +60,8 @@ export default async function AdminPage() {
     redirect("/login");
   }
 
-  const userRole = getUserModerationRole(user);
+  const accessUser = (await getLatestAuthUser(admin, user.id, "admin dashboard access")) ?? user;
+  const userRole = getUserModerationRole(accessUser);
 
   if (!isModerationRole(userRole)) {
     redirect("/");
@@ -322,12 +322,9 @@ export default async function AdminPage() {
                 </CardDescription>
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                {userRole === "admin" && <AdminAnnouncementSheet />}
-                <Button asChild variant="outline" className="rounded-xl">
-                  <Link href="/admin/users">{t.adminUsers}</Link>
-                </Button>
-              </div>
+              <Button asChild variant="outline" className="rounded-xl">
+                <Link href="/admin/users">{t.adminUsers}</Link>
+              </Button>
             </div>
           </CardHeader>
 

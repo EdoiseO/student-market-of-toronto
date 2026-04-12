@@ -160,7 +160,7 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+    <div className="flex flex-col gap-4">
       <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
         <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -208,8 +208,8 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
         </CardContent>
       </Card>
 
-      <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.8fr)]">
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.8fr)]">
+        <section className="flex flex-col rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card">
           <div className="border-b border-zinc-200 px-6 py-5 dark:border-border">
             <p className="text-lg font-semibold text-zinc-950 dark:text-foreground">
               {t.adminListingApprovalContentTitle}
@@ -219,12 +219,18 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
             </p>
           </div>
 
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-zinc-50/70 px-6 py-5 dark:bg-muted/20">
+          <div className="space-y-4 bg-zinc-50/70 px-6 py-5 dark:bg-muted/20">
             <div className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 shadow-none dark:border-border dark:bg-card">
-              <div className="flex items-center gap-4">
-                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted">
+              <div className="grid grid-cols-[5rem_minmax(0,1fr)] items-center gap-4">
+                <div className="h-20 w-20 min-h-20 min-w-20 max-h-20 max-w-20 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted">
                   {listing.imageUrl ? (
-                    <img src={listing.imageUrl} alt={listing.title} className="h-full w-full object-cover" />
+                    <img
+                      src={listing.imageUrl}
+                      alt={listing.title}
+                      width={80}
+                      height={80}
+                      className="block h-full w-full max-w-none object-cover"
+                    />
                   ) : (
                     <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
                   )}

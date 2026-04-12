@@ -17,3 +17,24 @@ export function createAdminClient() {
     },
   });
 }
+
+export async function getLatestAuthUser(admin, userId, logLabel = "admin auth lookup") {
+  if (!admin || !userId) {
+    return null;
+  }
+
+  const {
+    data: { user },
+    error,
+  } = await admin.auth.admin.getUserById(userId);
+
+  if (error || !user) {
+    console.error(
+      `Falling back to session role check for ${logLabel}:`,
+      error?.message ?? "Missing latest auth user",
+    );
+    return null;
+  }
+
+  return user;
+}
