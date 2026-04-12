@@ -24,6 +24,7 @@ import {
   isPendingListingApproval,
   isListingResubmittedAfterEdit,
 } from "@/lib/listing-approval";
+import { createClient } from "@/utils/supabase/client";
 
 function ReviewMetadata({ label, children }) {
   return (
@@ -57,6 +58,7 @@ function getListingFeedbackResetValue(listing) {
 
 export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
   const router = useRouter();
+  const supabase = React.useMemo(() => createClient(), []);
   const { t, language } = useLanguage();
   const listingId = listing.id;
   const listingStatus = listing.status;
@@ -87,6 +89,12 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
 
   async function handleModerationDecision(action, nextFeedback = null) {
     setIsProcessing(true);
+
+    const { error: refreshSessionError } = await supabase.auth.refreshSession();
+
+    if (refreshSessionError) {
+      console.error("Failed to refresh moderation session before listing decision:", refreshSessionError.message);
+    }
 
     const response = await fetch(`/api/admin/listings/${listing.id}/decision`, {
       method: "POST",

@@ -216,6 +216,26 @@ export async function POST(request, { params }) {
       throw new Error(`listing_update_failed: ${updateError.message}`);
     }
 
+    const { data: updatedListing, error: updatedListingError } = await admin
+      .from("listings")
+      .select(
+        "id, status, submitted_for_review_at, moderation_feedback, moderation_reviewed_at, moderation_reviewed_by"
+      )
+      .eq("id", listingId)
+      .maybeSingle();
+
+    if (updatedListingError || !updatedListing) {
+      throw new Error(
+        `listing_postcheck_failed: ${updatedListingError?.message ?? "missing updated listing"}`,
+      );
+    }
+
+    if (updatedListing.status !== nextStatus) {
+      throw new Error(
+        `listing_update_mismatch: expected_status=${nextStatus}; actual_status=${updatedListing.status}; submitted_for_review_at=${updatedListing.submitted_for_review_at ?? "null"}; moderation_reviewed_at=${updatedListing.moderation_reviewed_at ?? "null"}; moderation_reviewed_by=${updatedListing.moderation_reviewed_by ?? "null"}`,
+      );
+    }
+
     try {
       await insertModerationHistory(
         admin,
