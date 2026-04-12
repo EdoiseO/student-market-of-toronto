@@ -1,29 +1,13 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createClient as createSupabaseAdminClient } from "@supabase/supabase-js";
 
 import { getUserModerationRole, isModerationRole } from "@/lib/moderation";
 import {
   LISTING_APPROVED_NOTIFICATION_TYPE,
   LISTING_REJECTED_NOTIFICATION_TYPE,
 } from "@/lib/notifications";
+import { createAdminClient } from "@/lib/supabase-admin";
 import { createClient } from "@/utils/supabase/server";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-function createAdminClient() {
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
-    return null;
-  }
-
-  return createSupabaseAdminClient(supabaseUrl, supabaseServiceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-}
 
 function isListingModerationHistoryMissing(error) {
   const message = [error?.message, error?.details, error?.hint]

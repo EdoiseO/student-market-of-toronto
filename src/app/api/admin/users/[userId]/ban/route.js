@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createClient as createSupabaseAdminClient } from "@supabase/supabase-js";
 
 import { getUserModerationRole } from "@/lib/moderation";
+import { createAdminClient } from "@/lib/supabase-admin";
 import { isUserStatusTableMissing } from "@/lib/user-status";
 import { createClient } from "@/utils/supabase/server";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const BAN_DURATIONS = {
   "24h": "24h",
@@ -15,19 +12,6 @@ const BAN_DURATIONS = {
   "30d": "720h",
   permanent: "876000h",
 };
-
-function createAdminClient() {
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
-    return null;
-  }
-
-  return createSupabaseAdminClient(supabaseUrl, supabaseServiceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-}
 
 async function getTargetUser(admin, userId) {
   const {

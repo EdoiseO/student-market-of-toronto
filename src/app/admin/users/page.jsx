@@ -1,4 +1,3 @@
-import { createClient as createSupabaseAdminClient } from "@supabase/supabase-js";
 import { ArrowLeft, ShieldCheck, Users } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
@@ -7,24 +6,9 @@ import { redirect } from "next/navigation";
 import { AdminUsersManagement } from "@/components/admin-users-management";
 import { Button } from "@/components/ui/button";
 import { getUserModerationRole, isModerationRole } from "@/lib/moderation";
+import { createAdminClient } from "@/lib/supabase-admin";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-function createAdminClient() {
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
-    return null;
-  }
-
-  return createSupabaseAdminClient(supabaseUrl, supabaseServiceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-}
 
 function getUserName(profile, authUser, t) {
   const profileName = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ").trim();

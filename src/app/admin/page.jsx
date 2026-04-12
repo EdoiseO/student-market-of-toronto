@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient as createSupabaseAdminClient } from "@supabase/supabase-js";
 
 import { AdminAnnouncementSheet } from "@/components/admin-announcement-sheet";
 import { AdminModerationDashboard } from "@/components/admin-moderation-dashboard";
@@ -26,24 +25,9 @@ import {
   isPendingListingApproval,
   isListingApprovalSetupMissing,
 } from "@/lib/listing-approval";
+import { createAdminClient } from "@/lib/supabase-admin";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-function createAdminClient() {
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
-    return null;
-  }
-
-  return createSupabaseAdminClient(supabaseUrl, supabaseServiceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-}
 
 function buildIdList(values) {
   return [...new Set(values.filter(Boolean))];

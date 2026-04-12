@@ -2,7 +2,6 @@ import { ArrowLeft, Flag, MessageSquareWarning } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { createClient as createSupabaseAdminClient } from "@supabase/supabase-js";
 
 import { AdminReportReviewContent } from "@/components/admin-report-review-content";
 import { Button } from "@/components/ui/button";
@@ -17,24 +16,9 @@ import {
   isModerationRole,
   isReportsTableMissing,
 } from "@/lib/moderation";
+import { createAdminClient } from "@/lib/supabase-admin";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-function createAdminClient() {
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
-    return null;
-  }
-
-  return createSupabaseAdminClient(supabaseUrl, supabaseServiceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-}
 
 function getPrimaryListingImageUrl(listingImages) {
   return (listingImages ?? [])
