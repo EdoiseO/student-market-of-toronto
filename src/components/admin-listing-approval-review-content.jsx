@@ -343,10 +343,13 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
                 listing.history.map((entry) => (
                   <div
                     key={entry.id}
-                    className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-border dark:bg-muted/30"
+                    className="rounded-2xl border border-border bg-background p-4"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
+                      <Badge
+                        variant="outline"
+                        className="rounded-full border-border bg-muted px-2.5 py-0.5 text-foreground"
+                      >
                         {getHistoryActionLabel(entry.action, t)}
                       </Badge>
                       <ClientFormattedDateTime
@@ -359,9 +362,9 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
                       {t.adminReviewedBy}: {entry.decidedByName}
                     </p>
                     {entry.feedback ? (
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        {entry.feedback}
-                      </p>
+                      <div className="mt-3 rounded-xl border border-border bg-muted/40 px-3 py-2.5">
+                        <p className="text-sm leading-6 text-muted-foreground">{entry.feedback}</p>
+                      </div>
                     ) : null}
                   </div>
                 ))
