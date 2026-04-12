@@ -28,7 +28,7 @@ function SearchCombobox({ label, placeholder, value, onValueChange, options, act
           placeholder={placeholder}
           className={cn(
             "w-full rounded-lg border border-input transition-colors",
-            active && "border-zinc-300 bg-zinc-100"
+            active && "border-border bg-muted text-foreground dark:bg-muted/40"
           )}
         />
         <ComboboxContent>
@@ -63,20 +63,6 @@ export function SearchFilterControls({
   const [condition, setCondition] = React.useState(initialFilters.condition ?? "");
   const [tag, setTag] = React.useState(initialFilters.tag ?? "");
   const [sortBy, setSortBy] = React.useState(initialFilters.sort ?? "new-old");
-
-  React.useEffect(() => {
-    setMinPrice(initialFilters.min ?? "");
-    setMaxPrice(initialFilters.max ?? "");
-    setCondition(initialFilters.condition ?? "");
-    setTag(initialFilters.tag ?? "");
-    setSortBy(initialFilters.sort ?? "new-old");
-  }, [
-    initialFilters.min,
-    initialFilters.max,
-    initialFilters.condition,
-    initialFilters.tag,
-    initialFilters.sort,
-  ]);
 
   React.useEffect(() => {
     setMinPrice(initialFilters.min ?? "");

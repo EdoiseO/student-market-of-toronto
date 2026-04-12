@@ -26,7 +26,6 @@ import {
   getTranslatedReportReason,
   getTranslatedReportStatus,
 } from "@/lib/moderation";
-import { createClient } from "@/utils/supabase/client";
 
 function ReviewMetadata({ label, children }) {
   return (
@@ -126,7 +125,6 @@ export function AdminReportReviewContent({
   currentUserId,
 }) {
   const router = useRouter();
-  const supabase = React.useMemo(() => createClient(), []);
   const { t, language } = useLanguage();
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [isSavingNotes, setIsSavingNotes] = React.useState(false);
@@ -180,23 +178,27 @@ export function AdminReportReviewContent({
       return { error: true };
     }
 
-    const reviewedAt = new Date().toISOString();
-    const { error } = await supabase
-      .from("reports")
-      .update({
+    const response = await fetch("/api/admin/reports/actions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "update_status",
+        reportIds: actionableReportIds,
         status: nextStatus,
-        reviewed_by: currentUserId,
-        reviewed_at: reviewedAt,
-      })
-      .in("id", actionableReportIds);
+      }),
+    });
 
-    if (error) {
-      console.error("Failed to update related moderation reports:", error.message);
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      console.error("Failed to update related moderation reports:", payload?.error);
       toast.error(t.adminReportActionError);
       return { error: true };
     }
 
-    return { error: false, updatedCount: actionableReportIds.length };
+    return { error: false, updatedCount: payload?.updatedCount ?? actionableReportIds.length };
   }
 
   async function handleUpdateStatus(nextStatus) {
@@ -235,29 +237,30 @@ export function AdminReportReviewContent({
 
     setIsProcessing(true);
 
-    const { error: listingError } = await supabase
-      .from("listings")
-      .update({
-        status: "inactive",
-        moderation_reviewed_at: new Date().toISOString(),
-        moderation_reviewed_by: currentUserId,
-      })
-      .eq("id", listingTarget.id);
+    const response = await fetch("/api/admin/reports/actions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "remove_listing",
+        listingId: listingTarget.id,
+        reportIds: actionableReportIds,
+      }),
+    });
 
-    if (listingError) {
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
       setIsProcessing(false);
-      console.error("Failed to remove reported listing:", listingError.message);
+      console.error("Failed to remove reported listing:", payload?.error);
       toast.error(t.adminReportActionError);
       return;
     }
 
-    const result = await updateRelatedReportStatuses(REPORT_STATUS_VALUES.resolved);
+    const result = { error: false, updatedCount: payload?.updatedCount ?? actionableReportIds.length };
 
     setIsProcessing(false);
-
-    if (result.error) {
-      return;
-    }
 
     toast.success(
       result.updatedCount > 1
@@ -275,20 +278,24 @@ export function AdminReportReviewContent({
 
     setIsSavingNotes(true);
 
-    const trimmedNotes = moderatorNotes.trim();
-    const { error } = await supabase
-      .from("reports")
-      .update({
-        moderator_notes: trimmedNotes || null,
-        moderator_notes_updated_at: new Date().toISOString(),
-        moderator_notes_updated_by: currentUserId,
-      })
-      .eq("id", report.id);
+    const response = await fetch("/api/admin/reports/actions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "save_notes",
+        reportId: report.id,
+        moderatorNotes: moderatorNotes,
+      }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
 
     setIsSavingNotes(false);
 
-    if (error) {
-      console.error("Failed to save moderator notes:", error.message);
+    if (!response.ok) {
+      console.error("Failed to save moderator notes:", payload?.error);
       toast.error(t.adminModeratorNotesSaveError);
       return;
     }

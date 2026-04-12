@@ -252,7 +252,7 @@ function ReportQueueTable({ reportGroups, language, t }) {
   );
 }
 
-function ListingApprovalTable({ listings, language, t, dateLabel }) {
+function ListingApprovalTable({ listings, language, t, dateLabel, emptyText }) {
   return (
     <Table>
       <TableHeader>
@@ -311,7 +311,7 @@ function ListingApprovalTable({ listings, language, t, dateLabel }) {
         ) : (
           <TableRow>
             <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
-              {t.noReports}
+              {emptyText}
             </TableCell>
           </TableRow>
         )}
@@ -353,17 +353,18 @@ export function AdminModerationDashboard({
   const reviewedReportGroups = filteredReportGroups.filter(
     (group) => group.openCount === 0,
   );
+  const reviewedReportGroupsLimit = 20;
   const totalOpenReports = reports.filter(
     (report) => report.status === REPORT_STATUS_VALUES.open,
   );
 
-  const listingReportCount = reports.filter(
+  const listingReportCount = totalOpenReports.filter(
     (report) => report.subjectType === REPORT_SUBJECT_TYPES.listing,
   ).length;
-  const messageReportCount = reports.filter(
+  const messageReportCount = totalOpenReports.filter(
     (report) => report.subjectType === REPORT_SUBJECT_TYPES.message,
   ).length;
-  const profileReportCount = reports.filter(
+  const profileReportCount = totalOpenReports.filter(
     (report) => report.subjectType === REPORT_SUBJECT_TYPES.profile,
   ).length;
   const pendingListingApprovalCount = pendingListingApprovals.length;
@@ -496,6 +497,7 @@ export function AdminModerationDashboard({
                   language={language}
                   t={t}
                   dateLabel={t.adminSubmittedForReviewAt}
+                  emptyText={t.adminNoPendingListingApprovals}
                 />
               ) : (
                 <div className="rounded-3xl border border-dashed border-border bg-muted/30 px-5 py-10 text-center text-sm text-muted-foreground">
@@ -517,6 +519,7 @@ export function AdminModerationDashboard({
                   language={language}
                   t={t}
                   dateLabel={t.reviewedAt}
+                  emptyText={t.adminNoRecentListingDecisions}
                 />
               ) : (
                 <div className="rounded-3xl border border-dashed border-border bg-muted/30 px-5 py-10 text-center text-sm text-muted-foreground">
@@ -539,10 +542,22 @@ export function AdminModerationDashboard({
         <CardHeader className="border-b border-border px-6 py-6">
           <CardTitle className="text-2xl text-foreground">{t.adminRecentReviewsTitle}</CardTitle>
           <CardDescription>{t.adminRecentReviewsDescription}</CardDescription>
+          {reviewedReportGroups.length > reviewedReportGroupsLimit ? (
+            <p className="mt-3 text-sm text-muted-foreground">
+              {t.adminRecentReviewsLimitNote.replace(
+                "{count}",
+                String(reviewedReportGroupsLimit),
+              )}
+            </p>
+          ) : null}
         </CardHeader>
         <CardContent className="px-6 py-6">
           {reviewedReportGroups.length > 0 ? (
-            <ReportQueueTable reportGroups={reviewedReportGroups.slice(0, 20)} language={language} t={t} />
+            <ReportQueueTable
+              reportGroups={reviewedReportGroups.slice(0, reviewedReportGroupsLimit)}
+              language={language}
+              t={t}
+            />
           ) : (
             <div className="rounded-3xl border border-dashed border-border bg-muted/30 px-5 py-10 text-center text-sm text-muted-foreground">
               {hasActiveFilters ? t.adminNoReviewedReportsMatchFilters : t.noReports}

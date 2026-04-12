@@ -1,6 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 
+import { getUserStatusRow, isUserBanned } from "@/lib/user-status";
+
 export async function proxy(request) {
   let response = NextResponse.next({ request });
 
@@ -27,6 +29,7 @@ export async function proxy(request) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
+  const isBannedRoute = path === "/banned";
 
   function isProtectedRoute(pathname) {
     return (
@@ -35,6 +38,34 @@ export async function proxy(request) {
       pathname === "/listings/create" ||
       /^\/listings\/[^/]+\/edit$/.test(pathname)
     );
+  }
+
+  if (user) {
+    const userStatusResult = await getUserStatusRow(supabase, user.id);
+
+    if (isUserBanned(userStatusResult.data) && !isBannedRoute) {
+      const redirectResponse = NextResponse.redirect(new URL("/banned", request.url));
+      response.cookies.getAll().forEach((cookie) => {
+        redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
+      });
+      return redirectResponse;
+    }
+
+    if (!isUserBanned(userStatusResult.data) && isBannedRoute) {
+      const redirectResponse = NextResponse.redirect(new URL("/", request.url));
+      response.cookies.getAll().forEach((cookie) => {
+        redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
+      });
+      return redirectResponse;
+    }
+  }
+
+  if (!user && isBannedRoute) {
+    const redirectResponse = NextResponse.redirect(new URL("/login", request.url));
+    response.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
+    });
+    return redirectResponse;
   }
 
   // Rule 1: Logged-in users should NOT visit auth-entry pages

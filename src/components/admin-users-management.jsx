@@ -274,7 +274,8 @@ function UserBanActions({ user, currentUserId, currentUserRole, onBanUpdated }) 
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48 rounded-2xl">
           <DropdownMenuItem
-            onClick={() => {
+            onSelect={(event) => {
+              event.preventDefault();
               setPendingBanDuration("24h");
               setIsDialogOpen(true);
             }}
@@ -282,7 +283,8 @@ function UserBanActions({ user, currentUserId, currentUserRole, onBanUpdated }) 
             {t.adminBanDuration24Hours}
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => {
+            onSelect={(event) => {
+              event.preventDefault();
               setPendingBanDuration("7d");
               setIsDialogOpen(true);
             }}
@@ -290,7 +292,8 @@ function UserBanActions({ user, currentUserId, currentUserRole, onBanUpdated }) 
             {t.adminBanDuration7Days}
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => {
+            onSelect={(event) => {
+              event.preventDefault();
               setPendingBanDuration("30d");
               setIsDialogOpen(true);
             }}
@@ -298,7 +301,8 @@ function UserBanActions({ user, currentUserId, currentUserRole, onBanUpdated }) 
             {t.adminBanDuration30Days}
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => {
+            onSelect={(event) => {
+              event.preventDefault();
               setPendingBanDuration("permanent");
               setIsDialogOpen(true);
             }}

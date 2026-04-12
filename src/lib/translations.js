@@ -310,6 +310,12 @@ export const translations = {
       "Important updates from the admin team appear here and stay pinned near the top of your messages.",
     announcementRepliesDisabled:
       "Announcements are read-only. New replies are disabled for this thread.",
+    accountBannedTitle: "Account access restricted",
+    accountBannedDescription:
+      "This account is currently banned. If the ban is temporary, access will be restored automatically after it expires.",
+    accountBannedUntilLabel: "Banned until",
+    accountBannedPermanent: "Permanent ban",
+    signOut: "Sign out",
     deleteConversation: "Delete conversation",
     deleteConversationTitle: "Delete this conversation?",
     deleteConversationDescription:
@@ -538,6 +544,8 @@ export const translations = {
     adminProfileReportsDescription: "Reports linked to seller profiles.",
     adminRecentReviewsTitle: "Recent Review Activity",
     adminRecentReviewsDescription: "The latest moderation decisions made from this queue.",
+    adminRecentReviewsLimitNote:
+      "Showing only the latest {count} reviewed report groups. Older reviewed items are not shown here.",
     adminSearchReportsPlaceholder: "Search reports, people, or subjects",
     adminNoReportsMatchFilters: "No reports match the current filters.",
     adminNoOpenReportsMatchFilters: "No open reports match the current filters.",
@@ -1127,6 +1135,12 @@ export const translations = {
       "Les mises à jour importantes de l'équipe d'administration apparaissent ici et restent épinglées près du haut de vos messages.",
     announcementRepliesDisabled:
       "Les communiqués sont en lecture seule. Les nouvelles réponses sont désactivées pour ce fil.",
+    accountBannedTitle: "Accès au compte restreint",
+    accountBannedDescription:
+      "Ce compte est actuellement banni. Si le bannissement est temporaire, l'accès sera rétabli automatiquement à son expiration.",
+    accountBannedUntilLabel: "Banni jusqu'au",
+    accountBannedPermanent: "Bannissement permanent",
+    signOut: "Se déconnecter",
     deleteConversation: "Supprimer la conversation",
     deleteConversationTitle: "Supprimer cette conversation ?",
     deleteConversationDescription:
@@ -1377,6 +1391,8 @@ export const translations = {
     adminRecentReviewsTitle: "Activité récente de modération",
     adminRecentReviewsDescription:
       "Les plus récentes décisions de modération prises depuis cette file.",
+    adminRecentReviewsLimitNote:
+      "Affiche seulement les {count} groupes de signalements examinés les plus récents. Les éléments examinés plus anciens ne sont pas affichés ici.",
     adminSearchReportsPlaceholder: "Rechercher des signalements, personnes ou sujets",
     adminNoReportsMatchFilters: "Aucun signalement ne correspond aux filtres actuels.",
     adminNoOpenReportsMatchFilters:

@@ -26,8 +26,8 @@ function buildAppMetadata(currentAppMetadata, nextRole) {
   const nextAppMetadata = { ...(currentAppMetadata ?? {}) };
 
   if (!nextRole) {
-    delete nextAppMetadata.role;
-    delete nextAppMetadata.roles;
+    nextAppMetadata.role = null;
+    nextAppMetadata.roles = [];
     return nextAppMetadata;
   }
 
@@ -95,63 +95,71 @@ async function createModeratorGrantedNotification(admin, userId) {
 }
 
 export async function POST(request, { params }) {
-  const resolvedParams = await params;
-  const admin = createAdminClient();
+  try {
+    const resolvedParams = await params;
+    const admin = createAdminClient();
 
-  if (!admin) {
-    return NextResponse.json(
-      { error: "Role management is not configured in this environment." },
-      { status: 503 },
-    );
-  }
-
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
-  }
-
-  if (getUserModerationRole(user) !== "admin") {
-    return NextResponse.json({ error: "Only admins can update moderation roles." }, { status: 403 });
-  }
-
-  const { action } = await request.json();
-  const targetUserId = resolvedParams.userId;
-
-  if (!targetUserId) {
-    return NextResponse.json({ error: "Missing target user." }, { status: 400 });
-  }
-
-  if (action === "make_moderator") {
-    await updateUserRole(admin, targetUserId, "moderator");
-    const notificationSent = await createModeratorGrantedNotification(admin, targetUserId);
-    return NextResponse.json({ success: true, nextRole: "moderator", notificationSent });
-  }
-
-  if (action === "remove_moderator") {
-    await updateUserRole(admin, targetUserId, null);
-    return NextResponse.json({ success: true, nextRole: null });
-  }
-
-  if (action === "transfer_admin") {
-    if (targetUserId === user.id) {
-      return NextResponse.json({ error: "You already have the admin role." }, { status: 400 });
+    if (!admin) {
+      return NextResponse.json(
+        { error: "Role management is not configured in this environment." },
+        { status: 503 },
+      );
     }
 
-    await updateUserRole(admin, targetUserId, "admin");
-    await updateUserRole(admin, user.id, "moderator");
+    const cookieStore = await cookies();
+    const supabase = createClient(cookieStore);
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-    return NextResponse.json({
-      success: true,
-      nextRole: "admin",
-      currentUserNextRole: "moderator",
-    });
+    if (authError || !user) {
+      return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+    }
+
+    if (getUserModerationRole(user) !== "admin") {
+      return NextResponse.json({ error: "Only admins can update moderation roles." }, { status: 403 });
+    }
+
+    const { action } = await request.json();
+    const targetUserId = resolvedParams.userId;
+
+    if (!targetUserId) {
+      return NextResponse.json({ error: "Missing target user." }, { status: 400 });
+    }
+
+    if (action === "make_moderator") {
+      await updateUserRole(admin, targetUserId, "moderator");
+      const notificationSent = await createModeratorGrantedNotification(admin, targetUserId);
+      return NextResponse.json({ success: true, nextRole: "moderator", notificationSent });
+    }
+
+    if (action === "remove_moderator") {
+      await updateUserRole(admin, targetUserId, null);
+      return NextResponse.json({ success: true, nextRole: null });
+    }
+
+    if (action === "transfer_admin") {
+      if (targetUserId === user.id) {
+        return NextResponse.json({ error: "You already have the admin role." }, { status: 400 });
+      }
+
+      await updateUserRole(admin, targetUserId, "admin");
+      await updateUserRole(admin, user.id, "moderator");
+
+      return NextResponse.json({
+        success: true,
+        nextRole: "admin",
+        currentUserNextRole: "moderator",
+      });
+    }
+
+    return NextResponse.json({ error: "Unsupported role action." }, { status: 400 });
+  } catch (error) {
+    console.error("Failed to update moderation role:", error?.message ?? error);
+    return NextResponse.json(
+      { error: error?.message ?? "Could not update moderation roles right now." },
+      { status: 500 },
+    );
   }
-
-  return NextResponse.json({ error: "Unsupported role action." }, { status: 400 });
 }
