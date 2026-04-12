@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { AdminAnnouncementSheet } from "@/components/admin-announcement-sheet";
 import { AdminModerationDashboard } from "@/components/admin-moderation-dashboard";
 import { Button } from "@/components/ui/button";
 import {
@@ -322,9 +323,12 @@ export default async function AdminPage() {
                 </CardDescription>
               </div>
 
-              <Button asChild variant="outline" className="rounded-xl">
-                <Link href="/admin/users">{t.adminUsers}</Link>
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                {userRole === "admin" && <AdminAnnouncementSheet />}
+                <Button asChild variant="outline" className="rounded-xl">
+                  <Link href="/admin/users">{t.adminUsers}</Link>
+                </Button>
+              </div>
             </div>
           </CardHeader>
 

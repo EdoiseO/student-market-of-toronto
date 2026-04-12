@@ -4,7 +4,6 @@ import * as React from "react";
 import { Megaphone } from "lucide-react";
 import { toast } from "sonner";
 
-import { useLanguage } from "@/context/LanguageContext";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -14,6 +13,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { useLanguage } from "@/context/LanguageContext";
 
 export function AdminAnnouncementSheet() {
   const { t } = useLanguage();
