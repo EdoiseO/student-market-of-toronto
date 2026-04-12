@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { createClient as createSupabaseAdminClient } from "@supabase/supabase-js";
 
 import { AdminAnnouncementSheet } from "@/components/admin-announcement-sheet";
 import { AdminModerationDashboard } from "@/components/admin-moderation-dashboard";
@@ -28,6 +29,22 @@ import {
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+function createAdminClient() {
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
+    return null;
+  }
+
+  return createSupabaseAdminClient(supabaseUrl, supabaseServiceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+}
+
 function buildIdList(values) {
   return [...new Set(values.filter(Boolean))];
 }
@@ -49,6 +66,8 @@ export default async function AdminPage() {
   const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
   const t = translations[language] || translations.en;
   const supabase = createClient(cookieStore);
+  const admin = createAdminClient();
+  const dataClient = admin ?? supabase;
 
   const {
     data: { user },
@@ -64,7 +83,7 @@ export default async function AdminPage() {
     redirect("/");
   }
 
-  const { data: reportRows, error: reportsError } = await supabase
+  const { data: reportRows, error: reportsError } = await dataClient
     .from("reports")
     .select(MODERATION_REPORT_SELECT)
     .order("created_at", { ascending: false })
@@ -90,19 +109,19 @@ export default async function AdminPage() {
   const [profilesResult, listingsResult, messagesResult] = reportsAvailable
     ? await Promise.all([
         profileIds.length > 0
-          ? supabase
+          ? dataClient
               .from("profiles")
               .select("id, first_name, last_name")
               .in("id", profileIds)
           : Promise.resolve({ data: [], error: null }),
         listingIds.length > 0
-          ? supabase
+          ? dataClient
               .from("listings")
               .select("id, title, slug, status")
               .in("id", listingIds)
           : Promise.resolve({ data: [], error: null }),
         messageIds.length > 0
-          ? supabase
+          ? dataClient
               .from("messages")
               .select("id, body, sender_id, created_at")
               .in("id", messageIds)
@@ -186,7 +205,7 @@ export default async function AdminPage() {
   let recentListingDecisionRows = [];
 
   const [pendingListingResult, recentListingDecisionResult] = await Promise.all([
-    supabase
+    dataClient
       .from("listings")
       .select(
         `
@@ -206,7 +225,7 @@ export default async function AdminPage() {
       .not("submitted_for_review_at", "is", null)
       .order("submitted_for_review_at", { ascending: false })
       .limit(40),
-    supabase
+    dataClient
       .from("listings")
       .select(
         `
@@ -250,7 +269,7 @@ export default async function AdminPage() {
 
   const { data: listingApprovalProfiles, error: listingApprovalProfilesError } =
     listingApprovalAvailable && listingApprovalProfileIds.length > 0
-      ? await supabase
+      ? await dataClient
           .from("profiles")
           .select("id, first_name, last_name")
           .in("id", listingApprovalProfileIds)

@@ -2,6 +2,7 @@ import { ArrowLeft, Flag, MessageSquareWarning } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { createClient as createSupabaseAdminClient } from "@supabase/supabase-js";
 
 import { AdminReportReviewContent } from "@/components/admin-report-review-content";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,22 @@ import {
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+function createAdminClient() {
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
+    return null;
+  }
+
+  return createSupabaseAdminClient(supabaseUrl, supabaseServiceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+}
+
 function getPrimaryListingImageUrl(listingImages) {
   return (listingImages ?? [])
     .slice()
@@ -31,6 +48,8 @@ export default async function AdminReportReviewPage({ params }) {
   const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
   const t = translations[language] || translations.en;
   const supabase = createClient(cookieStore);
+  const admin = createAdminClient();
+  const dataClient = admin ?? supabase;
 
   const {
     data: { user },
@@ -44,7 +63,7 @@ export default async function AdminReportReviewPage({ params }) {
     redirect("/");
   }
 
-  const { data: reportRow, error: reportError } = await supabase
+  const { data: reportRow, error: reportError } = await dataClient
     .from("reports")
     .select(MODERATION_REPORT_SELECT)
     .eq("id", resolvedParams.reportId)
@@ -61,7 +80,7 @@ export default async function AdminReportReviewPage({ params }) {
   let relatedReportRows = [reportRow];
 
   if (reportRow.subject_type === REPORT_SUBJECT_TYPES.message && reportRow.message_id) {
-    const { data: relatedRows, error: relatedError } = await supabase
+    const { data: relatedRows, error: relatedError } = await dataClient
       .from("reports")
       .select(MODERATION_REPORT_SELECT)
       .eq("subject_type", REPORT_SUBJECT_TYPES.message)
@@ -74,7 +93,7 @@ export default async function AdminReportReviewPage({ params }) {
       relatedReportRows = relatedRows;
     }
   } else if (reportRow.subject_type === REPORT_SUBJECT_TYPES.listing && reportRow.listing_id) {
-    const { data: relatedRows, error: relatedError } = await supabase
+    const { data: relatedRows, error: relatedError } = await dataClient
       .from("reports")
       .select(MODERATION_REPORT_SELECT)
       .eq("subject_type", REPORT_SUBJECT_TYPES.listing)
@@ -87,7 +106,7 @@ export default async function AdminReportReviewPage({ params }) {
       relatedReportRows = relatedRows;
     }
   } else if (reportRow.subject_type === REPORT_SUBJECT_TYPES.profile && reportRow.subject_id) {
-    const { data: relatedRows, error: relatedError } = await supabase
+    const { data: relatedRows, error: relatedError } = await dataClient
       .from("reports")
       .select(MODERATION_REPORT_SELECT)
       .eq("subject_type", REPORT_SUBJECT_TYPES.profile)
@@ -104,7 +123,7 @@ export default async function AdminReportReviewPage({ params }) {
   let notesAvailable = true;
   let reportNotesRows = [];
 
-  const { data: fetchedReportNotesRows, error: reportNotesError } = await supabase
+  const { data: fetchedReportNotesRows, error: reportNotesError } = await dataClient
     .from("reports")
     .select(MODERATION_REPORT_NOTES_SELECT)
     .in("id", relatedReportRows.map((relatedReport) => relatedReport.id));
@@ -129,7 +148,7 @@ export default async function AdminReportReviewPage({ params }) {
     reportRow.subject_type === REPORT_SUBJECT_TYPES.profile ? reportRow.subject_id : null,
   ].filter(Boolean);
   const { data: reportProfiles, error: reportProfilesError } = profileIds.length
-    ? await supabase
+      ? await dataClient
         .from("profiles")
         .select("id, first_name, last_name")
         .in("id", profileIds)
@@ -151,7 +170,7 @@ export default async function AdminReportReviewPage({ params }) {
   if (reportRow.subject_type === REPORT_SUBJECT_TYPES.message) {
     reviewIcon = MessageSquareWarning;
 
-    const { data: conversationRow, error: conversationError } = await supabase
+    const { data: conversationRow, error: conversationError } = await dataClient
       .from("conversations")
       .select(MESSAGE_CONVERSATION_SELECT)
       .eq("id", reportRow.conversation_id)
@@ -165,7 +184,7 @@ export default async function AdminReportReviewPage({ params }) {
       notFound();
     }
 
-    const { data: messageRows, error: messagesError } = await supabase
+    const { data: messageRows, error: messagesError } = await dataClient
       .from("messages")
       .select("id, sender_id, body, created_at")
       .eq("conversation_id", conversationRow.id)
@@ -214,7 +233,7 @@ export default async function AdminReportReviewPage({ params }) {
     messages = messageRows ?? [];
     reportMessage = messages.find((message) => message.id === reportRow.message_id) ?? null;
   } else if (reportRow.subject_type === REPORT_SUBJECT_TYPES.listing) {
-    const { data: listingRow, error: listingError } = await supabase
+    const { data: listingRow, error: listingError } = await dataClient
       .from("listings")
       .select(
         "id, seller_id, slug, title, description, price, location, status, listing_images ( image_url, position )"
@@ -231,7 +250,7 @@ export default async function AdminReportReviewPage({ params }) {
     }
 
     const { data: sellerProfile, error: sellerError } = listingRow.seller_id
-      ? await supabase
+      ? await dataClient
           .from("profiles")
           .select("id, first_name, last_name, school, avatar_preset_id, avatar_url")
           .eq("id", listingRow.seller_id)

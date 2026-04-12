@@ -24,7 +24,6 @@ import {
   isPendingListingApproval,
   isListingResubmittedAfterEdit,
 } from "@/lib/listing-approval";
-import { createClient } from "@/utils/supabase/client";
 
 function ReviewMetadata({ label, children }) {
   return (
@@ -56,18 +55,8 @@ function getListingFeedbackResetValue(listing) {
   });
 }
 
-function isModerateListingDecisionRpcMissing(error) {
-  const message = [error?.message, error?.details, error?.hint]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-
-  return error?.code === "PGRST202" || message.includes("moderate_listing_decision");
-}
-
 export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
   const router = useRouter();
-  const supabase = React.useMemo(() => createClient(), []);
   const { t, language } = useLanguage();
   const listingId = listing.id;
   const listingStatus = listing.status;
@@ -99,21 +88,24 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
   async function handleModerationDecision(action, nextFeedback = null) {
     setIsProcessing(true);
 
-    const { error } = await supabase.rpc("moderate_listing_decision", {
-      p_listing_id: listing.id,
-      p_action: action,
-      p_feedback: nextFeedback,
+    const response = await fetch(`/api/admin/listings/${listing.id}/decision`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action,
+        feedback: nextFeedback,
+      }),
     });
+
+    const payload = await response.json().catch(() => ({}));
 
     setIsProcessing(false);
 
-    if (error) {
-      console.error("Failed to moderate listing decision:", error.message);
-      toast.error(
-        isModerateListingDecisionRpcMissing(error)
-          ? t.adminListingDecisionRpcRequired
-          : t.adminListingApprovalActionError,
-      );
+    if (!response.ok) {
+      console.error("Failed to moderate listing decision:", payload?.error);
+      toast.error(payload?.error || t.adminListingApprovalActionError);
       return false;
     }
 

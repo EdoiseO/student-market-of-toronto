@@ -2,12 +2,29 @@ import { ArrowLeft, ClipboardCheck } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { createClient as createSupabaseAdminClient } from "@supabase/supabase-js";
 
 import { AdminListingApprovalReviewContent } from "@/components/admin-listing-approval-review-content";
 import { Button } from "@/components/ui/button";
 import { getModerationDisplayName, getUserModerationRole, isModerationRole } from "@/lib/moderation";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+function createAdminClient() {
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
+    return null;
+  }
+
+  return createSupabaseAdminClient(supabaseUrl, supabaseServiceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+}
 
 function getPrimaryListingImageUrl(listingImages) {
   return (listingImages ?? [])
@@ -21,6 +38,8 @@ export default async function AdminListingApprovalReviewPage({ params }) {
   const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
   const t = translations[language] || translations.en;
   const supabase = createClient(cookieStore);
+  const admin = createAdminClient();
+  const dataClient = admin ?? supabase;
 
   const {
     data: { user },
@@ -34,7 +53,7 @@ export default async function AdminListingApprovalReviewPage({ params }) {
     redirect("/");
   }
 
-  const { data: listingRow, error: listingError } = await supabase
+  const { data: listingRow, error: listingError } = await dataClient
     .from("listings")
     .select(
       "id, seller_id, slug, title, description, price, location, status, created_at, submitted_for_review_at, moderation_feedback, moderation_reviewed_at, moderation_reviewed_by, listing_images ( image_url, position )"
@@ -50,7 +69,7 @@ export default async function AdminListingApprovalReviewPage({ params }) {
     notFound();
   }
 
-  const { data: historyRows, error: historyError } = await supabase
+  const { data: historyRows, error: historyError } = await dataClient
     .from("listing_moderation_history")
     .select("id, action, feedback, decided_by, decided_at")
     .eq("listing_id", listingRow.id)
@@ -67,7 +86,7 @@ export default async function AdminListingApprovalReviewPage({ params }) {
     ...((historyRows ?? []).map((entry) => entry.decided_by)),
   ].filter(Boolean);
   const { data: profiles, error: profilesError } = profileIds.length
-    ? await supabase
+    ? await dataClient
         .from("profiles")
         .select("id, first_name, last_name, school, avatar_preset_id, avatar_url")
         .in("id", profileIds)

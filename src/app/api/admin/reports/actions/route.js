@@ -52,20 +52,40 @@ async function requireModerationUser() {
     };
   }
 
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+    const cookieStore = await cookies();
+    const supabase = createClient(cookieStore);
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-  if (authError || !user) {
-    return {
-      errorResponse: NextResponse.json({ error: "You must be signed in." }, { status: 401 }),
-    };
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const requestUser = user ?? session?.user ?? null;
+
+    if ((authError && !requestUser) || !requestUser) {
+      return {
+        errorResponse: NextResponse.json({ error: "You must be signed in." }, { status: 401 }),
+      };
+    }
+
+    const {
+      data: { user: latestAuthUser },
+      error: latestAuthUserError,
+    } = await admin.auth.admin.getUserById(requestUser.id);
+
+  if (latestAuthUserError || !latestAuthUser) {
+    console.error(
+      "Falling back to session role check for moderation actions:",
+      latestAuthUserError?.message ?? "Missing latest auth user",
+    );
   }
 
-  if (!isModerationRole(getUserModerationRole(user))) {
+  const moderationUser = latestAuthUser ?? requestUser;
+
+  if (!isModerationRole(getUserModerationRole(moderationUser))) {
     return {
       errorResponse: NextResponse.json(
         { error: "Only moderation users can perform this action." },
@@ -74,7 +94,7 @@ async function requireModerationUser() {
     };
   }
 
-  return { admin, user };
+  return { admin, user: moderationUser };
 }
 
 export async function POST(request) {
