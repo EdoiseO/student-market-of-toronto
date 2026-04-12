@@ -17,8 +17,11 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import {
+  isConversationHiddenForUser,
   getListingMessagingUnavailableText,
   getListingMessagingUnavailableStatusFromError,
+  isConversationInboxVisibleForUser,
+  isConversationUserStateDeletedAtColumnMissing,
   isConversationUserStateTableMissing,
   isListingMessagingAvailable,
   isListingMessagingUnavailableError,
@@ -191,21 +194,87 @@ export function StartConversationButton({
     }
 
     if (data?.id && (data.last_message_at || data.last_message_preview)) {
-      const { error: unhideError } = await supabase.from("conversation_user_state").upsert(
-        {
-          conversation_id: data.id,
-          user_id: currentUserId,
-          hidden_at: null,
-        },
-        { onConflict: "conversation_id,user_id" },
-      );
+      let conversationStateRow = null;
 
-      if (unhideError && !isConversationUserStateTableMissing(unhideError)) {
-        console.error("Failed to restore hidden conversation:", unhideError.message);
+      const { data: conversationStateWithDelete, error: conversationStateError } = await supabase
+        .from("conversation_user_state")
+        .select("hidden_at, deleted_at")
+        .eq("conversation_id", data.id)
+        .eq("user_id", currentUserId)
+        .maybeSingle();
+
+      if (
+        conversationStateError &&
+        isConversationUserStateDeletedAtColumnMissing(conversationStateError)
+      ) {
+        const { data: fallbackConversationState, error: fallbackConversationStateError } =
+          await supabase
+            .from("conversation_user_state")
+            .select("hidden_at")
+            .eq("conversation_id", data.id)
+            .eq("user_id", currentUserId)
+            .maybeSingle();
+
+        if (
+          fallbackConversationStateError &&
+          !isConversationUserStateTableMissing(fallbackConversationStateError)
+        ) {
+          console.error(
+            "Failed to load existing conversation state:",
+            fallbackConversationStateError.message,
+          );
+        } else {
+          conversationStateRow = fallbackConversationState
+            ? { ...fallbackConversationState, deleted_at: null }
+            : null;
+        }
+      } else {
+        conversationStateRow = conversationStateWithDelete;
       }
 
-      router.push(`/messages/${data.id}`);
-      return;
+      if (conversationStateError && !isConversationUserStateTableMissing(conversationStateError)) {
+        if (!isConversationUserStateDeletedAtColumnMissing(conversationStateError)) {
+          console.error(
+            "Failed to load existing conversation state:",
+            conversationStateError.message,
+          );
+        }
+      }
+
+      const isHiddenConversation = isConversationHiddenForUser(
+        data,
+        conversationStateRow?.hidden_at,
+        conversationStateRow?.deleted_at,
+      );
+
+      const isConversationVisible = isConversationInboxVisibleForUser(
+        data,
+        conversationStateRow?.hidden_at,
+        conversationStateRow?.deleted_at,
+      );
+
+      if (isHiddenConversation) {
+        const { error: unhideError } = await supabase.from("conversation_user_state").upsert(
+          {
+            conversation_id: data.id,
+            user_id: currentUserId,
+            hidden_at: null,
+          },
+          { onConflict: "conversation_id,user_id" },
+        );
+
+        if (unhideError && !isConversationUserStateTableMissing(unhideError)) {
+          console.error("Failed to restore hidden conversation:", unhideError.message);
+        }
+
+        router.push(`/messages/${data.id}`);
+        return;
+      }
+
+      if (isConversationVisible) {
+        router.push(`/messages/${data.id}`);
+        return;
+      }
     }
 
     setIsComposerOpen(true);

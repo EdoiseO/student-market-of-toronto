@@ -5,11 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   EllipsisVertical,
+  Eye,
   EyeOff,
   Flag,
+  Megaphone,
   Paperclip,
   SendHorizontal,
   SmilePlus,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -23,7 +26,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,6 +51,7 @@ import {
 import {
   getListingMessagingUnavailableText,
   getListingMessagingUnavailableStatusFromError,
+  isConversationUserStateDeletedAtColumnMissing,
   isConversationUserStateTableMissing,
   isListingMessagingAvailable,
   isListingMessagingUnavailableError,
@@ -64,7 +67,13 @@ function formatPrice(price, language) {
   }).format(Number(price ?? 0));
 }
 
-export function MessagesThread({ conversation, currentUserId, initialMessages }) {
+export function MessagesThread({
+  conversation,
+  currentUserId,
+  initialMessages,
+  hasDeletedMessages = false,
+  isHiddenConversation = false,
+}) {
   const router = useRouter();
   const supabase = React.useMemo(() => createClient(), []);
   const { t, language } = useLanguage();
@@ -77,9 +86,13 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
     blockedCurrentUser: false,
     available: true,
   });
-  const isMessagingAvailable = isListingMessagingAvailable(conversation.listing.status);
+  const isAnnouncementConversation = Boolean(conversation.isAnnouncement);
+  const isMessagingAvailable =
+    !isAnnouncementConversation && isListingMessagingAvailable(conversation.listing.status);
   const [isHideDialogOpen, setIsHideDialogOpen] = React.useState(false);
   const [isHiding, setIsHiding] = React.useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [isDeletingConversation, setIsDeletingConversation] = React.useState(false);
   const [isBlockDialogOpen, setIsBlockDialogOpen] = React.useState(false);
   const [isUpdatingBlockState, setIsUpdatingBlockState] = React.useState(false);
 
@@ -155,7 +168,68 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
     router.push("/messages");
     router.refresh();
   }
-  const messagingUnavailableText = getListingMessagingUnavailableText(conversation.listing.status, t);
+
+  async function handleRestoreConversation() {
+    if (isHiding) return;
+    setIsHiding(true);
+
+    const { error } = await supabase.from("conversation_user_state").upsert(
+      {
+        conversation_id: conversation.id,
+        user_id: currentUserId,
+        hidden_at: null,
+      },
+      { onConflict: "conversation_id,user_id" },
+    );
+
+    if (error && !isConversationUserStateTableMissing(error)) {
+      console.error("Failed to restore conversation:", error.message);
+      toast.error(t.restoreConversationError);
+      setIsHiding(false);
+      return;
+    }
+
+    setIsHiding(false);
+    setIsHideDialogOpen(false);
+    router.refresh();
+  }
+
+  async function handleDeleteConversation() {
+    if (isDeletingConversation) return;
+    setIsDeletingConversation(true);
+
+    const { error } = await supabase.from("conversation_user_state").upsert(
+      {
+        conversation_id: conversation.id,
+        user_id: currentUserId,
+        deleted_at: new Date().toISOString(),
+      },
+      { onConflict: "conversation_id,user_id" },
+    );
+
+    if (error) {
+      if (isConversationUserStateDeletedAtColumnMissing(error)) {
+        toast.error(t.deleteConversationSetupRequired);
+        setIsDeletingConversation(false);
+        return;
+      }
+
+      if (!isConversationUserStateTableMissing(error)) {
+        console.error("Failed to delete conversation:", error.message);
+        toast.error(t.deleteConversationError);
+        setIsDeletingConversation(false);
+        return;
+      }
+    }
+
+    setIsDeletingConversation(false);
+    setIsDeleteDialogOpen(false);
+    router.push("/messages");
+    router.refresh();
+  }
+  const messagingUnavailableText = isAnnouncementConversation
+    ? t.announcementRepliesDisabled
+    : getListingMessagingUnavailableText(conversation.listing.status, t);
   const blockReason = getMessagingBlockReason(blockState, t);
   const hasListingLink = Boolean(conversation.listing.slug);
 
@@ -355,7 +429,24 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
     <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card">
       <div className="border-b border-zinc-200 p-6 dark:border-border">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          {hasListingLink ? (
+          {isAnnouncementConversation ? (
+            <div className="block rounded-2xl bg-zinc-50 p-4 dark:bg-muted/40 lg:w-full lg:max-w-md">
+              <div className="flex items-center gap-4">
+                <div className="flex h-18 w-18 shrink-0 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-700 dark:bg-muted dark:text-muted-foreground">
+                  <Megaphone className="size-10" />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-base font-semibold text-zinc-950 dark:text-foreground">
+                    {t.announcements}
+                  </p>
+                  <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
+                    {t.announcementConversationDescription}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : hasListingLink ? (
             <Link
               href={`/listings/${conversation.listing.slug}`}
               className="block rounded-2xl bg-zinc-50 p-4 transition hover:bg-background dark:bg-muted/40 dark:hover:bg-background lg:w-full lg:max-w-md"
@@ -436,22 +527,34 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
                     size="icon-sm"
                     className="rounded-full"
                     aria-label={t.moreActions}
-                    disabled={isHiding || isUpdatingBlockState}
+                    disabled={isHiding || isDeletingConversation || isUpdatingBlockState}
                   >
                     <EllipsisVertical className="size-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48 rounded-2xl">
                   <DropdownMenuItem
+                    disabled={isHiding || isDeletingConversation || isUpdatingBlockState}
                     onSelect={(event) => {
                       event.preventDefault();
                       setIsHideDialogOpen(true);
                     }}
                   >
-                    <EyeOff className="size-4" />
-                    <span>{t.hideConversation}</span>
+                    {isHiddenConversation ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                    <span>{isHiddenConversation ? t.restoreConversation : t.hideConversation}</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
+                    disabled={isDeletingConversation || isUpdatingBlockState}
+                    onSelect={(event) => {
+                      event.preventDefault();
+                      setIsDeleteDialogOpen(true);
+                    }}
+                  >
+                    <Trash2 className="size-4" />
+                    <span>{t.deleteConversation}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={isHiding || isDeletingConversation || isUpdatingBlockState}
                     onSelect={(event) => {
                       event.preventDefault();
                       setIsBlockDialogOpen(true);
@@ -465,12 +568,18 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
             </div>
           ) : (
             <div className="flex items-center gap-3 lg:self-center">
-              <ProfileAvatar
-                name={conversation.otherParticipant.name}
-                avatarPresetId={conversation.otherParticipant.avatarPresetId}
-                avatarUrl={conversation.otherParticipant.avatarUrl}
-                className="size-10 border border-zinc-200 dark:border-border"
-              />
+              {conversation.isAnnouncement ? (
+                <div className="flex size-10 items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 text-zinc-700 dark:border-border dark:bg-muted dark:text-muted-foreground">
+                  <Megaphone className="size-6" />
+                </div>
+              ) : (
+                <ProfileAvatar
+                  name={conversation.otherParticipant.name}
+                  avatarPresetId={conversation.otherParticipant.avatarPresetId}
+                  avatarUrl={conversation.otherParticipant.avatarUrl}
+                  className="size-10 border border-zinc-200 dark:border-border"
+                />
+              )}
 
               <div>
                 <h1 className="text-lg font-semibold text-zinc-950 dark:text-foreground">
@@ -498,12 +607,18 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
                 key={message.id}
                 className={`group/message flex items-end gap-3 ${isCurrentUser ? "flex-row-reverse" : ""}`}
               >
-                <ProfileAvatar
-                  name={participant.name}
-                  avatarPresetId={participant.avatarPresetId}
-                  avatarUrl={participant.avatarUrl}
-                  className="size-10 border border-zinc-200 shadow-sm dark:border-border"
-                />
+                {conversation.isAnnouncement && !isCurrentUser ? (
+                  <div className="flex size-10 items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 text-zinc-700 shadow-sm dark:border-border dark:bg-muted dark:text-muted-foreground">
+                    <Megaphone className="size-6" />
+                  </div>
+                ) : (
+                  <ProfileAvatar
+                    name={participant.name}
+                    avatarPresetId={participant.avatarPresetId}
+                    avatarUrl={participant.avatarUrl}
+                    className="size-10 border border-zinc-200 shadow-sm dark:border-border"
+                  />
+                )}
 
                 <div
                   className={`relative flex max-w-[85%] flex-col gap-1.5 sm:max-w-[70%] ${
@@ -570,7 +685,9 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
                 {t.noMessagesYetTitle}
               </h2>
               <p className="mt-2 text-sm text-zinc-500 dark:text-muted-foreground">
-                {t.noMessagesYetDescription}
+                {hasDeletedMessages
+                  ? t.deletedConversationEmptyStateDescription
+                  : t.noMessagesYetDescription}
               </p>
             </div>
           </div>
@@ -674,13 +791,40 @@ export function MessagesThread({ conversation, currentUserId, initialMessages })
       <AlertDialog open={isHideDialogOpen} onOpenChange={setIsHideDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t.hideConversationTitle}</AlertDialogTitle>
-            <AlertDialogDescription>{t.hideConversationDescription}</AlertDialogDescription>
+            <AlertDialogTitle>
+              {isHiddenConversation ? t.restoreConversationTitle : t.hideConversationTitle}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isHiddenConversation
+                ? t.restoreConversationDescription
+                : t.hideConversationDescription}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isHiding}>{t.cancel}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleHideConversation} disabled={isHiding}>
-              {isHiding ? t.saving : t.hideConversation}
+            <AlertDialogAction
+              onClick={isHiddenConversation ? handleRestoreConversation : handleHideConversation}
+              disabled={isHiding}
+            >
+              {isHiding ? t.saving : isHiddenConversation ? t.restoreConversation : t.hideConversation}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.deleteConversationTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{t.deleteConversationDescription}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingConversation}>{t.cancel}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConversation}
+              disabled={isDeletingConversation}
+            >
+              {isDeletingConversation ? t.saving : t.deleteConversation}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

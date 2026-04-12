@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Ellipsis, Eye, Trash2 } from "lucide-react";
+import { Ellipsis, Eye, EyeOff, Megaphone, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { ClientFormattedDateTime } from "@/components/client-formatted-date-time";
@@ -17,7 +17,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,7 +27,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useLanguage } from "@/context/LanguageContext";
-import { isConversationUserStateTableMissing } from "@/lib/messages";
+import {
+  isConversationUserStateDeletedAtColumnMissing,
+  isConversationUserStateTableMissing,
+} from "@/lib/messages";
 import { createClient } from "@/utils/supabase/client";
 
 export function ConversationListItem({ conversation, dateValue, showHidden = false }) {
@@ -36,6 +38,8 @@ export function ConversationListItem({ conversation, dateValue, showHidden = fal
   const supabase = React.useMemo(() => createClient(), []);
   const { t, language } = useLanguage();
   const [isUpdatingVisibility, setIsUpdatingVisibility] = React.useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [isDeletingConversation, setIsDeletingConversation] = React.useState(false);
 
   async function handleUpdateConversationVisibility(hiddenAt) {
     if (isUpdatingVisibility) {
@@ -74,11 +78,51 @@ export function ConversationListItem({ conversation, dateValue, showHidden = fal
     return handleUpdateConversationVisibility(null);
   }
 
+  async function handleDeleteConversation() {
+    if (isDeletingConversation) {
+      return;
+    }
+
+    setIsDeletingConversation(true);
+
+    const { error } = await supabase.from("conversation_user_state").upsert(
+      {
+        conversation_id: conversation.id,
+        user_id: conversation.currentParticipant.id,
+        deleted_at: new Date().toISOString(),
+      },
+      { onConflict: "conversation_id,user_id" },
+    );
+
+    if (error) {
+      if (isConversationUserStateDeletedAtColumnMissing(error)) {
+        toast.error(t.deleteConversationSetupRequired);
+        setIsDeletingConversation(false);
+        return;
+      }
+
+      if (!isConversationUserStateTableMissing(error)) {
+        console.error("Failed to delete conversation:", error.message);
+      }
+      toast.error(t.deleteConversationError);
+      setIsDeletingConversation(false);
+      return;
+    }
+
+    setIsDeletingConversation(false);
+    setIsDeleteDialogOpen(false);
+    router.refresh();
+  }
+
   return (
     <div className="rounded-[1.5rem] border border-zinc-200 bg-white p-4 transition hover:bg-background dark:border-border dark:bg-card dark:hover:bg-background">
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 dark:border-border dark:bg-muted">
-          {conversation.listing.imageUrl ? (
+          {conversation.isAnnouncement ? (
+            <div className="flex h-full w-full items-center justify-center bg-zinc-100 text-zinc-700 dark:bg-muted dark:text-muted-foreground">
+              <Megaphone className="size-10" />
+            </div>
+          ) : conversation.listing.imageUrl ? (
             <img
               src={conversation.listing.imageUrl}
               alt={conversation.listing.title}
@@ -88,23 +132,32 @@ export function ConversationListItem({ conversation, dateValue, showHidden = fal
             <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
           )}
 
-          <div className="absolute -top-1 -right-1 rounded-full bg-white p-0.5 shadow-sm dark:bg-card">
-            <ProfileAvatar
-              name={conversation.otherParticipant.name}
-              avatarPresetId={conversation.otherParticipant.avatarPresetId}
-              avatarUrl={conversation.otherParticipant.avatarUrl}
-              className="size-7 border border-zinc-200 dark:border-border"
-            />
-          </div>
+          {!conversation.isAnnouncement ? (
+            <div className="absolute -top-1 -right-1 rounded-full bg-white p-0.5 shadow-sm dark:bg-card">
+              <ProfileAvatar
+                name={conversation.otherParticipant.name}
+                avatarPresetId={conversation.otherParticipant.avatarPresetId}
+                avatarUrl={conversation.otherParticipant.avatarUrl}
+                className="size-7 border border-zinc-200 dark:border-border"
+              />
+            </div>
+          ) : null}
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <Link href={`/messages/${conversation.id}`} className="min-w-0 flex-1">
               <div className="min-w-0">
-                <p className="truncate font-semibold text-zinc-950 dark:text-foreground">
-                  {conversation.listing.title}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="truncate font-semibold text-zinc-950 dark:text-foreground">
+                    {conversation.listing.title}
+                  </p>
+                  {conversation.isAnnouncement ? (
+                    <Badge variant="secondary" className="rounded-full px-2 py-0 text-[0.65rem]">
+                      {t.announcements}
+                    </Badge>
+                  ) : null}
+                </div>
                 <p className="truncate text-sm text-zinc-500 dark:text-muted-foreground">
                   {conversation.otherParticipant.name}
                 </p>
@@ -124,49 +177,47 @@ export function ConversationListItem({ conversation, dateValue, showHidden = fal
                 className="text-xs text-zinc-500 dark:text-muted-foreground"
               />
 
-              <AlertDialog>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon-sm"
-                      aria-label={t.moreActions}
-                      className="rounded-full border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-100 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted"
-                    >
-                      <Ellipsis className="size-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48 rounded-2xl">
-                    <AlertDialogTrigger asChild>
-                      <DropdownMenuItem onSelect={(event) => event.preventDefault()}>
-                        {showHidden ? <Eye className="size-4" /> : <Trash2 className="size-4" />}
-                        <span>{showHidden ? t.restoreConversation : t.hideConversation}</span>
-                      </DropdownMenuItem>
-                    </AlertDialogTrigger>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    aria-label={t.moreActions}
+                    disabled={isUpdatingVisibility || isDeletingConversation}
+                    className="rounded-full border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-100 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted"
+                  >
+                    <Ellipsis className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48 rounded-2xl">
+                  <DropdownMenuItem
+                    onSelect={(event) => {
+                      event.preventDefault();
+                      if (showHidden) {
+                        handleRestoreConversation();
+                        return;
+                      }
 
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      {showHidden ? t.restoreConversationTitle : t.hideConversationTitle}
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      {showHidden ? t.restoreConversationDescription : t.hideConversationDescription}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isUpdatingVisibility}>{t.cancel}</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={showHidden ? handleRestoreConversation : handleHideConversation}
-                      disabled={isUpdatingVisibility}
-                    >
-                      {showHidden ? t.restoreConversation : t.hideConversation}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                      handleHideConversation();
+                    }}
+                    disabled={isUpdatingVisibility || isDeletingConversation}
+                  >
+                    {showHidden ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                    <span>{showHidden ? t.restoreConversation : t.hideConversation}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={(event) => {
+                      event.preventDefault();
+                      setIsDeleteDialogOpen(true);
+                    }}
+                    disabled={isUpdatingVisibility || isDeletingConversation}
+                  >
+                    <Trash2 className="size-4" />
+                    <span>{t.deleteConversation}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
@@ -177,6 +228,21 @@ export function ConversationListItem({ conversation, dateValue, showHidden = fal
           </Link>
         </div>
       </div>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.deleteConversationTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{t.deleteConversationDescription}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingConversation}>{t.cancel}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConversation} disabled={isDeletingConversation}>
+              {isDeletingConversation ? t.saving : t.deleteConversation}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

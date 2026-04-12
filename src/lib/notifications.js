@@ -290,7 +290,9 @@ function getMessageNotificationBase(notification, currentUserId, t) {
     ? conversation?.seller_profile[0]
     : conversation?.seller_profile;
   const message = Array.isArray(notification.message) ? notification.message[0] : notification.message;
+  const metadata = getNotificationMetadata(notification);
   const otherParticipant = conversation?.buyer_id === currentUserId ? sellerProfile : buyerProfile;
+  const isAnnouncement = !listing?.slug && !listing?.title;
 
   return {
     id: notification.id,
@@ -299,8 +301,14 @@ function getMessageNotificationBase(notification, currentUserId, t) {
     createdAt: notification.created_at,
     conversationId: notification.conversation_id,
     href: conversation?.id ? `/messages/${conversation.id}` : "/messages",
-    title: listing?.title ?? t.messages,
-    senderName: getNotificationDisplayName(otherParticipant, t),
+    title:
+      listing?.title ??
+      (typeof metadata.title === "string" && metadata.title.trim().length > 0
+        ? metadata.title
+        : isAnnouncement
+          ? t.announcements
+          : t.messages),
+    senderName: isAnnouncement ? t.announcementSenderName : getNotificationDisplayName(otherParticipant, t),
     messagePreview: getNotificationMessagePreview(message?.body),
   };
 }

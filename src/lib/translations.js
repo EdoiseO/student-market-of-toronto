@@ -304,12 +304,20 @@ export const translations = {
     noConversationsDescription:
       "When you message a seller from a listing, the conversation will appear here and stay linked to that item.",
     aboutListing: "About this listing",
+    announcements: "Announcements",
+    announcementSenderName: "ADMIN",
+    announcementConversationDescription:
+      "Important updates from the admin team appear here and stay pinned near the top of your messages.",
+    announcementRepliesDisabled:
+      "Announcements are read-only. New replies are disabled for this thread.",
     deleteConversation: "Delete conversation",
     deleteConversationTitle: "Delete this conversation?",
     deleteConversationDescription:
-      "This removes the full conversation and its messages for both participants.",
+      "This removes the conversation from your view and clears its current message history for you. The other person can still see their copy, and the thread only comes back if a new message is sent.",
     deleteConversationError:
       "We could not delete this conversation right now.",
+    deleteConversationSetupRequired:
+      "Conversation delete needs the latest messaging database update. Apply the new Supabase SQL migration and try again.",
     reportMessage: "Report message",
     messageReported: "Message reported for review.",
     reportMessageUnavailable: "Message reporting is not available yet.",
@@ -384,6 +392,8 @@ export const translations = {
     noMessagesYetTitle: "No messages yet",
     noMessagesYetDescription:
       "This conversation is ready. Send your first message to start the thread.",
+    deletedConversationEmptyStateDescription:
+      "You deleted the earlier messages in this conversation. New messages sent from now on will appear here.",
     firstMessageSheetTitle: "Send the first message",
     firstMessageSheetDescription:
       "Your conversation will appear in Messages after you send the first message.",
@@ -494,7 +504,14 @@ export const translations = {
     makeMod: "Make Mod",
     removeMod: "Remove Mod",
     newAnnouncement: "New Announcement",
-    newAnnouncementPlaceholder: "Write a message to show all students on the homepage...",
+    newAnnouncementPlaceholder: "Write a message to send to all users via their inbox...",
+    announcementDialogDescription: "This message will be delivered to every user's inbox as a direct message from you.",
+    announcementSending: "Sending...",
+    announcementSentCount: "Announcement sent to {count} users",
+    announcementNoRecipients: "There are no other users to receive this announcement yet.",
+    announcementPartialFailure:
+      "Some recipients did not receive the announcement. Failed: {count}",
+    announcementError: "Failed to send announcement. Please try again.",
     sendAnnouncement: "Send Announcement",
     pastAnnouncements: "Past Announcements",
     inactive: "Inactive",
@@ -1104,12 +1121,20 @@ export const translations = {
     noConversationsDescription:
       "Quand vous écrirez à un vendeur depuis une annonce, la conversation apparaîtra ici et restera liée à cet article.",
     aboutListing: "À propos de cette annonce",
+    announcements: "Communiqués",
+    announcementSenderName: "ADMIN",
+    announcementConversationDescription:
+      "Les mises à jour importantes de l'équipe d'administration apparaissent ici et restent épinglées près du haut de vos messages.",
+    announcementRepliesDisabled:
+      "Les communiqués sont en lecture seule. Les nouvelles réponses sont désactivées pour ce fil.",
     deleteConversation: "Supprimer la conversation",
     deleteConversationTitle: "Supprimer cette conversation ?",
     deleteConversationDescription:
-      "Cela supprimera toute la conversation et ses messages pour les deux participants.",
+      "Cela retire la conversation de votre vue et efface pour vous l'historique actuel des messages. L'autre personne conserve sa copie, et le fil ne reviendra que lorsqu'un nouveau message sera envoyé.",
     deleteConversationError:
       "Nous n'avons pas pu supprimer cette conversation pour le moment.",
+    deleteConversationSetupRequired:
+      "La suppression de conversation a besoin de la dernière mise à jour de base de données de la messagerie. Appliquez la nouvelle migration SQL Supabase puis réessayez.",
     reportMessage: "Signaler le message",
     messageReported: "Message signalé pour examen.",
     reportMessageUnavailable:
@@ -1192,6 +1217,8 @@ export const translations = {
     noMessagesYetTitle: "Aucun message pour le moment",
     noMessagesYetDescription:
       "Cette conversation est prête. Envoyez votre premier message pour démarrer le fil.",
+    deletedConversationEmptyStateDescription:
+      "Vous avez supprimé les anciens messages de cette conversation. Les nouveaux messages envoyés à partir de maintenant apparaîtront ici.",
     firstMessageSheetTitle: "Envoyer le premier message",
     firstMessageSheetDescription:
       "Votre conversation apparaîtra dans Messages après l'envoi du premier message.",
@@ -1313,7 +1340,15 @@ export const translations = {
     removeMod: "Retirer le rôle de modérateur",
     newAnnouncement: "Nouveau communiqué",
     newAnnouncementPlaceholder:
-      "Rédigez un message à afficher à tous les étudiants sur la page d'accueil...",
+      "Rédigez un message à envoyer à tous les utilisateurs dans leur boîte de réception...",
+    announcementDialogDescription: "Ce message sera envoyé dans la boîte de réception de chaque utilisateur sous forme de message direct de votre part.",
+    announcementSending: "Envoi en cours...",
+    announcementSentCount: "Communiqué envoyé à {count} utilisateurs",
+    announcementNoRecipients:
+      "Il n'y a pas encore d'autres utilisateurs pour recevoir ce communiqué.",
+    announcementPartialFailure:
+      "Certains destinataires n'ont pas reçu le communiqué. Échecs : {count}",
+    announcementError: "Échec de l'envoi du communiqué. Veuillez réessayer.",
     sendAnnouncement: "Envoyer le communiqué",
     pastAnnouncements: "Anciens communiqués",
     inactive: "Inactif",

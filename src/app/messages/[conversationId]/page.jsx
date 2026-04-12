@@ -6,7 +6,11 @@ import { notFound, redirect } from "next/navigation";
 import { MessagesThread } from "@/components/messages-thread";
 import { Button } from "@/components/ui/button";
 import {
+  filterConversationMessagesForUser,
+  isConversationHiddenForUser,
   MESSAGE_CONVERSATION_SELECT,
+  isConversationUserStateDeletedAtColumnMissing,
+  isConversationUserStateTableMissing,
   normalizeConversationRow,
 } from "@/lib/messages";
 import { translations } from "@/lib/translations";
@@ -43,20 +47,53 @@ export default async function ConversationPage({ params }) {
     notFound();
   }
 
-  const { data: unreadRows, error: unreadError } = conversationRow
-    ? await supabase
-        .from("messages")
-        .select("conversation_id")
-        .eq("conversation_id", conversationRow.id)
-        .is("read_at", null)
-        .neq("sender_id", user.id)
-    : { data: [], error: null };
+  let conversationStateRow = null;
 
-  if (unreadError) {
-    console.error("Failed to load conversation unread counts:", unreadError.message);
+  const { data: conversationStateRowWithDelete, error: conversationStateError } = conversationRow
+    ? await supabase
+        .from("conversation_user_state")
+        .select("hidden_at, deleted_at")
+        .eq("conversation_id", conversationRow.id)
+        .eq("user_id", user.id)
+        .maybeSingle()
+    : { data: null, error: null };
+
+  if (conversationStateError && isConversationUserStateDeletedAtColumnMissing(conversationStateError)) {
+    const { data: fallbackConversationStateRow, error: fallbackConversationStateError } =
+      conversationRow
+        ? await supabase
+            .from("conversation_user_state")
+            .select("hidden_at")
+            .eq("conversation_id", conversationRow.id)
+            .eq("user_id", user.id)
+            .maybeSingle()
+        : { data: null, error: null };
+
+    if (
+      fallbackConversationStateError &&
+      !isConversationUserStateTableMissing(fallbackConversationStateError)
+    ) {
+      console.error(
+        "Failed to load conversation state:",
+        fallbackConversationStateError.message,
+      );
+    } else {
+      conversationStateRow = fallbackConversationStateRow
+        ? { ...fallbackConversationStateRow, deleted_at: null }
+        : null;
+    }
+  } else {
+    conversationStateRow = conversationStateRowWithDelete;
   }
 
-  const unreadCount = unreadRows?.length ?? 0;
+  if (conversationStateError && !isConversationUserStateTableMissing(conversationStateError)) {
+    if (!isConversationUserStateDeletedAtColumnMissing(conversationStateError)) {
+      console.error("Failed to load conversation state:", conversationStateError.message);
+    }
+  }
+
+  const deletedAt = conversationStateRow?.deleted_at ?? null;
+  const hiddenAt = conversationStateRow?.hidden_at ?? null;
 
   const { data: messageRows, error: messagesError } = conversationRow
     ? await supabase
@@ -70,9 +107,17 @@ export default async function ConversationPage({ params }) {
     console.error("Failed to load conversation messages:", messagesError.message);
   }
 
+  const visibleMessageRows = filterConversationMessagesForUser(messageRows ?? [], deletedAt);
+  const unreadCount = visibleMessageRows.filter(
+    (message) => !message.read_at && message.sender_id !== user.id,
+  ).length;
+
   const conversation = conversationRow
     ? normalizeConversationRow(conversationRow, user.id, t, unreadCount)
     : null;
+  const isHiddenConversation = conversationRow
+    ? isConversationHiddenForUser(conversationRow, hiddenAt, deletedAt)
+    : false;
 
   return (
     <main className="h-full min-h-0 overflow-hidden bg-zinc-100 px-5 pt-3 pb-5 dark:bg-background md:px-6 md:pt-3 md:pb-6 lg:px-7 lg:pt-4 lg:pb-7">
@@ -108,7 +153,9 @@ export default async function ConversationPage({ params }) {
             <MessagesThread
               conversation={conversation}
               currentUserId={user.id}
-              initialMessages={messageRows ?? []}
+              initialMessages={visibleMessageRows}
+              hasDeletedMessages={Boolean(deletedAt)}
+              isHiddenConversation={isHiddenConversation}
             />
           </>
         ) : null}
