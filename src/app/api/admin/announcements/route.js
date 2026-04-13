@@ -3,94 +3,13 @@ import { cookies } from "next/headers";
 
 import { getUserModerationRole } from "@/lib/moderation";
 import {
-  LEGACY_MESSAGE_NOTIFICATION_TYPE,
   MESSAGE_NOTIFICATION_TYPE,
+  LEGACY_MESSAGE_NOTIFICATION_TYPE,
 } from "@/lib/notifications";
-import { createAdminClient } from "@/lib/supabase-admin";
+import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { createClient } from "@/utils/supabase/server";
 
-async function listAllUsers(admin) {
-  const users = [];
-  const perPage = 200;
-
-  for (let page = 1; page <= 20; page += 1) {
-    const {
-      data: { users: pageUsers },
-      error,
-    } = await admin.auth.admin.listUsers({ page, perPage });
-
-    if (error) {
-      throw error;
-    }
-
-    users.push(...(pageUsers ?? []));
-
-    if (!pageUsers || pageUsers.length < perPage) {
-      break;
-    }
-  }
-
-  return users;
-}
-
-async function getOrCreateAnnouncementConversation(admin, recipientId, senderId, body) {
-  const { data: existingConversation, error: existingConversationError } = await admin
-    .from("conversations")
-    .select("id")
-    .is("listing_id", null)
-    .eq("buyer_id", recipientId)
-    .eq("seller_id", senderId)
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (existingConversationError) {
-    throw existingConversationError;
-  }
-
-  if (existingConversation?.id) {
-    return existingConversation;
-  }
-
-  const now = new Date().toISOString();
-
-  const { data: conversationData, error: conversationError } = await admin
-    .from("conversations")
-    .insert({
-      listing_id: null,
-      buyer_id: recipientId,
-      seller_id: senderId,
-      created_at: now,
-      updated_at: now,
-      last_message_at: now,
-      last_message_preview: body.slice(0, 100),
-    })
-    .select("id")
-    .single();
-
-  if (conversationError) {
-    throw conversationError;
-  }
-
-  return conversationData;
-}
-
-async function updateAnnouncementConversationPreview(admin, conversationId, body, timestamp) {
-  const { error } = await admin
-    .from("conversations")
-    .update({
-      updated_at: timestamp,
-      last_message_at: timestamp,
-      last_message_preview: body.slice(0, 100),
-    })
-    .eq("id", conversationId);
-
-  if (error) {
-    throw error;
-  }
-}
-
-function isNotificationTypeUnsupported(error) {
+function isMessageNotificationUnsupported(error) {
   const message = [error?.message, error?.details, error?.hint]
     .filter(Boolean)
     .join(" ")
@@ -103,180 +22,186 @@ function isNotificationTypeUnsupported(error) {
   );
 }
 
-function isConversationDeleteStateUnsupported(error) {
-  const message = [error?.message, error?.details, error?.hint]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-
-  return (
-    error?.code === "42P01" ||
-    error?.code === "42703" ||
-    error?.code === "PGRST204" ||
-    error?.code === "PGRST205" ||
-    message.includes("conversation_user_state") ||
-    message.includes("deleted_at")
-  );
-}
-
-async function createAnnouncementNotification(admin, recipientId, conversationId, messageId) {
-  const notificationPayload = {
-    user_id: recipientId,
+async function insertAnnouncementNotification(admin, userId, conversationId, messageId) {
+  const payload = {
+    user_id: userId,
+    type: MESSAGE_NOTIFICATION_TYPE,
     conversation_id: conversationId,
-    message_id: messageId,
-    metadata: {
-      title: "Announcements",
-      href: `/messages/${conversationId}`,
-    },
+    message_id: messageId ?? null,
   };
 
-  const { error } = await admin.from("notifications").insert({
-    ...notificationPayload,
-    type: MESSAGE_NOTIFICATION_TYPE,
-  });
-
-  if (!error) {
-    return;
-  }
-
-  if (!isNotificationTypeUnsupported(error)) {
-    throw error;
-  }
-
-  const { error: legacyError } = await admin.from("notifications").insert({
-    ...notificationPayload,
-    type: LEGACY_MESSAGE_NOTIFICATION_TYPE,
-  });
-
-  if (legacyError) {
-    throw legacyError;
-  }
-}
-
-async function hideAnnouncementConversationForSender(admin, senderId, conversationId, timestamp) {
-  const { error } = await admin.from("conversation_user_state").upsert(
-    {
-      conversation_id: conversationId,
-      user_id: senderId,
-      hidden_at: null,
-      deleted_at: timestamp,
-    },
-    { onConflict: "conversation_id,user_id" },
-  );
+  const { error } = await admin.from("notifications").insert(payload);
 
   if (error) {
-    if (isConversationDeleteStateUnsupported(error)) {
-      console.error(
-        "Announcement sender cleanup needs the latest conversation state schema:",
-        error.message,
-      );
-      return;
+    if (isMessageNotificationUnsupported(error)) {
+      await admin.from("notifications").insert({
+        ...payload,
+        type: LEGACY_MESSAGE_NOTIFICATION_TYPE,
+      });
     }
-
-    throw error;
   }
 }
 
 export async function POST(request) {
-  const admin = createAdminClient();
+  try {
+    const admin = createAdminClient();
 
-  if (!admin) {
-    return NextResponse.json(
-      { error: "Announcements are not configured in this environment." },
-      { status: 503 },
+    if (!admin) {
+      return NextResponse.json(
+        { error: "Announcements are not configured in this environment." },
+        { status: 503 },
+      );
+    }
+
+    const cookieStore = await cookies();
+    const supabase = createClient(cookieStore);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+    }
+
+    const moderationUser =
+      (await getLatestAuthUser(admin, user.id, "announcement send")) ?? user;
+
+    if (getUserModerationRole(moderationUser) !== "admin") {
+      return NextResponse.json({ error: "Admin role required." }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const trimmedMessage =
+      typeof body?.message === "string" ? body.message.trim() : "";
+
+    if (!trimmedMessage) {
+      return NextResponse.json({ error: "Message is required." }, { status: 400 });
+    }
+
+    if (trimmedMessage.length > 3000) {
+      return NextResponse.json({ error: "Message is too long." }, { status: 400 });
+    }
+
+    const { data: profiles, error: profilesError } = await admin
+      .from("profiles")
+      .select("id")
+      .neq("id", moderationUser.id)
+      .limit(500);
+
+    if (profilesError) {
+      throw profilesError;
+    }
+
+    const recipientIds = (profiles ?? []).map((p) => p.id);
+
+    if (recipientIds.length === 0) {
+      return NextResponse.json({ sentCount: 0, totalRecipients: 0, noRecipients: true });
+    }
+
+    const { data: existingConversations, error: existingConversationsError } = await admin
+      .from("conversations")
+      .select("id, buyer_id")
+      .eq("seller_id", moderationUser.id)
+      .is("listing_id", null)
+      .in("buyer_id", recipientIds);
+
+    if (existingConversationsError) {
+      throw existingConversationsError;
+    }
+
+    const existingByBuyerId = new Map(
+      (existingConversations ?? []).map((c) => [c.buyer_id, c]),
     );
-  }
 
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+    const newRecipientIds = recipientIds.filter((id) => !existingByBuyerId.has(id));
 
-  if (authError || !user) {
-    return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
-  }
+    let allConversations = [...(existingConversations ?? [])];
 
-  if (getUserModerationRole(user) !== "admin") {
-    return NextResponse.json({ error: "Only admins can send announcements." }, { status: 403 });
-  }
+    if (newRecipientIds.length > 0) {
+      const { data: newConversations, error: newConversationsError } = await admin
+        .from("conversations")
+        .insert(
+          newRecipientIds.map((buyerId) => ({
+            seller_id: moderationUser.id,
+            buyer_id: buyerId,
+            listing_id: null,
+          })),
+        )
+        .select("id, buyer_id");
 
-  const { message } = await request.json();
-
-  if (!message || !message.trim()) {
-    return NextResponse.json({ error: "Message is required." }, { status: 400 });
-  }
-
-  const body = message.trim();
-  const allUsers = await listAllUsers(admin);
-  const recipients = allUsers.filter((u) => u.id !== user.id);
-
-  if (recipients.length === 0) {
-    return NextResponse.json({ success: true, sentCount: 0, failureCount: 0, noRecipients: true });
-  }
-
-  let sentCount = 0;
-  const errors = [];
-
-  for (const recipient of recipients) {
-    try {
-      const now = new Date().toISOString();
-
-      const conversationData = await getOrCreateAnnouncementConversation(admin, recipient.id, user.id, body);
-
-      const { data: insertedMessage, error: messageError } = await admin
-        .from("messages")
-        .insert({
-        conversation_id: conversationData.id,
-        sender_id: user.id,
-        body,
-        created_at: now,
-        })
-        .select("id")
-        .single();
-
-      if (messageError) {
-        errors.push({ userId: recipient.id, error: messageError.message });
-        continue;
+      if (newConversationsError) {
+        throw newConversationsError;
       }
 
-      await updateAnnouncementConversationPreview(admin, conversationData.id, body, now);
-
-      await createAnnouncementNotification(
-        admin,
-        recipient.id,
-        conversationData.id,
-        insertedMessage.id,
-      );
-
-      await hideAnnouncementConversationForSender(
-        admin,
-        user.id,
-        conversationData.id,
-        now,
-      );
-
-      sentCount += 1;
-    } catch (err) {
-      errors.push({ userId: recipient.id, error: err.message });
+      allConversations = [...allConversations, ...(newConversations ?? [])];
     }
-  }
 
-  if (errors.length > 0) {
-    console.error("Announcement partial failures:", errors.slice(0, 10));
-  }
+    if (allConversations.length === 0) {
+      return NextResponse.json({ sentCount: 0, totalRecipients: recipientIds.length, noRecipients: true });
+    }
 
-  if (sentCount === 0 && errors.length > 0) {
+    const now = new Date().toISOString();
+    const preview =
+      trimmedMessage.length > 100
+        ? trimmedMessage.slice(0, 100) + "\u2026"
+        : trimmedMessage;
+
+    const { data: insertedMessages, error: messagesError } = await admin
+      .from("messages")
+      .insert(
+        allConversations.map((c) => ({
+          conversation_id: c.id,
+          sender_id: moderationUser.id,
+          body: trimmedMessage,
+          created_at: now,
+        })),
+      )
+      .select("id, conversation_id");
+
+    if (messagesError) {
+      throw messagesError;
+    }
+
+    const messageByConversationId = new Map(
+      (insertedMessages ?? []).map((m) => [m.conversation_id, m]),
+    );
+
+    const sentCount = insertedMessages?.length ?? 0;
+
+    await Promise.allSettled(
+      allConversations.map((c) =>
+        admin
+          .from("conversations")
+          .update({ last_message_at: now, last_message_preview: preview, updated_at: now })
+          .eq("id", c.id),
+      ),
+    );
+
+    await Promise.allSettled(
+      allConversations.map((c) => {
+        const msg = messageByConversationId.get(c.id);
+        return insertAnnouncementNotification(admin, c.buyer_id, c.id, msg?.id ?? null);
+      }),
+    );
+
+    await Promise.allSettled(
+      allConversations.map((c) =>
+        admin
+          .from("conversation_user_state")
+          .upsert(
+            { conversation_id: c.id, user_id: moderationUser.id, hidden_at: now },
+            { onConflict: "conversation_id,user_id" },
+          ),
+      ),
+    );
+
+    return NextResponse.json({ sentCount, totalRecipients: recipientIds.length });
+  } catch (error) {
+    console.error("Failed to send announcement:", error?.message ?? error);
     return NextResponse.json(
-      {
-        error: errors[0]?.error ?? "Announcement delivery failed.",
-        sentCount,
-        failureCount: errors.length,
-      },
+      { error: error?.message ?? "Could not send the announcement right now." },
       { status: 500 },
     );
   }
-
-  return NextResponse.json({ success: true, sentCount, failureCount: errors.length });
 }

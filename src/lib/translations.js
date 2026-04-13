@@ -286,9 +286,6 @@ export const translations = {
     conversationsDescription:
       "Each thread stays linked to the listing it started from.",
     backToMessages: "Back to messages",
-    hiddenMessages: "Hidden messages",
-    noHiddenConversationsTitle: "No hidden conversations",
-    noHiddenConversationsDescription: "Conversations you hide from your inbox will appear here.",
     hideConversation: "Hide conversation",
     hideConversationTitle: "Remove this conversation from your inbox?",
     hideConversationDescription:
@@ -510,8 +507,9 @@ export const translations = {
     makeMod: "Make Mod",
     removeMod: "Remove Mod",
     newAnnouncement: "New Announcement",
-    newAnnouncementPlaceholder: "Write a message to send to all users via their inbox...",
-    announcementDialogDescription: "This message will be delivered to every user's inbox as a direct message from you.",
+    newAnnouncementPlaceholder: "Write a message to show all students on the homepage...",
+    announcementDialogDescription:
+      "This message will be delivered to every user's inbox as a direct message from you.",
     announcementSending: "Sending...",
     announcementSentCount: "Announcement sent to {count} users",
     announcementNoRecipients: "There are no other users to receive this announcement yet.",
@@ -1108,9 +1106,6 @@ export const translations = {
     conversationsDescription:
       "Chaque conversation reste liée à l'annonce depuis laquelle elle a commencé.",
     backToMessages: "Retour aux messages",
-    hiddenMessages: "Messages masqués",
-    noHiddenConversationsTitle: "Aucune conversation masquée",
-    noHiddenConversationsDescription: "Les conversations que vous masquez de votre boîte de réception apparaîtront ici.",
     hideConversation: "Masquer la conversation",
     hideConversationTitle: "Retirer cette conversation de votre boîte de réception ?",
     hideConversationDescription:
@@ -1354,8 +1349,9 @@ export const translations = {
     removeMod: "Retirer le rôle de modérateur",
     newAnnouncement: "Nouveau communiqué",
     newAnnouncementPlaceholder:
-      "Rédigez un message à envoyer à tous les utilisateurs dans leur boîte de réception...",
-    announcementDialogDescription: "Ce message sera envoyé dans la boîte de réception de chaque utilisateur sous forme de message direct de votre part.",
+      "Rédigez un message à afficher à tous les étudiants sur la page d'accueil...",
+    announcementDialogDescription:
+      "Ce message sera envoyé dans la boîte de réception de chaque utilisateur sous forme de message direct de votre part.",
     announcementSending: "Envoi en cours...",
     announcementSentCount: "Communiqué envoyé à {count} utilisateurs",
     announcementNoRecipients:

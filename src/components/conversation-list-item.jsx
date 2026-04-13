@@ -116,7 +116,7 @@ export function ConversationListItem({ conversation, dateValue, showHidden = fal
 
   return (
     <div className="rounded-[1.5rem] border border-zinc-200 bg-white p-4 transition hover:bg-background dark:border-border dark:bg-card dark:hover:bg-background">
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-3">
         <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 dark:border-border dark:bg-muted">
           {conversation.isAnnouncement ? (
             <div className="flex h-full w-full items-center justify-center bg-zinc-100 text-zinc-700 dark:bg-muted dark:text-muted-foreground">
