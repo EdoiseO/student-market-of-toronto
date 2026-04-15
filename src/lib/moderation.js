@@ -106,6 +106,10 @@ export function isModerationUser(user) {
   return isModerationRole(getUserModerationRole(user));
 }
 
+export function isNameChangeRequired(user) {
+  return user?.user_metadata?.force_name_change === true;
+}
+
 export function isReportsTableMissing(error) {
   return (
     error?.code === "42P01" ||

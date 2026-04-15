@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 
+import { isNameChangeRequired } from "@/lib/moderation";
 import { getUserStatusRow, isUserBanned } from "@/lib/user-status";
 
 export async function proxy(request) {
@@ -53,6 +54,17 @@ export async function proxy(request) {
 
     if (!isUserBanned(userStatusResult.data) && isBannedRoute) {
       const redirectResponse = NextResponse.redirect(new URL("/", request.url));
+      response.cookies.getAll().forEach((cookie) => {
+        redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
+      });
+      return redirectResponse;
+    }
+
+    const isNameChangeAllowedRoute =
+      path === "/dashboard/profile" || path === "/auth/callback" || path.startsWith("/api/");
+
+    if (isNameChangeRequired(user) && !isNameChangeAllowedRoute && !isBannedRoute) {
+      const redirectResponse = NextResponse.redirect(new URL("/dashboard/profile", request.url));
       response.cookies.getAll().forEach((cookie) => {
         redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
       });

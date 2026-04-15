@@ -123,6 +123,7 @@ export function AdminReportReviewContent({
   profileReview = null,
   notesAvailable = false,
   currentUserId,
+  canForceProfileNameChange = false,
 }) {
   const router = useRouter();
   const { t, language } = useLanguage();
@@ -155,6 +156,8 @@ export function AdminReportReviewContent({
   const hasMultipleOpenRelatedReports = actionableReportIds.length > 1;
   const listingTarget = isMessageReport ? conversation?.listing : listingReview?.listing;
   const profileTarget = profileReview?.profile ?? null;
+  const canForceNameChange =
+    canForceProfileNameChange && isProfileReport && Boolean(profileTarget?.id) && hasOpenRelatedReports;
   const reviewTitle = isProfileReport
     ? profileTarget?.name ?? t.profile
     : listingTarget?.title ?? t.listing;
@@ -271,6 +274,46 @@ export function AdminReportReviewContent({
         ? t.adminListingRemovedAndAllResolved
         : t.adminListingRemovedAndResolved,
     );
+    router.push("/admin");
+    router.refresh();
+  }
+
+  async function handleForceNameChange() {
+    if (!canForceNameChange || isProcessing) {
+      return;
+    }
+
+    const confirmed = window.confirm(t.adminForceNameChangeDescription);
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsProcessing(true);
+
+    const response = await fetch("/api/admin/reports/actions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "force_name_change",
+        userId: profileTarget.id,
+        reportIds: actionableReportIds,
+      }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+
+    setIsProcessing(false);
+
+    if (!response.ok) {
+      console.error("Failed to require name change:", payload?.error);
+      toast.error(payload?.error ?? t.adminForceNameChangeError);
+      return;
+    }
+
+    toast.success(t.adminForceNameChangeSuccess);
     router.push("/admin");
     router.refresh();
   }
@@ -462,6 +505,17 @@ export function AdminReportReviewContent({
                     {removeListingActionLabel}
                   </Button>
                 ) : null}
+                {canForceNameChange ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-xl"
+                    onClick={handleForceNameChange}
+                    disabled={isProcessing}
+                  >
+                    {t.adminForceNameChange}
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
                   variant="outline"
@@ -537,6 +591,17 @@ export function AdminReportReviewContent({
 
             <div className="border-t border-zinc-200 bg-background px-6 py-5 dark:border-border">
               <div className="flex flex-wrap justify-end gap-2">
+                {canForceNameChange ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-xl"
+                    onClick={handleForceNameChange}
+                    disabled={isProcessing}
+                  >
+                    {t.adminForceNameChange}
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
                   variant="outline"

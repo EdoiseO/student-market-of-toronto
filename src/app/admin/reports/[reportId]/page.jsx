@@ -380,16 +380,17 @@ export default async function AdminReportReviewPage({ params }) {
           </div>
         </div>
 
-        <AdminReportReviewContent
-          report={report}
-          relatedReports={relatedReports}
-          conversation={conversation}
-          messages={messages}
-          listingReview={listingReview}
-          profileReview={profileReview}
-          notesAvailable={notesAvailable}
-          currentUserId={user.id}
-        />
+      <AdminReportReviewContent
+        report={report}
+        relatedReports={relatedReports}
+        conversation={conversation}
+        messages={messages}
+        listingReview={listingReview}
+        profileReview={profileReview}
+        notesAvailable={notesAvailable}
+        currentUserId={user.id}
+        canForceProfileNameChange={getUserModerationRole(accessUser) === "admin"}
+      />
       </div>
     </main>
   );

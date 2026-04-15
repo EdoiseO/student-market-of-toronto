@@ -55,6 +55,7 @@ export function ProfileSettingsForm({ initialProfile }) {
   const [isUpdatingAvatar, setIsUpdatingAvatar] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
   const [isMobileViewport, setIsMobileViewport] = React.useState(false);
+  const requiresNameChange = initialProfile.requiresNameChange === true;
 
   React.useEffect(() => {
     function syncIsMobileViewport() {
@@ -215,6 +216,11 @@ export function ProfileSettingsForm({ initialProfile }) {
     const normalizedSchool = normalizeProfileText(initialProfile.school ?? "");
     const normalizedBio = currentNormalizedBio;
 
+    if (requiresNameChange && (!normalizedFirstName || !normalizedLastName)) {
+      toast.error(t.profileNameChangeRequiredError);
+      return;
+    }
+
     setIsSaving(true);
 
     try {
@@ -222,6 +228,7 @@ export function ProfileSettingsForm({ initialProfile }) {
         data: {
           first_name: normalizedFirstName,
           last_name: normalizedLastName,
+          ...(requiresNameChange ? { force_name_change: false } : {}),
         },
       });
 
@@ -261,6 +268,19 @@ export function ProfileSettingsForm({ initialProfile }) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-8">
+      {requiresNameChange ? (
+        <Card className="rounded-3xl border-amber-300 bg-amber-50 py-0 shadow-sm dark:border-amber-500/40 dark:bg-amber-500/10">
+          <CardHeader className="px-6 py-5">
+            <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
+              {t.profileNameChangeRequiredTitle}
+            </CardTitle>
+            <CardDescription className="text-zinc-700 dark:text-zinc-200">
+              {t.profileNameChangeRequiredDescription}
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      ) : null}
+
       <div className="grid gap-8 xl:grid-cols-[320px_minmax(0,1fr)]">
         <Card className="rounded-3xl bg-white py-0 shadow-sm ring-zinc-200 dark:bg-card dark:ring-border">
           <CardHeader className="border-b border-zinc-200 px-6 py-6 dark:border-border">

@@ -119,6 +119,7 @@ export default async function AdminUsersPage() {
         createdAt: authUser.created_at,
         isBanned: Boolean(authUser.banned_until),
         bannedUntil: authUser.banned_until ?? null,
+        requiresNameChange: authUser.user_metadata?.force_name_change === true,
         profileExists: Boolean(profile),
       };
     })

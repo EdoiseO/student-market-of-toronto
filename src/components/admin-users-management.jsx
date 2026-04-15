@@ -57,7 +57,15 @@ function getRoleLabel(role, t) {
 }
 
 function getStatusLabel(user, t) {
-  return user.isBanned ? t.adminUserStatusBanned : t.adminUserStatusActive;
+  if (user.isBanned) {
+    return t.adminUserStatusBanned;
+  }
+
+  if (user.requiresNameChange) {
+    return t.adminUserStatusNameChangeRequired;
+  }
+
+  return t.adminUserStatusActive;
 }
 
 function getSearchText(user, t) {

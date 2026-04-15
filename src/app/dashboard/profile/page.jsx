@@ -50,6 +50,7 @@ export default async function DashboardProfilePage() {
     avatarUrl: existingProfile?.avatar_url ?? "",
     bio: existingProfile?.bio ?? "",
     isPublic: Boolean(existingProfile?.is_public),
+    requiresNameChange: user.user_metadata?.force_name_change === true,
   };
 
   return (

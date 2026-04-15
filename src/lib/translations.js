@@ -463,6 +463,7 @@ export const translations = {
     adminUserRoleStaff: "Staff",
     adminUserStatusActive: "Active",
     adminUserStatusBanned: "Banned",
+    adminUserStatusNameChangeRequired: "Name change required",
     adminBannedUntilPrefix: "Banned until",
     adminTransferAdmin: "Transfer admin",
     adminTransferAdminTitle: "Transfer admin access?",
@@ -478,6 +479,13 @@ export const translations = {
     adminBanDuration30Days: "Ban for 30 days",
     adminBanDurationPermanent: "Ban indefinitely",
     adminUserBanActionError: "We could not update this user ban right now.",
+    adminForceNameChange: "Require name change",
+    adminForceNameChangeDescription:
+      "This clears the user's current first and last name and sends them to the profile page until they update both fields. Continue?",
+    adminForceNameChangeSuccess:
+      "Name change required and related reports marked as addressed.",
+    adminForceNameChangeError:
+      "We could not require a name change for this profile right now.",
     adminAnnounce: "Announcements",
     totalListings: "Total Listings",
     students: "Students",
@@ -734,6 +742,11 @@ export const translations = {
     customProfileImageError: "We could not save that image.",
     profileUpdated: "Profile updated.",
     profileUpdateError: "We could not save your profile right now.",
+    profileNameChangeRequiredTitle: "Name update required",
+    profileNameChangeRequiredDescription:
+      "An admin has required you to update your first and last name before you can continue using the marketplace.",
+    profileNameChangeRequiredError:
+      "Enter both your first and last name to continue.",
     forgotPasswordTitle: "Forgot Password",
     forgotPasswordDescription:
       "Enter your email below and we'll send you a password reset link.",
@@ -1312,6 +1325,7 @@ export const translations = {
     adminUserRoleStaff: "Staff",
     adminUserStatusActive: "Actif",
     adminUserStatusBanned: "Banni",
+    adminUserStatusNameChangeRequired: "Changement de nom requis",
     adminBannedUntilPrefix: "Banni jusqu'au",
     adminTransferAdmin: "Transférer l'accès admin",
     adminTransferAdminTitle: "Transférer l'accès admin ?",
@@ -1329,6 +1343,13 @@ export const translations = {
     adminBanDurationPermanent: "Bannir indéfiniment",
     adminUserBanActionError:
       "Nous n'avons pas pu mettre à jour le bannissement de cet utilisateur pour le moment.",
+    adminForceNameChange: "Exiger un changement de nom",
+    adminForceNameChangeDescription:
+      "Cette action efface le prénom et le nom de famille actuels de l'utilisateur et l'envoie vers la page de profil jusqu'à ce qu'il mette les deux champs à jour. Continuer ?",
+    adminForceNameChangeSuccess:
+      "Le changement de nom a été exigé et les signalements liés ont été marqués comme traités.",
+    adminForceNameChangeError:
+      "Nous n'avons pas pu exiger un changement de nom pour ce profil pour le moment.",
     adminAnnounce: "Communiqués",
     totalListings: "Total des annonces",
     students: "Étudiants",
@@ -1609,6 +1630,11 @@ export const translations = {
     profileUpdated: "Profil mis à jour.",
     profileUpdateError:
       "Nous n'avons pas pu enregistrer votre profil pour le moment.",
+    profileNameChangeRequiredTitle: "Mise à jour du nom requise",
+    profileNameChangeRequiredDescription:
+      "Un admin vous a demandé de mettre à jour votre prénom et votre nom de famille avant de continuer à utiliser le marché.",
+    profileNameChangeRequiredError:
+      "Saisissez votre prénom et votre nom de famille pour continuer.",
     forgotPasswordTitle: "Mot de passe oublié",
     forgotPasswordDescription:
       "Saisissez votre e-mail ci-dessous et nous vous enverrons un lien de réinitialisation du mot de passe.",

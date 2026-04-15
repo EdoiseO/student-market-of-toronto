@@ -156,6 +156,84 @@ export async function POST(request) {
       return NextResponse.json({ success: true, updatedCount: reportIds.length });
     }
 
+    if (action === "force_name_change") {
+      if (getUserModerationRole(user) !== "admin") {
+        return NextResponse.json(
+          { error: "Only admins can require a name change." },
+          { status: 403 },
+        );
+      }
+
+      const reportIds = Array.isArray(payload?.reportIds)
+        ? payload.reportIds.filter(Boolean)
+        : [];
+      const targetUserId = payload?.userId;
+
+      if (!reportIds.length || !targetUserId) {
+        return NextResponse.json(
+          { error: "Missing name change moderation payload." },
+          { status: 400 },
+        );
+      }
+
+      const {
+        data: { user: targetUser },
+        error: targetUserError,
+      } = await admin.auth.admin.getUserById(targetUserId);
+
+      if (targetUserError || !targetUser) {
+        throw targetUserError ?? new Error("Target user not found.");
+      }
+
+      if (getUserModerationRole(targetUser) === "admin") {
+        return NextResponse.json(
+          { error: "Admin accounts cannot be forced to change their name from this screen." },
+          { status: 400 },
+        );
+      }
+
+      const reviewedAt = new Date().toISOString();
+      const { error: authUpdateError } = await admin.auth.admin.updateUserById(targetUserId, {
+        user_metadata: {
+          ...(targetUser.user_metadata ?? {}),
+          first_name: null,
+          last_name: null,
+          force_name_change: true,
+        },
+      });
+
+      if (authUpdateError) {
+        throw authUpdateError;
+      }
+
+      const { error: profileError } = await admin
+        .from("profiles")
+        .update({
+          first_name: null,
+          last_name: null,
+        })
+        .eq("id", targetUserId);
+
+      if (profileError) {
+        throw profileError;
+      }
+
+      const { error: reportsError } = await admin
+        .from("reports")
+        .update({
+          status: REPORT_STATUS_VALUES.resolved,
+          reviewed_by: user.id,
+          reviewed_at: reviewedAt,
+        })
+        .in("id", reportIds);
+
+      if (reportsError) {
+        throw reportsError;
+      }
+
+      return NextResponse.json({ success: true, updatedCount: reportIds.length });
+    }
+
     if (action === "save_notes") {
       const reportId = payload?.reportId;
       const moderatorNotes = typeof payload?.moderatorNotes === "string" ? payload.moderatorNotes : "";
