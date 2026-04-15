@@ -22,6 +22,11 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: "Student Market of Toronto",
   description: "A student marketplace for buying and selling across Toronto campuses.",
+  icons: {
+    icon: "/SMT.png?v=20260415b",
+    shortcut: "/SMT.png?v=20260415b",
+    apple: "/SMT.png?v=20260415b",
+  },
 };
 
 function normalizeMetadataText(value) {
