@@ -192,7 +192,7 @@ export async function POST(request, { params }) {
         .update(listingUpdatePayload)
         .eq("id", listingId);
 
-      updateError = adminUpdateError ?? sessionUpdateError;
+      updateError = adminUpdateError;
     }
 
     if (updateError) {

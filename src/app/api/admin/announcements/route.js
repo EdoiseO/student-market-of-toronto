@@ -22,6 +22,35 @@ function isMessageNotificationUnsupported(error) {
   );
 }
 
+async function listAnnouncementRecipientIds(admin, senderId) {
+  const pageSize = 500;
+  const recipientIds = [];
+
+  for (let start = 0; ; start += pageSize) {
+    const end = start + pageSize - 1;
+    const { data: profileRows, error } = await admin
+      .from("profiles")
+      .select("id")
+      .neq("id", senderId)
+      .order("id", { ascending: true })
+      .range(start, end);
+
+    if (error) {
+      throw error;
+    }
+
+    const pageRecipientIds = (profileRows ?? []).map((profile) => profile.id).filter(Boolean);
+
+    recipientIds.push(...pageRecipientIds);
+
+    if (pageRecipientIds.length < pageSize) {
+      break;
+    }
+  }
+
+  return recipientIds;
+}
+
 async function insertAnnouncementNotification(admin, userId, conversationId, messageId) {
   const payload = {
     user_id: userId,
@@ -83,17 +112,7 @@ export async function POST(request) {
       return NextResponse.json({ error: "Message is too long." }, { status: 400 });
     }
 
-    const { data: profiles, error: profilesError } = await admin
-      .from("profiles")
-      .select("id")
-      .neq("id", moderationUser.id)
-      .limit(500);
-
-    if (profilesError) {
-      throw profilesError;
-    }
-
-    const recipientIds = (profiles ?? []).map((p) => p.id);
+    const recipientIds = await listAnnouncementRecipientIds(admin, moderationUser.id);
 
     if (recipientIds.length === 0) {
       return NextResponse.json({ sentCount: 0, totalRecipients: 0, noRecipients: true });
