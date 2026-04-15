@@ -143,6 +143,93 @@ function getReportGroupSearchText(group, t) {
     .toLowerCase();
 }
 
+const DASHBOARD_SECTION_PAGE_SIZE = 20;
+
+function getListingSearchText(listing, t) {
+  return [
+    listing.title,
+    listing.seller?.name,
+    listing.reviewedBy?.name,
+    listing.location,
+    listing.moderationFeedback,
+    getTranslatedListingApprovalStatus(listing.status, t, listing),
+    isListingResubmittedAfterEdit(listing) ? t.adminListingResubmittedBadge : null,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function filterItemsBySearch(items, searchQuery, getSearchText) {
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+
+  if (!normalizedQuery) {
+    return items;
+  }
+
+  return items.filter((item) => getSearchText(item).includes(normalizedQuery));
+}
+
+function getTotalPages(itemCount, pageSize = DASHBOARD_SECTION_PAGE_SIZE) {
+  return Math.max(1, Math.ceil(itemCount / pageSize));
+}
+
+function paginateItems(items, currentPage, pageSize = DASHBOARD_SECTION_PAGE_SIZE) {
+  const startIndex = (currentPage - 1) * pageSize;
+  return items.slice(startIndex, startIndex + pageSize);
+}
+
+function SearchField({ value, onChange, placeholder }) {
+  return (
+    <div className="relative w-full lg:max-w-sm">
+      <Search className="pointer-events-none absolute top-0 bottom-0 left-3 my-auto size-4 text-muted-foreground" />
+      <Input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="h-10 rounded-full bg-background pl-9"
+        aria-label={placeholder}
+      />
+    </div>
+  );
+}
+
+function PaginationControls({ currentPage, totalPages, onPrevious, onNext, t }) {
+  if (totalPages <= 1) {
+    return null;
+  }
+
+  return (
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+      <p className="text-sm text-muted-foreground">
+        {t.pageLabel} {currentPage} / {totalPages}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="rounded-xl"
+          onClick={onPrevious}
+          disabled={currentPage <= 1}
+        >
+          {t.previousPage}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="rounded-xl"
+          onClick={onNext}
+          disabled={currentPage >= totalPages}
+        >
+          {t.nextPage}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function ReportQueueTable({ reportGroups, language, t }) {
   return (
     <Table>
@@ -329,31 +416,121 @@ export function AdminModerationDashboard({
 }) {
   const { t, language } = useLanguage();
   const [typeFilter, setTypeFilter] = React.useState("all");
-  const [searchQuery, setSearchQuery] = React.useState("");
+  const [reportSearchQuery, setReportSearchQuery] = React.useState("");
+  const [reviewSearchQuery, setReviewSearchQuery] = React.useState("");
+  const [listingApprovalSearchQuery, setListingApprovalSearchQuery] = React.useState("");
+  const [recentDecisionSearchQuery, setRecentDecisionSearchQuery] = React.useState("");
+  const [openReportsPage, setOpenReportsPage] = React.useState(1);
+  const [reviewedReportsPage, setReviewedReportsPage] = React.useState(1);
+  const [listingApprovalsPage, setListingApprovalsPage] = React.useState(1);
+  const [recentDecisionsPage, setRecentDecisionsPage] = React.useState(1);
 
   const reports = React.useMemo(() => initialReports ?? [], [initialReports]);
 
   const reportGroups = React.useMemo(() => buildReportGroups(reports, t), [reports, t]);
 
-  const filteredReportGroups = React.useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
+  const openReportGroups = React.useMemo(
+    () => reportGroups.filter((group) => group.openCount > 0),
+    [reportGroups],
+  );
 
-    return reportGroups.filter((group) => {
+  const reviewedReportGroups = React.useMemo(
+    () => reportGroups.filter((group) => group.openCount === 0),
+    [reportGroups],
+  );
+
+  const filteredOpenReportGroups = React.useMemo(() => {
+    const normalizedQuery = reportSearchQuery.trim().toLowerCase();
+
+    return openReportGroups.filter((group) => {
       const matchesType = typeFilter === "all" || group.subjectType === typeFilter;
       const matchesQuery =
         normalizedQuery.length === 0 || getReportGroupSearchText(group, t).includes(normalizedQuery);
 
       return matchesType && matchesQuery;
     });
-  }, [reportGroups, searchQuery, t, typeFilter]);
+  }, [openReportGroups, reportSearchQuery, t, typeFilter]);
 
-  const openReportGroups = filteredReportGroups.filter(
-    (group) => group.openCount > 0,
+  const filteredReviewedReportGroups = React.useMemo(
+    () => filterItemsBySearch(reviewedReportGroups, reviewSearchQuery, (group) => getReportGroupSearchText(group, t)),
+    [reviewedReportGroups, reviewSearchQuery, t],
   );
-  const reviewedReportGroups = filteredReportGroups.filter(
-    (group) => group.openCount === 0,
+
+  const filteredPendingListingApprovals = React.useMemo(
+    () => filterItemsBySearch(pendingListingApprovals, listingApprovalSearchQuery, (listing) => getListingSearchText(listing, t)),
+    [pendingListingApprovals, listingApprovalSearchQuery, t],
   );
-  const reviewedReportGroupsLimit = 20;
+
+  const filteredRecentListingDecisions = React.useMemo(
+    () => filterItemsBySearch(recentListingDecisions, recentDecisionSearchQuery, (listing) => getListingSearchText(listing, t)),
+    [recentListingDecisions, recentDecisionSearchQuery, t],
+  );
+
+  const openReportsTotalPages = getTotalPages(filteredOpenReportGroups.length);
+  const reviewedReportsTotalPages = getTotalPages(filteredReviewedReportGroups.length);
+  const listingApprovalsTotalPages = getTotalPages(filteredPendingListingApprovals.length);
+  const recentDecisionsTotalPages = getTotalPages(filteredRecentListingDecisions.length);
+
+  const paginatedOpenReportGroups = React.useMemo(
+    () => paginateItems(filteredOpenReportGroups, openReportsPage),
+    [filteredOpenReportGroups, openReportsPage],
+  );
+
+  const paginatedReviewedReportGroups = React.useMemo(
+    () => paginateItems(filteredReviewedReportGroups, reviewedReportsPage),
+    [filteredReviewedReportGroups, reviewedReportsPage],
+  );
+
+  const paginatedPendingListingApprovals = React.useMemo(
+    () => paginateItems(filteredPendingListingApprovals, listingApprovalsPage),
+    [filteredPendingListingApprovals, listingApprovalsPage],
+  );
+
+  const paginatedRecentListingDecisions = React.useMemo(
+    () => paginateItems(filteredRecentListingDecisions, recentDecisionsPage),
+    [filteredRecentListingDecisions, recentDecisionsPage],
+  );
+
+  React.useEffect(() => {
+    setOpenReportsPage(1);
+  }, [reportSearchQuery, typeFilter]);
+
+  React.useEffect(() => {
+    setReviewedReportsPage(1);
+  }, [reviewSearchQuery]);
+
+  React.useEffect(() => {
+    setListingApprovalsPage(1);
+  }, [listingApprovalSearchQuery]);
+
+  React.useEffect(() => {
+    setRecentDecisionsPage(1);
+  }, [recentDecisionSearchQuery]);
+
+  React.useEffect(() => {
+    if (openReportsPage > openReportsTotalPages) {
+      setOpenReportsPage(openReportsTotalPages);
+    }
+  }, [openReportsPage, openReportsTotalPages]);
+
+  React.useEffect(() => {
+    if (reviewedReportsPage > reviewedReportsTotalPages) {
+      setReviewedReportsPage(reviewedReportsTotalPages);
+    }
+  }, [reviewedReportsPage, reviewedReportsTotalPages]);
+
+  React.useEffect(() => {
+    if (listingApprovalsPage > listingApprovalsTotalPages) {
+      setListingApprovalsPage(listingApprovalsTotalPages);
+    }
+  }, [listingApprovalsPage, listingApprovalsTotalPages]);
+
+  React.useEffect(() => {
+    if (recentDecisionsPage > recentDecisionsTotalPages) {
+      setRecentDecisionsPage(recentDecisionsTotalPages);
+    }
+  }, [recentDecisionsPage, recentDecisionsTotalPages]);
+
   const totalOpenReports = reports.filter(
     (report) => report.status === REPORT_STATUS_VALUES.open,
   );
@@ -368,7 +545,7 @@ export function AdminModerationDashboard({
     (report) => report.subjectType === REPORT_SUBJECT_TYPES.profile,
   ).length;
   const pendingListingApprovalCount = pendingListingApprovals.length;
-  const hasActiveFilters = typeFilter !== "all" || searchQuery.trim().length > 0;
+  const hasActiveFilters = typeFilter !== "all" || reportSearchQuery.trim().length > 0;
   const filterOptions = [
     { value: "all", label: t.all },
     { value: REPORT_SUBJECT_TYPES.listing, label: t.adminListings },
@@ -378,7 +555,7 @@ export function AdminModerationDashboard({
 
   function clearFilters() {
     setTypeFilter("all");
-    setSearchQuery("");
+    setReportSearchQuery("");
   }
 
   if (!reportsAvailable) {
@@ -459,22 +636,26 @@ export function AdminModerationDashboard({
                 ) : null}
               </div>
 
-              <div className="relative w-full lg:max-w-sm">
-                <Search className="pointer-events-none absolute top-0 bottom-0 left-3 my-auto size-4 text-muted-foreground" />
-                <Input
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder={t.adminSearchReportsPlaceholder}
-                  className="h-10 rounded-full bg-background pl-9"
-                  aria-label={t.adminSearchReportsPlaceholder}
-                />
-              </div>
+              <SearchField
+                value={reportSearchQuery}
+                onChange={setReportSearchQuery}
+                placeholder={t.adminSearchReportsPlaceholder}
+              />
             </div>
           </div>
         </CardHeader>
         <CardContent className="px-6 py-6">
-          {openReportGroups.length > 0 ? (
-            <ReportQueueTable reportGroups={openReportGroups} language={language} t={t} />
+          {filteredOpenReportGroups.length > 0 ? (
+            <>
+              <ReportQueueTable reportGroups={paginatedOpenReportGroups} language={language} t={t} />
+              <PaginationControls
+                currentPage={openReportsPage}
+                totalPages={openReportsTotalPages}
+                onPrevious={() => setOpenReportsPage((currentPage) => Math.max(1, currentPage - 1))}
+                onNext={() => setOpenReportsPage((currentPage) => Math.min(openReportsTotalPages, currentPage + 1))}
+                t={t}
+              />
+            </>
           ) : (
             <div className="rounded-3xl border border-dashed border-border bg-muted/30 px-5 py-10 text-center text-sm text-muted-foreground">
               {hasActiveFilters ? t.adminNoOpenReportsMatchFilters : t.noPendingReports}
@@ -489,19 +670,37 @@ export function AdminModerationDashboard({
             <CardHeader className="border-b border-border px-6 py-6">
               <CardTitle className="text-2xl text-foreground">{t.adminListingApprovals}</CardTitle>
               <CardDescription>{t.adminListingApprovalQueueDescription}</CardDescription>
+              <div className="mt-4">
+                <SearchField
+                  value={listingApprovalSearchQuery}
+                  onChange={setListingApprovalSearchQuery}
+                  placeholder={t.adminSearchListingApprovalsPlaceholder}
+                />
+              </div>
             </CardHeader>
             <CardContent className="px-6 py-6">
-              {pendingListingApprovals.length > 0 ? (
-                <ListingApprovalTable
-                  listings={pendingListingApprovals}
-                  language={language}
-                  t={t}
-                  dateLabel={t.adminSubmittedForReviewAt}
-                  emptyText={t.adminNoPendingListingApprovals}
-                />
+              {filteredPendingListingApprovals.length > 0 ? (
+                <>
+                  <ListingApprovalTable
+                    listings={paginatedPendingListingApprovals}
+                    language={language}
+                    t={t}
+                    dateLabel={t.adminSubmittedForReviewAt}
+                    emptyText={t.adminNoPendingListingApprovals}
+                  />
+                  <PaginationControls
+                    currentPage={listingApprovalsPage}
+                    totalPages={listingApprovalsTotalPages}
+                    onPrevious={() => setListingApprovalsPage((currentPage) => Math.max(1, currentPage - 1))}
+                    onNext={() => setListingApprovalsPage((currentPage) => Math.min(listingApprovalsTotalPages, currentPage + 1))}
+                    t={t}
+                  />
+                </>
               ) : (
                 <div className="rounded-3xl border border-dashed border-border bg-muted/30 px-5 py-10 text-center text-sm text-muted-foreground">
-                  {t.adminNoPendingListingApprovals}
+                  {listingApprovalSearchQuery.trim().length > 0
+                    ? t.adminNoListingApprovalsMatchSearch
+                    : t.adminNoPendingListingApprovals}
                 </div>
               )}
             </CardContent>
@@ -511,19 +710,37 @@ export function AdminModerationDashboard({
             <CardHeader className="border-b border-border px-6 py-6">
               <CardTitle className="text-2xl text-foreground">{t.adminRecentListingDecisionsTitle}</CardTitle>
               <CardDescription>{t.adminRecentListingDecisionsDescription}</CardDescription>
+              <div className="mt-4">
+                <SearchField
+                  value={recentDecisionSearchQuery}
+                  onChange={setRecentDecisionSearchQuery}
+                  placeholder={t.adminSearchRecentListingDecisionsPlaceholder}
+                />
+              </div>
             </CardHeader>
             <CardContent className="px-6 py-6">
-              {recentListingDecisions.length > 0 ? (
-                <ListingApprovalTable
-                  listings={recentListingDecisions}
-                  language={language}
-                  t={t}
-                  dateLabel={t.reviewedAt}
-                  emptyText={t.adminNoRecentListingDecisions}
-                />
+              {filteredRecentListingDecisions.length > 0 ? (
+                <>
+                  <ListingApprovalTable
+                    listings={paginatedRecentListingDecisions}
+                    language={language}
+                    t={t}
+                    dateLabel={t.reviewedAt}
+                    emptyText={t.adminNoRecentListingDecisions}
+                  />
+                  <PaginationControls
+                    currentPage={recentDecisionsPage}
+                    totalPages={recentDecisionsTotalPages}
+                    onPrevious={() => setRecentDecisionsPage((currentPage) => Math.max(1, currentPage - 1))}
+                    onNext={() => setRecentDecisionsPage((currentPage) => Math.min(recentDecisionsTotalPages, currentPage + 1))}
+                    t={t}
+                  />
+                </>
               ) : (
                 <div className="rounded-3xl border border-dashed border-border bg-muted/30 px-5 py-10 text-center text-sm text-muted-foreground">
-                  {t.adminNoRecentListingDecisions}
+                  {recentDecisionSearchQuery.trim().length > 0
+                    ? t.adminNoRecentListingDecisionsMatchSearch
+                    : t.adminNoRecentListingDecisions}
                 </div>
               )}
             </CardContent>
@@ -542,25 +759,33 @@ export function AdminModerationDashboard({
         <CardHeader className="border-b border-border px-6 py-6">
           <CardTitle className="text-2xl text-foreground">{t.adminRecentReviewsTitle}</CardTitle>
           <CardDescription>{t.adminRecentReviewsDescription}</CardDescription>
-          {reviewedReportGroups.length > reviewedReportGroupsLimit ? (
-            <p className="mt-3 text-sm text-muted-foreground">
-              {t.adminRecentReviewsLimitNote.replace(
-                "{count}",
-                String(reviewedReportGroupsLimit),
-              )}
-            </p>
-          ) : null}
+          <div className="mt-4">
+            <SearchField
+              value={reviewSearchQuery}
+              onChange={setReviewSearchQuery}
+              placeholder={t.adminSearchRecentReviewsPlaceholder}
+            />
+          </div>
         </CardHeader>
         <CardContent className="px-6 py-6">
-          {reviewedReportGroups.length > 0 ? (
-            <ReportQueueTable
-              reportGroups={reviewedReportGroups.slice(0, reviewedReportGroupsLimit)}
-              language={language}
-              t={t}
-            />
+          {filteredReviewedReportGroups.length > 0 ? (
+            <>
+              <ReportQueueTable
+                reportGroups={paginatedReviewedReportGroups}
+                language={language}
+                t={t}
+              />
+              <PaginationControls
+                currentPage={reviewedReportsPage}
+                totalPages={reviewedReportsTotalPages}
+                onPrevious={() => setReviewedReportsPage((currentPage) => Math.max(1, currentPage - 1))}
+                onNext={() => setReviewedReportsPage((currentPage) => Math.min(reviewedReportsTotalPages, currentPage + 1))}
+                t={t}
+              />
+            </>
           ) : (
             <div className="rounded-3xl border border-dashed border-border bg-muted/30 px-5 py-10 text-center text-sm text-muted-foreground">
-              {hasActiveFilters ? t.adminNoReviewedReportsMatchFilters : t.noReports}
+              {reviewSearchQuery.trim().length > 0 ? t.adminNoRecentReviewsMatchSearch : t.noReports}
             </div>
           )}
         </CardContent>

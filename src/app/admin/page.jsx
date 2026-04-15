@@ -45,6 +45,10 @@ function buildMessageMap(rows) {
   return new Map((rows ?? []).map((row) => [row.id, row]));
 }
 
+const ADMIN_REPORTS_FETCH_LIMIT = 500;
+const ADMIN_PENDING_LISTING_APPROVALS_FETCH_LIMIT = 250;
+const ADMIN_RECENT_LISTING_DECISIONS_FETCH_LIMIT = 250;
+
 export default async function AdminPage() {
   const cookieStore = await cookies();
   const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
@@ -72,7 +76,7 @@ export default async function AdminPage() {
     .from("reports")
     .select(MODERATION_REPORT_SELECT)
     .order("created_at", { ascending: false })
-    .limit(80);
+    .limit(ADMIN_REPORTS_FETCH_LIMIT);
 
   if (reportsError && !isReportsTableMissing(reportsError)) {
     console.error("Failed to load moderation reports:", reportsError.message);
@@ -209,7 +213,7 @@ export default async function AdminPage() {
       .eq("status", LISTING_APPROVAL_STATUS_VALUES.pendingReview)
       .not("submitted_for_review_at", "is", null)
       .order("submitted_for_review_at", { ascending: false })
-      .limit(40),
+      .limit(ADMIN_PENDING_LISTING_APPROVALS_FETCH_LIMIT),
     dataClient
       .from("listings")
       .select(
@@ -229,7 +233,7 @@ export default async function AdminPage() {
       .in("status", ["active", LISTING_APPROVAL_STATUS_VALUES.rejected])
       .not("moderation_reviewed_at", "is", null)
       .order("moderation_reviewed_at", { ascending: false })
-      .limit(20),
+      .limit(ADMIN_RECENT_LISTING_DECISIONS_FETCH_LIMIT),
   ]);
 
   if (pendingListingResult.error || recentListingDecisionResult.error) {

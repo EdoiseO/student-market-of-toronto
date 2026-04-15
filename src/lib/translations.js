@@ -545,9 +545,15 @@ export const translations = {
     adminRecentReviewsLimitNote:
       "Showing only the latest {count} reviewed report groups. Older reviewed items are not shown here.",
     adminSearchReportsPlaceholder: "Search reports, people, or subjects",
+    adminSearchListingApprovalsPlaceholder: "Search listings, sellers, or feedback",
+    adminSearchRecentListingDecisionsPlaceholder: "Search decisions, sellers, or feedback",
+    adminSearchRecentReviewsPlaceholder: "Search reviewed reports, people, or subjects",
     adminNoReportsMatchFilters: "No reports match the current filters.",
     adminNoOpenReportsMatchFilters: "No open reports match the current filters.",
     adminNoReviewedReportsMatchFilters: "No reviewed reports match the current filters.",
+    adminNoListingApprovalsMatchSearch: "No listing approvals match this search.",
+    adminNoRecentListingDecisionsMatchSearch: "No recent listing decisions match this search.",
+    adminNoRecentReviewsMatchSearch: "No recent reviews match this search.",
     adminListingApprovalSetupDescription:
       "Apply the listing approval SQL in Supabase first, then come back here to review submitted listings.",
     adminNoPendingListingApprovals: "No listings are waiting for approval.",
@@ -1390,11 +1396,23 @@ export const translations = {
     adminRecentReviewsLimitNote:
       "Affiche seulement les {count} groupes de signalements examinés les plus récents. Les éléments examinés plus anciens ne sont pas affichés ici.",
     adminSearchReportsPlaceholder: "Rechercher des signalements, personnes ou sujets",
+    adminSearchListingApprovalsPlaceholder:
+      "Rechercher des annonces, vendeurs ou commentaires",
+    adminSearchRecentListingDecisionsPlaceholder:
+      "Rechercher des décisions, vendeurs ou commentaires",
+    adminSearchRecentReviewsPlaceholder:
+      "Rechercher des signalements examinés, personnes ou sujets",
     adminNoReportsMatchFilters: "Aucun signalement ne correspond aux filtres actuels.",
     adminNoOpenReportsMatchFilters:
       "Aucun signalement ouvert ne correspond aux filtres actuels.",
     adminNoReviewedReportsMatchFilters:
       "Aucun signalement examiné ne correspond aux filtres actuels.",
+    adminNoListingApprovalsMatchSearch:
+      "Aucune approbation d'annonce ne correspond à cette recherche.",
+    adminNoRecentListingDecisionsMatchSearch:
+      "Aucune décision récente sur une annonce ne correspond à cette recherche.",
+    adminNoRecentReviewsMatchSearch:
+      "Aucune activité récente de modération ne correspond à cette recherche.",
     adminListingApprovalSetupDescription:
       "Appliquez d'abord le SQL d'approbation des annonces dans Supabase, puis revenez ici pour examiner les annonces soumises.",
     adminNoPendingListingApprovals: "Aucune annonce n'attend une approbation.",
