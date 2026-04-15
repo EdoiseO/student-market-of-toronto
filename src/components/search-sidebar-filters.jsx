@@ -53,7 +53,7 @@ export function SearchSidebarFilters() {
             ...option,
             label: getTranslatedSortLabel(option.value, t),
           }))}
-          className="rounded-2xl border border-zinc-200 bg-white p-3"
+          className="rounded-2xl border border-zinc-200 bg-white p-3 dark:border-border dark:bg-card"
           fieldsClassName="grid-cols-1"
         />
       </SidebarGroupContent>

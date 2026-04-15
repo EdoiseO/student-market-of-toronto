@@ -14,10 +14,7 @@ export default function HomePageContent({ listingSections }) {
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8">
         <section className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-zinc-200 dark:bg-card dark:ring-border">
           <div>
-            <p className="text-sm font-medium uppercase tracking-[0.2em] text-zinc-500 dark:text-muted-foreground">
-              {t.studentMarket} {t.toronto}
-            </p>
-            <h1 className="mt-3 text-4xl font-bold tracking-tight text-zinc-950 dark:text-foreground">
+            <h1 className="text-4xl font-bold tracking-tight text-zinc-950 dark:text-foreground">
               {t.buySell}
             </h1>
             <p className="mt-4 max-w-2xl text-base text-zinc-600 dark:text-muted-foreground">

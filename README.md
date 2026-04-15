@@ -54,9 +54,12 @@ Then add your Supabase values to `.env.local`:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
 ```
 
 These values come from your Supabase project settings.
+
+`SUPABASE_SERVICE_ROLE_KEY` is required for server-side destructive account actions such as full account deletion from `/dashboard/settings`.
 
 ## Install Dependencies
 
@@ -108,7 +111,9 @@ npm run start
 - listing detail pages
 - listing-to-seller messaging
 - conversations inbox and dedicated thread pages
-- per-user conversation hide/remove-from-inbox state
+- messaging disabled for sold or unavailable listings while keeping old conversation history readable
+- per-user hidden conversations with restore from a hidden inbox view
+- per-user conversation deletion that clears the thread from your view until a new message is sent
 - header message notifications
 - create listing
 - edit listing

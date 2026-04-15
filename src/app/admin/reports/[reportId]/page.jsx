@@ -1,0 +1,396 @@
+import { ArrowLeft, Flag, MessageSquareWarning } from "lucide-react";
+import { cookies } from "next/headers";
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
+
+import { AdminReportReviewContent } from "@/components/admin-report-review-content";
+import { Button } from "@/components/ui/button";
+import { MESSAGE_CONVERSATION_SELECT, getConversationDisplayName } from "@/lib/messages";
+import {
+  MODERATION_REPORT_NOTES_SELECT,
+  MODERATION_REPORT_SELECT,
+  REPORT_SUBJECT_TYPES,
+  getModerationDisplayName,
+  getUserModerationRole,
+  isReportNotesColumnsMissing,
+  isModerationRole,
+  isReportsTableMissing,
+} from "@/lib/moderation";
+import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
+import { translations } from "@/lib/translations";
+import { createClient } from "@/utils/supabase/server";
+
+function getPrimaryListingImageUrl(listingImages) {
+  return (listingImages ?? [])
+    .slice()
+    .sort((firstImage, secondImage) => firstImage.position - secondImage.position)[0]?.image_url;
+}
+
+export default async function AdminReportReviewPage({ params }) {
+  const resolvedParams = await params;
+  const cookieStore = await cookies();
+  const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
+  const t = translations[language] || translations.en;
+  const supabase = createClient(cookieStore);
+  const admin = createAdminClient();
+  const dataClient = admin ?? supabase;
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const accessUser = (await getLatestAuthUser(admin, user.id, "report review access")) ?? user;
+
+  if (!isModerationRole(getUserModerationRole(accessUser))) {
+    redirect("/");
+  }
+
+  const { data: reportRow, error: reportError } = await dataClient
+    .from("reports")
+    .select(MODERATION_REPORT_SELECT)
+    .eq("id", resolvedParams.reportId)
+    .maybeSingle();
+
+  if (reportError && !isReportsTableMissing(reportError)) {
+    console.error("Failed to load moderation report review:", reportError.message);
+  }
+
+  if (!reportRow) {
+    notFound();
+  }
+
+  let relatedReportRows = [reportRow];
+
+  if (reportRow.subject_type === REPORT_SUBJECT_TYPES.message && reportRow.message_id) {
+    const { data: relatedRows, error: relatedError } = await dataClient
+      .from("reports")
+      .select(MODERATION_REPORT_SELECT)
+      .eq("subject_type", REPORT_SUBJECT_TYPES.message)
+      .eq("message_id", reportRow.message_id)
+      .order("created_at", { ascending: false });
+
+    if (relatedError) {
+      console.error("Failed to load related message reports:", relatedError.message);
+    } else if (relatedRows?.length) {
+      relatedReportRows = relatedRows;
+    }
+  } else if (reportRow.subject_type === REPORT_SUBJECT_TYPES.listing && reportRow.listing_id) {
+    const { data: relatedRows, error: relatedError } = await dataClient
+      .from("reports")
+      .select(MODERATION_REPORT_SELECT)
+      .eq("subject_type", REPORT_SUBJECT_TYPES.listing)
+      .eq("listing_id", reportRow.listing_id)
+      .order("created_at", { ascending: false });
+
+    if (relatedError) {
+      console.error("Failed to load related listing reports:", relatedError.message);
+    } else if (relatedRows?.length) {
+      relatedReportRows = relatedRows;
+    }
+  } else if (reportRow.subject_type === REPORT_SUBJECT_TYPES.profile && reportRow.subject_id) {
+    const { data: relatedRows, error: relatedError } = await dataClient
+      .from("reports")
+      .select(MODERATION_REPORT_SELECT)
+      .eq("subject_type", REPORT_SUBJECT_TYPES.profile)
+      .eq("subject_id", reportRow.subject_id)
+      .order("created_at", { ascending: false });
+
+    if (relatedError) {
+      console.error("Failed to load related profile reports:", relatedError.message);
+    } else if (relatedRows?.length) {
+      relatedReportRows = relatedRows;
+    }
+  }
+
+  let notesAvailable = true;
+  let reportNotesRows = [];
+
+  const { data: fetchedReportNotesRows, error: reportNotesError } = await dataClient
+    .from("reports")
+    .select(MODERATION_REPORT_NOTES_SELECT)
+    .in("id", relatedReportRows.map((relatedReport) => relatedReport.id));
+
+  if (reportNotesError) {
+    if (isReportNotesColumnsMissing(reportNotesError)) {
+      notesAvailable = false;
+    } else {
+      console.error("Failed to load moderation report notes:", reportNotesError.message);
+    }
+  } else {
+    reportNotesRows = fetchedReportNotesRows ?? [];
+  }
+
+  const reportNotesById = new Map((reportNotesRows ?? []).map((notesRow) => [notesRow.id, notesRow]));
+
+  const profileIds = [
+    ...relatedReportRows.map((report) => report.reporter_user_id),
+    ...relatedReportRows.map((report) => report.reported_user_id),
+    ...relatedReportRows.map((report) => report.reviewed_by),
+    ...reportNotesRows.map((report) => report.moderator_notes_updated_by),
+    reportRow.subject_type === REPORT_SUBJECT_TYPES.profile ? reportRow.subject_id : null,
+  ].filter(Boolean);
+  const { data: reportProfiles, error: reportProfilesError } = profileIds.length
+      ? await dataClient
+        .from("profiles")
+        .select("id, first_name, last_name")
+        .in("id", profileIds)
+    : { data: [], error: null };
+
+  if (reportProfilesError) {
+    console.error("Failed to load moderation report profiles:", reportProfilesError.message);
+  }
+
+  const reportProfilesById = new Map((reportProfiles ?? []).map((profile) => [profile.id, profile]));
+
+  let reviewIcon = Flag;
+  let conversation = null;
+  let messages = [];
+  let listingReview = null;
+  let profileReview = null;
+  let reportMessage = null;
+
+  if (reportRow.subject_type === REPORT_SUBJECT_TYPES.message) {
+    reviewIcon = MessageSquareWarning;
+
+    const { data: conversationRow, error: conversationError } = await dataClient
+      .from("conversations")
+      .select(MESSAGE_CONVERSATION_SELECT)
+      .eq("id", reportRow.conversation_id)
+      .maybeSingle();
+
+    if (conversationError) {
+      console.error("Failed to load moderation conversation review:", conversationError.message);
+    }
+
+    if (!conversationRow) {
+      notFound();
+    }
+
+    const { data: messageRows, error: messagesError } = await dataClient
+      .from("messages")
+      .select("id, sender_id, body, created_at")
+      .eq("conversation_id", conversationRow.id)
+      .order("created_at", { ascending: true });
+
+    if (messagesError) {
+      console.error("Failed to load moderation conversation messages:", messagesError.message);
+    }
+
+    const listing = Array.isArray(conversationRow.listings)
+      ? conversationRow.listings[0]
+      : conversationRow.listings;
+    const buyerProfile = Array.isArray(conversationRow.buyer_profile)
+      ? conversationRow.buyer_profile[0]
+      : conversationRow.buyer_profile;
+    const sellerProfile = Array.isArray(conversationRow.seller_profile)
+      ? conversationRow.seller_profile[0]
+      : conversationRow.seller_profile;
+
+    conversation = {
+      id: conversationRow.id,
+      listing: {
+        id: listing?.id,
+        slug: listing?.slug,
+        title: listing?.title ?? t.listing,
+        location: listing?.location ?? t.torontoMeetup,
+        imageUrl: getPrimaryListingImageUrl(listing?.listing_images),
+        status: listing?.status ?? "active",
+      },
+      buyer: {
+        id: buyerProfile?.id,
+        name: getConversationDisplayName(buyerProfile, t),
+        school: buyerProfile?.school ?? t.torontoStudent,
+        avatarPresetId: buyerProfile?.avatar_preset_id ?? null,
+        avatarUrl: buyerProfile?.avatar_url ?? null,
+      },
+      seller: {
+        id: sellerProfile?.id,
+        name: getConversationDisplayName(sellerProfile, t),
+        school: sellerProfile?.school ?? t.torontoStudent,
+        avatarPresetId: sellerProfile?.avatar_preset_id ?? null,
+        avatarUrl: sellerProfile?.avatar_url ?? null,
+      },
+    };
+
+    messages = messageRows ?? [];
+    reportMessage = messages.find((message) => message.id === reportRow.message_id) ?? null;
+  } else if (reportRow.subject_type === REPORT_SUBJECT_TYPES.listing) {
+    const { data: listingRow, error: listingError } = await dataClient
+      .from("listings")
+      .select(
+        "id, seller_id, slug, title, description, price, location, status, listing_images ( image_url, position )"
+      )
+      .eq("id", reportRow.listing_id)
+      .maybeSingle();
+
+    if (listingError) {
+      console.error("Failed to load moderation listing review:", listingError.message);
+    }
+
+    if (!listingRow) {
+      notFound();
+    }
+
+    const { data: sellerProfile, error: sellerError } = listingRow.seller_id
+      ? await dataClient
+          .from("profiles")
+          .select("id, first_name, last_name, school, avatar_preset_id, avatar_url")
+          .eq("id", listingRow.seller_id)
+          .maybeSingle()
+      : { data: null, error: null };
+
+    if (sellerError) {
+      console.error("Failed to load moderation listing seller profile:", sellerError.message);
+    }
+
+    listingReview = {
+      listing: {
+        id: listingRow.id,
+        slug: listingRow.slug,
+        title: listingRow.title ?? t.listing,
+        description: listingRow.description ?? "",
+        location: listingRow.location ?? t.torontoMeetup,
+        imageUrl: getPrimaryListingImageUrl(listingRow.listing_images),
+        status: listingRow.status,
+      },
+      seller: sellerProfile
+        ? {
+            id: sellerProfile.id,
+            name: getConversationDisplayName(sellerProfile, t),
+            school: sellerProfile.school ?? t.torontoStudent,
+            avatarPresetId: sellerProfile.avatar_preset_id ?? null,
+            avatarUrl: sellerProfile.avatar_url ?? null,
+          }
+        : null,
+    };
+  } else if (reportRow.subject_type === REPORT_SUBJECT_TYPES.profile) {
+    const { data: profileRow, error: profileError } = await dataClient
+      .from("profiles")
+      .select("id, first_name, last_name, school, avatar_preset_id, avatar_url, bio, created_at")
+      .eq("id", reportRow.subject_id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error("Failed to load moderation profile review:", profileError.message);
+    }
+
+    if (!profileRow) {
+      notFound();
+    }
+
+    profileReview = {
+      profile: {
+        id: profileRow.id,
+        name: getConversationDisplayName(profileRow, t),
+        school: profileRow.school ?? t.torontoStudent,
+        avatarPresetId: profileRow.avatar_preset_id ?? null,
+        avatarUrl: profileRow.avatar_url ?? null,
+        bio: profileRow.bio ?? "",
+        createdAt: profileRow.created_at ?? null,
+      },
+    };
+  }
+
+  const report = {
+    id: reportRow.id,
+    subjectType: reportRow.subject_type,
+    reason: reportRow.reason,
+    details: reportRow.details,
+    status: reportRow.status,
+    createdAt: reportRow.created_at,
+    reviewedAt: reportRow.reviewed_at,
+    reporter: {
+      id: reportRow.reporter_user_id,
+      name: getModerationDisplayName(reportProfilesById.get(reportRow.reporter_user_id), t),
+    },
+    reportedUser: {
+      id: reportRow.reported_user_id,
+      name: getModerationDisplayName(reportProfilesById.get(reportRow.reported_user_id), t),
+    },
+    reviewedBy: reportRow.reviewed_by
+      ? {
+          id: reportRow.reviewed_by,
+          name: getModerationDisplayName(reportProfilesById.get(reportRow.reviewed_by), t),
+        }
+      : null,
+    moderatorNotes: reportNotesById.get(reportRow.id)?.moderator_notes ?? null,
+    moderatorNotesUpdatedAt: reportNotesById.get(reportRow.id)?.moderator_notes_updated_at ?? null,
+    moderatorNotesUpdatedBy: reportNotesById.get(reportRow.id)?.moderator_notes_updated_by
+      ? {
+          id: reportNotesById.get(reportRow.id).moderator_notes_updated_by,
+          name: getModerationDisplayName(
+            reportProfilesById.get(reportNotesById.get(reportRow.id).moderator_notes_updated_by),
+            t,
+          ),
+        }
+      : null,
+    message: reportMessage,
+  };
+
+  const relatedReports = relatedReportRows.map((relatedReport) => ({
+    id: relatedReport.id,
+    subjectType: relatedReport.subject_type,
+    reason: relatedReport.reason,
+    details: relatedReport.details,
+    status: relatedReport.status,
+    createdAt: relatedReport.created_at,
+    reviewedAt: relatedReport.reviewed_at,
+    reporter: {
+      id: relatedReport.reporter_user_id,
+      name: getModerationDisplayName(reportProfilesById.get(relatedReport.reporter_user_id), t),
+    },
+    reviewedBy: relatedReport.reviewed_by
+      ? {
+          id: relatedReport.reviewed_by,
+          name: getModerationDisplayName(reportProfilesById.get(relatedReport.reviewed_by), t),
+        }
+      : null,
+    moderatorNotes: reportNotesById.get(relatedReport.id)?.moderator_notes ?? null,
+    moderatorNotesUpdatedAt: reportNotesById.get(relatedReport.id)?.moderator_notes_updated_at ?? null,
+    moderatorNotesUpdatedBy: reportNotesById.get(relatedReport.id)?.moderator_notes_updated_by
+      ? {
+          id: reportNotesById.get(relatedReport.id).moderator_notes_updated_by,
+          name: getModerationDisplayName(
+            reportProfilesById.get(reportNotesById.get(relatedReport.id).moderator_notes_updated_by),
+            t,
+          ),
+        }
+      : null,
+  }));
+
+  const ReviewIcon = reviewIcon;
+
+  return (
+    <main className="bg-zinc-100 px-5 pt-3 pb-5 dark:bg-background md:px-6 md:pt-3 md:pb-6 lg:px-7 lg:pt-4 lg:pb-7">
+      <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Button asChild variant="ghost" className="h-9 rounded-full px-3">
+            <Link href="/admin">
+              <ArrowLeft className="size-4" />
+              <span>{t.backToAdminReports}</span>
+            </Link>
+          </Button>
+          <div className="flex items-center gap-2 rounded-full bg-background px-3 py-1.5 text-sm text-muted-foreground shadow-sm">
+            <ReviewIcon className="size-4" />
+            <span>{t.adminReportReviewTitle}</span>
+          </div>
+        </div>
+
+        <AdminReportReviewContent
+          report={report}
+          relatedReports={relatedReports}
+          conversation={conversation}
+          messages={messages}
+          listingReview={listingReview}
+          profileReview={profileReview}
+          notesAvailable={notesAvailable}
+          currentUserId={user.id}
+        />
+      </div>
+    </main>
+  );
+}

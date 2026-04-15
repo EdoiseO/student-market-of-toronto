@@ -16,7 +16,7 @@ import { translations } from "@/lib/translations";
 
 export function SiteHeader({ user }) {
   const { toggleSidebar } = useSidebar()
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const { language } = useLanguage();
   const t = translations[language];
 
@@ -25,6 +25,8 @@ export function SiteHeader({ user }) {
       ? t.browseListings
     : pathname.startsWith("/search")
         ? t.searchAndFilter
+      : pathname.startsWith("/admin")
+        ? t.adminDashboard
       : pathname.startsWith("/messages")
         ? t.messages
       : pathname.startsWith("/dashboard")
@@ -52,7 +54,9 @@ export function SiteHeader({ user }) {
             orientation="vertical"
             className="mr-2 data-vertical:h-5 data-vertical:self-auto" />
           <div className="min-w-0">
-            <p className="truncate text-base font-semibold text-foreground">{pageTitle}</p>
+            <p className="truncate text-base font-semibold text-foreground" suppressHydrationWarning>
+              {pageTitle}
+            </p>
             <p className="hidden text-sm text-muted-foreground xl:block">
               {t.browseListingsSubtitle}
             </p>

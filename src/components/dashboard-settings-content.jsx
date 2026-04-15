@@ -1,10 +1,22 @@
 "use client";
 
 import * as React from "react";
+import { AlertTriangle, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +35,7 @@ import {
   FieldLabel,
   FieldTitle,
 } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
@@ -40,6 +53,7 @@ import { createClient } from "@/utils/supabase/client";
 export function DashboardSettingsContent({
   userEmail,
   userId,
+  deleteAccountAvailable,
   initialHideBioOnListingPage,
   hasBio,
   initialNotificationPreferences,
@@ -65,6 +79,9 @@ export function DashboardSettingsContent({
   );
   const [isSavingNotificationPreferences, setIsSavingNotificationPreferences] =
     React.useState(false);
+  const [confirmationEmail, setConfirmationEmail] = React.useState("");
+  const [isDeletingAccount, setIsDeletingAccount] = React.useState(false);
+  const emailMatches = confirmationEmail.trim().toLowerCase() === userEmail.trim().toLowerCase();
 
   React.useEffect(() => {
     setHideBioOnListingPage(initialHideBioOnListingPage);
@@ -225,6 +242,36 @@ export function DashboardSettingsContent({
     setThemePreference(value);
     setTheme(value);
     toast.success(t.settingsThemeSaved);
+  }
+
+  async function handleDeleteAccount() {
+    if (!deleteAccountAvailable || isDeletingAccount || !emailMatches) {
+      return;
+    }
+
+    setIsDeletingAccount(true);
+
+    try {
+      const response = await fetch("/api/account/delete", {
+        method: "POST",
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload?.error || t.settingsDeleteAccountError);
+      }
+
+      await supabase.auth.signOut();
+      toast.success(t.settingsDeleteAccountSuccess);
+      router.push("/");
+      router.refresh();
+    } catch (error) {
+      console.error("Failed to delete account", error);
+      toast.error(error.message || t.settingsDeleteAccountError);
+    } finally {
+      setIsDeletingAccount(false);
+      setConfirmationEmail("");
+    }
   }
 
   return (
@@ -463,6 +510,126 @@ export function DashboardSettingsContent({
               >
                 {isSavingBioVisibility ? t.saving : t.settingsSaveChanges}
               </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="h-full rounded-3xl border-destructive/30 bg-card py-0 shadow-sm ring-border">
+          <CardHeader className="border-b border-destructive/20 px-6 py-6">
+            <div className="flex items-start gap-3">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
+                <AlertTriangle className="size-5" />
+              </div>
+              <div>
+                <CardTitle className="text-2xl text-foreground">{t.settingsDangerZoneTitle}</CardTitle>
+                <CardDescription>{t.settingsDangerZoneDescription}</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="space-y-6 px-6 py-8">
+            <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-5">
+              <div className="space-y-2">
+                <p className="text-base font-semibold text-foreground">
+                  {t.settingsDeleteAccountTitle}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {t.settingsDeleteAccountDescription}
+                </p>
+              </div>
+
+              <div className="mt-4 rounded-xl border border-destructive/15 bg-background px-4 py-4">
+                <p className="text-sm font-medium text-foreground">
+                  {t.settingsDeleteAccountConsequencesTitle}
+                </p>
+                <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+                  <li>{t.settingsDeleteAccountConsequenceListings}</li>
+                  <li>{t.settingsDeleteAccountConsequenceMessages}</li>
+                  <li>{t.settingsDeleteAccountConsequenceProfile}</li>
+                  <li>{t.settingsDeleteAccountConsequencePreferences}</li>
+                </ul>
+              </div>
+
+              {!deleteAccountAvailable ? (
+                <div className="mt-4 rounded-xl border border-dashed border-border bg-muted/40 px-4 py-4 text-sm text-muted-foreground">
+                  {t.settingsDeleteAccountUnavailable}
+                </div>
+              ) : null}
+
+              <div className="mt-5 flex justify-stretch sm:justify-end">
+                <AlertDialog
+                  onOpenChange={(open) => {
+                    if (!open) {
+                      setConfirmationEmail("");
+                    }
+                  }}
+                >
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      className="w-full rounded-xl px-5 sm:w-auto"
+                      disabled={!deleteAccountAvailable}
+                    >
+                      <Trash2 className="size-4" />
+                      <span>{t.settingsDeleteAccountButton}</span>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>{t.settingsDeleteAccountDialogTitle}</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {t.settingsDeleteAccountDialogDescription}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+
+                    <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-4">
+                      <p className="text-sm font-medium text-foreground">
+                        {t.settingsDeleteAccountConsequencesTitle}
+                      </p>
+                      <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+                        <li>{t.settingsDeleteAccountConsequenceListings}</li>
+                        <li>{t.settingsDeleteAccountConsequenceMessages}</li>
+                        <li>{t.settingsDeleteAccountConsequenceProfile}</li>
+                        <li>{t.settingsDeleteAccountConsequencePreferences}</li>
+                      </ul>
+                    </div>
+
+                    <div className="rounded-xl border border-border bg-background px-4 py-4">
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-foreground">
+                          {t.settingsDeleteAccountConfirmLabel}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {t.settingsDeleteAccountConfirmEmailHelp}
+                          <span className="font-mono font-semibold text-foreground">{userEmail}</span>
+                          {t.settingsDeleteAccountConfirmEmailSuffix}
+                        </p>
+                        <Input
+                          type="email"
+                          value={confirmationEmail}
+                          onChange={(event) => setConfirmationEmail(event.target.value)}
+                          placeholder={userEmail}
+                          className="h-10"
+                        />
+                      </div>
+                    </div>
+
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={isDeletingAccount}>{t.cancel}</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDeleteAccount}
+                        disabled={isDeletingAccount || !emailMatches}
+                        className="bg-destructive/10 text-destructive hover:bg-destructive/20"
+                      >
+                        {isDeletingAccount
+                          ? t.settingsDeletingAccount
+                          : t.settingsDeleteAccountAction}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </div>
           </CardContent>
         </Card>

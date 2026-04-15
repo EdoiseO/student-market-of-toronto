@@ -148,9 +148,9 @@ export default async function SearchPage({ searchParams }) {
               </CardContent>
             </Card>
 
-            <section className="rounded-[2rem] bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-muted/40 dark:ring-border">
+            <section className="rounded-3xl bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-muted/40 dark:ring-border md:p-8">
               {filteredListings.length > 0 ? (
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                   {filteredListings.map((item) => (
                     <CardImage
                       key={item.id}

@@ -14,7 +14,8 @@ export function AppLayoutShell({ children, user }) {
     pathname === "/login" ||
     pathname === "/register" ||
     pathname === "/forget-password" ||
-    pathname === "/reset-password";
+    pathname === "/reset-password" ||
+    pathname === "/banned";
   const showSidebar = !isAuthPage;
   const isMessagesConversationPage =
     pathname?.startsWith("/messages/") && pathname !== "/messages";

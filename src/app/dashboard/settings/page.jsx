@@ -12,6 +12,7 @@ import { createClient } from "@/utils/supabase/server";
 export default async function DashboardSettingsPage() {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
+  const deleteAccountAvailable = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
 
   const {
     data: { user },
@@ -53,6 +54,7 @@ export default async function DashboardSettingsPage() {
         <DashboardSettingsContent
           userEmail={user.email ?? ""}
           userId={user.id}
+          deleteAccountAvailable={deleteAccountAvailable}
           initialHideBioOnListingPage={Boolean(existingProfile?.is_public)}
           hasBio={Boolean(existingProfile?.bio?.trim())}
           initialNotificationPreferences={buildNotificationPreferencesMap(notificationPreferenceRows)}

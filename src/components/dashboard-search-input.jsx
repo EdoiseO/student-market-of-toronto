@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export function DashboardSearchInput({ value, onValueChange }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const widthClassName = language === "fr" ? "md:w-[156px] lg:w-[172px]" : "md:w-[180px] lg:w-[200px]";
 
   return (
-    <div className="relative w-full md:w-[220px] lg:w-[240px]">
+    <div className={`relative w-full ${widthClassName}`}>
       <Label htmlFor="dashboard-search" className="sr-only">
         {t.dashboardSearchLabel}
       </Label>

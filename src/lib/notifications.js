@@ -7,6 +7,9 @@ export const FAVOURITE_SOLD_NOTIFICATION_TYPE = "favourite_sold";
 export const FAVOURITE_UNAVAILABLE_NOTIFICATION_TYPE = "favourite_unavailable";
 export const FAVOURITE_PRICE_CHANGE_NOTIFICATION_TYPE = "favourite_price_change";
 export const LISTING_SOLD_NOTIFICATION_TYPE = "listing_sold";
+export const LISTING_APPROVED_NOTIFICATION_TYPE = "listing_approved";
+export const LISTING_REJECTED_NOTIFICATION_TYPE = "listing_rejected";
+export const MODERATOR_ROLE_GRANTED_NOTIFICATION_TYPE = "moderator_role_granted";
 
 export const MESSAGE_NOTIFICATION_ROW_TYPES = [
   LEGACY_MESSAGE_NOTIFICATION_TYPE,
@@ -19,7 +22,13 @@ export const FAVOURITE_NOTIFICATION_ROW_TYPES = [
   FAVOURITE_PRICE_CHANGE_NOTIFICATION_TYPE,
 ];
 
-export const SOLD_NOTIFICATION_ROW_TYPES = [LISTING_SOLD_NOTIFICATION_TYPE];
+export const LISTING_UPDATE_NOTIFICATION_ROW_TYPES = [
+  LISTING_SOLD_NOTIFICATION_TYPE,
+  LISTING_APPROVED_NOTIFICATION_TYPE,
+  LISTING_REJECTED_NOTIFICATION_TYPE,
+];
+
+export const ALWAYS_ON_NOTIFICATION_ROW_TYPES = [MODERATOR_ROLE_GRANTED_NOTIFICATION_TYPE];
 
 export const NOTIFICATION_PREFERENCE_TYPES = [
   SOLD_NOTIFICATION_TYPE,
@@ -28,7 +37,7 @@ export const NOTIFICATION_PREFERENCE_TYPES = [
 ];
 
 const NOTIFICATION_ROW_TYPES_BY_PREFERENCE = {
-  [SOLD_NOTIFICATION_TYPE]: SOLD_NOTIFICATION_ROW_TYPES,
+  [SOLD_NOTIFICATION_TYPE]: LISTING_UPDATE_NOTIFICATION_ROW_TYPES,
   [FAVOURITE_NOTIFICATION_TYPE]: FAVOURITE_NOTIFICATION_ROW_TYPES,
   [MESSAGE_NOTIFICATION_TYPE]: MESSAGE_NOTIFICATION_ROW_TYPES,
 };
@@ -101,11 +110,14 @@ export function isMessageNotificationType(type) {
 export function getEnabledNotificationRowTypes(notificationPreferences = {}) {
   return Array.from(
     new Set(
-      NOTIFICATION_PREFERENCE_TYPES.flatMap((preferenceType) =>
-        notificationPreferences[preferenceType]?.inApp
-          ? (NOTIFICATION_ROW_TYPES_BY_PREFERENCE[preferenceType] ?? [])
-          : [],
-      ),
+      [
+        ...NOTIFICATION_PREFERENCE_TYPES.flatMap((preferenceType) =>
+          notificationPreferences[preferenceType]?.inApp
+            ? (NOTIFICATION_ROW_TYPES_BY_PREFERENCE[preferenceType] ?? [])
+            : [],
+        ),
+        ...ALWAYS_ON_NOTIFICATION_ROW_TYPES,
+      ],
     ),
   );
 }
@@ -176,7 +188,11 @@ function formatNotificationPrice(value, language) {
   }).format(numericValue);
 }
 
-function getListingNotificationHref(metadata) {
+function isFavouriteListingNotificationType(type) {
+  return FAVOURITE_NOTIFICATION_ROW_TYPES.includes(type);
+}
+
+function getListingNotificationHref(notification, metadata) {
   if (typeof metadata.href === "string" && metadata.href.trim().length > 0) {
     return metadata.href;
   }
@@ -185,7 +201,9 @@ function getListingNotificationHref(metadata) {
     return `/listings/${metadata.listing_slug}`;
   }
 
-  return "/dashboard?tab=favourite";
+  return isFavouriteListingNotificationType(notification?.type)
+    ? "/dashboard?tab=favourite"
+    : "/dashboard";
 }
 
 function getListingNotificationDescription(notification, t, language) {
@@ -201,6 +219,21 @@ function getListingNotificationDescription(notification, t, language) {
 
   if (notification.type === LISTING_SOLD_NOTIFICATION_TYPE) {
     return t.notificationListingSoldDescription;
+  }
+
+  if (notification.type === LISTING_APPROVED_NOTIFICATION_TYPE) {
+    return t.notificationListingApprovedDescription;
+  }
+
+  if (notification.type === LISTING_REJECTED_NOTIFICATION_TYPE) {
+    if (typeof metadata.feedback === "string" && metadata.feedback.trim().length > 0) {
+      return t.notificationListingRejectedWithFeedback.replace(
+        "{feedback}",
+        metadata.feedback.trim(),
+      );
+    }
+
+    return t.notificationListingRejectedDescription;
   }
 
   if (notification.type === FAVOURITE_PRICE_CHANGE_NOTIFICATION_TYPE) {
@@ -219,8 +252,28 @@ function getListingNotificationDescription(notification, t, language) {
   return t.notifications;
 }
 
+function isSystemNotificationType(type) {
+  return ALWAYS_ON_NOTIFICATION_ROW_TYPES.includes(type);
+}
+
+function getSystemNotificationHref(metadata) {
+  if (typeof metadata.href === "string" && metadata.href.trim().length > 0) {
+    return metadata.href;
+  }
+
+  return "/admin/users";
+}
+
+function getSystemNotificationDescription(notification, t) {
+  if (notification.type === MODERATOR_ROLE_GRANTED_NOTIFICATION_TYPE) {
+    return t.notificationModeratorRoleGrantedDescription;
+  }
+
+  return t.notifications;
+}
+
 function isListingNotificationType(type) {
-  return [...FAVOURITE_NOTIFICATION_ROW_TYPES, ...SOLD_NOTIFICATION_ROW_TYPES].includes(type);
+  return [...FAVOURITE_NOTIFICATION_ROW_TYPES, ...LISTING_UPDATE_NOTIFICATION_ROW_TYPES].includes(type);
 }
 
 function getMessageNotificationBase(notification, currentUserId, t) {
@@ -237,7 +290,9 @@ function getMessageNotificationBase(notification, currentUserId, t) {
     ? conversation?.seller_profile[0]
     : conversation?.seller_profile;
   const message = Array.isArray(notification.message) ? notification.message[0] : notification.message;
+  const metadata = getNotificationMetadata(notification);
   const otherParticipant = conversation?.buyer_id === currentUserId ? sellerProfile : buyerProfile;
+  const isAnnouncement = !listing?.slug && !listing?.title;
 
   return {
     id: notification.id,
@@ -246,13 +301,37 @@ function getMessageNotificationBase(notification, currentUserId, t) {
     createdAt: notification.created_at,
     conversationId: notification.conversation_id,
     href: conversation?.id ? `/messages/${conversation.id}` : "/messages",
-    title: listing?.title ?? t.messages,
-    senderName: getNotificationDisplayName(otherParticipant, t),
+    title:
+      listing?.title ??
+      (typeof metadata.title === "string" && metadata.title.trim().length > 0
+        ? metadata.title
+        : isAnnouncement
+          ? t.announcements
+          : t.messages),
+    senderName: isAnnouncement ? t.announcementSenderName : getNotificationDisplayName(otherParticipant, t),
     messagePreview: getNotificationMessagePreview(message?.body),
   };
 }
 
 function getNotificationBase(notification, currentUserId, t, language = "en") {
+  if (isSystemNotificationType(notification?.type)) {
+    const metadata = getNotificationMetadata(notification);
+
+    return {
+      id: notification.id,
+      type: notification.type,
+      readAt: notification.read_at,
+      createdAt: notification.created_at,
+      conversationId: null,
+      href: getSystemNotificationHref(metadata),
+      title:
+        typeof metadata.title === "string" && metadata.title.trim().length > 0
+          ? metadata.title
+          : t.notificationModeratorRoleGrantedTitle,
+      description: getSystemNotificationDescription(notification, t),
+    };
+  }
+
   if (isListingNotificationType(notification?.type)) {
     const metadata = getNotificationMetadata(notification);
 
@@ -262,7 +341,7 @@ function getNotificationBase(notification, currentUserId, t, language = "en") {
       readAt: notification.read_at,
       createdAt: notification.created_at,
       conversationId: null,
-      href: getListingNotificationHref(metadata),
+      href: getListingNotificationHref(notification, metadata),
       title:
         typeof metadata.listing_title === "string" && metadata.listing_title.trim().length > 0
           ? metadata.listing_title

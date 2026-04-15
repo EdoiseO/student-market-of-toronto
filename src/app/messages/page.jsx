@@ -12,7 +12,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  isAnnouncementConversationRow,
+  isConversationHiddenForUser,
+  isConversationInboxVisibleForUser,
+  isConversationMessageVisibleForUser,
   MESSAGE_CONVERSATION_SELECT,
+  isConversationUserStateDeletedAtColumnMissing,
   isConversationUserStateTableMissing,
   normalizeConversationRow,
 } from "@/lib/messages";
@@ -45,35 +50,76 @@ export default async function MessagesPage() {
 
   const hasMessagingSetupError = Boolean(conversationsError);
 
-  const { data: hiddenConversationRows, error: hiddenConversationsError } = await supabase
-    .from("conversation_user_state")
-    .select("conversation_id")
-    .eq("user_id", user.id)
-    .not("hidden_at", "is", null);
+  let conversationStateRows = [];
 
-  if (
-    hiddenConversationsError &&
-    !isConversationUserStateTableMissing(hiddenConversationsError)
-  ) {
-    console.error("Failed to load hidden conversations:", hiddenConversationsError.message);
+  const { data: conversationStateRowsWithDelete, error: conversationStateError } = await supabase
+    .from("conversation_user_state")
+    .select("conversation_id, hidden_at, deleted_at")
+    .eq("user_id", user.id);
+
+  if (conversationStateError && isConversationUserStateDeletedAtColumnMissing(conversationStateError)) {
+    const { data: fallbackConversationStateRows, error: fallbackConversationStateError } = await supabase
+      .from("conversation_user_state")
+      .select("conversation_id, hidden_at")
+      .eq("user_id", user.id);
+
+    if (
+      fallbackConversationStateError &&
+      !isConversationUserStateTableMissing(fallbackConversationStateError)
+    ) {
+      console.error(
+        "Failed to load conversation state:",
+        fallbackConversationStateError.message,
+      );
+    } else {
+      conversationStateRows = (fallbackConversationStateRows ?? []).map((conversationState) => ({
+        ...conversationState,
+        deleted_at: null,
+      }));
+    }
+  } else {
+    conversationStateRows = conversationStateRowsWithDelete ?? [];
   }
 
-  const hiddenConversationIds = new Set(
-    (hiddenConversationRows ?? []).map((conversationState) => conversationState.conversation_id),
+  if (conversationStateError && !isConversationUserStateTableMissing(conversationStateError)) {
+    if (!isConversationUserStateDeletedAtColumnMissing(conversationStateError)) {
+      console.error("Failed to load conversation state:", conversationStateError.message);
+    }
+  }
+
+  const conversationStateById = new Map(
+    conversationStateRows.map((conversationState) => [conversationState.conversation_id, conversationState]),
   );
 
-  const visibleConversationRows = (conversationRows ?? []).filter(
-    (conversation) =>
-      Boolean(conversation.last_message_at || conversation.last_message_preview) &&
-      !hiddenConversationIds.has(conversation.id),
-  );
+  const allConversationRows = conversationRows ?? [];
 
-  const conversationIds = visibleConversationRows.map((conversation) => conversation.id);
+  const visibleConversationRows = allConversationRows.filter((conversation) => {
+    const conversationState = conversationStateById.get(conversation.id);
+
+    return isConversationInboxVisibleForUser(
+      conversation,
+      conversationState?.hidden_at,
+      conversationState?.deleted_at,
+    );
+  });
+
+  const sortedConversationRows = visibleConversationRows.slice().sort((firstConversation, secondConversation) => {
+    const firstIsAnnouncement = isAnnouncementConversationRow(firstConversation);
+    const secondIsAnnouncement = isAnnouncementConversationRow(secondConversation);
+
+    if (firstIsAnnouncement !== secondIsAnnouncement) {
+      return firstIsAnnouncement ? -1 : 1;
+    }
+
+    return new Date(secondConversation.updated_at).getTime() - new Date(firstConversation.updated_at).getTime();
+  });
+
+  const conversationIds = sortedConversationRows.map((conversation) => conversation.id);
 
   const { data: unreadRows, error: unreadError } = conversationIds.length
     ? await supabase
         .from("messages")
-        .select("conversation_id")
+        .select("conversation_id, created_at")
         .in("conversation_id", conversationIds)
         .is("read_at", null)
         .neq("sender_id", user.id)
@@ -84,11 +130,17 @@ export default async function MessagesPage() {
   }
 
   const unreadCountByConversationId = (unreadRows ?? []).reduce((counts, row) => {
+    const conversationState = conversationStateById.get(row.conversation_id);
+
+    if (!isConversationMessageVisibleForUser(row, conversationState?.deleted_at)) {
+      return counts;
+    }
+
     counts[row.conversation_id] = (counts[row.conversation_id] ?? 0) + 1;
     return counts;
   }, {});
 
-  const conversations = visibleConversationRows.map((conversation) =>
+  const conversations = sortedConversationRows.map((conversation) =>
     normalizeConversationRow(
       conversation,
       user.id,

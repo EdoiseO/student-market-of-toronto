@@ -1,12 +1,24 @@
 "use client";
 
 import * as React from "react";
-import { ImagePlus, Info, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, ImagePlus, Info, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Combobox,
   ComboboxContent,
@@ -36,6 +48,10 @@ import { useFileDropzone } from "@/hooks/use-file-dropzone";
 import { TORONTO_CAMPUS_OPTIONS } from "@/lib/campuses";
 import { CATEGORY_OPTIONS, getTranslatedCategoryValue } from "@/lib/categories";
 import { useLanguage } from "@/context/LanguageContext";
+import {
+  LISTING_APPROVAL_STATUS_VALUES,
+  isListingApprovalSetupMissing,
+} from "@/lib/listing-approval";
 import { getTranslatedConditionLabel } from "@/lib/search-listings";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
@@ -107,6 +123,7 @@ function ListingCombobox({
 }
 
 export function CreateListingForm() {
+  const router = useRouter();
   const supabase = React.useMemo(() => createClient(), []);
   const { t, language } = useLanguage();
   const [title, setTitle] = React.useState("");
@@ -119,6 +136,8 @@ export function CreateListingForm() {
   const [photos, setPhotos] = React.useState([]);
   const [error, setError] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isSubmitWarningOpen, setIsSubmitWarningOpen] = React.useState(false);
+  const [hasConfirmedRestrictions, setHasConfirmedRestrictions] = React.useState(false);
 
   const fileInputRef = React.useRef(null);
   const photoPreviews = useLocalPhotoPreviews(photos);
@@ -135,6 +154,14 @@ export function CreateListingForm() {
   }, []);
 
   const { isDragActive, dropzoneProps } = useFileDropzone(appendPhotos);
+
+  function handleSubmitWarningOpenChange(open) {
+    setIsSubmitWarningOpen(open);
+
+    if (!open) {
+      setHasConfirmedRestrictions(false);
+    }
+  }
 
   function resetForm() {
     setTitle("");
@@ -199,6 +226,10 @@ export function CreateListingForm() {
           condition,
           location: campus,
           status,
+          submitted_for_review_at:
+            status === LISTING_APPROVAL_STATUS_VALUES.pendingReview
+              ? new Date().toISOString()
+              : null,
           is_negotiable: isNegotiable,
         })
         .select("id, slug")
@@ -282,10 +313,19 @@ export function CreateListingForm() {
       toast.success(
         status === "draft"
           ? t.draftSaved
-          : t.listingPublished,
+          : t.listingSubmittedForReview,
       );
+
+      if (status === LISTING_APPROVAL_STATUS_VALUES.pendingReview) {
+        router.push("/dashboard?tab=inactive");
+        router.refresh();
+      }
     } catch (submitError) {
-      setError(submitError.message || t.errorGeneric);
+      setError(
+        isListingApprovalSetupMissing(submitError)
+          ? t.listingApprovalSetupRequired
+          : submitError.message || t.errorGeneric,
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -323,12 +363,28 @@ export function CreateListingForm() {
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8">
         <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
           <CardHeader className="border-b border-zinc-200 px-8 py-7 dark:border-border">
-            <CardTitle className="text-4xl font-bold tracking-tight text-zinc-950 dark:text-foreground">
-              {t.createListing}
-            </CardTitle>
-            <CardDescription className="max-w-2xl text-base text-zinc-600 dark:text-muted-foreground">
-              {t.createListingDesc}
-            </CardDescription>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-2">
+                <CardTitle className="text-4xl font-bold tracking-tight text-zinc-950 dark:text-foreground">
+                  {t.createListing}
+                </CardTitle>
+                <CardDescription className="max-w-2xl text-base text-zinc-600 dark:text-muted-foreground">
+                  {t.createListingDesc}
+                </CardDescription>
+              </div>
+
+              <div className="w-full max-w-md rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                  <div className="space-y-1.5">
+                    <p className="font-semibold">{t.createListingRestrictionsTitle}</p>
+                    <p className="leading-5 text-amber-800 dark:text-amber-200">
+                      {t.createListingRestrictionsDescription}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </CardHeader>
 
           <CardContent className="p-8">
@@ -511,13 +567,60 @@ export function CreateListingForm() {
               >
                 {t.saveDraft}
               </Button>
-              <Button
-                type="button"
-                disabled={isSubmitting}
-                onClick={() => handleSubmit("active")}
+              <AlertDialog
+                open={isSubmitWarningOpen}
+                onOpenChange={handleSubmitWarningOpenChange}
               >
-                {isSubmitting ? t.saving : t.publish}
-              </Button>
+                <AlertDialogTrigger asChild>
+                  <Button type="button" disabled={isSubmitting}>
+                    {isSubmitting ? t.saving : t.submitForReview}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{t.createListingWarningDialogTitle}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t.createListingWarningDialogDescription}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                      <div className="space-y-1.5">
+                        <p className="font-semibold">{t.createListingRestrictionsTitle}</p>
+                        <p className="leading-5 text-amber-800 dark:text-amber-200">
+                          {t.createListingRestrictionsDescription}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <label
+                    htmlFor="create-listing-restrictions-confirm"
+                    className="flex items-start gap-3 rounded-2xl border border-zinc-200 bg-background p-4 text-sm dark:border-border"
+                  >
+                    <Checkbox
+                      id="create-listing-restrictions-confirm"
+                      checked={hasConfirmedRestrictions}
+                      onCheckedChange={(checked) => setHasConfirmedRestrictions(Boolean(checked))}
+                    />
+                    <span className="leading-5 text-foreground">
+                      {t.createListingRestrictionsConfirmLabel}
+                    </span>
+                  </label>
+
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isSubmitting}>{t.cancel}</AlertDialogCancel>
+                    <AlertDialogAction
+                      disabled={!hasConfirmedRestrictions || isSubmitting}
+                      onClick={() => handleSubmit(LISTING_APPROVAL_STATUS_VALUES.pendingReview)}
+                    >
+                      {isSubmitting ? t.saving : t.createListingRestrictionsConfirmAction}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </CardContent>
         </Card>

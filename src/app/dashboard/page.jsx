@@ -4,15 +4,53 @@ import { redirect } from "next/navigation";
 
 import { DashboardTableClient } from "@/components/dashboard-table-client";
 import { normalizeCategoryValue } from "@/lib/categories";
+import {
+  LISTING_APPROVAL_STATUS_VALUES,
+  isListingApprovalSetupMissing,
+} from "@/lib/listing-approval";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+const DASHBOARD_LISTING_SELECT = `
+  id,
+  slug,
+  title,
+  price,
+  category,
+  status,
+  moderation_feedback,
+  moderation_reviewed_at,
+  submitted_for_review_at,
+  location,
+  created_at,
+  listing_images (
+    image_url,
+    position
+  )
+`;
+
+const DASHBOARD_LISTING_FALLBACK_SELECT = `
+  id,
+  slug,
+  title,
+  price,
+  category,
+  status,
+  location,
+  created_at,
+  listing_images (
+    image_url,
+    position
+  )
+`;
 
 const dashboardTabs = [
   { key: "all", label: "All" },
   { key: "active", label: "Active" },
   { key: "inactive", label: "Inactive" },
   { key: "sold", label: "Sold" },
+  { key: LISTING_APPROVAL_STATUS_VALUES.rejected, label: "Rejected" },
   { key: "draft", label: "Draft" },
   { key: "favourite", label: "Favourite" },
 ];
@@ -30,7 +68,11 @@ function normalizeDashboardListing(
     imageUrl: getPrimaryImageUrl(listing.listing_images),
     price: `$${Number(listing.price).toFixed(2)}`,
     category: normalizeCategoryValue(listing.category),
+    status: listing.status,
     dashboardStatus,
+    moderationFeedback: listing.moderation_feedback ?? null,
+    moderationReviewedAt: listing.moderation_reviewed_at ?? null,
+    submittedForReviewAt: listing.submitted_for_review_at ?? null,
     messageCount,
   };
 }
@@ -40,6 +82,24 @@ function getPrimaryImageUrl(listingImages) {
     .slice()
     .sort((firstImage, secondImage) => firstImage.position - secondImage.position)[0]
     ?.image_url;
+}
+
+async function loadDashboardListings(supabase, userId) {
+  const primaryResult = await supabase
+    .from("listings")
+    .select(DASHBOARD_LISTING_SELECT)
+    .eq("seller_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (!primaryResult.error || !isListingApprovalSetupMissing(primaryResult.error)) {
+    return primaryResult;
+  }
+
+  return supabase
+    .from("listings")
+    .select(DASHBOARD_LISTING_FALLBACK_SELECT)
+    .eq("seller_id", userId)
+    .order("created_at", { ascending: false });
 }
 
 export default async function DashboardPage({ searchParams }) {
@@ -70,27 +130,7 @@ export default async function DashboardPage({ searchParams }) {
     { count: favouriteCount = 0, error: favouriteCountError },
     { data: conversations, error: conversationsError },
   ] = await Promise.all([
-    (() => {
-      let listingsQuery = supabase
-      .from("listings")
-      .select(`
-        id,
-        slug,
-        title,
-        price,
-        category,
-        status,
-        location,
-        created_at,
-        listing_images (
-          image_url,
-          position
-        )
-      `)
-      .eq("seller_id", user.id);
-
-      return listingsQuery.order("created_at", { ascending: false });
-    })(),
+    loadDashboardListings(supabase, user.id),
     shouldLoadFavourites
       ? supabase
           .from("listing_favourites")

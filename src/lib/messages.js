@@ -13,6 +13,7 @@ export const MESSAGE_CONVERSATION_SELECT = `
     title,
     price,
     location,
+    status,
     listing_images (
       image_url,
       position
@@ -44,8 +45,131 @@ export function isConversationUserStateTableMissing(error) {
   );
 }
 
+export function isConversationUserStateDeletedAtColumnMissing(error) {
+  const message = [error?.message, error?.details, error?.hint]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return error?.code === "42703" || error?.code === "PGRST204" || message.includes("deleted_at");
+}
+
+function getTimestamp(value) {
+  if (!value) {
+    return null;
+  }
+
+  const timestamp = Date.parse(value);
+  return Number.isNaN(timestamp) ? null : timestamp;
+}
+
+export function isConversationVisibleForUser(conversation, deletedAt) {
+  if (!conversation?.last_message_at && !conversation?.last_message_preview) {
+    return false;
+  }
+
+  const deletedTimestamp = getTimestamp(deletedAt);
+
+  if (!deletedTimestamp) {
+    return true;
+  }
+
+  const lastMessageTimestamp = getTimestamp(conversation?.last_message_at);
+  return lastMessageTimestamp !== null && lastMessageTimestamp > deletedTimestamp;
+}
+
+export function isConversationHiddenForUser(conversation, hiddenAt, deletedAt) {
+  if (!hiddenAt || !isConversationVisibleForUser(conversation, deletedAt)) {
+    return false;
+  }
+
+  const hiddenTimestamp = getTimestamp(hiddenAt);
+  const lastMessageTimestamp = getTimestamp(conversation?.last_message_at);
+
+  if (!hiddenTimestamp || lastMessageTimestamp === null) {
+    return false;
+  }
+
+  return lastMessageTimestamp <= hiddenTimestamp;
+}
+
+export function isConversationInboxVisibleForUser(conversation, hiddenAt, deletedAt) {
+  return (
+    isConversationVisibleForUser(conversation, deletedAt) &&
+    !isConversationHiddenForUser(conversation, hiddenAt, deletedAt)
+  );
+}
+
+export function isConversationMessageVisibleForUser(message, deletedAt) {
+  const deletedTimestamp = getTimestamp(deletedAt);
+
+  if (!deletedTimestamp) {
+    return true;
+  }
+
+  const messageTimestamp = getTimestamp(message?.created_at);
+  return messageTimestamp !== null && messageTimestamp > deletedTimestamp;
+}
+
+export function filterConversationMessagesForUser(messages, deletedAt) {
+  return (messages ?? []).filter((message) =>
+    isConversationMessageVisibleForUser(message, deletedAt),
+  );
+}
+
 export function getConversationDisplayName(profile, t) {
   return [profile?.first_name, profile?.last_name].filter(Boolean).join(" ").trim() || t.student;
+}
+
+export function isAnnouncementConversationRow(conversation) {
+  const listing = Array.isArray(conversation?.listings)
+    ? conversation?.listings[0]
+    : conversation?.listings;
+
+  return !listing?.id && !listing?.slug;
+}
+
+export function isListingMessagingAvailable(status) {
+  return status === "active";
+}
+
+export function getListingMessagingUnavailableText(status, t) {
+  if (status === "sold") {
+    return t.listingSoldMessagingUnavailable;
+  }
+
+  if (status === "inactive") {
+    return t.listingInactiveMessagingUnavailable;
+  }
+
+  return t.listingMessagingUnavailable;
+}
+
+export function getListingMessagingUnavailableStatusFromError(error) {
+  const detail = [error?.details, error?.hint].find(
+    (value) => typeof value === "string" && value.includes("listing_status="),
+  );
+
+  if (!detail) {
+    return null;
+  }
+
+  const matchedStatus = detail.match(/listing_status=([a-z_]+)/i)?.[1]?.toLowerCase() ?? null;
+
+  if (matchedStatus === "sold" || matchedStatus === "inactive") {
+    return matchedStatus;
+  }
+
+  return null;
+}
+
+export function isListingMessagingUnavailableError(error) {
+  const message = [error?.message, error?.details, error?.hint]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return message.includes("listing_messaging_unavailable");
 }
 
 function getPrimaryListingImageUrl(listingImages) {
@@ -67,6 +191,29 @@ export function normalizeConversationRow(conversation, currentUserId, t, unreadC
     : conversation.seller_profile;
   const otherParticipant = conversation.buyer_id === currentUserId ? sellerProfile : buyerProfile;
   const currentParticipant = conversation.buyer_id === currentUserId ? buyerProfile : sellerProfile;
+  const isAnnouncement = isAnnouncementConversationRow(conversation);
+  const otherParticipantIsAnnouncementSender = isAnnouncement && conversation.buyer_id === currentUserId;
+  const currentParticipantIsAnnouncementSender = isAnnouncement && conversation.seller_id === currentUserId;
+
+  function normalizeParticipant(participant, useAnnouncementSenderIdentity = false) {
+    if (useAnnouncementSenderIdentity) {
+      return {
+        id: null,
+        name: t.announcementSenderName,
+        school: null,
+        avatarPresetId: null,
+        avatarUrl: null,
+      };
+    }
+
+    return {
+      id: participant?.id,
+      name: getConversationDisplayName(participant, t),
+      school: participant?.school ?? t.torontoStudent,
+      avatarPresetId: participant?.avatar_preset_id ?? null,
+      avatarUrl: participant?.avatar_url ?? null,
+    };
+  }
 
   return {
     id: conversation.id,
@@ -75,27 +222,23 @@ export function normalizeConversationRow(conversation, currentUserId, t, unreadC
     lastMessagePreview: conversation.last_message_preview,
     unreadCount,
     hasUnreadMessages: unreadCount > 0,
+    isAnnouncement,
     listing: {
       id: listing?.id,
       slug: listing?.slug,
-      title: listing?.title ?? t.listing,
+      title: listing?.title ?? (isAnnouncement ? t.announcements : t.deletedListingTitle ?? t.listing),
       price: listing?.price ?? 0,
-      location: listing?.location ?? t.torontoMeetup,
+      location: listing?.location ?? (isAnnouncement ? t.announcementConversationDescription : t.torontoMeetup),
+      status: listing?.status ?? null,
       imageUrl: getPrimaryListingImageUrl(listing?.listing_images),
     },
-    otherParticipant: {
-      id: otherParticipant?.id,
-      name: getConversationDisplayName(otherParticipant, t),
-      school: otherParticipant?.school ?? t.torontoStudent,
-      avatarPresetId: otherParticipant?.avatar_preset_id ?? null,
-      avatarUrl: otherParticipant?.avatar_url ?? null,
-    },
-    currentParticipant: {
-      id: currentParticipant?.id,
-      name: getConversationDisplayName(currentParticipant, t),
-      school: currentParticipant?.school ?? t.torontoStudent,
-      avatarPresetId: currentParticipant?.avatar_preset_id ?? null,
-      avatarUrl: currentParticipant?.avatar_url ?? null,
-    },
+    otherParticipant: normalizeParticipant(
+      otherParticipant,
+      otherParticipantIsAnnouncementSender,
+    ),
+    currentParticipant: normalizeParticipant(
+      currentParticipant,
+      currentParticipantIsAnnouncementSender,
+    ),
   };
 }

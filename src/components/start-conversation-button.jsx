@@ -16,12 +16,23 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { isConversationUserStateTableMissing } from "@/lib/messages";
+import {
+  isConversationHiddenForUser,
+  getListingMessagingUnavailableText,
+  getListingMessagingUnavailableStatusFromError,
+  isConversationInboxVisibleForUser,
+  isConversationUserStateDeletedAtColumnMissing,
+  isConversationUserStateTableMissing,
+  isListingMessagingAvailable,
+  isListingMessagingUnavailableError,
+} from "@/lib/messages";
+import { getMessagingBlockReason, getUserBlockState } from "@/lib/blocks";
 import { createClient } from "@/utils/supabase/client";
 
 export function StartConversationButton({
   listingId,
   listingTitle,
+  listingStatus,
   sellerId,
   currentUserId,
   className,
@@ -33,6 +44,113 @@ export function StartConversationButton({
   const [isComposerOpen, setIsComposerOpen] = React.useState(false);
   const [draft, setDraft] = React.useState("");
   const [isSendingFirstMessage, setIsSendingFirstMessage] = React.useState(false);
+  const isMessagingAvailable = isListingMessagingAvailable(listingStatus);
+  const [blockState, setBlockState] = React.useState({
+    blockedByCurrentUser: false,
+    blockedCurrentUser: false,
+    available: true,
+  });
+  const messagingBlockReason = getMessagingBlockReason(blockState, t);
+
+  React.useEffect(() => {
+    let isMounted = true;
+
+    async function loadBlockState() {
+      if (!currentUserId || !sellerId || currentUserId === sellerId) {
+        return;
+      }
+
+      const nextBlockState = await getUserBlockState(supabase, currentUserId, sellerId);
+
+      if (nextBlockState.error) {
+        console.error("Failed to load listing message block state:", nextBlockState.error.message);
+        return;
+      }
+
+      if (isMounted) {
+        setBlockState(nextBlockState);
+      }
+    }
+
+    loadBlockState();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUserId, sellerId, supabase]);
+
+  async function getLatestListingStatus() {
+    const { data, error } = await supabase
+      .from("listings")
+      .select("status")
+      .eq("id", listingId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Failed to load latest listing status for messaging:", error.message);
+      return { status: listingStatus ?? null, hasError: true };
+    }
+
+    return { status: data?.status ?? null, hasError: false };
+  }
+
+  async function ensureListingMessagingAvailable() {
+    const latestBlockState = await getUserBlockState(supabase, currentUserId, sellerId);
+
+    if (latestBlockState.error) {
+      console.error("Failed to refresh listing message block state:", latestBlockState.error.message);
+    } else {
+      setBlockState(latestBlockState);
+
+      const latestBlockReason = getMessagingBlockReason(latestBlockState, t);
+
+      if (latestBlockReason) {
+        toast.error(latestBlockReason);
+        return false;
+      }
+    }
+
+    if (!isMessagingAvailable) {
+      toast.error(getListingMessagingUnavailableText(listingStatus, t));
+      return false;
+    }
+
+    const { status, hasError } = await getLatestListingStatus();
+
+    if (!isListingMessagingAvailable(status) || (!hasError && !status)) {
+      toast.error(getListingMessagingUnavailableText(status, t));
+      return false;
+    }
+
+    return true;
+  }
+
+  if (currentUserId === sellerId) {
+    return (
+      <Button type="button" disabled className={className}>
+        <MessageCircle className="size-4" />
+        <span>{t.thisIsYourListing}</span>
+      </Button>
+    );
+  }
+
+  if (!isMessagingAvailable) {
+    return (
+      <Button type="button" disabled className={className}>
+        <MessageCircle className="size-4" />
+        <span>{t.messagingUnavailable}</span>
+      </Button>
+    );
+  }
+
+  if (messagingBlockReason) {
+    return (
+      <Button type="button" disabled className={className}>
+        <MessageCircle className="size-4" />
+        <span>{blockState.blockedByCurrentUser ? t.userBlocked : t.messagingUnavailable}</span>
+      </Button>
+    );
+  }
 
   if (!currentUserId) {
     return (
@@ -45,17 +163,19 @@ export function StartConversationButton({
     );
   }
 
-  if (currentUserId === sellerId) {
-    return (
-      <Button type="button" disabled className={className}>
-        <MessageCircle className="size-4" />
-        <span>{t.thisIsYourListing}</span>
-      </Button>
-    );
-  }
-
   async function handleStartConversation() {
+    if (isStarting) {
+      return;
+    }
+
     setIsStarting(true);
+
+    const canMessageListing = await ensureListingMessagingAvailable();
+
+    if (!canMessageListing) {
+      setIsStarting(false);
+      return;
+    }
 
     const { data, error } = await supabase
       .from("conversations")
@@ -74,21 +194,87 @@ export function StartConversationButton({
     }
 
     if (data?.id && (data.last_message_at || data.last_message_preview)) {
-      const { error: unhideError } = await supabase.from("conversation_user_state").upsert(
-        {
-          conversation_id: data.id,
-          user_id: currentUserId,
-          hidden_at: null,
-        },
-        { onConflict: "conversation_id,user_id" },
-      );
+      let conversationStateRow = null;
 
-      if (unhideError && !isConversationUserStateTableMissing(unhideError)) {
-        console.error("Failed to restore hidden conversation:", unhideError.message);
+      const { data: conversationStateWithDelete, error: conversationStateError } = await supabase
+        .from("conversation_user_state")
+        .select("hidden_at, deleted_at")
+        .eq("conversation_id", data.id)
+        .eq("user_id", currentUserId)
+        .maybeSingle();
+
+      if (
+        conversationStateError &&
+        isConversationUserStateDeletedAtColumnMissing(conversationStateError)
+      ) {
+        const { data: fallbackConversationState, error: fallbackConversationStateError } =
+          await supabase
+            .from("conversation_user_state")
+            .select("hidden_at")
+            .eq("conversation_id", data.id)
+            .eq("user_id", currentUserId)
+            .maybeSingle();
+
+        if (
+          fallbackConversationStateError &&
+          !isConversationUserStateTableMissing(fallbackConversationStateError)
+        ) {
+          console.error(
+            "Failed to load existing conversation state:",
+            fallbackConversationStateError.message,
+          );
+        } else {
+          conversationStateRow = fallbackConversationState
+            ? { ...fallbackConversationState, deleted_at: null }
+            : null;
+        }
+      } else {
+        conversationStateRow = conversationStateWithDelete;
       }
 
-      router.push(`/messages/${data.id}`);
-      return;
+      if (conversationStateError && !isConversationUserStateTableMissing(conversationStateError)) {
+        if (!isConversationUserStateDeletedAtColumnMissing(conversationStateError)) {
+          console.error(
+            "Failed to load existing conversation state:",
+            conversationStateError.message,
+          );
+        }
+      }
+
+      const isHiddenConversation = isConversationHiddenForUser(
+        data,
+        conversationStateRow?.hidden_at,
+        conversationStateRow?.deleted_at,
+      );
+
+      const isConversationVisible = isConversationInboxVisibleForUser(
+        data,
+        conversationStateRow?.hidden_at,
+        conversationStateRow?.deleted_at,
+      );
+
+      if (isHiddenConversation) {
+        const { error: unhideError } = await supabase.from("conversation_user_state").upsert(
+          {
+            conversation_id: data.id,
+            user_id: currentUserId,
+            hidden_at: null,
+          },
+          { onConflict: "conversation_id,user_id" },
+        );
+
+        if (unhideError && !isConversationUserStateTableMissing(unhideError)) {
+          console.error("Failed to restore hidden conversation:", unhideError.message);
+        }
+
+        router.push(`/messages/${data.id}`);
+        return;
+      }
+
+      if (isConversationVisible) {
+        router.push(`/messages/${data.id}`);
+        return;
+      }
     }
 
     setIsComposerOpen(true);
@@ -103,6 +289,13 @@ export function StartConversationButton({
 
     setIsSendingFirstMessage(true);
 
+    const canMessageListing = await ensureListingMessagingAvailable();
+
+    if (!canMessageListing) {
+      setIsSendingFirstMessage(false);
+      return;
+    }
+
     const body = draft.trim();
     const { data: conversationData, error: conversationError } = await supabase.rpc(
       "create_or_get_listing_conversation",
@@ -115,7 +308,14 @@ export function StartConversationButton({
 
     if (conversationError || !conversation?.id) {
       setIsSendingFirstMessage(false);
-      toast.error(t.conversationStartError);
+      toast.error(
+        isListingMessagingUnavailableError(conversationError)
+          ? getListingMessagingUnavailableText(
+              getListingMessagingUnavailableStatusFromError(conversationError),
+              t,
+            )
+          : t.conversationStartError,
+      );
       console.error(
         "Failed to create or load conversation for first message:",
         conversationError?.message,
@@ -140,7 +340,14 @@ export function StartConversationButton({
       }
 
       setIsSendingFirstMessage(false);
-      toast.error(t.messageSendError);
+      toast.error(
+        isListingMessagingUnavailableError(sendError)
+          ? getListingMessagingUnavailableText(
+              getListingMessagingUnavailableStatusFromError(sendError),
+              t,
+            )
+          : t.messageSendError,
+      );
       console.error("Failed to send first message:", sendError.message);
       return;
     }

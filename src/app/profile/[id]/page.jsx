@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { ProfileAvatar } from "@/components/profile-avatar";
 import { ProfileListingsSection } from "@/components/profile-listings-section";
+import { ProfileReportButton } from "@/components/profile-report-button";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -121,27 +122,33 @@ export default async function PublicProfilePage({ params }) {
                   <p className="text-base text-zinc-600 dark:text-muted-foreground">{profile.school || t.torontoStudent}</p>
                 </div>
 
-                <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:max-w-[304px]">
-                  <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-border dark:bg-muted/40">
-                    <ListIcon className="size-4 text-zinc-500 dark:text-muted-foreground" />
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-muted-foreground">
-                        {t.activeListingsTitle}
-                      </p>
-                      <p className="mt-1 text-zinc-900 dark:text-foreground">{sellerListings.length}</p>
-                    </div>
-                  </div>
+                <div className="flex min-w-0 flex-col gap-3 lg:max-w-[304px] lg:items-end">
+                  <div className="flex w-full items-center gap-3">
+                    <div className="grid flex-1 gap-3 sm:grid-cols-2">
+                      <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-border dark:bg-muted/40">
+                        <ListIcon className="size-4 text-zinc-500 dark:text-muted-foreground" />
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-muted-foreground">
+                            {t.activeListingsTitle}
+                          </p>
+                          <p className="mt-1 text-zinc-900 dark:text-foreground">{sellerListings.length}</p>
+                        </div>
+                      </div>
 
-                  <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-border dark:bg-muted/40">
-                    <Clock3 className="size-4 text-zinc-500 dark:text-muted-foreground" />
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-muted-foreground">
-                        {t.memberSince}
-                      </p>
-                      <p className="mt-1 text-zinc-900 dark:text-foreground">
-                        {profile.created_at ? formatDate(profile.created_at, language) : "—"}
-                      </p>
+                      <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-border dark:bg-muted/40">
+                        <Clock3 className="size-4 text-zinc-500 dark:text-muted-foreground" />
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-muted-foreground">
+                            {t.memberSince}
+                          </p>
+                          <p className="mt-1 text-zinc-900 dark:text-foreground">
+                            {profile.created_at ? formatDate(profile.created_at, language) : "—"}
+                          </p>
+                        </div>
+                      </div>
                     </div>
+
+                    <ProfileReportButton profileId={profile.id} currentUserId={user.id} />
                   </div>
                 </div>
               </div>

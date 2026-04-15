@@ -23,6 +23,9 @@ export const translations = {
     settingsPreviewBadge: "Preview",
     settingsDescription:
       "Manage the settings that are live today, including saved marketplace notification preferences and other supported account controls.",
+    settingsDangerZoneTitle: "Danger zone",
+    settingsDangerZoneDescription:
+      "Permanent account actions live here. Review the consequences carefully before continuing.",
     settingsAppearanceTitle: "Appearance",
     settingsAppearanceDescription:
       "Choose how Student Market looks across supported pages and shared app surfaces.",
@@ -41,7 +44,7 @@ export const translations = {
     settingsThemeSaved: "Theme updated for this device.",
     settingsNotificationsTitle: "Notifications",
     settingsNotificationsDescription:
-      "Manage saved marketplace notification preferences across messages, favourites, and sold listing updates.",
+      "Manage saved marketplace notification preferences across messages, favourites, and your listing updates.",
     notifications: "Notifications",
     notificationsButtonLabel: "Open notifications",
     loadingNotifications: "Loading notifications...",
@@ -66,6 +69,15 @@ export const translations = {
       "Price changed from {oldPrice} to {newPrice}.",
     notificationListingSoldDescription:
       "One of your listings was marked sold.",
+    notificationListingApprovedDescription:
+      "Your listing was approved and is now live.",
+    notificationListingRejectedDescription:
+      "Your listing needs changes before it can go live.",
+    notificationListingRejectedWithFeedback:
+      "Your listing needs changes before it can go live. Feedback: {feedback}",
+    notificationModeratorRoleGrantedTitle: "Moderator role granted",
+    notificationModeratorRoleGrantedDescription:
+      "You were granted moderator access. Open the admin area to review reports and user-management tools.",
     settingsProfileTitle: "Profile",
     settingsProfileDescription:
       "Control the softer profile details that appear on listing pages while keeping seller identity visible.",
@@ -76,15 +88,41 @@ export const translations = {
       "Your name, school, and profile photo stay visible so buyers can still see who they are dealing with.",
     settingsNoBioYet:
       "You do not have a bio yet, but this preference will apply once you add one on your profile page.",
+    settingsDeleteAccountTitle: "Delete account",
+    settingsDeleteAccountDescription:
+      "Permanently remove your account and the data tied to it from Student Market of Toronto.",
+    settingsDeleteAccountConsequencesTitle: "This action cannot be undone.",
+    settingsDeleteAccountConsequenceListings:
+      "Your listings and any listing images you uploaded will be deleted.",
+    settingsDeleteAccountConsequenceMessages:
+      "You will lose access to your conversations, while the other participant keeps shared message history.",
+    settingsDeleteAccountConsequenceProfile:
+      "Your profile information, profile photo, favourites, and saved account data will be removed.",
+    settingsDeleteAccountConsequencePreferences:
+      "Your notification settings and related account activity records will be cleared.",
+    settingsDeleteAccountButton: "Delete account",
+    settingsDeleteAccountDialogTitle: "Delete your account permanently?",
+    settingsDeleteAccountDialogDescription:
+      "This permanently removes your account from Student Market of Toronto. Review the consequences below before confirming.",
+    settingsDeleteAccountConfirmLabel:
+      "Type your account email to confirm deletion.",
+    settingsDeleteAccountConfirmEmailHelp: "Type ",
+    settingsDeleteAccountConfirmEmailSuffix: " to confirm.",
+    settingsDeleteAccountAction: "Delete my account",
+    settingsDeletingAccount: "Deleting account...",
+    settingsDeleteAccountSuccess: "Your account was deleted.",
+    settingsDeleteAccountError: "We could not delete your account right now.",
+    settingsDeleteAccountUnavailable:
+      "Account deletion is not available in this environment yet. Add the Supabase service-role key on the server first.",
     settingsSaveChanges: "Save changes",
     settingsBioVisibilitySaved: "Listing bio visibility updated.",
     settingsBioVisibilityError: "We could not save your bio visibility right now.",
     settingsNotificationTypesTitle: "Notification types",
     settingsNotificationTypesDescription:
       "Choose the marketplace activity you want to hear about across email and in-app alerts.",
-    settingsSoldNotificationsTitle: "Sold listing updates",
+    settingsSoldNotificationsTitle: "My listing updates",
     settingsSoldNotificationsDescription:
-      "Get notified when one of your listings is marked sold or needs a final follow-up.",
+      "Get notified when one of your listings is approved, sent back with changes, or marked sold.",
     settingsFavouriteNotificationsTitle: "Favourited item activity",
     settingsFavouriteNotificationsDescription:
       "Get notified when an item you favourited changes price, gets marked sold, or becomes unavailable.",
@@ -105,7 +143,7 @@ export const translations = {
     settingsNotificationPreviewNote:
       "Sold listing and favourite activity notifications still stay preview-only for now.",
     settingsNotificationPreferencesLiveNote:
-      "Notification preferences save to your account. In-app message and favourite alerts affect the header bell today, sold listing preferences are saved for future seller-side alerts, and email preferences are saved for future delivery support.",
+      "Notification preferences save to your account. In-app message alerts affect the header bell today, listing approval decision alerts use your listing updates preference, and email preferences are saved for future delivery support.",
     settingsNotificationPreferencesUnavailableNote:
       "Notification preferences are not available in this environment yet.",
     settingsNotificationPreferencesSaved: "Notification preferences saved.",
@@ -156,7 +194,16 @@ export const translations = {
     passwordsDoNotMatch: "Passwords do not match.",
     accountCreatedSuccess: "Account created! Check your email to verify.",
     createListingDesc:
-      "Add the main item details first. Photos, campus, condition, and tag preview are included here so the page reflects how the listing will look later in the marketplace.",
+      "Add the main item details first. Photos, campus, condition, and tag preview are included here so the page reflects how the listing will look later in the marketplace. Submitted listings now go through moderator review before they go live.",
+    createListingRestrictionsTitle: "Marketplace restrictions",
+    createListingRestrictionsDescription:
+      "Do not list drugs, animals, sexual items, weapons, alcohol, or other prohibited or unsafe items.",
+    createListingWarningDialogTitle: "Confirm listing restrictions",
+    createListingWarningDialogDescription:
+      "Before submitting, confirm that your listing follows the marketplace rules.",
+    createListingRestrictionsConfirmLabel:
+      "I confirm that this listing does not include prohibited or unsafe items.",
+    createListingRestrictionsConfirmAction: "Confirm and submit",
     title: "Title",
     titlePlaceholder: "e.g. MacBook Air M1",
     category: "Category",
@@ -179,8 +226,14 @@ export const translations = {
     saveDraft: "Save Draft",
     saving: "Saving...",
     publish: "Publish Listing",
+    submitForReview: "Submit for Review",
+    resubmitForReview: "Resubmit for Review",
     draftSaved: "Draft saved successfully.",
     listingPublished: "Listing published successfully.",
+    listingSubmittedForReview: "Listing submitted for review.",
+    listingResubmittedAfterEdit: "Changes saved and listing resubmitted for review.",
+    listingApprovalSetupRequired:
+      "Listing approval is not available in this environment yet.",
     fillFields: "Fill in all required listing fields before continuing.",
     validPrice: "Enter a valid price.",
     mustLogin: "You must be logged in to create a listing.",
@@ -207,10 +260,20 @@ export const translations = {
     photo: "Photo",
     torontoMeetup: "Toronto meetup",
     chatWithSeller: "Chat with Seller",
+    messagingUnavailable: "Messaging unavailable",
     signInToMessageSeller: "Sign in to message seller",
     startingConversation: "Opening conversation...",
     conversationStartError: "We could not open this conversation right now.",
     thisIsYourListing: "This is your listing",
+    listingMessagingUnavailable:
+      "This listing is not available for new messages right now.",
+    listingSoldMessagingUnavailable:
+      "This listing was marked sold. New messages are disabled.",
+    listingInactiveMessagingUnavailable:
+      "This listing is no longer available. New messages are disabled.",
+    deletedListingTitle: "Deleted listing",
+    deletedListingDescription:
+      "This listing was removed, but this conversation history is still available.",
     you: "You",
     created: "Created",
     updated: "Updated",
@@ -228,24 +291,112 @@ export const translations = {
     hideConversationDescription:
       "This only removes the conversation from your inbox. The other person can still see it, and it will reappear if a new message arrives.",
     hideConversationError: "We could not hide this conversation right now.",
+    restoreConversation: "Restore conversation",
+    restoreConversationTitle: "Restore this conversation to your inbox?",
+    restoreConversationDescription:
+      "This puts the conversation back in your main inbox list.",
+    restoreConversationError: "We could not restore this conversation right now.",
     conversationNoMessagesYet: "No messages yet. Send the first message when you are ready.",
     noConversationsTitle: "No conversations yet",
     noConversationsDescription:
       "When you message a seller from a listing, the conversation will appear here and stay linked to that item.",
     aboutListing: "About this listing",
+    announcements: "Announcements",
+    announcementSenderName: "ADMIN",
+    announcementConversationDescription:
+      "Important updates from the admin team appear here and stay pinned near the top of your messages.",
+    announcementRepliesDisabled:
+      "Announcements are read-only. New replies are disabled for this thread.",
+    accountBannedTitle: "Account access restricted",
+    accountBannedDescription:
+      "This account is currently banned. If the ban is temporary, access will be restored automatically after it expires.",
+    accountBannedUntilLabel: "Banned until",
+    accountBannedPermanent: "Permanent ban",
+    signOut: "Sign out",
     deleteConversation: "Delete conversation",
     deleteConversationTitle: "Delete this conversation?",
     deleteConversationDescription:
-      "This removes the full conversation and its messages for both participants.",
+      "This removes the conversation from your view and clears its current message history for you. The other person can still see their copy, and the thread only comes back if a new message is sent.",
     deleteConversationError:
       "We could not delete this conversation right now.",
+    deleteConversationSetupRequired:
+      "Conversation delete needs the latest messaging database update. Apply the new Supabase SQL migration and try again.",
     reportMessage: "Report message",
     messageReported: "Message reported for review.",
     reportMessageUnavailable: "Message reporting is not available yet.",
     reportMessageError: "We could not report this message right now.",
+    reportMessageTitle: "Report this message",
+    reportMessageDescription:
+      "Choose the reason that best matches the issue and add extra context if it helps moderation review.",
+    reportProfile: "Report profile",
+    reportProfileTitle: "Report this profile",
+    reportProfileDescription:
+      "Tell the moderation team what looks unsafe, deceptive, or inappropriate about this profile, photo, or bio.",
+    blockUser: "Block user",
+    unblockUser: "Unblock user",
+    userBlocked: "User blocked",
+    blockUserTitle: "Block this user?",
+    blockUserDescription:
+      "You will no longer be able to start or send messages with this user. Existing conversation history will stay visible until you unblock them.",
+    unblockUserTitle: "Unblock this user?",
+    unblockUserDescription:
+      "You will be able to message this user again if the related listing is still available.",
+    blockUserSuccess: "User blocked.",
+    unblockUserSuccess: "User unblocked.",
+    blockUserError: "We could not update this block right now.",
+    blockUserUnavailable: "User blocking is not available in this environment yet.",
+    messagingBlockedByYou: "You blocked this user. Unblock them to send messages.",
+    messagingBlockedByOtherUser: "This user blocked you. Messaging is unavailable.",
+    reportProfileReasonDescription:
+      "Pick what stands out most — for example a fake profile, harassment, or an inappropriate photo or bio.",
+    reportListingTitle: "Report this listing",
+    reportListingDescription:
+      "Tell the moderation team what looks unsafe, misleading, or inappropriate about this listing.",
+    reportReasonLabel: "Reason",
+    reportReasonDescription: "Pick the closest reason so moderators can review it faster.",
+    reportDetailsLabel: "Details",
+    reportDetailsDescription:
+      "Optional: add a short explanation with any context that would help review the report.",
+    reportDetailsPlaceholder:
+      "Add any extra context, screenshots described in words, or details about what happened...",
+    reportSubmit: "Submit report",
+    reportSubmitting: "Submitting...",
+    reportSubmitted: "Report submitted for review.",
+    reportSubmitError: "We could not submit this report right now.",
+    reportRequiresLogin: "Sign in to submit a report.",
+    reportSelfUnavailable: "You cannot report your own content.",
+    reportModerationUnavailable:
+      "Moderation reporting is not available in this environment yet.",
+    reportReasonSpam: "Spam",
+    reportReasonScam: "Scam or fraud",
+    reportReasonMisleading: "Misleading details",
+    reportReasonProhibited: "Prohibited item",
+    reportReasonHarassment: "Harassment or abuse",
+    reportReasonInappropriate: "Inappropriate message",
+    reportReasonOther: "Other",
+    reportReasonProfileSpam: "Spam or promo profile",
+    reportReasonProfileScam: "Fake, scam, or impersonation profile",
+    reportReasonProfileHarassment: "Harassment or abusive profile",
+    reportReasonProfileInappropriate: "Inappropriate profile photo or bio",
+    reportProfileDetailsPlaceholder:
+      "Example: the profile photo contains explicit content, the bio includes harassment, or the account appears to impersonate another student...",
+    pendingReview: "Pending",
+    rejected: "Rejected",
+    listingPendingReviewDescription:
+      "This listing is waiting for moderator approval before it can go live.",
+    listingResubmittedAfterEditDescription:
+      "This listing was resubmitted after edits and is waiting for moderator approval again.",
+    listingPendingReviewSubmittedPrefix: "Submitted",
+    listingPreviousFeedbackPrefix: "Previous feedback:",
+    listingRejectedTitle: "Changes requested before approval",
+    listingRejectedDescription:
+      "A moderator rejected this listing. Review the requested changes, update the listing, then resubmit it for review.",
+    viewContext: "View context",
     noMessagesYetTitle: "No messages yet",
     noMessagesYetDescription:
       "This conversation is ready. Send your first message to start the thread.",
+    deletedConversationEmptyStateDescription:
+      "You deleted the earlier messages in this conversation. New messages sent from now on will appear here.",
     firstMessageSheetTitle: "Send the first message",
     firstMessageSheetDescription:
       "Your conversation will appear in Messages after you send the first message.",
@@ -293,7 +444,40 @@ export const translations = {
     adminOverview: "Overview",
     adminReports: "Reports",
     adminListings: "Listings",
-    adminUsers: "Users",
+    adminUsers: "User Management",
+    adminUsersPageDescription:
+      "Browse the current account list, search by person or email, and prepare moderation-role or account-status actions from one place.",
+    adminUsersPageHeaderDescription:
+      "Review the full user directory for moderation follow-up, role changes, and future account management actions.",
+    adminUsersSummaryDescription: "All accounts currently available to the admin directory.",
+    adminModerationTeamTitle: "Moderation team",
+    adminModerationTeamDescription: "Accounts with admin, moderator, or staff access.",
+    adminBannedUsersDescription: "Accounts currently marked as banned in auth.",
+    adminUsersSetupDescription:
+      "Add the Supabase service-role key on the server first, then return here to load the full admin user directory.",
+    adminSearchUsersPlaceholder: "Search users, email, school, or role",
+    adminNoUsersMatchFilters: "No users match the current filters.",
+    adminUserRoleStandard: "Student",
+    adminUserRoleAdmin: "Admin",
+    adminUserRoleModerator: "Moderator",
+    adminUserRoleStaff: "Staff",
+    adminUserStatusActive: "Active",
+    adminUserStatusBanned: "Banned",
+    adminBannedUntilPrefix: "Banned until",
+    adminTransferAdmin: "Transfer admin",
+    adminTransferAdminTitle: "Transfer admin access?",
+    adminTransferAdminDescription:
+      "This user will become an admin, and your account will be changed to moderator.",
+    adminTransferAdminSuccess: "Admin access transferred.",
+    adminUserRoleActionError: "We could not update this user role right now.",
+    adminBanUserTitle: "Ban this user?",
+    adminBanUserDescription:
+      "Choose a temporary or long-term ban duration. The user will lose access to their account until the ban expires or is removed.",
+    adminBanDuration24Hours: "Ban for 24 hours",
+    adminBanDuration7Days: "Ban for 7 days",
+    adminBanDuration30Days: "Ban for 30 days",
+    adminBanDurationPermanent: "Ban indefinitely",
+    adminUserBanActionError: "We could not update this user ban right now.",
     adminAnnounce: "Announcements",
     totalListings: "Total Listings",
     students: "Students",
@@ -301,6 +485,7 @@ export const translations = {
     messagesSent: "Messages Sent",
     listingRemoved: "Listing removed",
     reportResolved: "Report resolved ✅",
+    reportDismissed: "Report dismissed",
     userBanned: "User banned",
     userUnbanned: "User unbanned",
     roleUpdatedTo: "Role updated to",
@@ -310,6 +495,7 @@ export const translations = {
     seller: "Seller",
     status: "Status",
     action: "Action",
+    review: "Review",
     remove: "Remove",
     name: "Name",
     school: "School",
@@ -322,6 +508,14 @@ export const translations = {
     removeMod: "Remove Mod",
     newAnnouncement: "New Announcement",
     newAnnouncementPlaceholder: "Write a message to show all students on the homepage...",
+    announcementDialogDescription:
+      "This message will be delivered to every user's inbox as a direct message from you.",
+    announcementSending: "Sending...",
+    announcementSentCount: "Announcement sent to {count} users",
+    announcementNoRecipients: "There are no other users to receive this announcement yet.",
+    announcementPartialFailure:
+      "Some recipients did not receive the announcement. Failed: {count}",
+    announcementError: "Failed to send announcement. Please try again.",
     sendAnnouncement: "Send Announcement",
     pastAnnouncements: "Past Announcements",
     inactive: "Inactive",
@@ -331,8 +525,144 @@ export const translations = {
     reporter: "Reporter",
     unknown: "Unknown",
     resolve: "Resolve",
+    dismiss: "Dismiss",
     removeListing: "Remove Listing",
     banUser: "Ban User",
+    adminReportsDescription:
+      "Review incoming listing, message, and profile reports, resolve safe cases, and remove unsuitable listings when needed.",
+    adminListingApprovals: "Listing Approvals",
+    adminPendingListingApprovals: "Pending Listing Approvals",
+    adminQueueDescription:
+      "Scan incoming reports quickly, then open any row to review the full context before taking action.",
+    adminListingApprovalQueueDescription:
+      "Review submitted listings before they go live.",
+    adminReviewQueueDescription: "Open reports waiting for moderator review.",
+    adminListingReportsDescription: "Reports linked to marketplace listings.",
+    adminMessageReportsDescription: "Reports linked to buyer-seller messages.",
+    adminProfileReportsDescription: "Reports linked to seller profiles.",
+    adminRecentReviewsTitle: "Recent Review Activity",
+    adminRecentReviewsDescription: "The latest moderation decisions made from this queue.",
+    adminRecentReviewsLimitNote:
+      "Showing only the latest {count} reviewed report groups. Older reviewed items are not shown here.",
+    adminSearchReportsPlaceholder: "Search reports, people, or subjects",
+    adminSearchListingApprovalsPlaceholder: "Search listings, sellers, or feedback",
+    adminSearchRecentListingDecisionsPlaceholder: "Search decisions, sellers, or feedback",
+    adminSearchRecentReviewsPlaceholder: "Search reviewed reports, people, or subjects",
+    adminNoReportsMatchFilters: "No reports match the current filters.",
+    adminNoOpenReportsMatchFilters: "No open reports match the current filters.",
+    adminNoReviewedReportsMatchFilters: "No reviewed reports match the current filters.",
+    adminNoListingApprovalsMatchSearch: "No listing approvals match this search.",
+    adminNoRecentListingDecisionsMatchSearch: "No recent listing decisions match this search.",
+    adminNoRecentReviewsMatchSearch: "No recent reviews match this search.",
+    adminListingApprovalSetupDescription:
+      "Apply the listing approval SQL in Supabase first, then come back here to review submitted listings.",
+    adminNoPendingListingApprovals: "No listings are waiting for approval.",
+    adminRecentListingDecisionsTitle: "Recent Listing Decisions",
+    adminRecentListingDecisionsDescription:
+      "The latest listing approvals and rejections made from this queue.",
+    adminNoRecentListingDecisions: "No listing decisions yet.",
+    adminGroupedReports: "Reports",
+    adminReasons: "Reasons",
+    adminLatestReport: "Latest report",
+    adminLatestReporter: "Latest reporter",
+    adminReportsCountLabel: "Reports",
+    adminOpenCountLabel: "Open",
+    adminSetupTitle: "Moderation setup is still required",
+    adminSetupDescription:
+      "Apply the moderation SQL in Supabase first, then come back here to review live reports.",
+    adminReportedUser: "Reported user",
+    adminReviewedBy: "Reviewed by",
+    adminSubject: "Subject",
+    adminReason: "Reason",
+    adminFeedback: "Feedback",
+    adminDetails: "Details",
+    reportedAt: "Reported at",
+    reviewedAt: "Reviewed at",
+    adminSubmittedForReviewAt: "Submitted for review",
+    adminMessageContextTitle: "Message report context",
+    adminMessageContextDescription:
+      "Review the reported message within its conversation before deciding on the moderation outcome.",
+    adminConversationContextLabel: "Conversation context",
+    adminConversationContextDescription:
+      "Read the full buyer-seller thread before resolving, dismissing, or escalating the report.",
+    adminReportedMessageLabel: "Reported message",
+    adminReportedMessageBadge: "Reported",
+    adminLoadingContext: "Loading conversation context...",
+    adminContextEmpty: "No conversation messages are available for this report.",
+    adminContextLoadError: "We could not load the conversation context right now.",
+    adminReportReviewTitle: "Review report",
+    adminReportReviewDescription:
+      "Use the flagged message highlight and the full thread history below to make a moderation decision.",
+    adminListingReviewTitle: "Reported listing review",
+    adminListingReviewDescription:
+      "Inspect the reported listing details and listing owner before deciding on the moderation outcome.",
+    adminListingApprovalReviewTitle: "Review submitted listing",
+    adminListingApprovalReviewDescription:
+      "Review this submitted listing carefully before approving it for the marketplace or sending it back with requested changes.",
+    adminListingApprovalContentTitle: "Listing submission",
+    adminListingApprovalContentDescription:
+      "Check the full listing details, images, and seller context before making an approval decision.",
+    adminListingFeedbackTitle: "Seller feedback",
+    adminListingFeedbackDescription:
+      "If you reject this listing, explain what needs to change before the seller resubmits it.",
+    adminListingFeedbackPlaceholder:
+      "Example: remove prohibited wording, add clearer photos, rewrite misleading price/details, or fix the category before resubmitting...",
+    adminListingDecisionLockedDescription:
+      "This listing already has a moderation decision. Sellers must make changes and resubmit before it returns to the approval queue.",
+    adminApproveListing: "Approve and publish",
+    adminRejectListing: "Reject with changes",
+    adminListingApproved: "Listing approved and published.",
+    adminListingRejected: "Listing rejected with seller feedback.",
+    adminListingResubmittedBadge: "Resubmitted after edits",
+    adminListingHistoryTitle: "Decision history",
+    adminListingHistoryDescription:
+      "Review previous approval and rejection decisions for this listing.",
+    adminListingHistoryEmpty: "No past listing decisions yet.",
+    adminListingDecisionApprovedLabel: "Approved",
+    adminListingDecisionRejectedLabel: "Rejected",
+    adminListingDecisionRpcRequired:
+      "Listing moderation decisions are not available in this environment yet.",
+    adminListingApprovalActionError:
+      "We could not update this listing approval right now.",
+    adminListingRejectionFeedbackRequired:
+      "Add seller-facing feedback before rejecting this listing.",
+    adminProfileReviewDescription:
+      "Inspect the reported profile details and the related reports before deciding on the moderation outcome.",
+    backToAdminReports: "Back to reports",
+    adminParticipantsTitle: "Conversation participants",
+    adminReportedProfileTitle: "Reported profile",
+    adminProfileNoListings: "This profile has no active listings right now.",
+    adminRelatedReportsTitle: "Related reports",
+    adminRelatedReportsDescription:
+      "Review all reports for this same target before taking a moderation action.",
+    adminNoRelatedReports: "No related reports were found for this target.",
+    adminCurrentReport: "Current",
+    adminModeratorNotesTitle: "Moderator notes",
+    adminModeratorNotesDescription:
+      "Private review notes for this specific report. Use them to capture context, rationale, or follow-up details.",
+    adminModeratorNotesSetupDescription:
+      "Moderator notes need a small reports-table update before they can be saved here.",
+    adminModeratorNotesSetupHint:
+      "Apply the moderator notes SQL in Supabase to enable private report notes and note audit fields.",
+    adminModeratorNotesPlaceholder:
+      "Add private review notes, decision context, or follow-up reminders for this report...",
+    adminModeratorNotesSaved: "Moderator notes saved.",
+    adminModeratorNotesSaveError: "We could not save moderator notes right now.",
+    adminModeratorNotesUpdatedByPrefix: "Last updated by",
+    adminModeratorNotesUnsavedHint: "You have unsaved note changes.",
+    adminModeratorNotesEmpty: "No moderator notes yet.",
+    saveNotes: "Save notes",
+    adminDismissAllOpen: "Dismiss all open reports",
+    adminResolveAllOpen: "Resolve all open reports",
+    adminRemoveListingAndResolveAllOpen: "Remove listing and resolve all open reports",
+    adminOpenReportsResolved: "Open reports resolved.",
+    adminOpenReportsDismissed: "Open reports dismissed.",
+    adminListingRemovedAndAllResolved: "Listing removed and all open reports resolved.",
+    adminReportActionError: "We could not update this report right now.",
+    adminListingRemovedAndResolved: "Listing removed and report resolved.",
+    adminOpenStatus: "Open",
+    adminResolvedStatus: "Resolved",
+    adminDismissedStatus: "Dismissed",
     edit: "Edit",
     delete: "Delete",
     postListing: "Post Listing",
@@ -348,7 +678,7 @@ export const translations = {
     draft: "Draft",
     favourite: "Favourite",
     favouritesPlural: "Favourites",
-    dashboardDescription: "Track live listings, inactive listings, sold items, drafts, and saved items in one place.",
+    dashboardDescription: "Track live listings, listings under review, rejected items, sold items, drafts, and saved items in one place.",
     addListing: "Add Listing",
     noListingsInSection: "No listings found for this section yet.",
     rowsPerPage: "Rows per page",
@@ -504,6 +834,9 @@ export const translations = {
     settingsPreviewBadge: "Aperçu",
     settingsDescription:
       "Gérez les réglages déjà actifs aujourd'hui, y compris les préférences enregistrées pour les notifications du marché et les autres contrôles de compte pris en charge.",
+    settingsDangerZoneTitle: "Zone sensible",
+    settingsDangerZoneDescription:
+      "Les actions permanentes liées au compte se trouvent ici. Vérifiez bien les conséquences avant de continuer.",
     settingsAppearanceTitle: "Apparence",
     settingsAppearanceDescription:
       "Choisissez l'apparence de Student Market sur les pages prises en charge et les surfaces partagées de l'application.",
@@ -522,7 +855,7 @@ export const translations = {
     settingsThemeSaved: "Le thème a été mis à jour pour cet appareil.",
     settingsNotificationsTitle: "Notifications",
     settingsNotificationsDescription:
-      "Gérez les préférences enregistrées pour les notifications du marché liées aux messages, aux favoris et aux annonces vendues.",
+      "Gérez les préférences enregistrées pour les notifications du marché liées aux messages, aux favoris et aux mises à jour de vos annonces.",
     notifications: "Notifications",
     notificationsButtonLabel: "Ouvrir les notifications",
     loadingNotifications: "Chargement des notifications...",
@@ -549,6 +882,15 @@ export const translations = {
       "Le prix est passé de {oldPrice} à {newPrice}.",
     notificationListingSoldDescription:
       "Une de vos annonces a été marquée comme vendue.",
+    notificationListingApprovedDescription:
+      "Votre annonce a été approuvée et est maintenant en ligne.",
+    notificationListingRejectedDescription:
+      "Votre annonce doit être modifiée avant de pouvoir être mise en ligne.",
+    notificationListingRejectedWithFeedback:
+      "Votre annonce doit être modifiée avant de pouvoir être mise en ligne. Commentaire : {feedback}",
+    notificationModeratorRoleGrantedTitle: "Rôle de modérateur accordé",
+    notificationModeratorRoleGrantedDescription:
+      "Vous avez reçu l'accès modérateur. Ouvrez l'espace admin pour examiner les signalements et les outils de gestion des utilisateurs.",
     settingsProfileTitle: "Profil",
     settingsProfileDescription:
       "Gérez les détails plus personnels affichés sur vos pages d'annonce tout en gardant l'identité du vendeur visible.",
@@ -559,6 +901,33 @@ export const translations = {
       "Votre nom, votre école et votre photo de profil restent visibles afin que les acheteurs sachent toujours à qui ils ont affaire.",
     settingsNoBioYet:
       "Vous n'avez pas encore de bio, mais cette préférence s'appliquera dès que vous en ajouterez une sur votre page de profil.",
+    settingsDeleteAccountTitle: "Supprimer le compte",
+    settingsDeleteAccountDescription:
+      "Supprimez définitivement votre compte et les données qui y sont liées de Student Market of Toronto.",
+    settingsDeleteAccountConsequencesTitle: "Cette action est irréversible.",
+    settingsDeleteAccountConsequenceListings:
+      "Vos annonces et les images d'annonces que vous avez téléversées seront supprimées.",
+    settingsDeleteAccountConsequenceMessages:
+      "Vous perdrez l'accès à vos conversations, tandis que l'autre participant conservera l'historique partagé des messages.",
+    settingsDeleteAccountConsequenceProfile:
+      "Les informations de votre profil, votre photo de profil, vos favoris et vos données enregistrées seront supprimés.",
+    settingsDeleteAccountConsequencePreferences:
+      "Vos paramètres de notification et les enregistrements d'activité liés au compte seront effacés.",
+    settingsDeleteAccountButton: "Supprimer le compte",
+    settingsDeleteAccountDialogTitle: "Supprimer définitivement votre compte ?",
+    settingsDeleteAccountDialogDescription:
+      "Cette action supprime définitivement votre compte de Student Market of Toronto. Vérifiez les conséquences ci-dessous avant de confirmer.",
+    settingsDeleteAccountConfirmLabel:
+      "Saisissez l'adresse e-mail de votre compte pour confirmer la suppression.",
+    settingsDeleteAccountConfirmEmailHelp: "Saisissez ",
+    settingsDeleteAccountConfirmEmailSuffix: " pour confirmer.",
+    settingsDeleteAccountAction: "Supprimer mon compte",
+    settingsDeletingAccount: "Suppression du compte...",
+    settingsDeleteAccountSuccess: "Votre compte a été supprimé.",
+    settingsDeleteAccountError:
+      "Nous n'avons pas pu supprimer votre compte pour le moment.",
+    settingsDeleteAccountUnavailable:
+      "La suppression de compte n'est pas encore disponible dans cet environnement. Ajoutez d'abord la clé de rôle de service Supabase sur le serveur.",
     settingsSaveChanges: "Enregistrer les modifications",
     settingsBioVisibilitySaved: "La visibilité de la bio sur les annonces a été mise à jour.",
     settingsBioVisibilityError:
@@ -566,9 +935,9 @@ export const translations = {
     settingsNotificationTypesTitle: "Types de notifications",
     settingsNotificationTypesDescription:
       "Choisissez les activités du marché pour lesquelles vous souhaitez recevoir des alertes par e-mail ou dans l'application.",
-    settingsSoldNotificationsTitle: "Mises à jour des annonces vendues",
+    settingsSoldNotificationsTitle: "Mises à jour de mes annonces",
     settingsSoldNotificationsDescription:
-      "Recevez une alerte lorsqu'une de vos annonces est marquée comme vendue ou nécessite un dernier suivi.",
+      "Recevez une alerte lorsqu'une de vos annonces est approuvée, renvoyée avec des changements demandés ou marquée comme vendue.",
     settingsFavouriteNotificationsTitle: "Activité des favoris",
     settingsFavouriteNotificationsDescription:
       "Recevez une alerte lorsqu'un article de vos favoris change de prix, est marqué comme vendu ou devient indisponible.",
@@ -589,7 +958,7 @@ export const translations = {
     settingsNotificationPreviewNote:
       "Les notifications liées aux annonces vendues et à l'activité des favoris restent un aperçu pour le moment.",
     settingsNotificationPreferencesLiveNote:
-      "Les préférences de notifications sont enregistrées sur votre compte. Les alertes de messages et de favoris dans l'application affectent déjà la cloche d'en-tête aujourd'hui, les préférences pour les annonces vendues sont enregistrées pour de futures alertes côté vendeur, et les préférences e-mail sont enregistrées pour une future prise en charge.",
+      "Les préférences de notifications sont enregistrées sur votre compte. Les alertes de messages dans l'application affectent déjà la cloche d'en-tête, les décisions d'approbation d'annonces utilisent la préférence de mises à jour de vos annonces, et les préférences e-mail sont enregistrées pour une future prise en charge.",
     settingsNotificationPreferencesUnavailableNote:
       "Les préférences de notifications ne sont pas encore disponibles dans cet environnement.",
     settingsNotificationPreferencesSaved:
@@ -647,7 +1016,16 @@ export const translations = {
     accountCreatedSuccess:
       "Compte créé ! Vérifiez votre e-mail pour le confirmer.",
     createListingDesc:
-      "Commencez par ajouter les informations principales sur l'article. Les photos, le campus, l'état et l'aperçu des étiquettes sont inclus ici pour vous montrer à quoi l'annonce ressemblera sur la plateforme.",
+      "Commencez par ajouter les informations principales sur l'article. Les photos, le campus, l'état et l'aperçu des étiquettes sont inclus ici pour vous montrer à quoi l'annonce ressemblera sur la plateforme. Les annonces soumises passent maintenant par une révision de modération avant d'être mises en ligne.",
+    createListingRestrictionsTitle: "Restrictions du marché",
+    createListingRestrictionsDescription:
+      "N'affichez pas de drogues, d'animaux, d'articles sexuels, d'armes, d'alcool ni d'autres articles interdits ou dangereux.",
+    createListingWarningDialogTitle: "Confirmer les restrictions de l'annonce",
+    createListingWarningDialogDescription:
+      "Avant de soumettre l'annonce, confirmez qu'elle respecte les règles du marché.",
+    createListingRestrictionsConfirmLabel:
+      "Je confirme que cette annonce ne contient aucun article interdit ou dangereux.",
+    createListingRestrictionsConfirmAction: "Confirmer et soumettre",
     title: "Titre",
     titlePlaceholder: "ex. MacBook Air M1",
     category: "Catégorie",
@@ -670,8 +1048,15 @@ export const translations = {
     saveDraft: "Enregistrer le brouillon",
     saving: "Enregistrement...",
     publish: "Publier l'annonce",
+    submitForReview: "Soumettre pour examen",
+    resubmitForReview: "Soumettre à nouveau",
     draftSaved: "Brouillon enregistré avec succès.",
     listingPublished: "Annonce publiée avec succès.",
+    listingSubmittedForReview: "Annonce soumise pour examen.",
+    listingResubmittedAfterEdit:
+      "Modifications enregistrées et annonce soumise de nouveau pour examen.",
+    listingApprovalSetupRequired:
+      "L'approbation des annonces n'est pas encore disponible dans cet environnement.",
     fillFields:
       "Remplissez tous les champs obligatoires de l'annonce avant de continuer.",
     validPrice: "Entrez un prix valide.",
@@ -700,11 +1085,21 @@ export const translations = {
     photo: "Photo",
     torontoMeetup: "Rencontre à Toronto",
     chatWithSeller: "Discuter avec le vendeur",
+    messagingUnavailable: "Messagerie indisponible",
     signInToMessageSeller: "Connectez-vous pour écrire au vendeur",
     startingConversation: "Ouverture de la conversation...",
     conversationStartError:
       "Nous n'avons pas pu ouvrir cette conversation pour le moment.",
     thisIsYourListing: "C'est votre annonce",
+    listingMessagingUnavailable:
+      "Cette annonce n'est pas disponible pour de nouveaux messages pour le moment.",
+    listingSoldMessagingUnavailable:
+      "Cette annonce a été marquée comme vendue. Les nouveaux messages sont désactivés.",
+    listingInactiveMessagingUnavailable:
+      "Cette annonce n'est plus disponible. Les nouveaux messages sont désactivés.",
+    deletedListingTitle: "Annonce supprimée",
+    deletedListingDescription:
+      "Cette annonce a été supprimée, mais l'historique de cette conversation reste disponible.",
     you: "Vous",
     created: "Créé",
     updated: "Mis à jour",
@@ -723,27 +1118,122 @@ export const translations = {
       "Cela retire seulement la conversation de votre boîte de réception. L'autre personne pourra toujours la voir, et elle réapparaîtra lorsqu'un nouveau message arrivera.",
     hideConversationError:
       "Nous n'avons pas pu masquer cette conversation pour le moment.",
+    restoreConversation: "Restaurer la conversation",
+    restoreConversationTitle: "Restaurer cette conversation dans votre boîte de réception ?",
+    restoreConversationDescription:
+      "Cela remet la conversation dans votre liste principale de messages.",
+    restoreConversationError:
+      "Nous n'avons pas pu restaurer cette conversation pour le moment.",
     conversationNoMessagesYet:
       "Aucun message pour le moment. Envoyez le premier message quand vous êtes prêt.",
     noConversationsTitle: "Aucune conversation pour le moment",
     noConversationsDescription:
       "Quand vous écrirez à un vendeur depuis une annonce, la conversation apparaîtra ici et restera liée à cet article.",
     aboutListing: "À propos de cette annonce",
+    announcements: "Communiqués",
+    announcementSenderName: "ADMIN",
+    announcementConversationDescription:
+      "Les mises à jour importantes de l'équipe d'administration apparaissent ici et restent épinglées près du haut de vos messages.",
+    announcementRepliesDisabled:
+      "Les communiqués sont en lecture seule. Les nouvelles réponses sont désactivées pour ce fil.",
+    accountBannedTitle: "Accès au compte restreint",
+    accountBannedDescription:
+      "Ce compte est actuellement banni. Si le bannissement est temporaire, l'accès sera rétabli automatiquement à son expiration.",
+    accountBannedUntilLabel: "Banni jusqu'au",
+    accountBannedPermanent: "Bannissement permanent",
+    signOut: "Se déconnecter",
     deleteConversation: "Supprimer la conversation",
     deleteConversationTitle: "Supprimer cette conversation ?",
     deleteConversationDescription:
-      "Cela supprimera toute la conversation et ses messages pour les deux participants.",
+      "Cela retire la conversation de votre vue et efface pour vous l'historique actuel des messages. L'autre personne conserve sa copie, et le fil ne reviendra que lorsqu'un nouveau message sera envoyé.",
     deleteConversationError:
       "Nous n'avons pas pu supprimer cette conversation pour le moment.",
+    deleteConversationSetupRequired:
+      "La suppression de conversation a besoin de la dernière mise à jour de base de données de la messagerie. Appliquez la nouvelle migration SQL Supabase puis réessayez.",
     reportMessage: "Signaler le message",
     messageReported: "Message signalé pour examen.",
     reportMessageUnavailable:
       "Le signalement de message n'est pas encore disponible.",
     reportMessageError:
       "Nous n'avons pas pu signaler ce message pour le moment.",
+    reportMessageTitle: "Signaler ce message",
+    reportMessageDescription:
+      "Choisissez la raison qui correspond le mieux au problème et ajoutez du contexte si cela peut aider l'équipe de modération.",
+    reportProfile: "Signaler le profil",
+    reportProfileTitle: "Signaler ce profil",
+    reportProfileDescription:
+      "Expliquez à l'équipe de modération ce qui semble dangereux, trompeur ou inapproprié dans ce profil, sa photo ou sa bio.",
+    blockUser: "Bloquer l'utilisateur",
+    unblockUser: "Débloquer l'utilisateur",
+    userBlocked: "Utilisateur bloqué",
+    blockUserTitle: "Bloquer cet utilisateur ?",
+    blockUserDescription:
+      "Vous ne pourrez plus démarrer ni envoyer de messages avec cet utilisateur. L'historique de conversation existant restera visible jusqu'à ce que vous le débloquiez.",
+    unblockUserTitle: "Débloquer cet utilisateur ?",
+    unblockUserDescription:
+      "Vous pourrez envoyer de nouveau des messages à cet utilisateur si l'annonce liée est encore disponible.",
+    blockUserSuccess: "Utilisateur bloqué.",
+    unblockUserSuccess: "Utilisateur débloqué.",
+    blockUserError:
+      "Nous n'avons pas pu mettre à jour ce blocage pour le moment.",
+    blockUserUnavailable:
+      "Le blocage d'utilisateurs n'est pas encore disponible dans cet environnement.",
+    messagingBlockedByYou:
+      "Vous avez bloqué cet utilisateur. Débloquez-le pour envoyer des messages.",
+    messagingBlockedByOtherUser:
+      "Cet utilisateur vous a bloqué. La messagerie est indisponible.",
+    reportProfileReasonDescription:
+      "Choisissez ce qui ressort le plus — par exemple un faux profil, du harcèlement, ou une photo ou bio inappropriée.",
+    reportListingTitle: "Signaler cette annonce",
+    reportListingDescription:
+      "Expliquez à l'équipe de modération ce qui semble dangereux, trompeur ou inapproprié dans cette annonce.",
+    reportReasonLabel: "Raison",
+    reportReasonDescription:
+      "Choisissez la raison la plus proche pour accélérer l'examen par les modérateurs.",
+    reportDetailsLabel: "Détails",
+    reportDetailsDescription:
+      "Optionnel : ajoutez une courte explication avec tout contexte utile pour examiner le signalement.",
+    reportDetailsPlaceholder:
+      "Ajoutez du contexte, une description de preuve utile, ou les détails de ce qui s'est passé...",
+    reportSubmit: "Envoyer le signalement",
+    reportSubmitting: "Envoi...",
+    reportSubmitted: "Signalement envoyé pour examen.",
+    reportSubmitError:
+      "Nous n'avons pas pu envoyer ce signalement pour le moment.",
+    reportRequiresLogin: "Connectez-vous pour envoyer un signalement.",
+    reportSelfUnavailable: "Vous ne pouvez pas signaler votre propre contenu.",
+    reportModerationUnavailable:
+      "Le système de signalement n'est pas encore disponible dans cet environnement.",
+    reportReasonSpam: "Pourriel",
+    reportReasonScam: "Arnaque ou fraude",
+    reportReasonMisleading: "Détails trompeurs",
+    reportReasonProhibited: "Article interdit",
+    reportReasonHarassment: "Harcèlement ou abus",
+    reportReasonInappropriate: "Message inapproprié",
+    reportReasonOther: "Autre",
+    reportReasonProfileSpam: "Profil pourriel ou promotionnel",
+    reportReasonProfileScam: "Faux profil, arnaque ou usurpation",
+    reportReasonProfileHarassment: "Profil harcelant ou abusif",
+    reportReasonProfileInappropriate: "Photo de profil ou bio inappropriée",
+    reportProfileDetailsPlaceholder:
+      "Exemple : la photo de profil contient du contenu explicite, la bio contient du harcèlement, ou le compte semble usurper l'identité d'un autre étudiant...",
+    pendingReview: "En attente",
+    rejected: "Refusé",
+    listingPendingReviewDescription:
+      "Cette annonce attend l'approbation d'un modérateur avant de pouvoir être mise en ligne.",
+    listingResubmittedAfterEditDescription:
+      "Cette annonce a été soumise de nouveau après modifications et attend encore l'approbation d'un modérateur.",
+    listingPendingReviewSubmittedPrefix: "Soumise",
+    listingPreviousFeedbackPrefix: "Commentaire précédent :",
+    listingRejectedTitle: "Modifications demandées avant approbation",
+    listingRejectedDescription:
+      "Un modérateur a refusé cette annonce. Revoyez les changements demandés, mettez l'annonce à jour, puis soumettez-la de nouveau pour examen.",
+    viewContext: "Voir le contexte",
     noMessagesYetTitle: "Aucun message pour le moment",
     noMessagesYetDescription:
       "Cette conversation est prête. Envoyez votre premier message pour démarrer le fil.",
+    deletedConversationEmptyStateDescription:
+      "Vous avez supprimé les anciens messages de cette conversation. Les nouveaux messages envoyés à partir de maintenant apparaîtront ici.",
     firstMessageSheetTitle: "Envoyer le premier message",
     firstMessageSheetDescription:
       "Votre conversation apparaîtra dans Messages après l'envoi du premier message.",
@@ -794,7 +1284,47 @@ export const translations = {
     adminOverview: "Aperçu",
     adminReports: "Signalements",
     adminListings: "Annonces",
-    adminUsers: "Utilisateurs",
+    adminUsers: "Gestion des utilisateurs",
+    adminUsersPageDescription:
+      "Parcourez la liste actuelle des comptes, recherchez par personne ou courriel, et préparez les actions liées aux rôles de modération ou au statut du compte depuis un seul endroit.",
+    adminUsersPageHeaderDescription:
+      "Examinez l'ensemble de l'annuaire des utilisateurs pour le suivi de modération, les changements de rôle et les futures actions de gestion des comptes.",
+    adminUsersSummaryDescription:
+      "Tous les comptes actuellement visibles dans l'annuaire administrateur.",
+    adminModerationTeamTitle: "Équipe de modération",
+    adminModerationTeamDescription:
+      "Comptes ayant un accès admin, modérateur ou staff.",
+    adminBannedUsersDescription:
+      "Comptes actuellement marqués comme bannis dans l'authentification.",
+    adminUsersSetupDescription:
+      "Ajoutez d'abord la clé Supabase de rôle de service côté serveur, puis revenez ici pour charger l'annuaire complet des utilisateurs admin.",
+    adminSearchUsersPlaceholder:
+      "Rechercher des utilisateurs, courriels, établissements ou rôles",
+    adminNoUsersMatchFilters:
+      "Aucun utilisateur ne correspond aux filtres actuels.",
+    adminUserRoleStandard: "Étudiant",
+    adminUserRoleAdmin: "Admin",
+    adminUserRoleModerator: "Modérateur",
+    adminUserRoleStaff: "Staff",
+    adminUserStatusActive: "Actif",
+    adminUserStatusBanned: "Banni",
+    adminBannedUntilPrefix: "Banni jusqu'au",
+    adminTransferAdmin: "Transférer l'accès admin",
+    adminTransferAdminTitle: "Transférer l'accès admin ?",
+    adminTransferAdminDescription:
+      "Cet utilisateur deviendra admin, et votre propre compte sera changé en modérateur.",
+    adminTransferAdminSuccess: "L'accès admin a été transféré.",
+    adminUserRoleActionError:
+      "Nous n'avons pas pu mettre à jour le rôle de cet utilisateur pour le moment.",
+    adminBanUserTitle: "Bannir cet utilisateur ?",
+    adminBanUserDescription:
+      "Choisissez une durée de bannissement temporaire ou prolongée. L'utilisateur perdra l'accès à son compte jusqu'à l'expiration ou la levée du bannissement.",
+    adminBanDuration24Hours: "Bannir pendant 24 heures",
+    adminBanDuration7Days: "Bannir pendant 7 jours",
+    adminBanDuration30Days: "Bannir pendant 30 jours",
+    adminBanDurationPermanent: "Bannir indéfiniment",
+    adminUserBanActionError:
+      "Nous n'avons pas pu mettre à jour le bannissement de cet utilisateur pour le moment.",
     adminAnnounce: "Communiqués",
     totalListings: "Total des annonces",
     students: "Étudiants",
@@ -802,6 +1332,7 @@ export const translations = {
     messagesSent: "Messages envoyés",
     listingRemoved: "Annonce supprimée",
     reportResolved: "Signalement résolu ✅",
+    reportDismissed: "Signalement ignoré",
     userBanned: "Utilisateur banni",
     userUnbanned: "Utilisateur débanni",
     roleUpdatedTo: "Rôle mis à jour :",
@@ -811,6 +1342,7 @@ export const translations = {
     seller: "Vendeur",
     status: "Statut",
     action: "Action",
+    review: "Examiner",
     remove: "Supprimer",
     name: "Nom",
     school: "École",
@@ -824,6 +1356,15 @@ export const translations = {
     newAnnouncement: "Nouveau communiqué",
     newAnnouncementPlaceholder:
       "Rédigez un message à afficher à tous les étudiants sur la page d'accueil...",
+    announcementDialogDescription:
+      "Ce message sera envoyé dans la boîte de réception de chaque utilisateur sous forme de message direct de votre part.",
+    announcementSending: "Envoi en cours...",
+    announcementSentCount: "Communiqué envoyé à {count} utilisateurs",
+    announcementNoRecipients:
+      "Il n'y a pas encore d'autres utilisateurs pour recevoir ce communiqué.",
+    announcementPartialFailure:
+      "Certains destinataires n'ont pas reçu le communiqué. Échecs : {count}",
+    announcementError: "Échec de l'envoi du communiqué. Veuillez réessayer.",
     sendAnnouncement: "Envoyer le communiqué",
     pastAnnouncements: "Anciens communiqués",
     inactive: "Inactif",
@@ -833,8 +1374,160 @@ export const translations = {
     reporter: "Auteur du signalement",
     unknown: "Inconnu",
     resolve: "Résoudre",
+    dismiss: "Ignorer",
     removeListing: "Supprimer l'annonce",
     banUser: "Bannir l'utilisateur",
+    adminReportsDescription:
+      "Examinez les signalements d'annonces, de messages et de profils, résolvez les cas sûrs et retirez les annonces inappropriées au besoin.",
+    adminListingApprovals: "Approbations d'annonces",
+    adminPendingListingApprovals: "Approbations en attente",
+    adminQueueDescription:
+      "Parcourez rapidement les signalements entrants, puis ouvrez une ligne pour examiner tout le contexte avant d'agir.",
+    adminListingApprovalQueueDescription:
+      "Examinez les annonces soumises avant leur mise en ligne.",
+    adminReviewQueueDescription:
+      "Signalements ouverts en attente d'examen par un modérateur.",
+    adminListingReportsDescription: "Signalements liés aux annonces du marché.",
+    adminMessageReportsDescription: "Signalements liés aux messages acheteur-vendeur.",
+    adminProfileReportsDescription: "Signalements liés aux profils vendeurs.",
+    adminRecentReviewsTitle: "Activité récente de modération",
+    adminRecentReviewsDescription:
+      "Les plus récentes décisions de modération prises depuis cette file.",
+    adminRecentReviewsLimitNote:
+      "Affiche seulement les {count} groupes de signalements examinés les plus récents. Les éléments examinés plus anciens ne sont pas affichés ici.",
+    adminSearchReportsPlaceholder: "Rechercher des signalements, personnes ou sujets",
+    adminSearchListingApprovalsPlaceholder:
+      "Rechercher des annonces, vendeurs ou commentaires",
+    adminSearchRecentListingDecisionsPlaceholder:
+      "Rechercher des décisions, vendeurs ou commentaires",
+    adminSearchRecentReviewsPlaceholder:
+      "Rechercher des signalements examinés, personnes ou sujets",
+    adminNoReportsMatchFilters: "Aucun signalement ne correspond aux filtres actuels.",
+    adminNoOpenReportsMatchFilters:
+      "Aucun signalement ouvert ne correspond aux filtres actuels.",
+    adminNoReviewedReportsMatchFilters:
+      "Aucun signalement examiné ne correspond aux filtres actuels.",
+    adminNoListingApprovalsMatchSearch:
+      "Aucune approbation d'annonce ne correspond à cette recherche.",
+    adminNoRecentListingDecisionsMatchSearch:
+      "Aucune décision récente sur une annonce ne correspond à cette recherche.",
+    adminNoRecentReviewsMatchSearch:
+      "Aucune activité récente de modération ne correspond à cette recherche.",
+    adminListingApprovalSetupDescription:
+      "Appliquez d'abord le SQL d'approbation des annonces dans Supabase, puis revenez ici pour examiner les annonces soumises.",
+    adminNoPendingListingApprovals: "Aucune annonce n'attend une approbation.",
+    adminRecentListingDecisionsTitle: "Décisions récentes sur les annonces",
+    adminRecentListingDecisionsDescription:
+      "Les plus récentes approbations et refus d'annonces depuis cette file.",
+    adminNoRecentListingDecisions: "Aucune décision sur une annonce pour le moment.",
+    adminGroupedReports: "Signalements",
+    adminReasons: "Raisons",
+    adminLatestReport: "Dernier signalement",
+    adminLatestReporter: "Dernier auteur",
+    adminReportsCountLabel: "signalements",
+    adminOpenCountLabel: "ouverts",
+    adminSetupTitle: "La configuration de la modération est encore requise",
+    adminSetupDescription:
+      "Appliquez d'abord le SQL de modération dans Supabase, puis revenez ici pour examiner les signalements en direct.",
+    adminReportedUser: "Utilisateur signalé",
+    adminReviewedBy: "Examiné par",
+    adminSubject: "Sujet",
+    adminReason: "Raison",
+    adminFeedback: "Commentaire",
+    adminDetails: "Détails",
+    reportedAt: "Signalé le",
+    reviewedAt: "Examiné le",
+    adminSubmittedForReviewAt: "Soumise pour examen",
+    adminMessageContextTitle: "Contexte du message signalé",
+    adminMessageContextDescription:
+      "Examinez le message signalé dans sa conversation avant de décider du résultat de modération.",
+    adminConversationContextLabel: "Contexte de la conversation",
+    adminConversationContextDescription:
+      "Lisez l'échange complet entre acheteur et vendeur avant de résoudre, ignorer ou escalader le signalement.",
+    adminReportedMessageLabel: "Message signalé",
+    adminReportedMessageBadge: "Signalé",
+    adminLoadingContext: "Chargement du contexte de conversation...",
+    adminContextEmpty:
+      "Aucun message de conversation n'est disponible pour ce signalement.",
+    adminContextLoadError:
+      "Nous n'avons pas pu charger le contexte de conversation pour le moment.",
+    adminReportReviewTitle: "Examiner le signalement",
+    adminReportReviewDescription:
+      "Utilisez la mise en évidence du message signalé et l'historique complet ci-dessous pour prendre une décision de modération.",
+    adminListingReviewTitle: "Examiner l'annonce signalée",
+    adminListingReviewDescription:
+      "Inspectez les détails de l'annonce signalée et le profil du vendeur avant de décider du résultat de modération.",
+    adminListingApprovalReviewTitle: "Examiner l'annonce soumise",
+    adminListingApprovalReviewDescription:
+      "Examinez attentivement cette annonce soumise avant de l'approuver pour le marché ou de la renvoyer avec des changements demandés.",
+    adminListingApprovalContentTitle: "Annonce soumise",
+    adminListingApprovalContentDescription:
+      "Vérifiez les détails complets de l'annonce, les images et le contexte du vendeur avant de prendre une décision.",
+    adminListingFeedbackTitle: "Commentaire au vendeur",
+    adminListingFeedbackDescription:
+      "Si vous refusez cette annonce, expliquez ce qui doit changer avant que le vendeur la soumette de nouveau.",
+    adminListingFeedbackPlaceholder:
+      "Exemple : retirez un libellé interdit, ajoutez des photos plus claires, corrigez un prix ou des détails trompeurs, ou ajustez la catégorie avant de soumettre à nouveau...",
+    adminListingDecisionLockedDescription:
+      "Cette annonce a déjà une décision de modération. Le vendeur doit faire des changements et la soumettre de nouveau avant qu'elle retourne dans la file d'approbation.",
+    adminApproveListing: "Approuver et publier",
+    adminRejectListing: "Refuser avec changements",
+    adminListingApproved: "Annonce approuvée et publiée.",
+    adminListingRejected: "Annonce refusée avec commentaire au vendeur.",
+    adminListingResubmittedBadge: "Soumise de nouveau après modifications",
+    adminListingHistoryTitle: "Historique des décisions",
+    adminListingHistoryDescription:
+      "Consultez les décisions précédentes d'approbation et de refus pour cette annonce.",
+    adminListingHistoryEmpty: "Aucune décision précédente pour cette annonce pour le moment.",
+    adminListingDecisionApprovedLabel: "Approuvée",
+    adminListingDecisionRejectedLabel: "Refusée",
+    adminListingDecisionRpcRequired:
+      "Les décisions de modération des annonces ne sont pas encore disponibles dans cet environnement.",
+    adminListingApprovalActionError:
+      "Nous n'avons pas pu mettre à jour cette approbation d'annonce pour le moment.",
+    adminListingRejectionFeedbackRequired:
+      "Ajoutez un commentaire destiné au vendeur avant de refuser cette annonce.",
+    adminProfileReviewDescription:
+      "Inspectez les détails du profil signalé et les signalements liés avant de décider du résultat de modération.",
+    backToAdminReports: "Retour aux signalements",
+    adminParticipantsTitle: "Participants à la conversation",
+    adminReportedProfileTitle: "Profil signalé",
+    adminProfileNoListings: "Ce profil n'a aucune annonce active pour le moment.",
+    adminRelatedReportsTitle: "Signalements liés",
+    adminRelatedReportsDescription:
+      "Examinez tous les signalements visant ce même contenu avant d'agir.",
+    adminNoRelatedReports: "Aucun signalement lié n'a été trouvé pour ce contenu.",
+    adminCurrentReport: "Actuel",
+    adminModeratorNotesTitle: "Notes de modération",
+    adminModeratorNotesDescription:
+      "Notes privées pour ce signalement précis. Utilisez-les pour garder le contexte, la justification ou un suivi à faire.",
+    adminModeratorNotesSetupDescription:
+      "Les notes de modération exigent une petite mise à jour de la table `reports` avant de pouvoir être enregistrées ici.",
+    adminModeratorNotesSetupHint:
+      "Appliquez le SQL des notes de modération dans Supabase pour activer les notes privées et leurs champs d'audit.",
+    adminModeratorNotesPlaceholder:
+      "Ajoutez des notes privées, le contexte de la décision, ou des rappels de suivi pour ce signalement...",
+    adminModeratorNotesSaved: "Notes de modération enregistrées.",
+    adminModeratorNotesSaveError:
+      "Nous n'avons pas pu enregistrer les notes de modération pour le moment.",
+    adminModeratorNotesUpdatedByPrefix: "Dernière mise à jour par",
+    adminModeratorNotesUnsavedHint: "Vous avez des changements de notes non enregistrés.",
+    adminModeratorNotesEmpty: "Aucune note de modération pour le moment.",
+    saveNotes: "Enregistrer les notes",
+    adminDismissAllOpen: "Ignorer tous les signalements ouverts",
+    adminResolveAllOpen: "Résoudre tous les signalements ouverts",
+    adminRemoveListingAndResolveAllOpen:
+      "Supprimer l'annonce et résoudre tous les signalements ouverts",
+    adminOpenReportsResolved: "Les signalements ouverts ont été résolus.",
+    adminOpenReportsDismissed: "Les signalements ouverts ont été ignorés.",
+    adminListingRemovedAndAllResolved:
+      "Annonce supprimée et tous les signalements ouverts ont été résolus.",
+    adminReportActionError:
+      "Nous n'avons pas pu mettre ce signalement à jour pour le moment.",
+    adminListingRemovedAndResolved: "Annonce supprimée et signalement résolu.",
+    adminOpenStatus: "Ouvert",
+    adminResolvedStatus: "Résolu",
+    adminDismissedStatus: "Ignoré",
     edit: "Modifier",
     delete: "Supprimer",
     postListing: "Publier l'annonce",
@@ -851,7 +1544,7 @@ export const translations = {
     favourite: "Favori",
     favouritesPlural: "Favoris",
     dashboardDescription:
-      "Suivez les annonces en ligne, inactives ou vendues, ainsi que vos brouillons et vos favoris, au même endroit.",
+      "Suivez les annonces en ligne, en cours d'examen, refusées ou vendues, ainsi que vos brouillons et vos favoris, au même endroit.",
     addListing: "Ajouter une annonce",
     noListingsInSection: "Aucune annonce trouvée pour cette section pour le moment.",
     rowsPerPage: "Lignes par page",
