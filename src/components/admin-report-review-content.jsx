@@ -165,8 +165,12 @@ export function AdminReportReviewContent({
         ? t.adminProfileReviewDescription
         : t.adminListingReviewDescription;
   const canRemoveListing = !isProfileReport && listingTarget?.id && listingTarget?.status === "active";
-  const dismissActionLabel = hasMultipleOpenRelatedReports ? t.adminDismissAllOpen : t.dismiss;
-  const resolveActionLabel = hasMultipleOpenRelatedReports ? t.adminResolveAllOpen : t.resolve;
+  const dismissActionLabel = hasMultipleOpenRelatedReports
+    ? t.adminCloseAllOpenNoAction
+    : t.adminCloseReportNoAction;
+  const resolveActionLabel = hasMultipleOpenRelatedReports
+    ? t.adminMarkAllOpenAddressed
+    : t.adminMarkReportAddressed;
   const removeListingActionLabel = hasMultipleOpenRelatedReports
     ? t.adminRemoveListingAndResolveAllOpen
     : t.removeListing;
@@ -218,11 +222,11 @@ export function AdminReportReviewContent({
 
     if (nextStatus === REPORT_STATUS_VALUES.dismissed) {
       toast.success(
-        result.updatedCount > 1 ? t.adminOpenReportsDismissed : t.reportDismissed,
+        result.updatedCount > 1 ? t.adminOpenReportsClosedNoAction : t.adminReportClosedNoAction,
       );
     } else {
       toast.success(
-        result.updatedCount > 1 ? t.adminOpenReportsResolved : t.reportResolved,
+        result.updatedCount > 1 ? t.adminOpenReportsMarkedAddressed : t.adminReportMarkedAddressed,
       );
     }
 
