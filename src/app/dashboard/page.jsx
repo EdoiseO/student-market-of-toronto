@@ -21,6 +21,7 @@ const DASHBOARD_LISTING_SELECT = `
   price,
   category,
   status,
+  retired_at,
   moderation_feedback,
   moderation_reviewed_at,
   submitted_for_review_at,
@@ -93,6 +94,7 @@ async function loadDashboardListings(supabase, userId) {
     .from("listings")
     .select(DASHBOARD_LISTING_SELECT)
     .eq("seller_id", userId)
+    .is("retired_at", null)
     .order("created_at", { ascending: false });
 
   if (!primaryResult.error || !isListingApprovalSetupMissing(primaryResult.error)) {

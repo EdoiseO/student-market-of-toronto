@@ -9,6 +9,7 @@ import {
 import {
   isListingReviewRevisionConflict,
   parseListingContentRevision,
+  parseListingSubmissionTimestamp,
 } from "@/lib/listing-integrity.mjs";
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { createClient } from "@/utils/supabase/server";
@@ -147,9 +148,11 @@ export async function POST(request, { params }) {
 
     const sellerFeedback = typeof feedback === "string" ? feedback.trim() : "";
     const reviewedContentRevision = parseListingContentRevision(expectedContentRevision);
-    const reviewedSubmissionTime = Date.parse(expectedSubmittedForReviewAt);
+    const reviewedSubmissionTimestamp = parseListingSubmissionTimestamp(
+      expectedSubmittedForReviewAt,
+    );
 
-    if (reviewedContentRevision === null || Number.isNaN(reviewedSubmissionTime)) {
+    if (reviewedContentRevision === null || reviewedSubmissionTimestamp === null) {
       return NextResponse.json(
         { error: "The reviewed listing revision is missing or invalid." },
         { status: 400 },
@@ -168,7 +171,7 @@ export async function POST(request, { params }) {
       {
         p_listing_id: listingId,
         p_expected_content_revision: reviewedContentRevision,
-        p_expected_submitted_for_review_at: new Date(reviewedSubmissionTime).toISOString(),
+        p_expected_submitted_for_review_at: reviewedSubmissionTimestamp,
         p_action: action,
         p_feedback: action === "rejected" ? sellerFeedback : null,
         p_moderator_id: moderationUser.id,

@@ -2,19 +2,13 @@ alter table public.listings
   add column if not exists content_revision bigint not null default 1
     check (content_revision > 0);
 
+alter table public.listings
+  add column if not exists retired_at timestamptz;
+
 -- Retire the pre-revision moderation path and workflow trigger. Leaving either
 -- callable would bypass the content-revision comparison or conflict with the
 -- replacement trigger during service-role decisions.
-do $$
-begin
-  if pg_catalog.to_regprocedure(
-    'public.moderate_listing_decision(uuid,text,text)'
-  ) is not null then
-    execute 'revoke all on function public.moderate_listing_decision(uuid, text, text) '
-      || 'from public, anon, authenticated';
-  end if;
-end;
-$$;
+drop function if exists public.moderate_listing_decision(uuid, text, text);
 
 drop trigger if exists trg_enforce_listing_review_workflow on public.listings;
 
@@ -31,6 +25,8 @@ $$;
 
 comment on column public.listings.content_revision is
   'Monotonic revision of seller-visible listing content, including listing images.';
+comment on column public.listings.retired_at is
+  'Immutable seller-retirement marker; retired rows remain only to preserve audit references.';
 
 create or replace function public.enforce_listing_integrity()
 returns trigger
@@ -68,6 +64,7 @@ begin
       end if;
 
       new.content_revision := 1;
+      new.retired_at := null;
       new.moderation_feedback := null;
       new.moderation_reviewed_at := null;
       new.moderation_reviewed_by := null;
@@ -84,6 +81,19 @@ begin
 
   if caller_role = 'service_role' then
     return new;
+  end if;
+
+  if old.retired_at is not null then
+    raise exception using
+      errcode = '42501',
+      message = 'listing_is_retired';
+  end if;
+
+  if integrity_context <> 'retirement'
+    and new.retired_at is distinct from old.retired_at then
+    raise exception using
+      errcode = '42501',
+      message = 'listing_retirement_is_server_managed';
   end if;
 
   if integrity_context = 'seller_transition' then
@@ -108,6 +118,12 @@ begin
       raise exception using
         errcode = '42501',
         message = 'listing_owner_mismatch';
+    end if;
+
+    if new.retired_at is null then
+      raise exception using
+        errcode = '42501',
+        message = 'listing_retirement_marker_required';
     end if;
 
     new.content_revision := old.content_revision + 1;
@@ -331,6 +347,12 @@ begin
       message = 'listing_owner_mismatch';
   end if;
 
+  if listing_row.retired_at is not null then
+    raise exception using
+      errcode = 'P0001',
+      message = 'listing_is_retired';
+  end if;
+
   if p_action = 'submit_for_review' then
     if listing_row.status not in ('draft', 'rejected') then
       raise exception using
@@ -412,7 +434,8 @@ begin
       message = 'listing_owner_mismatch';
   end if;
 
-  if listing_row.status not in ('draft', 'inactive')
+  if listing_row.retired_at is not null
+    or listing_row.status not in ('draft', 'inactive')
     or listing_row.moderation_reviewed_at is not null then
     raise exception using
       errcode = 'P0001',
@@ -479,6 +502,12 @@ begin
       message = 'listing_owner_mismatch';
   end if;
 
+  if listing_row.retired_at is not null then
+    raise exception using
+      errcode = 'P0001',
+      message = 'listing_is_retired';
+  end if;
+
   perform pg_catalog.set_config('app.listing_integrity_context', 'retirement', true);
 
   delete from public.listing_images
@@ -495,6 +524,7 @@ begin
     is_negotiable = false,
     status = 'inactive',
     submitted_for_review_at = null,
+    retired_at = pg_catalog.statement_timestamp(),
     content_revision = content_revision + 1
   where id = p_listing_id
   returning * into listing_row;
@@ -559,7 +589,8 @@ begin
       message = 'listing_not_found';
   end if;
 
-  if listing_row.content_revision is distinct from p_expected_content_revision
+  if listing_row.retired_at is not null
+    or listing_row.content_revision is distinct from p_expected_content_revision
     or listing_row.submitted_for_review_at is distinct from p_expected_submitted_for_review_at
     or listing_row.status <> 'inactive'
     or listing_row.submitted_for_review_at is null
