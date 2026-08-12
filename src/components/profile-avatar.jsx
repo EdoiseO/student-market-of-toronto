@@ -53,7 +53,7 @@ function OptimizedAvatarImage({
       placeholder="blur"
       blurDataURL={REMOTE_IMAGE_BLUR_DATA_URL}
       onError={onError}
-      className={cn("absolute inset-0 h-full w-full object-cover", className)}
+      className={cn("absolute inset-0 h-full w-full rounded-[inherit] object-cover", className)}
     />
   );
 }
