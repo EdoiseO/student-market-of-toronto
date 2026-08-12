@@ -6,14 +6,7 @@ import { redirect } from "next/navigation";
 import { ConversationListItem } from "@/components/conversation-list-item";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   isAnnouncementConversationRow,
-  isConversationHiddenForUser,
   isConversationInboxVisibleForUser,
   isConversationMessageVisibleForUser,
   MESSAGE_CONVERSATION_SELECT,
@@ -150,65 +143,59 @@ export default async function MessagesPage() {
   );
 
   return (
-    <main className="min-h-screen min-w-0 overflow-x-clip bg-white dark:bg-card md:bg-zinc-100 md:p-6 md:dark:bg-background lg:p-7">
-      <div className="mx-auto flex min-w-0 w-full max-w-[1360px] flex-col md:gap-6">
-        <Card className="rounded-none border-0 bg-white py-0 shadow-none dark:bg-card md:rounded-[2rem] md:border md:border-zinc-200 md:shadow-sm md:dark:border-border">
-          <CardHeader className="border-b border-zinc-200 px-4 py-5 dark:border-border md:px-6 lg:px-7">
-            <CardTitle className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-foreground md:text-3xl lg:text-4xl">
-              {t.messages}
-            </CardTitle>
-          </CardHeader>
+    <main className="min-h-screen min-w-0 overflow-x-clip bg-card md:bg-zinc-100 md:p-6 md:dark:bg-background lg:p-7">
+      <div className="mx-auto w-full max-w-[1360px] overflow-hidden bg-card md:rounded-[2rem] md:border md:border-border md:shadow-sm">
+        <header className="border-b border-border px-4 py-5 md:px-6 lg:px-7">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl lg:text-4xl">
+            {t.messages}
+          </h1>
+        </header>
 
-          <CardContent className="px-4 py-4 md:p-6 lg:p-7">
-            {hasMessagingSetupError ? (
-              <section className="flex min-h-[300px] items-center justify-center rounded-[2rem] border border-dashed border-zinc-300 bg-zinc-50 p-5 text-center dark:border-border dark:bg-muted/40 md:min-h-[420px] md:p-8">
-                <div className="max-w-xl">
-                  <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-background text-foreground shadow-sm">
-                    <MessageSquare className="size-6" />
-                  </div>
-                  <h2 className="mt-5 text-2xl font-semibold text-zinc-950 dark:text-foreground">
-                    {t.messagesSetupTitle}
-                  </h2>
-                  <p className="mt-3 text-sm leading-7 text-zinc-500 dark:text-muted-foreground">
-                    {t.messagesSetupDescription}
-                  </p>
-                  <Button asChild className="mt-6">
-                    <Link href="/">{t.browseListings}</Link>
-                  </Button>
-                </div>
-              </section>
-            ) : conversations.length > 0 ? (
-              <section>
-                <div className="space-y-3 pb-4 md:pb-0">
-                  {conversations.map((conversation) => (
-                    <ConversationListItem
-                      key={conversation.id}
-                      conversation={conversation}
-                      dateValue={conversation.lastMessageAt || conversation.updatedAt}
-                    />
-                  ))}
-                </div>
-              </section>
-            ) : (
-              <section className="flex min-h-[300px] items-center justify-center rounded-[2rem] border border-dashed border-zinc-300 bg-zinc-50 p-5 text-center dark:border-border dark:bg-muted/40 md:min-h-[420px] md:p-8">
-                <div className="max-w-xl">
-                  <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-background text-foreground shadow-sm">
-                    <MessageSquare className="size-6" />
-                  </div>
-                  <h2 className="mt-5 text-2xl font-semibold text-zinc-950 dark:text-foreground">
-                    {t.noConversationsTitle}
-                  </h2>
-                  <p className="mt-3 text-sm leading-7 text-zinc-500 dark:text-muted-foreground">
-                    {t.noConversationsDescription}
-                  </p>
-                  <Button asChild className="mt-6">
-                    <Link href="/">{t.browseListings}</Link>
-                  </Button>
-                </div>
-              </section>
-            )}
-          </CardContent>
-        </Card>
+        {hasMessagingSetupError ? (
+          <section className="flex items-center justify-center px-6 py-16 text-center md:py-24">
+            <div className="max-w-xl">
+              <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                <MessageSquare className="size-6" />
+              </div>
+              <h2 className="mt-5 text-xl font-semibold text-foreground md:text-2xl">
+                {t.messagesSetupTitle}
+              </h2>
+              <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                {t.messagesSetupDescription}
+              </p>
+              <Button asChild className="mt-6">
+                <Link href="/">{t.browseListings}</Link>
+              </Button>
+            </div>
+          </section>
+        ) : conversations.length > 0 ? (
+          <section aria-label={t.messages}>
+            {conversations.map((conversation) => (
+              <ConversationListItem
+                key={conversation.id}
+                conversation={conversation}
+                dateValue={conversation.lastMessageAt || conversation.updatedAt}
+              />
+            ))}
+          </section>
+        ) : (
+          <section className="flex items-center justify-center px-6 py-16 text-center md:py-24">
+            <div className="max-w-xl">
+              <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                <MessageSquare className="size-6" />
+              </div>
+              <h2 className="mt-5 text-xl font-semibold text-foreground md:text-2xl">
+                {t.noConversationsTitle}
+              </h2>
+              <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                {t.noConversationsDescription}
+              </p>
+              <Button asChild className="mt-6">
+                <Link href="/">{t.browseListings}</Link>
+              </Button>
+            </div>
+          </section>
+        )}
       </div>
     </main>
   );
