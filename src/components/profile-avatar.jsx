@@ -83,7 +83,11 @@ export function ProfileAvatar({
 
   return (
     <Avatar
-      className={cn("max-h-20 max-w-20 lg:max-h-[120px] lg:max-w-[120px]", className)}
+      className={cn(
+        "max-h-20 max-w-20 lg:max-h-[120px] lg:max-w-[120px]",
+        className,
+        "overflow-hidden rounded-full after:rounded-full",
+      )}
       size={size}
     >
       <AvatarFallback
@@ -91,6 +95,7 @@ export function ProfileAvatar({
         className={cn(
           preset ? `${preset.className} text-white` : undefined,
           fallbackClassName,
+          "rounded-full",
         )}
       >
         {initials}
@@ -99,7 +104,7 @@ export function ProfileAvatar({
         key={visibleImageUrl}
         imageUrl={visibleImageUrl}
         alt={name || t.profileAvatarLabel}
-        className={imageClassName}
+        className={cn(imageClassName, "rounded-full")}
         onError={() => setFailedImageUrl(imageUrl)}
         sizes={imageSizes}
       />
