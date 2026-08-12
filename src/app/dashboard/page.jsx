@@ -227,7 +227,7 @@ export default async function DashboardPage({ searchParams }) {
             </nav>
           </CardHeader>
 
-          <CardContent className="space-y-5 p-8 pt-3">
+          <CardContent className="space-y-5 p-4 pt-3 md:p-8 md:pt-3">
             <DashboardTableClient
               currentTab={currentTab}
               ownedItems={ownedItems}

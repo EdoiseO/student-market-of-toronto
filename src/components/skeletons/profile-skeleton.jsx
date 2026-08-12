@@ -64,7 +64,7 @@ export function ProfileSkeleton() {
           {Array.from({ length: 4 }, (_, index) => (
             <div
               key={index}
-              className="w-[calc((100%-0.75rem)/2)] min-w-0 flex-none sm:w-44 md:w-48 lg:w-52"
+              className="w-[calc((100%_-_0.75rem)/2)] max-w-48 min-w-0 flex-none sm:w-44 md:w-48 lg:w-52 lg:max-w-52"
             >
               <ListingCardSkeleton compact />
             </div>

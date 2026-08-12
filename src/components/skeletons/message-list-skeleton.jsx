@@ -2,15 +2,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 function MessageRowSkeleton() {
   return (
-    <div className="flex min-w-0 items-center gap-3 border-b border-border p-4 last:border-b-0">
+    <div className="flex min-w-0 items-center border-b border-border px-4 py-3 last:border-b-0 md:px-6">
       <Skeleton className="size-11 shrink-0 rounded-full" />
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <div className="flex justify-between gap-3">
+      <div className="ml-3 min-w-0 flex-1 py-0.5">
+        <div className="flex min-w-0 items-center justify-between gap-3">
           <Skeleton className="h-4 w-1/3" />
           <Skeleton className="h-3 w-12 shrink-0" />
         </div>
-        <Skeleton className="h-3 w-2/3" />
+        <Skeleton className="mt-2 h-3 w-2/3" />
       </div>
+      <Skeleton className="ml-1 size-11 shrink-0 rounded-full" />
     </div>
   );
 }

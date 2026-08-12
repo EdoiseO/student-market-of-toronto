@@ -48,8 +48,8 @@ export function ProfileSettingsSkeleton() {
               <Skeleton className="h-4 w-24" />
               <Skeleton className="h-28 w-full rounded-xl md:h-36 md:rounded-2xl" />
             </div>
-            <div className="flex justify-end">
-              <Skeleton className="h-11 w-32 rounded-xl" />
+            <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 -mx-4 flex justify-end border-t border-border bg-card/95 px-4 py-2 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
+              <Skeleton className="h-9 w-32 rounded-xl" />
             </div>
           </div>
         </section>
