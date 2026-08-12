@@ -50,7 +50,7 @@ export function AppLayoutShell({ children, user }) {
               <SidebarInset
                 className={
                   isMessagesConversationPage
-                    ? "min-h-0 max-w-full touch-pan-y overflow-hidden overscroll-x-none"
+                    ? "min-h-0 min-w-0 max-w-full touch-pan-y overflow-hidden overscroll-x-none"
                     : "min-w-0 overflow-x-clip pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0"
                 }
               >

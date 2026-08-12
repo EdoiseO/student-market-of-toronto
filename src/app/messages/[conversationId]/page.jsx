@@ -48,15 +48,30 @@ export default async function ConversationPage({ params }) {
   }
 
   let conversationStateRow = null;
-
-  const { data: conversationStateRowWithDelete, error: conversationStateError } = conversationRow
-    ? await supabase
+  const conversationStatePromise = conversationRow
+    ? supabase
         .from("conversation_user_state")
         .select("hidden_at, deleted_at")
         .eq("conversation_id", conversationRow.id)
         .eq("user_id", user.id)
         .maybeSingle()
-    : { data: null, error: null };
+    : Promise.resolve({ data: null, error: null });
+  const messageRowsPromise = conversationRow
+    ? supabase
+        .from("messages")
+        .select("id, conversation_id, sender_id, body, created_at, read_at")
+        .eq("conversation_id", conversationRow.id)
+        .order("created_at", { ascending: true })
+    : Promise.resolve({ data: [], error: null });
+  const [conversationStateResult, messagesResult] = await Promise.all([
+    conversationStatePromise,
+    messageRowsPromise,
+  ]);
+  const {
+    data: conversationStateRowWithDelete,
+    error: conversationStateError,
+  } = conversationStateResult;
+  const { data: messageRows, error: messagesError } = messagesResult;
 
   if (conversationStateError && isConversationUserStateDeletedAtColumnMissing(conversationStateError)) {
     const { data: fallbackConversationStateRow, error: fallbackConversationStateError } =
@@ -95,14 +110,6 @@ export default async function ConversationPage({ params }) {
   const deletedAt = conversationStateRow?.deleted_at ?? null;
   const hiddenAt = conversationStateRow?.hidden_at ?? null;
 
-  const { data: messageRows, error: messagesError } = conversationRow
-    ? await supabase
-        .from("messages")
-        .select("id, conversation_id, sender_id, body, created_at, read_at")
-        .eq("conversation_id", conversationRow.id)
-        .order("created_at", { ascending: true })
-    : { data: [], error: null };
-
   if (messagesError) {
     console.error("Failed to load conversation messages:", messagesError.message);
   }
@@ -110,13 +117,24 @@ export default async function ConversationPage({ params }) {
   const visibleMessageRows = filterConversationMessagesForUser(messageRows ?? [], deletedAt);
   const visibleMessageIds = visibleMessageRows.map((message) => message.id);
   let messageAttachments = [];
+  let messageReactions = [];
 
   if (visibleMessageIds.length > 0) {
-    const { data: attachmentRows, error: attachmentsError } = await supabase
-      .from("message_attachments")
-      .select("id, message_id, storage_path, file_name, mime_type, size_bytes, created_at")
-      .in("message_id", visibleMessageIds)
-      .order("created_at", { ascending: true });
+    const [attachmentsResult, reactionsResult] = await Promise.all([
+      supabase
+        .from("message_attachments")
+        .select("id, message_id, storage_path, file_name, mime_type, size_bytes, created_at")
+        .in("message_id", visibleMessageIds)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("message_reactions")
+        .select("message_id, conversation_id, user_id, emoji, created_at, removed_at")
+        .eq("conversation_id", conversationRow.id)
+        .is("removed_at", null)
+        .order("created_at", { ascending: true }),
+    ]);
+    const { data: attachmentRows, error: attachmentsError } = attachmentsResult;
+    const { data: reactionRows, error: reactionsError } = reactionsResult;
 
     if (attachmentsError) {
       if (attachmentsError.code !== "42P01" && attachmentsError.code !== "PGRST205") {
@@ -139,6 +157,14 @@ export default async function ConversationPage({ params }) {
         signedUrl: signedRows?.[index]?.signedUrl ?? null,
       }));
     }
+
+    if (reactionsError) {
+      if (reactionsError.code !== "42P01" && reactionsError.code !== "PGRST205") {
+        console.error("Failed to load message reactions:", reactionsError.message);
+      }
+    } else {
+      messageReactions = reactionRows ?? [];
+    }
   }
 
   const attachmentsByMessageId = messageAttachments.reduce((attachmentsByMessage, attachment) => {
@@ -146,9 +172,15 @@ export default async function ConversationPage({ params }) {
     attachmentsByMessage[attachment.message_id].push(attachment);
     return attachmentsByMessage;
   }, {});
+  const reactionsByMessageId = messageReactions.reduce((reactionsByMessage, reaction) => {
+    reactionsByMessage[reaction.message_id] ??= [];
+    reactionsByMessage[reaction.message_id].push(reaction);
+    return reactionsByMessage;
+  }, {});
   const messagesWithAttachments = visibleMessageRows.map((message) => ({
     ...message,
     attachments: attachmentsByMessageId[message.id] ?? [],
+    reactions: reactionsByMessageId[message.id] ?? [],
   }));
   const unreadCount = visibleMessageRows.filter(
     (message) => !message.read_at && message.sender_id !== user.id,

@@ -31,11 +31,20 @@ export default async function MessagesPage() {
     redirect("/login");
   }
 
-  const { data: conversationRows, error: conversationsError } = await supabase
+  const conversationsPromise = supabase
     .from("conversations")
     .select(MESSAGE_CONVERSATION_SELECT)
     .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
     .order("updated_at", { ascending: false });
+  const conversationStatePromise = supabase
+    .from("conversation_user_state")
+    .select("conversation_id, hidden_at, deleted_at")
+    .eq("user_id", user.id);
+  const [conversationsResult, conversationStateResult] = await Promise.all([
+    conversationsPromise,
+    conversationStatePromise,
+  ]);
+  const { data: conversationRows, error: conversationsError } = conversationsResult;
 
   if (conversationsError) {
     console.error("Failed to load conversations:", conversationsError.message);
@@ -45,10 +54,10 @@ export default async function MessagesPage() {
 
   let conversationStateRows = [];
 
-  const { data: conversationStateRowsWithDelete, error: conversationStateError } = await supabase
-    .from("conversation_user_state")
-    .select("conversation_id, hidden_at, deleted_at")
-    .eq("user_id", user.id);
+  const {
+    data: conversationStateRowsWithDelete,
+    error: conversationStateError,
+  } = conversationStateResult;
 
   if (conversationStateError && isConversationUserStateDeletedAtColumnMissing(conversationStateError)) {
     const { data: fallbackConversationStateRows, error: fallbackConversationStateError } = await supabase

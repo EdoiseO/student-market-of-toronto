@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -15,11 +16,25 @@ import { PanelLeftIcon, SearchIcon, StoreIcon } from "lucide-react"
 import { useLanguage } from "@/context/LanguageContext";
 import { translations } from "@/lib/translations";
 
+function useMediaQuery(query) {
+  return React.useSyncExternalStore(
+    React.useCallback((onStoreChange) => {
+      const mediaQuery = window.matchMedia(query);
+      mediaQuery.addEventListener("change", onStoreChange);
+      return () => mediaQuery.removeEventListener("change", onStoreChange);
+    }, [query]),
+    React.useCallback(() => window.matchMedia(query).matches, [query]),
+    () => false,
+  );
+}
+
 export function SiteHeader({ user }) {
   const { toggleSidebar } = useSidebar()
   const pathname = usePathname() ?? "";
   const { language } = useLanguage();
   const t = translations[language];
+  const isMobileViewport = useMediaQuery("(max-width: 767px)");
+  const isWideViewport = useMediaQuery("(min-width: 1280px)");
 
   const pageTitle =
     pathname === "/"
@@ -60,7 +75,7 @@ export function SiteHeader({ user }) {
           <SearchIcon className="size-5" />
         </Link>
         <div className="shrink-0 [&_button]:min-h-[44px] [&_button]:min-w-[44px]">
-          <NotificationsButton user={user} />
+          <NotificationsButton user={user} enabled={isMobileViewport} />
         </div>
       </div>
 
@@ -87,7 +102,10 @@ export function SiteHeader({ user }) {
           </div>
           <div className="ml-auto shrink-0 xl:hidden">
             <div className="flex items-center gap-2">
-              <NotificationsButton user={user} />
+              <NotificationsButton
+                user={user}
+                enabled={!isMobileViewport && !isWideViewport}
+              />
               <ThemeToggle />
             </div>
           </div>
@@ -96,7 +114,7 @@ export function SiteHeader({ user }) {
           <SearchForm className="w-full max-w-2xl xl:max-w-4xl" />
         </div>
         <div className="hidden items-center justify-end gap-2 xl:flex">
-          <NotificationsButton user={user} />
+          <NotificationsButton user={user} enabled={isWideViewport} />
           <ThemeToggle />
           <LanguageSwitcher />
         </div>

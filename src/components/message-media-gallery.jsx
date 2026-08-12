@@ -48,7 +48,6 @@ function AttachmentPreview({ attachment, compact = false }) {
       src={attachment.signedUrl}
       alt=""
       fill
-      unoptimized
       sizes={compact ? "64px" : "(max-width: 639px) 36vw, 176px"}
       className="object-cover transition duration-200 group-hover/media:scale-[1.02]"
     />
@@ -243,26 +242,22 @@ export function MessageMediaGallery({ attachments }) {
 
             {hasMultipleAttachments ? (
               <>
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/55 text-white shadow-sm hover:bg-white/15 hover:text-white sm:left-4"
+                  className="absolute left-2 top-1/2 z-10 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/55 text-white shadow-sm backdrop-blur-sm transition-colors duration-100 hover:bg-black/70 active:bg-black/80 motion-reduce:transition-none sm:left-4"
                   aria-label={t.previousMedia}
                   onClick={showPreviousAttachment}
                 >
                   <ChevronLeft className="size-7" />
-                </Button>
-                <Button
+                </button>
+                <button
                   type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/55 text-white shadow-sm hover:bg-white/15 hover:text-white sm:right-4"
+                  className="absolute right-2 top-1/2 z-10 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/55 text-white shadow-sm backdrop-blur-sm transition-colors duration-100 hover:bg-black/70 active:bg-black/80 motion-reduce:transition-none sm:right-4"
                   aria-label={t.nextMedia}
                   onClick={showNextAttachment}
                 >
                   <ChevronRight className="size-7" />
-                </Button>
+                </button>
               </>
             ) : null}
           </div>

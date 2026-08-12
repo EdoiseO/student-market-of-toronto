@@ -12,13 +12,14 @@ import {
   Megaphone,
   Paperclip,
   SendHorizontal,
-  SmilePlus,
   Trash2,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { ProfileAvatar } from "@/components/profile-avatar";
+import { MessageEmojiPicker } from "@/components/message-emoji-picker";
+import { MessageReactions } from "@/components/message-reactions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,6 +47,7 @@ import { ClientFormattedDateTime } from "@/components/client-formatted-date-time
 import { MessageMediaGallery } from "@/components/message-media-gallery";
 import { ReportSheet } from "@/components/report-sheet";
 import { useLanguage } from "@/context/LanguageContext";
+import { useFileDropzone } from "@/hooks/use-file-dropzone";
 import { REMOTE_IMAGE_BLUR_DATA_URL } from "@/lib/image-config";
 import {
   getMessagingBlockReason,
@@ -68,12 +70,22 @@ import {
   MESSAGE_MEDIA_BUCKET,
   sanitizeMessageAttachmentFileName,
 } from "@/lib/messages";
+import { selectMessageAttachmentFiles } from "@/lib/message-attachment-selection.mjs";
+import { insertMessageEmoji } from "@/lib/message-emojis.mjs";
 import {
   buildMessageMediaUploadPlan,
   cleanupExpiredMessageMediaUploads,
   releaseMessageMediaUploadReservations,
   reserveMessageMediaUploads,
 } from "@/lib/message-media-reservations.mjs";
+import {
+  addMessageReaction,
+  applyMessageReactionChange,
+  removeMessageReaction,
+  replaceMessageReactions,
+  subscribeToMessageReactionUpdates,
+} from "@/lib/message-reactions.mjs";
+import { subscribeToConversationMessageInserts } from "@/lib/message-realtime.mjs";
 import { createClient } from "@/utils/supabase/client";
 
 function formatPrice(price, language) {
@@ -111,6 +123,32 @@ function isGroupedWithPreviousMessage(message, previousMessage) {
   );
 }
 
+function upsertConversationMessage(currentMessages, incomingMessage) {
+  const existingIndex = currentMessages.findIndex(
+    (message) => message.id === incomingMessage.id,
+  );
+
+  if (existingIndex === -1) {
+    return [...currentMessages, incomingMessage].sort(
+      (firstMessage, secondMessage) =>
+        new Date(firstMessage.created_at).getTime() -
+        new Date(secondMessage.created_at).getTime(),
+    );
+  }
+
+  const existingMessage = currentMessages[existingIndex];
+  const nextMessages = [...currentMessages];
+  nextMessages[existingIndex] = {
+    ...existingMessage,
+    ...incomingMessage,
+    attachments: incomingMessage.attachments?.length
+      ? incomingMessage.attachments
+      : existingMessage.attachments ?? [],
+    reactions: existingMessage.reactions ?? incomingMessage.reactions ?? [],
+  };
+  return nextMessages;
+}
+
 export function MessagesThread({
   conversation,
   currentUserId,
@@ -122,10 +160,13 @@ export function MessagesThread({
   const supabase = React.useMemo(() => createClient(), []);
   const { t, language } = useLanguage();
   const [messages, setMessages] = React.useState(initialMessages ?? []);
+  const [pendingReactionKeys, setPendingReactionKeys] = React.useState(() => new Set());
   const [draft, setDraft] = React.useState("");
   const [isSending, setIsSending] = React.useState(false);
   const [pendingAttachments, setPendingAttachments] = React.useState([]);
   const pendingAttachmentsRef = React.useRef([]);
+  const composerRef = React.useRef(null);
+  const composerSelectionRef = React.useRef({ start: 0, end: 0 });
   const mediaInputRef = React.useRef(null);
   const [reportMessageTarget, setReportMessageTarget] = React.useState(null);
   const [blockState, setBlockState] = React.useState({
@@ -279,10 +320,117 @@ export function MessagesThread({
     : getListingMessagingUnavailableText(conversation.listing.status, t);
   const blockReason = getMessagingBlockReason(blockState, t);
   const hasListingLink = Boolean(conversation.listing.slug);
+  const isMediaSelectionAvailable =
+    isMessagingAvailable && !blockReason && !isSending;
+  const { isDragActive, dropzoneProps } = useFileDropzone(addPendingMediaFiles);
 
   React.useEffect(() => {
     setMessages(initialMessages ?? []);
   }, [conversation.id, initialMessages]);
+
+  React.useEffect(() =>
+    subscribeToMessageReactionUpdates({
+      supabase,
+      conversationId: conversation.id,
+      onInsert: (reaction) => {
+        setMessages((currentMessages) => addMessageReaction(currentMessages, reaction));
+      },
+      onUpdate: (reaction) => {
+        setMessages((currentMessages) => applyMessageReactionChange(currentMessages, reaction));
+      },
+    }),
+  [conversation.id, supabase]);
+
+  React.useEffect(() => {
+    let isActive = true;
+
+    const unsubscribe = subscribeToConversationMessageInserts({
+      supabase,
+      conversationId: conversation.id,
+      onInsert: async (message) => {
+        const { data: attachmentRows, error: attachmentsError } = await supabase
+          .from("message_attachments")
+          .select("id, message_id, storage_path, file_name, mime_type, size_bytes, created_at")
+          .eq("message_id", message.id)
+          .order("created_at", { ascending: true });
+
+        if (!isActive) {
+          return;
+        }
+
+        let attachments = [];
+
+        if (attachmentsError) {
+          if (!isMessageAttachmentSetupMissing(attachmentsError)) {
+            console.error(
+              "Failed to load incoming message attachments:",
+              attachmentsError.message,
+            );
+          }
+        } else if (attachmentRows?.length) {
+          const { data: signedRows, error: signedUrlsError } = await supabase.storage
+            .from(MESSAGE_MEDIA_BUCKET)
+            .createSignedUrls(
+              attachmentRows.map((attachment) => attachment.storage_path),
+              60 * 60,
+            );
+
+          if (signedUrlsError) {
+            console.error(
+              "Failed to sign incoming message attachments:",
+              signedUrlsError.message,
+            );
+          }
+
+          attachments = attachmentRows.map((attachment, index) => ({
+            ...attachment,
+            signedUrl: signedRows?.[index]?.signedUrl ?? null,
+          }));
+        }
+
+        if (!isActive) {
+          return;
+        }
+
+        setMessages((currentMessages) =>
+          upsertConversationMessage(currentMessages, {
+            ...message,
+            attachments,
+            reactions: [],
+          }),
+        );
+
+        if (message.sender_id === currentUserId) {
+          return;
+        }
+
+        const { error: markReadError } = await supabase.rpc("mark_conversation_read", {
+          p_conversation_id: conversation.id,
+        });
+
+        if (markReadError) {
+          console.error("Failed to mark incoming message read:", markReadError.message);
+          return;
+        }
+
+        if (isActive) {
+          const readAt = new Date().toISOString();
+          setMessages((currentMessages) =>
+            currentMessages.map((currentMessage) =>
+              currentMessage.sender_id === currentUserId || currentMessage.read_at
+                ? currentMessage
+                : { ...currentMessage, read_at: readAt },
+            ),
+          );
+        }
+      },
+    });
+
+    return () => {
+      isActive = false;
+      unsubscribe();
+    };
+  }, [conversation.id, currentUserId, supabase]);
 
   React.useEffect(() => {
     pendingAttachmentsRef.current = pendingAttachments;
@@ -317,28 +465,20 @@ export function MessagesThread({
     });
   }
 
-  function handleMediaSelection(event) {
-    const selectedFiles = Array.from(event.target.files ?? []);
-    event.target.value = "";
-
-    if (selectedFiles.length === 0) {
+  function addPendingMediaFiles(selectedFiles) {
+    if (!isMediaSelectionAvailable) {
       return;
     }
 
-    const availableSlots = MAX_MESSAGE_ATTACHMENTS - pendingAttachments.length;
+    const selection = selectMessageAttachmentFiles({
+      files: selectedFiles,
+      currentAttachments: pendingAttachments,
+      allowedMimeTypes: MESSAGE_ATTACHMENT_MIME_TYPES,
+      maxBytes: MAX_MESSAGE_ATTACHMENT_BYTES,
+      maxCount: MAX_MESSAGE_ATTACHMENTS,
+    });
 
-    if (availableSlots <= 0) {
-      toast.error(
-        language === "fr"
-          ? `Vous pouvez joindre jusqu’à ${MAX_MESSAGE_ATTACHMENTS} fichiers.`
-          : `You can attach up to ${MAX_MESSAGE_ATTACHMENTS} files.`,
-      );
-      return;
-    }
-
-    const acceptedFiles = [];
-
-    if (selectedFiles.length > availableSlots) {
+    if (selection.limitExceeded) {
       toast.error(
         language === "fr"
           ? `Vous pouvez joindre jusqu’à ${MAX_MESSAGE_ATTACHMENTS} fichiers.`
@@ -346,38 +486,49 @@ export function MessagesThread({
       );
     }
 
-    for (const file of selectedFiles.slice(0, availableSlots)) {
-      if (!MESSAGE_ATTACHMENT_MIME_TYPES.has(file.type)) {
-        toast.error(
-          language === "fr"
-            ? `${file.name} n’est pas un format d’image ou de vidéo pris en charge.`
-            : `${file.name} is not a supported image or video format.`,
-        );
-        continue;
-      }
+    if (selection.duplicateFiles.length > 0) {
+      const duplicateName = selection.duplicateFiles[0]?.name ?? t.attachMedia;
+      toast.error(
+        t.duplicateMediaAttachment.replace("{name}", duplicateName),
+      );
+    }
 
-      if (file.size <= 0 || file.size > MAX_MESSAGE_ATTACHMENT_BYTES) {
-        toast.error(
-          language === "fr"
-            ? `${file.name} doit faire moins de 10 Mo.`
-            : `${file.name} must be smaller than 10 MB.`,
-        );
-        continue;
-      }
+    if (selection.unsupportedFiles.length > 0) {
+      const unsupportedFile = selection.unsupportedFiles[0];
+      toast.error(
+        language === "fr"
+          ? `${unsupportedFile.name} n’est pas un format d’image ou de vidéo pris en charge.`
+          : `${unsupportedFile.name} is not a supported image or video format.`,
+      );
+    }
 
-      acceptedFiles.push({
+    if (selection.invalidSizeFiles.length > 0) {
+      const invalidSizeFile = selection.invalidSizeFiles[0];
+      toast.error(
+        language === "fr"
+          ? `${invalidSizeFile.name} doit faire moins de 10 Mo.`
+          : `${invalidSizeFile.name} must be smaller than 10 MB.`,
+      );
+    }
+
+    if (selection.acceptedFiles.length > 0) {
+      const acceptedAttachments = selection.acceptedFiles.map((file) => ({
         id: crypto.randomUUID(),
         file,
         previewUrl: URL.createObjectURL(file),
-      });
-    }
+      }));
 
-    if (acceptedFiles.length > 0) {
       setPendingAttachments((currentAttachments) => [
         ...currentAttachments,
-        ...acceptedFiles,
+        ...acceptedAttachments,
       ]);
     }
+  }
+
+  function handleMediaSelection(event) {
+    const selectedFiles = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    addPendingMediaFiles(selectedFiles);
   }
 
   React.useEffect(() => {
@@ -415,7 +566,7 @@ export function MessagesThread({
         return;
       }
 
-      const { data, error } = await supabase.rpc("mark_conversation_read", {
+      const { error } = await supabase.rpc("mark_conversation_read", {
         p_conversation_id: conversation.id,
       });
 
@@ -439,9 +590,6 @@ export function MessagesThread({
         )
       );
 
-      if (Number(data ?? 0) > 0) {
-        router.refresh();
-      }
     }
 
     markConversationRead();
@@ -449,7 +597,7 @@ export function MessagesThread({
     return () => {
       isMounted = false;
     };
-  }, [conversation.hasUnreadMessages, conversation.id, currentUserId, router, supabase]);
+  }, [conversation.hasUnreadMessages, conversation.id, currentUserId, supabase]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -603,9 +751,8 @@ export function MessagesThread({
           }
         }
 
-        setMessages((currentMessages) => [
-          ...currentMessages,
-          {
+        setMessages((currentMessages) =>
+          upsertConversationMessage(currentMessages, {
             ...createdMessage,
             attachments: attachmentPayload.map((attachment, index) => ({
               id: `${createdMessage.id}-${index}`,
@@ -613,8 +760,9 @@ export function MessagesThread({
               ...attachment,
               signedUrl: signedRows[index]?.signedUrl ?? null,
             })),
-          },
-        ]);
+            reactions: [],
+          }),
+        );
       }
 
       clearPendingAttachments();
@@ -676,7 +824,6 @@ export function MessagesThread({
     }
 
     setIsSending(false);
-    router.refresh();
   }
 
   function handleComposerKeyDown(event) {
@@ -693,16 +840,157 @@ export function MessagesThread({
     event.currentTarget.form?.requestSubmit();
   }
 
+  function rememberComposerSelection(event) {
+    composerSelectionRef.current = {
+      start: event.currentTarget.selectionStart ?? draft.length,
+      end: event.currentTarget.selectionEnd ?? draft.length,
+    };
+  }
+
+  function handleDraftChange(event) {
+    setDraft(event.target.value);
+    rememberComposerSelection(event);
+  }
+
+  function handleInsertComposerEmoji(emoji) {
+    const textarea = composerRef.current;
+    const selection = textarea
+      ? {
+          start: textarea.selectionStart ?? composerSelectionRef.current.start,
+          end: textarea.selectionEnd ?? composerSelectionRef.current.end,
+        }
+      : composerSelectionRef.current;
+    const result = insertMessageEmoji({
+      value: draft,
+      emoji,
+      selectionStart: selection.start,
+      selectionEnd: selection.end,
+    });
+
+    if (!result.inserted) {
+      return;
+    }
+
+    setDraft(result.value);
+    composerSelectionRef.current = {
+      start: result.selectionStart,
+      end: result.selectionEnd,
+    };
+
+    requestAnimationFrame(() => {
+      const latestTextarea = composerRef.current;
+
+      if (!latestTextarea) {
+        return;
+      }
+
+      latestTextarea.focus({ preventScroll: true });
+      latestTextarea.setSelectionRange(result.selectionStart, result.selectionEnd);
+    });
+  }
+
   async function handleReportMessage(message) {
     setReportMessageTarget(message);
   }
 
+  async function refreshMessageReactions() {
+    const { data, error } = await supabase
+      .from("message_reactions")
+      .select("message_id, conversation_id, user_id, emoji, created_at, removed_at")
+      .eq("conversation_id", conversation.id)
+      .is("removed_at", null)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("Failed to refresh message reactions:", error.message);
+      return;
+    }
+
+    setMessages((currentMessages) => replaceMessageReactions(currentMessages, data ?? []));
+  }
+
+  async function handleToggleReaction(message, emoji, reactedByCurrentUser) {
+    const pendingKey = `${message.id}:${emoji}`;
+
+    if (pendingReactionKeys.has(pendingKey)) {
+      return;
+    }
+
+    const optimisticReaction = {
+      message_id: message.id,
+      conversation_id: conversation.id,
+      user_id: currentUserId,
+      emoji,
+      created_at: new Date().toISOString(),
+      removed_at: reactedByCurrentUser ? new Date().toISOString() : null,
+    };
+
+    setPendingReactionKeys((currentKeys) => new Set(currentKeys).add(pendingKey));
+    setMessages((currentMessages) =>
+      reactedByCurrentUser
+        ? removeMessageReaction(currentMessages, optimisticReaction)
+        : addMessageReaction(currentMessages, optimisticReaction),
+    );
+
+    let operationError = null;
+
+    if (reactedByCurrentUser) {
+      const { data: removedReaction, error } = await supabase
+        .from("message_reactions")
+        .update({ removed_at: optimisticReaction.removed_at })
+        .eq("message_id", message.id)
+        .eq("user_id", currentUserId)
+        .eq("emoji", emoji)
+        .select("message_id")
+        .maybeSingle();
+      operationError = error;
+
+      if (!error && !removedReaction) {
+        await refreshMessageReactions();
+      }
+    } else {
+      const { data: restoredReaction, error: restoreError } = await supabase
+        .from("message_reactions")
+        .update({ removed_at: null })
+        .eq("message_id", message.id)
+        .eq("user_id", currentUserId)
+        .eq("emoji", emoji)
+        .not("removed_at", "is", null)
+        .select("message_id, conversation_id, user_id, emoji, created_at, removed_at")
+        .maybeSingle();
+
+      if (restoreError) {
+        operationError = restoreError;
+      } else if (!restoredReaction) {
+        const { error: insertError } = await supabase.from("message_reactions").insert({
+          message_id: message.id,
+          conversation_id: conversation.id,
+          user_id: currentUserId,
+          emoji,
+        });
+        operationError = insertError;
+      }
+    }
+
+    setPendingReactionKeys((currentKeys) => {
+      const nextKeys = new Set(currentKeys);
+      nextKeys.delete(pendingKey);
+      return nextKeys;
+    });
+
+    if (operationError) {
+      console.error("Failed to update message reaction:", operationError.message);
+      toast.error(t.reactionUpdateError);
+      await refreshMessageReactions();
+    }
+  }
+
   return (
-    <section className="flex min-h-0 max-w-full flex-1 touch-pan-y flex-col overflow-hidden overscroll-x-none border-y border-zinc-200 bg-white/95 dark:border-border dark:bg-card md:rounded-[1.5rem] md:border md:shadow-sm">
+    <section className="@container/thread flex min-h-0 max-w-full flex-1 touch-pan-y flex-col overflow-hidden overscroll-x-none border-y border-zinc-200 bg-white/95 dark:border-border dark:bg-card md:rounded-[1.5rem] md:border md:shadow-sm">
       <div className="shrink-0 border-b border-zinc-200 px-3 py-2.5 dark:border-border md:px-4 md:py-3">
-        <div className="flex flex-col gap-2.5 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-2.5 @2xl/thread:flex-row @2xl/thread:items-center @2xl/thread:justify-between">
           {isAnnouncementConversation ? (
-            <div className="block rounded-xl border border-zinc-200/80 bg-zinc-50/80 p-2 dark:border-border dark:bg-muted/30 md:w-full md:max-w-sm">
+            <div className="block rounded-xl border border-zinc-200/80 bg-zinc-50/80 p-2 dark:border-border dark:bg-muted/30 @2xl/thread:w-full @2xl/thread:max-w-sm">
               <div className="flex items-center gap-3">
                 <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-600 dark:bg-muted dark:text-muted-foreground md:size-12">
                   <Megaphone className="size-5 md:size-6" />
@@ -721,7 +1009,7 @@ export function MessagesThread({
           ) : hasListingLink ? (
             <Link
               href={`/listings/${conversation.listing.slug}`}
-              className="block rounded-xl border border-zinc-200/80 bg-zinc-50/80 p-2 transition hover:bg-zinc-100/80 dark:border-border dark:bg-muted/30 dark:hover:bg-muted/50 md:w-full md:max-w-sm"
+              className="block rounded-xl border border-zinc-200/80 bg-zinc-50/80 p-2 transition hover:bg-zinc-100/80 dark:border-border dark:bg-muted/30 dark:hover:bg-muted/50 @2xl/thread:w-full @2xl/thread:max-w-sm"
             >
               <div className="flex items-center gap-3">
                 <div className="relative size-11 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-muted md:size-12">
@@ -754,7 +1042,7 @@ export function MessagesThread({
               </div>
             </Link>
           ) : (
-            <div className="block rounded-xl border border-zinc-200/80 bg-zinc-50/80 p-2 dark:border-border dark:bg-muted/30 md:w-full md:max-w-sm">
+            <div className="block rounded-xl border border-zinc-200/80 bg-zinc-50/80 p-2 dark:border-border dark:bg-muted/30 @2xl/thread:w-full @2xl/thread:max-w-sm">
               <div className="flex items-center gap-3">
                 <div className="size-11 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-muted md:size-12">
                   <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
@@ -773,10 +1061,10 @@ export function MessagesThread({
           )}
 
           {conversation.otherParticipant.id ? (
-            <div className="flex items-center justify-between gap-2 md:self-center">
+            <div className="flex min-w-0 items-center justify-between gap-2 @2xl/thread:self-center">
               <Link
                 href={`/profile/${conversation.otherParticipant.id}`}
-                className="flex min-w-0 items-center gap-2 rounded-xl transition hover:bg-zinc-50/80 dark:hover:bg-muted/40"
+                className="flex min-w-0 flex-1 items-center gap-2 rounded-xl transition hover:bg-zinc-50/80 dark:hover:bg-muted/40"
               >
                 <ProfileAvatar
                   name={conversation.otherParticipant.name}
@@ -843,7 +1131,7 @@ export function MessagesThread({
               </DropdownMenu>
             </div>
           ) : (
-            <div className="flex items-center gap-2 md:self-center">
+            <div className="flex min-w-0 items-center gap-2 @2xl/thread:self-center">
               {conversation.isAnnouncement ? (
                 <div className="flex size-9 items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 text-zinc-700 dark:border-border dark:bg-muted dark:text-muted-foreground">
                   <Megaphone className="size-5" />
@@ -905,35 +1193,10 @@ export function MessagesThread({
                 )}
 
                 <div
-                  className={`relative flex min-w-0 max-w-[82vw] flex-col gap-0.5 sm:max-w-[min(70%,36rem)] ${
+                  className={`flex min-w-0 max-w-[calc(100%-5.25rem)] flex-col gap-0.5 sm:max-w-[min(70%,36rem)] ${
                     isCurrentUser ? "items-end" : "items-start"
                   }`}
                 >
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon-sm"
-                        aria-label={t.moreActions}
-                        className={`absolute top-1/2 z-10 size-11 -translate-y-1/2 rounded-full border-zinc-300 bg-white text-zinc-700 opacity-0 shadow-sm transition group-hover/message:opacity-100 group-focus-within/message:opacity-100 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted ${
-                          isCurrentUser ? "right-full mr-2" : "left-full ml-2"
-                        }`}
-                      >
-                        <EllipsisVertical className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      align={isCurrentUser ? "start" : "end"}
-                      className="w-44 rounded-2xl"
-                    >
-                      <DropdownMenuItem onClick={() => handleReportMessage(message)}>
-                        <Flag className="size-4" />
-                        <span>{t.reportMessage}</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
                   {!isGrouped ? (
                     <p className="px-1 text-[0.6875rem] leading-4 text-zinc-500 dark:text-muted-foreground md:text-xs">
                       <span className="font-semibold text-zinc-900 dark:text-foreground">
@@ -965,7 +1228,56 @@ export function MessagesThread({
                       </p>
                     ) : null}
                   </div>
+
+                  <MessageReactions
+                    reactions={message.reactions ?? []}
+                    currentUserId={currentUserId}
+                    isCurrentUser={isCurrentUser}
+                    isPending={[...pendingReactionKeys].some((key) =>
+                      key.startsWith(`${message.id}:`),
+                    )}
+                    isAddingDisabled={
+                      isAnnouncementConversation || !isMessagingAvailable || Boolean(blockReason)
+                    }
+                    onToggle={(emoji, reactedByCurrentUser) =>
+                      handleToggleReaction(message, emoji, reactedByCurrentUser)
+                    }
+                    labels={{
+                      reactions: t.messageReactions,
+                      addReaction: t.addReaction,
+                      removeReaction: t.removeReaction,
+                      pickerLabel: t.reactionPickerLabel,
+                      reactionCount: (count) =>
+                        (count === 1
+                          ? t.reactionCountSingleLabel
+                          : t.reactionCountLabel
+                        ).replace("{count}", String(count)),
+                    }}
+                  />
                 </div>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon-sm"
+                      aria-label={t.moreActions}
+                      className="relative z-10 !size-8 !min-h-8 !min-w-8 -translate-y-1.5 self-center rounded-full border-zinc-300 bg-white text-zinc-700 opacity-100 shadow-sm transition-opacity after:absolute after:-inset-1.5 after:rounded-full after:content-[''] md:opacity-0 md:group-hover/message:opacity-100 md:group-focus-within/message:opacity-100 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted"
+                    >
+                      <EllipsisVertical className="size-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align={isCurrentUser ? "start" : "end"}
+                    className="w-44 rounded-2xl"
+                  >
+                    <DropdownMenuItem onClick={() => handleReportMessage(message)}>
+                      <Flag className="size-4" />
+                      <span>{t.reportMessage}</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             );
           })
@@ -986,7 +1298,31 @@ export function MessagesThread({
       </div>
 
       <form onSubmit={handleSubmit} className="sticky bottom-0 z-20 shrink-0 border-t border-zinc-200 bg-white/95 px-2.5 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-sm dark:border-border dark:bg-card/95 md:px-4 md:py-3">
-        <div className="mx-auto max-w-4xl rounded-[1.1rem] border border-zinc-200 bg-zinc-50/70 p-1.5 dark:border-border dark:bg-muted/20">
+        <div
+          {...dropzoneProps}
+          className={`relative mx-auto max-w-4xl rounded-[1.1rem] border bg-zinc-50/70 p-1.5 transition-colors dark:bg-muted/20 ${
+            isDragActive && isMediaSelectionAvailable
+              ? "border-dashed border-primary ring-2 ring-primary/20"
+              : "border-zinc-200 dark:border-border"
+          }`}
+        >
+          {isDragActive && isMediaSelectionAvailable ? (
+            <div
+              role="status"
+              aria-live="polite"
+              className="pointer-events-none absolute inset-0 z-30 hidden items-center justify-center rounded-[1.1rem] border-2 border-dashed border-primary bg-background/95 p-4 text-center backdrop-blur-sm md:flex"
+            >
+              <div>
+                <Paperclip className="mx-auto size-6 text-primary" aria-hidden="true" />
+                <p className="mt-2 text-sm font-semibold text-foreground">
+                  {t.dropMessageMedia}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t.mediaAttachmentHelp}
+                </p>
+              </div>
+            </div>
+          ) : null}
           {blockReason ? (
             <p className="px-2 pb-3 text-sm text-muted-foreground">{blockReason}</p>
           ) : null}
@@ -1048,9 +1384,13 @@ export function MessagesThread({
             </div>
           ) : null}
           <Textarea
+            ref={composerRef}
             value={draft}
-            onChange={(event) => setDraft(event.target.value)}
+            onChange={handleDraftChange}
             onKeyDown={handleComposerKeyDown}
+            onKeyUp={rememberComposerSelection}
+            onSelect={rememberComposerSelection}
+            onBlur={rememberComposerSelection}
             placeholder={t.messageInputPlaceholder}
             rows={1}
             className="min-h-11 max-h-28 resize-none overflow-y-auto border-0 bg-transparent px-2 py-2.5 text-base leading-5 shadow-none [field-sizing:content] focus-visible:ring-0"
@@ -1060,25 +1400,16 @@ export function MessagesThread({
 
           <div className="mt-0.5 flex items-center justify-between gap-3 border-t border-zinc-200 px-1 pt-1.5 dark:border-border">
             <div className="flex items-center gap-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span tabIndex={0}>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      className="size-11 rounded-full text-zinc-500 dark:text-muted-foreground"
-                      disabled
-                      aria-label={t.emojiPickerSoon}
-                    >
-                      <SmilePlus className="size-4" />
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={8}>
-                  {t.emojiPickerSoon}
-                </TooltipContent>
-              </Tooltip>
+              <MessageEmojiPicker
+                disabled={!isMessagingAvailable || Boolean(blockReason) || isSending}
+                onSelect={handleInsertComposerEmoji}
+                labels={{
+                  addEmoji: t.addMessageEmoji,
+                  insertEmoji: t.insertMessageEmoji,
+                  pickerLabel: t.messageEmojiPickerLabel,
+                  pickerHint: t.messageEmojiPickerHint,
+                }}
+              />
 
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -1105,7 +1436,7 @@ export function MessagesThread({
               </Tooltip>
 
               <p className="text-xs text-zinc-500 dark:text-muted-foreground">
-                {draft.trim().length}/2000
+                {draft.length}/2000
               </p>
             </div>
 

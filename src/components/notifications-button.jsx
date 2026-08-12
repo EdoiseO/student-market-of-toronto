@@ -26,7 +26,7 @@ import {
 } from "@/lib/notifications";
 import { createClient } from "@/utils/supabase/client";
 
-export function NotificationsButton({ user }) {
+export function NotificationsButton({ user, enabled = true }) {
   const router = useRouter();
   const supabase = React.useMemo(() => createClient(), []);
   const { t, language } = useLanguage();
@@ -46,7 +46,7 @@ export function NotificationsButton({ user }) {
   );
 
   const fetchNotifications = React.useCallback(async () => {
-    if (!user?.id) {
+    if (!enabled || !user?.id) {
       return;
     }
 
@@ -118,20 +118,20 @@ export function NotificationsButton({ user }) {
     setNotifications(normalizedNotifications);
     setUnreadCount(unreadCountResult.count ?? 0);
     setIsLoading(false);
-  }, [language, supabase, t, user]);
+  }, [enabled, language, supabase, t, user]);
 
   React.useEffect(() => {
     fetchNotifications();
   }, [fetchNotifications]);
 
   React.useEffect(() => {
-    if (isOpen) {
+    if (enabled && isOpen) {
       fetchNotifications();
     }
-  }, [fetchNotifications, isOpen]);
+  }, [enabled, fetchNotifications, isOpen]);
 
   React.useEffect(() => {
-    if (!user?.id) {
+    if (!enabled || !user?.id) {
       return undefined;
     }
 
@@ -143,7 +143,7 @@ export function NotificationsButton({ user }) {
         fetchNotifications();
       },
     });
-  }, [fetchNotifications, supabase, user?.id]);
+  }, [enabled, fetchNotifications, supabase, user?.id]);
 
   function removeNotificationFromState(notification) {
     setNotifications((currentNotifications) =>
