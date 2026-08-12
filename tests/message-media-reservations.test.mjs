@@ -1,12 +1,80 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
   buildMessageMediaUploadPlan,
   cleanupExpiredMessageMediaUploads,
+  isOwnedMessageMediaStoragePath,
   releaseMessageMediaUploadReservations,
   reserveMessageMediaUploads,
 } from "../src/lib/message-media-reservations.mjs";
+
+const reservationMigrationUrl = new URL(
+  "../supabase/migrations/20260812112419_enforce_message_media_reservations.sql",
+  import.meta.url,
+);
+const accountDeleteRouteUrl = new URL("../src/app/api/account/delete/route.js", import.meta.url);
+
+test("message-media ownership accepts only exact conversation/user/object paths", () => {
+  assert.equal(
+    isOwnedMessageMediaStoragePath("conversation/user-id/object.png", "user-id"),
+    true,
+  );
+  assert.equal(
+    isOwnedMessageMediaStoragePath("conversation/other-user/object.png", "user-id"),
+    false,
+  );
+  assert.equal(
+    isOwnedMessageMediaStoragePath("conversation/user-id/folder/object.png", "user-id"),
+    false,
+  );
+  assert.equal(isOwnedMessageMediaStoragePath("../user-id/object.png", "user-id"), false);
+  assert.equal(isOwnedMessageMediaStoragePath("conversation/user-id/..", "user-id"), false);
+  assert.equal(
+    isOwnedMessageMediaStoragePath("conversation/user-id/%2e%2e", "user-id"),
+    false,
+  );
+  assert.equal(
+    isOwnedMessageMediaStoragePath("conversation\\user-id\\object.png", "user-id"),
+    false,
+  );
+});
+
+test("reservation migration serializes Storage inserts and restricts cleanup privileges", async () => {
+  const sql = await readFile(reservationMigrationUrl, "utf8");
+
+  assert.match(sql, /before insert on storage\.objects/i);
+  assert.ok(
+    (sql.match(/perform private\.lock_message_media_user_quota\(/g) ?? []).length >= 5,
+    "all quota-changing paths must use the common per-user transaction lock",
+  );
+  assert.match(sql, /create or replace function public\.prepare_message_media_account_cleanup/i);
+  assert.match(sql, /create or replace function public\.retire_message_media_account_reservations/i);
+  assert.match(
+    sql,
+    /grant execute on function public\.prepare_message_media_account_cleanup\(uuid\)\s+to service_role/i,
+  );
+  assert.match(
+    sql,
+    /revoke execute on function public\.send_conversation_message_with_attachments\(uuid, text, jsonb\)\s+from service_role/i,
+  );
+});
+
+test("account deletion strictly retires owned reservations before auth deletion", async () => {
+  const source = await readFile(accountDeleteRouteUrl, "utf8");
+  const prepareIndex = source.indexOf('admin.rpc("prepare_message_media_account_cleanup"');
+  const strictRemoveIndex = source.indexOf("await removeStorageObjectsOrThrow(");
+  const retireIndex = source.indexOf('"retire_message_media_account_reservations"');
+  const authDeleteIndex = source.indexOf("admin.auth.admin.deleteUser(user.id, true)");
+
+  assert.ok(prepareIndex >= 0);
+  assert.ok(strictRemoveIndex > prepareIndex);
+  assert.ok(retireIndex > strictRemoveIndex);
+  assert.ok(authDeleteIndex > retireIndex);
+  assert.match(source, /isOwnedMessageMediaStoragePath\(storagePath, userId\)/);
+  assert.match(source, /if \(error\) \{\s+throw error;\s+\}/);
+});
 
 test("buildMessageMediaUploadPlan binds each file to an exact user and conversation path", () => {
   const ids = ["first-id", "second-id"];

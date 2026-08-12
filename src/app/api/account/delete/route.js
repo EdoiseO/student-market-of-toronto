@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
+import {
+  isOwnedMessageMediaStoragePath,
+  MESSAGE_MEDIA_RESERVATION_BUCKET,
+} from "@/lib/message-media-reservations.mjs";
 import { extractOwnedProfileImageStoragePath } from "@/lib/profile-avatar";
 import { isOwnedStoragePath } from "@/lib/storage-path-ownership.mjs";
 import { createAdminClient } from "@/lib/supabase-admin";
@@ -87,6 +91,58 @@ async function removeStorageObjects(admin, bucket, paths) {
   }
 }
 
+async function removeStorageObjectsOrThrow(admin, bucket, paths) {
+  if (!paths.length) {
+    return;
+  }
+
+  const { error } = await admin.storage.from(bucket).remove(paths);
+
+  if (error) {
+    throw error;
+  }
+}
+
+async function retireOutstandingMessageMediaReservations(admin, userId) {
+  const { data, error } = await admin.rpc("prepare_message_media_account_cleanup", {
+    p_user_id: userId,
+  });
+
+  if (error || !Array.isArray(data)) {
+    throw error ?? new Error("Message media cleanup returned an invalid path set.");
+  }
+
+  const storagePaths = data.map((reservation) => reservation?.storage_path);
+  const uniqueStoragePaths = [...new Set(storagePaths)];
+
+  if (
+    uniqueStoragePaths.length !== storagePaths.length ||
+    uniqueStoragePaths.some(
+      (storagePath) => !isOwnedMessageMediaStoragePath(storagePath, userId),
+    )
+  ) {
+    throw new Error("Message media cleanup refused an unsafe reservation path.");
+  }
+
+  await removeStorageObjectsOrThrow(
+    admin,
+    MESSAGE_MEDIA_RESERVATION_BUCKET,
+    uniqueStoragePaths,
+  );
+
+  const { data: retiredCount, error: retireError } = await admin.rpc(
+    "retire_message_media_account_reservations",
+    {
+      p_user_id: userId,
+      p_storage_paths: uniqueStoragePaths,
+    },
+  );
+
+  if (retireError || retiredCount !== uniqueStoragePaths.length) {
+    throw retireError ?? new Error("Message media reservations were not fully retired.");
+  }
+}
+
 export async function POST() {
   const admin = createAdminClient();
 
@@ -109,6 +165,10 @@ export async function POST() {
   }
 
   try {
+    // Establish a durable database barrier before enumeration. New reservations
+    // and Storage inserts remain blocked even between these service API calls.
+    await retireOutstandingMessageMediaReservations(admin, user.id);
+
     const [{ data: profileRow, error: profileError }, { data: ownedListings, error: listingsError }] =
       await Promise.all([
         admin.from("profiles").select("avatar_url").eq("id", user.id).maybeSingle(),
@@ -150,7 +210,7 @@ export async function POST() {
 
     const messageMediaPaths = (messageAttachmentsResult.data ?? [])
       .map((attachment) => attachment.storage_path)
-      .filter((storagePath) => storagePath?.split("/")?.[1] === user.id);
+      .filter((storagePath) => isOwnedMessageMediaStoragePath(storagePath, user.id));
     const listingImagePaths = (listingImagesResult.data ?? [])
       .filter(
         (image) =>
@@ -182,7 +242,7 @@ export async function POST() {
 
     await removeStorageObjects(admin, "listing-images", listingImagePaths);
     await removeStorageObjects(admin, "profile-images", profileImagePath ? [profileImagePath] : []);
-    await removeStorageObjects(admin, "message-media", messageMediaPaths);
+    await removeStorageObjects(admin, MESSAGE_MEDIA_RESERVATION_BUCKET, messageMediaPaths);
 
     const { error: deleteUserError } = await admin.auth.admin.deleteUser(user.id, true);
 

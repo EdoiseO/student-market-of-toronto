@@ -1,5 +1,28 @@
 export const MESSAGE_MEDIA_RESERVATION_BUCKET = "message-media";
 
+export function isOwnedMessageMediaStoragePath(storagePath, userId) {
+  if (typeof storagePath !== "string" || typeof userId !== "string" || !userId) {
+    return false;
+  }
+
+  if (storagePath.includes("\\") || storagePath.includes("%")) {
+    return false;
+  }
+
+  const segments = storagePath.split("/");
+
+  return (
+    segments.length === 3 &&
+    segments[0] !== "" &&
+    segments[0] !== "." &&
+    segments[0] !== ".." &&
+    segments[1] === userId &&
+    segments[2] !== "" &&
+    segments[2] !== "." &&
+    segments[2] !== ".."
+  );
+}
+
 export function buildMessageMediaUploadPlan({
   attachments,
   conversationId,
