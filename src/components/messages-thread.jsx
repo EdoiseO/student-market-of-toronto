@@ -698,7 +698,7 @@ export function MessagesThread({
   }
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-y border-zinc-200 bg-white/95 dark:border-border dark:bg-card md:rounded-[1.5rem] md:border md:shadow-sm">
+    <section className="flex min-h-0 max-w-full flex-1 touch-pan-y flex-col overflow-hidden overscroll-x-none border-y border-zinc-200 bg-white/95 dark:border-border dark:bg-card md:rounded-[1.5rem] md:border md:shadow-sm">
       <div className="shrink-0 border-b border-zinc-200 px-3 py-2.5 dark:border-border md:px-4 md:py-3">
         <div className="flex flex-col gap-2.5 md:flex-row md:items-center md:justify-between">
           {isAnnouncementConversation ? (
@@ -870,7 +870,7 @@ export function MessagesThread({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain bg-zinc-50/60 px-3 py-3 dark:bg-muted/15 md:px-5 md:py-4">
+      <div className="min-h-0 max-w-full flex-1 touch-pan-y space-y-1 overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain bg-zinc-50/60 px-3 py-3 dark:bg-muted/15 md:px-5 md:py-4">
         {messages.length > 0 ? (
           messages.map((message, messageIndex) => {
             const isCurrentUser = message.sender_id === currentUserId;
