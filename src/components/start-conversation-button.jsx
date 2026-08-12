@@ -8,6 +8,8 @@ import { toast } from "sonner";
 
 import { useLanguage } from "@/context/LanguageContext";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Sheet,
   SheetContent,
@@ -44,6 +46,9 @@ export function StartConversationButton({
   const [isComposerOpen, setIsComposerOpen] = React.useState(false);
   const [draft, setDraft] = React.useState("");
   const [isSendingFirstMessage, setIsSendingFirstMessage] = React.useState(false);
+  const [isLoadingBlockState, setIsLoadingBlockState] = React.useState(
+    Boolean(currentUserId && sellerId && currentUserId !== sellerId),
+  );
   const isMessagingAvailable = isListingMessagingAvailable(listingStatus);
   const [blockState, setBlockState] = React.useState({
     blockedByCurrentUser: false,
@@ -57,6 +62,7 @@ export function StartConversationButton({
 
     async function loadBlockState() {
       if (!currentUserId || !sellerId || currentUserId === sellerId) {
+        setIsLoadingBlockState(false);
         return;
       }
 
@@ -64,11 +70,13 @@ export function StartConversationButton({
 
       if (nextBlockState.error) {
         console.error("Failed to load listing message block state:", nextBlockState.error.message);
-        return;
       }
 
       if (isMounted) {
-        setBlockState(nextBlockState);
+        if (!nextBlockState.error) {
+          setBlockState(nextBlockState);
+        }
+        setIsLoadingBlockState(false);
       }
     }
 
@@ -161,6 +169,10 @@ export function StartConversationButton({
         </Link>
       </Button>
     );
+  }
+
+  if (isLoadingBlockState) {
+    return <Skeleton aria-hidden="true" className={`h-11 min-w-32 rounded-xl ${className ?? ""}`} />;
   }
 
   async function handleStartConversation() {
@@ -396,14 +408,13 @@ export function StartConversationButton({
               </SheetHeader>
 
               <div className="flex-1">
-                <textarea
-                  data-slot="textarea"
+                <Textarea
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
                   placeholder={t.messageInputPlaceholder}
-                  rows={10}
+                  rows={6}
                   maxLength={2000}
-                  className="min-h-16 w-full resize-none rounded-xl border border-input bg-transparent px-2.5 py-2 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 md:text-sm dark:bg-input/30"
+                  className="h-40 min-h-32 max-h-[min(40svh,20rem)] rounded-xl"
                 />
               </div>
             </div>

@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { EllipsisIcon } from "lucide-react"
 
 import { createClient } from "@/utils/supabase/client"
 
@@ -18,17 +19,27 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
 import { useLanguage } from "@/context/LanguageContext"
 import {
   LISTING_APPROVAL_STATUS_VALUES,
   isListingApprovalSetupMissing,
   isPendingListingApproval,
 } from "@/lib/listing-approval"
+import { OWNED_LISTING_STATUS_ACTIONS } from "@/lib/listing-integrity.mjs"
 import { translations } from "@/lib/translations"
 
 export function DashboardListingActions({
   id,
   slug,
+  title = "",
   status,
   submittedForReviewAt = null,
   moderationReviewedAt = null,
@@ -40,6 +51,7 @@ export function DashboardListingActions({
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isActionSheetOpen, setIsActionSheetOpen] = useState(false)
   const isPendingReview = isPendingListingApproval({
     status,
     submittedForReviewAt,
@@ -51,7 +63,8 @@ export function DashboardListingActions({
   const canMarkAsSold = status === "active"
   const canReopenListing = status === "sold"
 
-  async function handleUpdateStatus(nextStatus) {
+  async function handleUpdateStatus(action) {
+    setIsActionSheetOpen(false)
     setIsUpdatingStatus(true)
 
     const {
@@ -64,19 +77,10 @@ export function DashboardListingActions({
       return
     }
 
-    const nextValues = { status: nextStatus }
-
-    if (nextStatus === LISTING_APPROVAL_STATUS_VALUES.pendingReview) {
-      Object.assign(nextValues, {
-        submitted_for_review_at: new Date().toISOString(),
-      })
-    }
-
-    const { error } = await supabase
-      .from("listings")
-      .update(nextValues)
-      .eq("id", id)
-      .eq("seller_id", user.id)
+    const { error } = await supabase.rpc("transition_owned_listing_status", {
+      p_listing_id: id,
+      p_action: action,
+    })
 
     setIsUpdatingStatus(false)
 
@@ -133,11 +137,9 @@ export function DashboardListingActions({
       }
     }
 
-    const { error: deleteError } = await supabase
-      .from("listings")
-      .delete()
-      .eq("id", id)
-      .eq("seller_id", user.id)
+    const { error: deleteError } = await supabase.rpc("retire_owned_listing", {
+      p_listing_id: id,
+    })
 
     setIsDeleting(false)
 
@@ -151,58 +153,109 @@ export function DashboardListingActions({
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-1.5 whitespace-nowrap md:ml-auto md:flex-nowrap">
-      {canEditListing ? (
-        <Button
-          asChild
-          variant="outline"
-          size="xs"
-          className="h-8 rounded-lg bg-white px-2.5 dark:bg-background"
-        >
-          <Link href={`/listings/${slug}/edit`}>{t.editListing}</Link>
-        </Button>
-      ) : null}
-      {canSubmitForReview ? (
-        <Button
-          type="button"
-          variant="outline"
-          size="xs"
-          className="h-8 rounded-lg bg-white px-2.5 dark:bg-background"
-          onClick={() => handleUpdateStatus(LISTING_APPROVAL_STATUS_VALUES.pendingReview)}
-          disabled={isUpdatingStatus}
-        >
-          {isUpdatingStatus
-            ? t.saving
-            : status === LISTING_APPROVAL_STATUS_VALUES.rejected
-              ? t.resubmitForReview
-              : t.submitForReview}
-        </Button>
-      ) : null}
-      {canMarkAsSold ? (
-        <Button
-          type="button"
-          variant="outline"
-          size="xs"
-          className="h-8 rounded-lg bg-white px-2.5 dark:bg-background"
-          onClick={() => handleUpdateStatus("sold")}
-          disabled={isUpdatingStatus}
-        >
-          {isUpdatingStatus ? t.saving : t.markAsSold}
-        </Button>
-      ) : null}
-      {canReopenListing ? (
-        <Button
-          type="button"
-          variant="outline"
-          size="xs"
-          className="h-8 rounded-lg bg-white px-2.5 dark:bg-background"
-          onClick={() => handleUpdateStatus("active")}
-          disabled={isUpdatingStatus}
-        >
-          {isUpdatingStatus ? t.saving : t.reopenListing}
-        </Button>
-      ) : null}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+    <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <div className="md:hidden">
+        <Sheet open={isActionSheetOpen} onOpenChange={setIsActionSheetOpen}>
+          <SheetTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-11 rounded-full bg-white dark:bg-background"
+              aria-label={t.actions}
+            >
+              <EllipsisIcon className="size-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent
+            side="bottom"
+            className="rounded-t-3xl px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2"
+          >
+            <div className="mx-auto h-1.5 w-12 rounded-full bg-muted" aria-hidden="true" />
+            <SheetHeader className="px-0 pb-2 pt-3 text-left">
+              <SheetTitle className="text-lg font-semibold">{t.actions}</SheetTitle>
+              <SheetDescription className="line-clamp-1">{title}</SheetDescription>
+            </SheetHeader>
+            <div className="flex flex-col gap-3">
+              {canEditListing ? (
+                <Button asChild variant="outline" className="w-full justify-start px-4">
+                  <Link href={`/listings/${slug}/edit`}>{t.editListing}</Link>
+                </Button>
+              ) : null}
+              {canSubmitForReview ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-start px-4"
+                  onClick={() => handleUpdateStatus(OWNED_LISTING_STATUS_ACTIONS.submitForReview)}
+                  disabled={isUpdatingStatus}
+                >
+                  {isUpdatingStatus
+                    ? t.saving
+                    : status === LISTING_APPROVAL_STATUS_VALUES.rejected
+                      ? t.resubmitForReview
+                      : t.submitForReview}
+                </Button>
+              ) : null}
+              {canMarkAsSold ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-start px-4"
+                  onClick={() => handleUpdateStatus(OWNED_LISTING_STATUS_ACTIONS.markSold)}
+                  disabled={isUpdatingStatus}
+                >
+                  {isUpdatingStatus ? t.saving : t.markAsSold}
+                </Button>
+              ) : null}
+              {canReopenListing ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-start px-4"
+                  onClick={() => handleUpdateStatus(OWNED_LISTING_STATUS_ACTIONS.reopenForReview)}
+                  disabled={isUpdatingStatus}
+                >
+                  {isUpdatingStatus ? t.saving : t.reopenListing}
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant="destructive"
+                className="w-full justify-start px-4"
+                onClick={() => {
+                  setIsActionSheetOpen(false)
+                  setIsDeleteDialogOpen(true)
+                }}
+              >
+                {t.delete}
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
+
+      <div className="hidden flex-wrap items-center justify-end gap-1.5 whitespace-nowrap md:ml-auto md:flex md:flex-nowrap">
+        {canEditListing ? (
+          <Button asChild variant="outline" size="xs" className="h-8 rounded-lg bg-white px-2.5 dark:bg-background">
+            <Link href={`/listings/${slug}/edit`}>{t.editListing}</Link>
+          </Button>
+        ) : null}
+        {canSubmitForReview ? (
+          <Button type="button" variant="outline" size="xs" className="h-8 rounded-lg bg-white px-2.5 dark:bg-background" onClick={() => handleUpdateStatus(OWNED_LISTING_STATUS_ACTIONS.submitForReview)} disabled={isUpdatingStatus}>
+            {isUpdatingStatus ? t.saving : status === LISTING_APPROVAL_STATUS_VALUES.rejected ? t.resubmitForReview : t.submitForReview}
+          </Button>
+        ) : null}
+        {canMarkAsSold ? (
+          <Button type="button" variant="outline" size="xs" className="h-8 rounded-lg bg-white px-2.5 dark:bg-background" onClick={() => handleUpdateStatus(OWNED_LISTING_STATUS_ACTIONS.markSold)} disabled={isUpdatingStatus}>
+            {isUpdatingStatus ? t.saving : t.markAsSold}
+          </Button>
+        ) : null}
+        {canReopenListing ? (
+          <Button type="button" variant="outline" size="xs" className="h-8 rounded-lg bg-white px-2.5 dark:bg-background" onClick={() => handleUpdateStatus(OWNED_LISTING_STATUS_ACTIONS.reopenForReview)} disabled={isUpdatingStatus}>
+            {isUpdatingStatus ? t.saving : t.reopenListing}
+          </Button>
+        ) : null}
         <AlertDialogTrigger asChild>
           <Button
             type="button"
@@ -213,21 +266,22 @@ export function DashboardListingActions({
             {t.delete}
           </Button>
         </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t.deleteThisListing}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t.deleteListingDescription}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>{t.cancel}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} disabled={isDeleting}>
-              {isDeleting ? t.deleting : t.deleteListing}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+      </div>
+
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t.deleteThisListing}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {t.deleteListingDescription}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isDeleting}>{t.cancel}</AlertDialogCancel>
+          <AlertDialogAction onClick={handleDelete} disabled={isDeleting}>
+            {isDeleting ? t.deleting : t.deleteListing}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }

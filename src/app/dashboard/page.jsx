@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { Settings2Icon, UserRoundIcon } from "lucide-react";
 
 import { DashboardTableClient } from "@/components/dashboard-table-client";
 import { normalizeCategoryValue } from "@/lib/categories";
@@ -11,6 +12,7 @@ import {
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 const DASHBOARD_LISTING_SELECT = `
   id,
@@ -19,6 +21,7 @@ const DASHBOARD_LISTING_SELECT = `
   price,
   category,
   status,
+  retired_at,
   moderation_feedback,
   moderation_reviewed_at,
   submitted_for_review_at,
@@ -67,6 +70,8 @@ function normalizeDashboardListing(
     meta: listing.location ?? "",
     imageUrl: getPrimaryImageUrl(listing.listing_images),
     price: `$${Number(listing.price).toFixed(2)}`,
+    priceValue: Number(listing.price),
+    createdAt: listing.created_at,
     category: normalizeCategoryValue(listing.category),
     status: listing.status,
     dashboardStatus,
@@ -89,6 +94,7 @@ async function loadDashboardListings(supabase, userId) {
     .from("listings")
     .select(DASHBOARD_LISTING_SELECT)
     .eq("seller_id", userId)
+    .is("retired_at", null)
     .order("created_at", { ascending: false });
 
   if (!primaryResult.error || !isListingApprovalSetupMissing(primaryResult.error)) {
@@ -144,6 +150,7 @@ export default async function DashboardPage({ searchParams }) {
               category,
               status,
               location,
+              created_at,
               listing_images (
                 image_url,
                 position
@@ -206,9 +213,23 @@ export default async function DashboardPage({ searchParams }) {
             <p className="max-w-2xl text-base text-zinc-600 dark:text-muted-foreground">
               {t.dashboardDescription}
             </p>
+            <nav aria-label={t.account} className="mt-3 grid grid-cols-2 gap-2 md:hidden">
+              <Button asChild variant="outline" className="justify-start rounded-xl bg-white px-3 dark:bg-background">
+                <Link href="/dashboard/profile">
+                  <UserRoundIcon className="size-4" />
+                  {t.profile}
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="justify-start rounded-xl bg-white px-3 dark:bg-background">
+                <Link href="/dashboard/settings">
+                  <Settings2Icon className="size-4" />
+                  {t.settings}
+                </Link>
+              </Button>
+            </nav>
           </CardHeader>
 
-          <CardContent className="space-y-5 p-8 pt-3">
+          <CardContent className="space-y-5 p-4 pt-3 md:p-8 md:pt-3">
             <DashboardTableClient
               currentTab={currentTab}
               ownedItems={ownedItems}

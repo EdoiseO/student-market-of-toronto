@@ -37,8 +37,9 @@ export function NavUser({ user }) {
         <SidebarMenuItem>
           <div className="flex min-h-12 items-center gap-2 rounded-xl px-3 text-left text-sm">
             <ProfileAvatar
-              className="h-9 w-9 rounded-xl"
-              fallbackClassName="rounded-xl"
+              className="h-9 w-9 rounded-full"
+              imageClassName="rounded-full"
+              fallbackClassName="rounded-full"
               initialsOverride={initials}
             />
             <div className="grid flex-1 text-left text-sm leading-tight">
@@ -65,8 +66,9 @@ export function NavUser({ user }) {
             name={user?.name}
             avatarPresetId={user?.avatarPresetId}
             avatarUrl={user?.avatarUrl}
-            className="h-9 w-9 rounded-xl"
-            fallbackClassName="rounded-xl"
+            className="h-9 w-9 rounded-full"
+            imageClassName="rounded-full"
+            fallbackClassName="rounded-full"
           />
           <div className="grid flex-1 text-left text-sm leading-tight">
             <span className="truncate font-semibold">{user?.name ?? t.student}</span>

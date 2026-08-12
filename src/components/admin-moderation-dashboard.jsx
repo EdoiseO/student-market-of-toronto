@@ -187,7 +187,7 @@ function SearchField({ value, onChange, placeholder }) {
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="h-10 rounded-full bg-background pl-9"
+        className="rounded-full bg-background pl-9"
         aria-label={placeholder}
       />
     </div>
@@ -230,180 +230,358 @@ function PaginationControls({ currentPage, totalPages, onPrevious, onNext, t }) 
   );
 }
 
+function ReportQueueMobileList({ reportGroups, language, t }) {
+  return (
+    <div className="space-y-3 md:hidden" role="list">
+      {reportGroups.map((group) => {
+        const displayedReasons = group.reasonLabels.slice(0, 2);
+        const remainingReasonCount = Math.max(0, group.reasonLabels.length - displayedReasons.length);
+
+        return (
+          <article
+            key={group.key}
+            className="space-y-3 rounded-2xl border border-border bg-background p-4"
+            role="listitem"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <Link
+                  href={`/admin/reports/${group.latestReportId}`}
+                  className="line-clamp-2 font-medium text-foreground hover:underline"
+                >
+                  {group.subjectPreview}
+                </Link>
+                <p className="mt-1 truncate text-xs text-muted-foreground">
+                  {t.adminLatestReporter}: {group.latestReporterName}
+                </p>
+              </div>
+              <Badge
+                variant="outline"
+                className="shrink-0 rounded-full border-border bg-card px-2.5 py-0.5 text-foreground"
+              >
+                {getTranslatedReportSubjectType(group.subjectType, t)}
+              </Badge>
+            </div>
+
+            <div>
+              <p className="mb-1.5 text-xs font-medium text-muted-foreground">{t.adminReasons}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {displayedReasons.map((reasonLabel) => (
+                  <Badge
+                    key={reasonLabel}
+                    variant="outline"
+                    className="rounded-full border-border bg-card px-2.5 py-0.5 text-foreground"
+                  >
+                    {reasonLabel}
+                  </Badge>
+                ))}
+                {remainingReasonCount > 0 ? (
+                  <Badge
+                    variant="outline"
+                    className="rounded-full border-border bg-card px-2.5 py-0.5 text-foreground"
+                  >
+                    +{remainingReasonCount}
+                  </Badge>
+                ) : null}
+              </div>
+            </div>
+
+            <dl className="grid grid-cols-2 gap-3 rounded-xl bg-muted/35 p-3">
+              <div className="min-w-0">
+                <dt className="text-xs text-muted-foreground">{t.adminReportedUser}</dt>
+                <dd className="mt-0.5 truncate text-sm font-medium text-foreground">
+                  {group.reportedUser.name}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">{t.adminGroupedReports}</dt>
+                <dd className="mt-0.5 text-sm font-medium text-foreground">
+                  {group.totalCount} {t.adminReportsCountLabel}
+                  {group.openCount > 0 ? ` · ${group.openCount} ${t.adminOpenCountLabel}` : ""}
+                </dd>
+              </div>
+            </dl>
+
+            <div className="flex items-end justify-between gap-3 border-t border-border pt-3">
+              <div className="min-w-0 space-y-1">
+                <Badge
+                  variant="outline"
+                  className="rounded-full border-border bg-card px-2.5 py-0.5 text-foreground"
+                >
+                  {getTranslatedReportStatus(group.latestStatus, t)}
+                </Badge>
+                <ClientFormattedDateTime
+                  value={group.openCount > 0 ? group.latestReportedAt : group.latestReviewedAt ?? group.latestReportedAt}
+                  language={language}
+                  className="block text-xs text-muted-foreground"
+                />
+                {group.openCount === 0 && group.latestReviewedByName ? (
+                  <p className="truncate text-xs text-muted-foreground">
+                    {t.adminReviewedBy}: {group.latestReviewedByName}
+                  </p>
+                ) : null}
+              </div>
+              <Button asChild variant="outline" size="sm" className="min-h-11 rounded-xl px-4">
+                <Link href={`/admin/reports/${group.latestReportId}`}>{t.review}</Link>
+              </Button>
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
 function ReportQueueTable({ reportGroups, language, t }) {
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>{t.type}</TableHead>
-          <TableHead>{t.adminSubject}</TableHead>
-          <TableHead>{t.adminReasons}</TableHead>
-          <TableHead>{t.adminGroupedReports}</TableHead>
-          <TableHead>{t.adminReportedUser}</TableHead>
-          <TableHead>{t.adminLatestReport}</TableHead>
-          <TableHead className="text-right">{t.action}</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {reportGroups.length > 0 ? (
-          reportGroups.map((group) => {
-            const displayedReasons = group.reasonLabels.slice(0, 2);
-            const remainingReasonCount = Math.max(0, group.reasonLabels.length - displayedReasons.length);
+    <>
+      <ReportQueueMobileList reportGroups={reportGroups} language={language} t={t} />
+      <div className="hidden md:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t.type}</TableHead>
+              <TableHead>{t.adminSubject}</TableHead>
+              <TableHead>{t.adminReasons}</TableHead>
+              <TableHead>{t.adminGroupedReports}</TableHead>
+              <TableHead>{t.adminReportedUser}</TableHead>
+              <TableHead>{t.adminLatestReport}</TableHead>
+              <TableHead className="text-right">{t.action}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {reportGroups.length > 0 ? (
+              reportGroups.map((group) => {
+                const displayedReasons = group.reasonLabels.slice(0, 2);
+                const remainingReasonCount = Math.max(0, group.reasonLabels.length - displayedReasons.length);
 
-            return (
-              <TableRow key={group.key}>
-                <TableCell>
-                  <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
-                    {getTranslatedReportSubjectType(group.subjectType, t)}
-                  </Badge>
-                </TableCell>
-                <TableCell className="max-w-[280px]">
-                  <Link
-                    href={`/admin/reports/${group.latestReportId}`}
-                    className="block font-medium text-foreground hover:underline"
-                    title={group.subjectPreview}
-                  >
-                    <span className="block truncate">{group.subjectPreview}</span>
-                  </Link>
-                  <p className="mt-1 truncate text-xs text-muted-foreground">
-                    {t.adminLatestReporter}: {group.latestReporterName}
-                  </p>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1.5">
-                    {displayedReasons.map((reasonLabel) => (
-                      <Badge
-                        key={reasonLabel}
-                        variant="outline"
-                        className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground"
-                      >
-                        {reasonLabel}
-                      </Badge>
-                    ))}
-                    {remainingReasonCount > 0 ? (
+                return (
+                  <TableRow key={group.key}>
+                    <TableCell>
                       <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
-                        +{remainingReasonCount}
+                        {getTranslatedReportSubjectType(group.subjectType, t)}
                       </Badge>
-                    ) : null}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1.5">
-                    <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
-                      {group.totalCount} {t.adminReportsCountLabel}
-                    </Badge>
-                    {group.openCount > 0 ? (
-                      <Badge className="rounded-full bg-primary/10 px-2.5 py-0.5 text-primary shadow-none dark:bg-primary/15">
-                        {group.openCount} {t.adminOpenCountLabel}
-                      </Badge>
-                    ) : null}
-                  </div>
-                </TableCell>
-                <TableCell>{group.reportedUser.name}</TableCell>
-                <TableCell>
-                  <div className="space-y-1">
-                    <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
-                      {getTranslatedReportStatus(group.latestStatus, t)}
-                    </Badge>
-                    <div>
-                      <ClientFormattedDateTime
-                        value={group.openCount > 0 ? group.latestReportedAt : group.latestReviewedAt ?? group.latestReportedAt}
-                        language={language}
-                        className="text-sm text-muted-foreground"
-                      />
-                    </div>
-                    {group.openCount === 0 && group.latestReviewedByName ? (
-                      <p className="text-xs text-muted-foreground">
-                        {t.adminReviewedBy}: {group.latestReviewedByName}
+                    </TableCell>
+                    <TableCell className="max-w-[280px]">
+                      <Link
+                        href={`/admin/reports/${group.latestReportId}`}
+                        className="block font-medium text-foreground hover:underline"
+                        title={group.subjectPreview}
+                      >
+                        <span className="block truncate">{group.subjectPreview}</span>
+                      </Link>
+                      <p className="mt-1 truncate text-xs text-muted-foreground">
+                        {t.adminLatestReporter}: {group.latestReporterName}
                       </p>
-                    ) : null}
-                  </div>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button asChild variant="outline" size="sm" className="rounded-xl">
-                    <Link href={`/admin/reports/${group.latestReportId}`}>{t.review}</Link>
-                  </Button>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1.5">
+                        {displayedReasons.map((reasonLabel) => (
+                          <Badge
+                            key={reasonLabel}
+                            variant="outline"
+                            className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground"
+                          >
+                            {reasonLabel}
+                          </Badge>
+                        ))}
+                        {remainingReasonCount > 0 ? (
+                          <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
+                            +{remainingReasonCount}
+                          </Badge>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1.5">
+                        <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
+                          {group.totalCount} {t.adminReportsCountLabel}
+                        </Badge>
+                        {group.openCount > 0 ? (
+                          <Badge className="rounded-full bg-primary/10 px-2.5 py-0.5 text-primary shadow-none dark:bg-primary/15">
+                            {group.openCount} {t.adminOpenCountLabel}
+                          </Badge>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                    <TableCell>{group.reportedUser.name}</TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
+                          {getTranslatedReportStatus(group.latestStatus, t)}
+                        </Badge>
+                        <div>
+                          <ClientFormattedDateTime
+                            value={group.openCount > 0 ? group.latestReportedAt : group.latestReviewedAt ?? group.latestReportedAt}
+                            language={language}
+                            className="text-sm text-muted-foreground"
+                          />
+                        </div>
+                        {group.openCount === 0 && group.latestReviewedByName ? (
+                          <p className="text-xs text-muted-foreground">
+                            {t.adminReviewedBy}: {group.latestReviewedByName}
+                          </p>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button asChild variant="outline" size="sm" className="rounded-xl">
+                        <Link href={`/admin/reports/${group.latestReportId}`}>{t.review}</Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            ) : (
+              <TableRow>
+                <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
+                  {t.noReports}
                 </TableCell>
               </TableRow>
-            );
-          })
-        ) : (
-          <TableRow>
-            <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
-              {t.noReports}
-            </TableCell>
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </>
+  );
+}
+
+function ListingApprovalMobileList({ listings, language, t, dateLabel }) {
+  return (
+    <div className="space-y-3 md:hidden" role="list">
+      {listings.map((listing) => (
+        <article
+          key={listing.id}
+          className="space-y-3 rounded-2xl border border-border bg-background p-4"
+          role="listitem"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <Link
+                href={`/admin/listings/${listing.id}`}
+                className="line-clamp-2 font-medium text-foreground hover:underline"
+              >
+                {listing.title}
+              </Link>
+              {isListingResubmittedAfterEdit(listing) ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t.adminListingResubmittedBadge}
+                </p>
+              ) : null}
+            </div>
+            <Badge
+              variant="outline"
+              className="shrink-0 rounded-full border-border bg-card px-2.5 py-0.5 text-foreground"
+            >
+              {getTranslatedListingApprovalStatus(listing.status, t, listing)}
+            </Badge>
+          </div>
+
+          <dl className="grid grid-cols-2 gap-3 rounded-xl bg-muted/35 p-3">
+            <div className="min-w-0">
+              <dt className="text-xs text-muted-foreground">{t.seller}</dt>
+              <dd className="mt-0.5 truncate text-sm font-medium text-foreground">
+                {listing.seller.name}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">{dateLabel}</dt>
+              <dd className="mt-0.5 text-sm text-foreground">
+                <ClientFormattedDateTime value={listing.queueAt} language={language} />
+              </dd>
+            </div>
+          </dl>
+
+          {listing.moderationFeedback ? (
+            <div>
+              <p className="text-xs text-muted-foreground">{t.adminFeedback}</p>
+              <p className="mt-1 line-clamp-2 text-sm text-foreground">
+                {listing.moderationFeedback}
+              </p>
+            </div>
+          ) : null}
+
+          <div className="flex justify-end border-t border-border pt-3">
+            <Button asChild variant="outline" size="sm" className="min-h-11 rounded-xl px-4">
+              <Link href={`/admin/listings/${listing.id}`}>{t.review}</Link>
+            </Button>
+          </div>
+        </article>
+      ))}
+    </div>
   );
 }
 
 function ListingApprovalTable({ listings, language, t, dateLabel, emptyText }) {
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>{t.adminSubject}</TableHead>
-          <TableHead>{t.seller}</TableHead>
-          <TableHead>{t.status}</TableHead>
-          <TableHead>{dateLabel}</TableHead>
-          <TableHead>{t.adminFeedback}</TableHead>
-          <TableHead className="text-right">{t.action}</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {listings.length > 0 ? (
-          listings.map((listing) => (
-            <TableRow key={listing.id}>
-              <TableCell className="max-w-[300px]">
-                <Link
-                  href={`/admin/listings/${listing.id}`}
-                  className="block truncate font-medium text-foreground hover:underline"
-                  title={listing.title}
-                >
-                  {listing.title}
-                </Link>
-                {isListingResubmittedAfterEdit(listing) ? (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {t.adminListingResubmittedBadge}
-                  </p>
-                ) : null}
-              </TableCell>
-              <TableCell>{listing.seller.name}</TableCell>
-              <TableCell>
-                <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
-                  {getTranslatedListingApprovalStatus(listing.status, t, listing)}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <ClientFormattedDateTime
-                  value={listing.queueAt}
-                  language={language}
-                  className="text-sm text-muted-foreground"
-                />
-              </TableCell>
-              <TableCell className="max-w-[280px]">
-                <span className="line-clamp-2 text-sm text-muted-foreground">
-                  {listing.moderationFeedback || "—"}
-                </span>
-              </TableCell>
-              <TableCell className="text-right">
-                <Button asChild variant="outline" size="sm" className="rounded-xl">
-                  <Link href={`/admin/listings/${listing.id}`}>{t.review}</Link>
-                </Button>
-              </TableCell>
+    <>
+      <ListingApprovalMobileList listings={listings} language={language} t={t} dateLabel={dateLabel} />
+      <div className="hidden md:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t.adminSubject}</TableHead>
+              <TableHead>{t.seller}</TableHead>
+              <TableHead>{t.status}</TableHead>
+              <TableHead>{dateLabel}</TableHead>
+              <TableHead>{t.adminFeedback}</TableHead>
+              <TableHead className="text-right">{t.action}</TableHead>
             </TableRow>
-          ))
-        ) : (
-          <TableRow>
-            <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
-              {emptyText}
-            </TableCell>
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
+          </TableHeader>
+          <TableBody>
+            {listings.length > 0 ? (
+              listings.map((listing) => (
+                <TableRow key={listing.id}>
+                  <TableCell className="max-w-[300px]">
+                    <Link
+                      href={`/admin/listings/${listing.id}`}
+                      className="block truncate font-medium text-foreground hover:underline"
+                      title={listing.title}
+                    >
+                      {listing.title}
+                    </Link>
+                    {isListingResubmittedAfterEdit(listing) ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {t.adminListingResubmittedBadge}
+                      </p>
+                    ) : null}
+                  </TableCell>
+                  <TableCell>{listing.seller.name}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
+                      {getTranslatedListingApprovalStatus(listing.status, t, listing)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <ClientFormattedDateTime
+                      value={listing.queueAt}
+                      language={language}
+                      className="text-sm text-muted-foreground"
+                    />
+                  </TableCell>
+                  <TableCell className="max-w-[280px]">
+                    <span className="line-clamp-2 text-sm text-muted-foreground">
+                      {listing.moderationFeedback || "—"}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button asChild variant="outline" size="sm" className="rounded-xl">
+                      <Link href={`/admin/listings/${listing.id}`}>{t.review}</Link>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
+                  {emptyText}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </>
   );
 }
 

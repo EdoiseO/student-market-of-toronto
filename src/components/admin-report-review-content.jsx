@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -20,6 +21,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { useLanguage } from "@/context/LanguageContext";
+import { REMOTE_IMAGE_BLUR_DATA_URL } from "@/lib/image-config";
 import {
   REPORT_STATUS_VALUES,
   REPORT_SUBJECT_TYPES,
@@ -73,7 +75,7 @@ function ModeratorNotesCard({
                 placeholder={t.adminModeratorNotesPlaceholder}
                 rows={compact ? 3 : 6}
                 maxLength={4000}
-                className={`${compact ? "min-h-20" : "min-h-32"} resize-y border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0`}
+                className={`${compact ? "h-24 min-h-24" : "h-40 min-h-32"} max-h-80 resize-y border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0`}
               />
             </div>
 
@@ -636,12 +638,16 @@ export function AdminReportReviewContent({
               <div className="space-y-5">
                 <div className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 dark:border-border dark:bg-card">
                   <div className="flex items-start gap-4">
-                    <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted">
+                    <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted">
                       {listingReview?.listing?.imageUrl ? (
-                        <img
+                        <Image
                           src={listingReview.listing.imageUrl}
                           alt={listingReview.listing.title}
-                          className="h-full w-full object-cover"
+                          fill
+                          sizes="96px"
+                          placeholder="blur"
+                          blurDataURL={REMOTE_IMAGE_BLUR_DATA_URL}
+                          className="object-cover"
                         />
                       ) : (
                         <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
@@ -850,12 +856,16 @@ export function AdminReportReviewContent({
                 <CardContent className="space-y-4 px-6 py-5">
                   <Link href={`/listings/${listingTarget.slug}`} className="block rounded-2xl bg-zinc-50 p-4 transition hover:bg-background dark:bg-muted/40 dark:hover:bg-background">
                     <div className="flex items-center gap-4">
-                      <div className="h-18 w-18 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted">
+                      <div className="relative h-18 w-18 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted">
                         {listingTarget?.imageUrl ? (
-                          <img
+                          <Image
                             src={listingTarget.imageUrl}
                             alt={listingTarget.title}
-                            className="h-full w-full object-cover"
+                            fill
+                            sizes="72px"
+                            placeholder="blur"
+                            blurDataURL={REMOTE_IMAGE_BLUR_DATA_URL}
+                            className="object-cover"
                           />
                         ) : (
                           <div className="h-full w-full bg-zinc-100 dark:bg-muted" />

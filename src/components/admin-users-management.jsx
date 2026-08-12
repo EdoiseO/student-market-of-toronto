@@ -93,18 +93,18 @@ function SummaryCard({ title, value, description }) {
   );
 }
 
-function UserRoleActions({ user, currentUserId, currentUserRole, onRoleUpdated }) {
+function UserRoleActions({ user, currentUserId, currentUserRole, onRoleUpdated, mobile = false }) {
   const { t } = useLanguage();
   const router = useRouter();
   const supabase = React.useMemo(() => createClient(), []);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   if (currentUserRole !== "admin") {
-    return <span className="text-sm text-muted-foreground">—</span>;
+    return mobile ? null : <span className="text-sm text-muted-foreground">—</span>;
   }
 
   if (user.role === "staff") {
-    return <span className="text-sm text-muted-foreground">—</span>;
+    return mobile ? null : <span className="text-sm text-muted-foreground">—</span>;
   }
 
   async function handleRoleAction(action) {
@@ -147,13 +147,13 @@ function UserRoleActions({ user, currentUserId, currentUserRole, onRoleUpdated }
   }
 
   return (
-    <div className="flex flex-wrap justify-end gap-2">
+    <div className={cn("flex flex-wrap justify-end gap-2", mobile && "contents")}>
       {user.role === "moderator" ? (
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="rounded-xl"
+          className={cn("rounded-xl", mobile && "min-w-32 flex-1 px-3")}
           onClick={() => handleRoleAction("remove_moderator")}
           disabled={isSubmitting}
         >
@@ -164,7 +164,7 @@ function UserRoleActions({ user, currentUserId, currentUserRole, onRoleUpdated }
           type="button"
           variant="outline"
           size="sm"
-          className="rounded-xl"
+          className={cn("rounded-xl", mobile && "min-w-32 flex-1 px-3")}
           onClick={() => handleRoleAction("make_moderator")}
           disabled={isSubmitting || user.id === currentUserId}
         >
@@ -175,7 +175,12 @@ function UserRoleActions({ user, currentUserId, currentUserRole, onRoleUpdated }
       {user.id !== currentUserId && user.role !== "admin" ? (
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button type="button" size="sm" className="rounded-xl" disabled={isSubmitting}>
+            <Button
+              type="button"
+              size="sm"
+              className={cn("rounded-xl", mobile && "min-w-32 flex-1 px-3")}
+              disabled={isSubmitting}
+            >
               {t.adminTransferAdmin}
             </Button>
           </AlertDialogTrigger>
@@ -202,7 +207,7 @@ function UserRoleActions({ user, currentUserId, currentUserRole, onRoleUpdated }
   );
 }
 
-function UserBanActions({ user, currentUserId, currentUserRole, onBanUpdated }) {
+function UserBanActions({ user, currentUserId, currentUserRole, onBanUpdated, mobile = false }) {
   const { t } = useLanguage();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
@@ -255,7 +260,7 @@ function UserBanActions({ user, currentUserId, currentUserRole, onBanUpdated }) 
         type="button"
         variant="outline"
         size="sm"
-        className="rounded-xl"
+        className={cn("rounded-xl", mobile && "min-w-32 flex-1 px-3")}
         onClick={() => submitBanAction("unban")}
         disabled={isSubmitting}
       >
@@ -276,7 +281,13 @@ function UserBanActions({ user, currentUserId, currentUserRole, onBanUpdated }) 
     >
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button type="button" variant="outline" size="sm" className="rounded-xl" disabled={isSubmitting}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={cn("rounded-xl", mobile && "min-w-32 flex-1 px-3")}
+            disabled={isSubmitting}
+          >
             {t.banUser}
           </Button>
         </DropdownMenuTrigger>
@@ -336,6 +347,106 @@ function UserBanActions({ user, currentUserId, currentUserRole, onBanUpdated }) 
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+  );
+}
+
+function hasMobileUserActions(user, currentUserId, currentUserRole) {
+  return (
+    user.profileExists ||
+    (currentUserRole === "admin" && user.id !== currentUserId && user.role !== "admin")
+  );
+}
+
+function UserMobileList({
+  users,
+  currentUserId,
+  currentUserRole,
+  language,
+  onRoleUpdated,
+  onBanUpdated,
+  t,
+}) {
+  return (
+    <div className="space-y-3 md:hidden" role="list">
+      {users.map((user) => (
+        <article
+          key={user.id}
+          className="space-y-3 rounded-2xl border border-border bg-background p-4"
+          role="listitem"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-medium text-foreground">{user.name}</p>
+              <p className="mt-1 break-all text-xs text-muted-foreground">{user.email}</p>
+            </div>
+            <Badge
+              variant="outline"
+              className="shrink-0 rounded-full border-border bg-card px-2.5 py-0.5 text-foreground"
+            >
+              {getStatusLabel(user, t)}
+            </Badge>
+          </div>
+
+          <dl className="grid grid-cols-2 gap-3 rounded-xl bg-muted/35 p-3">
+            <div className="min-w-0">
+              <dt className="text-xs text-muted-foreground">{t.school}</dt>
+              <dd className="mt-0.5 line-clamp-2 text-sm font-medium text-foreground">
+                {user.school}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">{t.created}</dt>
+              <dd className="mt-0.5 text-sm text-foreground">
+                <ClientFormattedDateTime value={user.createdAt} language={language} />
+              </dd>
+            </div>
+          </dl>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge
+              variant="outline"
+              className="rounded-full border-border bg-card px-2.5 py-0.5 text-foreground"
+            >
+              {getRoleLabel(user.role, t)}
+            </Badge>
+            {user.isBanned && user.bannedUntil ? (
+              <p className="text-xs text-muted-foreground">
+                {t.adminBannedUntilPrefix}{" "}
+                <ClientFormattedDateTime value={user.bannedUntil} language={language} />
+              </p>
+            ) : null}
+          </div>
+
+          {hasMobileUserActions(user, currentUserId, currentUserRole) ? (
+            <div
+              className="flex flex-wrap items-center gap-2 border-t border-border pt-3"
+              role="group"
+              aria-label={t.actions}
+            >
+              {user.profileExists ? (
+                <Button asChild variant="outline" size="sm" className="min-w-32 flex-1 rounded-xl px-3">
+                  <Link href={`/profile/${user.id}`}>{t.viewProfile}</Link>
+                </Button>
+              ) : null}
+              <UserRoleActions
+                user={user}
+                currentUserId={currentUserId}
+                currentUserRole={currentUserRole}
+                onRoleUpdated={onRoleUpdated}
+                mobile
+              />
+              <UserBanActions
+                user={user}
+                currentUserId={currentUserId}
+                currentUserRole={currentUserRole}
+                onBanUpdated={onBanUpdated}
+                mobile
+              />
+            </div>
+          ) : null}
+        </article>
+      ))}
+    </div>
   );
 }
 
@@ -474,81 +585,95 @@ export function AdminUsersManagement({ users, currentUserId, currentUserRole }) 
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder={t.adminSearchUsersPlaceholder}
-                className="h-10 rounded-full bg-background pl-9"
+                className="rounded-full bg-background pl-9"
                 aria-label={t.adminSearchUsersPlaceholder}
               />
             </div>
           </div>
 
           {filteredUsers.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t.name}</TableHead>
-                  <TableHead>{t.email}</TableHead>
-                  <TableHead>{t.school}</TableHead>
-                  <TableHead>{t.statusRole}</TableHead>
-                  <TableHead>{t.created}</TableHead>
-                  <TableHead className="text-right">{t.actions}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <p className="font-medium text-foreground">{user.name}</p>
-                    </TableCell>
-                    <TableCell className="max-w-[240px]">
-                      <span className="block truncate text-sm text-muted-foreground">{user.email}</span>
-                    </TableCell>
-                    <TableCell>{user.school}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1.5">
-                        <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
-                          {getStatusLabel(user, t)}
-                        </Badge>
-                        <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
-                          {getRoleLabel(user.role, t)}
-                        </Badge>
-                      </div>
-                      {user.isBanned && user.bannedUntil ? (
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {t.adminBannedUntilPrefix} <ClientFormattedDateTime value={user.bannedUntil} language={language} />
-                        </p>
-                      ) : null}
-                    </TableCell>
-                    <TableCell>
-                      <ClientFormattedDateTime
-                        value={user.createdAt}
-                        language={language}
-                        className="text-sm text-muted-foreground"
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex flex-wrap justify-end gap-2">
-                        {user.profileExists ? (
-                          <Button asChild variant="outline" size="sm" className="rounded-xl">
-                            <Link href={`/profile/${user.id}`}>{t.viewProfile}</Link>
-                          </Button>
-                        ) : null}
-                        <UserRoleActions
-                          user={user}
-                          currentUserId={currentUserId}
-                          currentUserRole={currentViewerRole}
-                          onRoleUpdated={handleRoleUpdated}
-                        />
-                        <UserBanActions
-                          user={user}
-                          currentUserId={currentUserId}
-                          currentUserRole={currentViewerRole}
-                          onBanUpdated={handleBanUpdated}
-                        />
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <>
+              <UserMobileList
+                users={filteredUsers}
+                currentUserId={currentUserId}
+                currentUserRole={currentViewerRole}
+                language={language}
+                onRoleUpdated={handleRoleUpdated}
+                onBanUpdated={handleBanUpdated}
+                t={t}
+              />
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t.name}</TableHead>
+                      <TableHead>{t.email}</TableHead>
+                      <TableHead>{t.school}</TableHead>
+                      <TableHead>{t.statusRole}</TableHead>
+                      <TableHead>{t.created}</TableHead>
+                      <TableHead className="text-right">{t.actions}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredUsers.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell>
+                          <p className="font-medium text-foreground">{user.name}</p>
+                        </TableCell>
+                        <TableCell className="max-w-[240px]">
+                          <span className="block truncate text-sm text-muted-foreground">{user.email}</span>
+                        </TableCell>
+                        <TableCell>{user.school}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1.5">
+                            <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
+                              {getStatusLabel(user, t)}
+                            </Badge>
+                            <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
+                              {getRoleLabel(user.role, t)}
+                            </Badge>
+                          </div>
+                          {user.isBanned && user.bannedUntil ? (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {t.adminBannedUntilPrefix}{" "}
+                              <ClientFormattedDateTime value={user.bannedUntil} language={language} />
+                            </p>
+                          ) : null}
+                        </TableCell>
+                        <TableCell>
+                          <ClientFormattedDateTime
+                            value={user.createdAt}
+                            language={language}
+                            className="text-sm text-muted-foreground"
+                          />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex flex-wrap justify-end gap-2">
+                            {user.profileExists ? (
+                              <Button asChild variant="outline" size="sm" className="rounded-xl">
+                                <Link href={`/profile/${user.id}`}>{t.viewProfile}</Link>
+                              </Button>
+                            ) : null}
+                            <UserRoleActions
+                              user={user}
+                              currentUserId={currentUserId}
+                              currentUserRole={currentViewerRole}
+                              onRoleUpdated={handleRoleUpdated}
+                            />
+                            <UserBanActions
+                              user={user}
+                              currentUserId={currentUserId}
+                              currentUserRole={currentViewerRole}
+                              onBanUpdated={handleBanUpdated}
+                            />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           ) : (
             <div className="rounded-3xl border border-dashed border-border bg-muted/30 px-5 py-10 text-center text-sm text-muted-foreground">
               {t.adminNoUsersMatchFilters}

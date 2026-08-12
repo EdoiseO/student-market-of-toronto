@@ -37,6 +37,45 @@ export const MESSAGE_CONVERSATION_SELECT = `
   )
 `;
 
+export const MESSAGE_MEDIA_BUCKET = "message-media";
+export const MAX_MESSAGE_ATTACHMENTS = 3;
+export const MAX_MESSAGE_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+export const MESSAGE_ATTACHMENT_ACCEPT =
+  "image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime";
+
+export const MESSAGE_ATTACHMENT_MIME_TYPES = new Set(
+  MESSAGE_ATTACHMENT_ACCEPT.split(","),
+);
+
+export function isMessageAttachmentSetupMissing(error) {
+  const message = [error?.message, error?.details, error?.hint]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return (
+    error?.code === "42P01" ||
+    error?.code === "PGRST202" ||
+    error?.code === "PGRST205" ||
+    error?.statusCode === "404" ||
+    error?.statusCode === 404 ||
+    message.includes("bucket not found") ||
+    message.includes("message_attachments") ||
+    message.includes("send_conversation_message_with_attachments") ||
+    message.includes("message-media")
+  );
+}
+
+export function sanitizeMessageAttachmentFileName(fileName) {
+  const normalizedName = String(fileName ?? "attachment")
+    .normalize("NFKC")
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 120);
+
+  return normalizedName || "attachment";
+}
+
 export function isConversationUserStateTableMissing(error) {
   return (
     error?.code === "42P01" ||

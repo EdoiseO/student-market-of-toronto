@@ -5,7 +5,11 @@ import { redirect } from "next/navigation";
 
 import { AdminUsersManagement } from "@/components/admin-users-management";
 import { Button } from "@/components/ui/button";
-import { getUserModerationRole, isModerationRole } from "@/lib/moderation";
+import {
+  getUserModerationRole,
+  isModerationRole,
+  isNameChangeRequired,
+} from "@/lib/moderation";
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
@@ -119,7 +123,7 @@ export default async function AdminUsersPage() {
         createdAt: authUser.created_at,
         isBanned: Boolean(authUser.banned_until),
         bannedUntil: authUser.banned_until ?? null,
-        requiresNameChange: authUser.user_metadata?.force_name_change === true,
+        requiresNameChange: isNameChangeRequired(authUser),
         profileExists: Boolean(profile),
       };
     })

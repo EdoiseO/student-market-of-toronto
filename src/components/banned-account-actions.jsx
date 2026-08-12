@@ -1,12 +1,14 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/context/LanguageContext";
 import { createClient } from "@/utils/supabase/client";
 
 export function BannedAccountActions() {
+  const router = useRouter();
   const { t } = useLanguage();
   const supabase = React.useMemo(() => createClient(), []);
   const [isSigningOut, setIsSigningOut] = React.useState(false);
@@ -18,7 +20,8 @@ export function BannedAccountActions() {
 
     setIsSigningOut(true);
     await supabase.auth.signOut();
-    window.location.href = "/login";
+    router.replace("/login");
+    router.refresh();
   }
 
   return (

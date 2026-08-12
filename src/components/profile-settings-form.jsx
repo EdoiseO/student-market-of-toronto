@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useLanguage } from "@/context/LanguageContext";
 
 import { ProfileAvatarPreview } from "@/components/profile-avatar";
+import { ProfilePictureEditor } from "@/components/profile-picture-editor";
 import { createClient } from "@/utils/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +35,12 @@ import {
   PROFILE_IMAGES_BUCKET,
   PROFILE_AVATAR_PRESETS,
 } from "@/lib/profile-avatar";
+import {
+  isSupportedProfileImageType,
+  PROFILE_IMAGE_SOURCE_MAX_BYTES,
+  readProfileImageDimensions,
+  validateProfileImageDimensions,
+} from "@/lib/profile-image-crop.mjs";
 
 function normalizeProfileText(value) {
   const normalizedValue = value.trim();
@@ -52,10 +59,27 @@ export function ProfileSettingsForm({ initialProfile }) {
   const [avatarUrl, setAvatarUrl] = React.useState(initialProfile.avatarUrl ?? "");
   const [bio, setBio] = React.useState(initialProfile.bio ?? "");
   const [isAvatarPickerOpen, setIsAvatarPickerOpen] = React.useState(false);
+  const [avatarEditorSource, setAvatarEditorSource] = React.useState(null);
   const [isUpdatingAvatar, setIsUpdatingAvatar] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
   const [isMobileViewport, setIsMobileViewport] = React.useState(false);
-  const requiresNameChange = initialProfile.requiresNameChange === true;
+  const [requiresNameChange, setRequiresNameChange] = React.useState(
+    initialProfile.requiresNameChange === true,
+  );
+
+  React.useEffect(() => {
+    let isActive = true;
+
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (isActive) {
+        setRequiresNameChange(user?.app_metadata?.force_name_change === true);
+      }
+    });
+
+    return () => {
+      isActive = false;
+    };
+  }, [supabase]);
 
   React.useEffect(() => {
     function syncIsMobileViewport() {
@@ -70,6 +94,14 @@ export function ProfileSettingsForm({ initialProfile }) {
     };
   }, []);
 
+  React.useEffect(() => {
+    return () => {
+      if (avatarEditorSource?.url) {
+        URL.revokeObjectURL(avatarEditorSource.url);
+      }
+    };
+  }, [avatarEditorSource]);
+
   const initials = [firstName, lastName]
     .filter(Boolean)
     .map((value) => value[0])
@@ -83,11 +115,12 @@ export function ProfileSettingsForm({ initialProfile }) {
   const currentNormalizedFirstName = normalizeProfileText(firstName);
   const currentNormalizedLastName = normalizeProfileText(lastName);
   const currentNormalizedBio = normalizeProfileText(bio);
+  const hasNameChanges =
+    currentNormalizedFirstName !== initialNormalizedFirstName ||
+    currentNormalizedLastName !== initialNormalizedLastName;
 
   const hasProfileChanges =
-    currentNormalizedFirstName !== initialNormalizedFirstName ||
-    currentNormalizedLastName !== initialNormalizedLastName ||
-    currentNormalizedBio !== initialNormalizedBio;
+    hasNameChanges || currentNormalizedBio !== initialNormalizedBio;
 
   async function saveAvatarPreset(nextPresetId) {
     setIsUpdatingAvatar(true);
@@ -130,6 +163,14 @@ export function ProfileSettingsForm({ initialProfile }) {
     }
   }
 
+  function closeAvatarEditor() {
+    setAvatarEditorSource(null);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
   async function handleCustomAvatarChange(event) {
     const selectedFile = event.target.files?.[0];
 
@@ -137,13 +178,43 @@ export function ProfileSettingsForm({ initialProfile }) {
       return;
     }
 
-    if (!selectedFile.type.startsWith("image/")) {
+    if (!isSupportedProfileImageType(selectedFile.type)) {
       toast.error(t.chooseImageFile);
+      event.target.value = "";
       return;
     }
 
-    if (selectedFile.size > 2 * 1024 * 1024) {
-      toast.error(t.chooseImageUnder2MB);
+    if (selectedFile.size > PROFILE_IMAGE_SOURCE_MAX_BYTES) {
+      toast.error(t.chooseImageUnder10MB);
+      event.target.value = "";
+      return;
+    }
+
+    const sourceUrl = URL.createObjectURL(selectedFile);
+
+    try {
+      const { width, height } = await readProfileImageDimensions(sourceUrl);
+
+      if (!validateProfileImageDimensions(width, height)) {
+        throw new Error("Selected profile image dimensions exceed the editor limit.");
+      }
+
+      setAvatarEditorSource({
+        file: selectedFile,
+        url: sourceUrl,
+      });
+      setIsAvatarPickerOpen(false);
+    } catch (error) {
+      URL.revokeObjectURL(sourceUrl);
+      event.target.value = "";
+      console.error("Failed to open selected profile image", error);
+      toast.error(t.profilePhotoCropOpenError);
+    }
+  }
+
+  async function saveCustomAvatar(croppedFile) {
+    if (croppedFile.size > 2 * 1024 * 1024) {
+      toast.error(t.customProfileImageError);
       return;
     }
 
@@ -151,12 +222,14 @@ export function ProfileSettingsForm({ initialProfile }) {
 
     try {
       const existingStoragePath = extractProfileImageStoragePath(avatarUrl);
-      const storagePath = buildProfileImageStoragePath(initialProfile.id, selectedFile.name);
+      const storagePath = buildProfileImageStoragePath(initialProfile.id, croppedFile.name);
 
       const { error: uploadError } = await supabase.storage
         .from(PROFILE_IMAGES_BUCKET)
-        .upload(storagePath, selectedFile, {
+        .upload(storagePath, croppedFile, {
           upsert: false,
+          contentType: croppedFile.type,
+          cacheControl: "3600",
         });
 
       if (uploadError) {
@@ -192,14 +265,13 @@ export function ProfileSettingsForm({ initialProfile }) {
 
       setAvatarPresetId(null);
       setAvatarUrl(publicUrl);
-      setIsAvatarPickerOpen(false);
+      closeAvatarEditor();
       toast.success(t.customProfileImageUpdated);
       router.refresh();
     } catch (error) {
       console.error("Failed to save custom avatar image", error);
       toast.error(t.customProfileImageError);
     } finally {
-      event.target.value = "";
       setIsUpdatingAvatar(false);
     }
   }
@@ -224,16 +296,22 @@ export function ProfileSettingsForm({ initialProfile }) {
     setIsSaving(true);
 
     try {
-      const { error: authUpdateError } = await supabase.auth.updateUser({
-        data: {
-          first_name: normalizedFirstName,
-          last_name: normalizedLastName,
-          ...(requiresNameChange ? { force_name_change: false } : {}),
-        },
-      });
+      if (hasNameChanges || requiresNameChange) {
+        const nameResponse = await fetch("/api/account/name", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            firstName: normalizedFirstName,
+            lastName: normalizedLastName,
+          }),
+        });
+        const namePayload = await nameResponse.json().catch(() => ({}));
 
-      if (authUpdateError) {
-        throw authUpdateError;
+        if (!nameResponse.ok) {
+          throw new Error(namePayload?.error || t.profileUpdateError);
+        }
+
+        setRequiresNameChange(false);
       }
 
       const { error: profileUpsertError } = await supabase
@@ -267,11 +345,11 @@ export function ProfileSettingsForm({ initialProfile }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-8">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 pb-3 md:gap-8 md:pb-0">
       {requiresNameChange ? (
-        <Card className="rounded-3xl border-amber-300 bg-amber-50 py-0 shadow-sm dark:border-amber-500/40 dark:bg-amber-500/10">
-          <CardHeader className="px-6 py-5">
-            <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
+        <Card className="rounded-2xl border-amber-300 bg-amber-50 py-0 shadow-sm dark:border-amber-500/40 dark:bg-amber-500/10 md:rounded-3xl">
+          <CardHeader className="px-4 py-4 md:px-6 md:py-5">
+            <CardTitle className="text-lg text-zinc-950 dark:text-foreground md:text-xl">
               {t.profileNameChangeRequiredTitle}
             </CardTitle>
             <CardDescription className="text-zinc-700 dark:text-zinc-200">
@@ -281,29 +359,29 @@ export function ProfileSettingsForm({ initialProfile }) {
         </Card>
       ) : null}
 
-      <div className="grid gap-8 xl:grid-cols-[320px_minmax(0,1fr)]">
-        <Card className="rounded-3xl bg-white py-0 shadow-sm ring-zinc-200 dark:bg-card dark:ring-border">
-          <CardHeader className="border-b border-zinc-200 px-6 py-6 dark:border-border">
-            <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">{t.profilePhotoTitle}</CardTitle>
-            <CardDescription>{t.profilePhotoDescription}</CardDescription>
+      <div className="grid gap-3 md:gap-8 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <Card className="rounded-2xl bg-white py-0 shadow-sm ring-zinc-200 dark:bg-card dark:ring-border md:rounded-3xl">
+          <CardHeader className="border-b border-zinc-200 px-4 py-3 dark:border-border md:px-6 md:py-6">
+            <CardTitle className="text-lg text-zinc-950 dark:text-foreground md:text-2xl">{t.profilePhotoTitle}</CardTitle>
+            <CardDescription className="text-xs leading-5 md:text-sm">{t.profilePhotoDescription}</CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col items-center gap-6 px-6 pt-4 pb-8 text-center">
+          <CardContent className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 px-4 py-3 text-left md:flex md:flex-col md:gap-6 md:px-6 md:pb-8 md:pt-4 md:text-center">
             <Popover open={isAvatarPickerOpen} onOpenChange={setIsAvatarPickerOpen}>
               <PopoverAnchor asChild>
-                <div className="relative flex aspect-square w-full max-w-[208px] items-center justify-center self-center rounded-[2rem] border border-dashed border-zinc-300 bg-zinc-50 dark:border-border dark:bg-muted/40">
+                <div className="relative flex size-16 items-center justify-center self-center rounded-full border border-dashed border-zinc-300 bg-zinc-50 dark:border-border dark:bg-muted/40 md:size-20 lg:size-[120px]">
                   <ProfileAvatarPreview
                     email={initialProfile.email}
                     name={`${firstName} ${lastName}`.trim()}
                     avatarPresetId={avatarPresetId}
                     avatarUrl={avatarUrl}
-                    className="h-full w-full rounded-[calc(2rem-1px)]"
-                    initialsClassName="text-6xl md:text-7xl"
+                    className="h-full w-full rounded-full"
+                    initialsClassName="text-2xl md:text-3xl lg:text-5xl"
                   />
                   <PopoverTrigger asChild>
                     <button
                       type="button"
                       aria-label={t.chooseProfilePictureStyle}
-                      className="absolute bottom-2 right-2 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-950 text-white shadow-lg opacity-80 dark:bg-primary dark:text-primary-foreground"
+                      className="absolute -bottom-1.5 -right-1.5 flex size-11 items-center justify-center rounded-full bg-zinc-950 text-white shadow-md dark:bg-primary dark:text-primary-foreground md:bottom-2 md:right-2"
                     >
                       <Plus className="size-5" />
                     </button>
@@ -323,7 +401,7 @@ export function ProfileSettingsForm({ initialProfile }) {
                     </PopoverDescription>
                   </PopoverHeader>
 
-                  <div className="grid grid-cols-5 gap-4">
+                  <div className="grid grid-cols-4 gap-4">
                     {PROFILE_AVATAR_PRESETS.map((preset) => {
                       const isSelected = avatarPresetId === preset.id;
 
@@ -333,7 +411,7 @@ export function ProfileSettingsForm({ initialProfile }) {
                           type="button"
                           onClick={() => saveAvatarPreset(preset.id)}
                           disabled={isUpdatingAvatar}
-                          className={`flex aspect-square items-center justify-center rounded-full border-2 transition ${
+                          className={`flex min-h-11 min-w-11 aspect-square items-center justify-center rounded-full border-2 transition ${
                             isSelected
                               ? "border-zinc-950 ring-4 ring-zinc-200 dark:border-ring dark:ring-border"
                               : "border-transparent hover:scale-[1.02]"
@@ -353,7 +431,7 @@ export function ProfileSettingsForm({ initialProfile }) {
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={isUpdatingAvatar}
-                      className="flex aspect-square items-center justify-center rounded-full border-2 border-dashed border-zinc-300 bg-zinc-50 text-zinc-700 transition hover:bg-zinc-100 dark:border-border dark:bg-muted/40 dark:text-foreground dark:hover:bg-muted"
+                      className="flex min-h-11 min-w-11 aspect-square items-center justify-center rounded-full border-2 border-dashed border-zinc-300 bg-zinc-50 text-zinc-700 transition hover:bg-zinc-100 dark:border-border dark:bg-muted/40 dark:text-foreground dark:hover:bg-muted"
                       aria-label={t.uploadCustomProfilePicture}
                     >
                       <Plus className="size-6" />
@@ -363,35 +441,35 @@ export function ProfileSettingsForm({ initialProfile }) {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
                     className="hidden"
                     onChange={handleCustomAvatarChange}
                   />
               </PopoverContent>
             </Popover>
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-zinc-950 dark:text-foreground">{initialProfile.email || t.studentAccount}</p>
-              <p className="text-sm text-zinc-500 dark:text-muted-foreground">
+            <div className="min-w-0 max-w-full space-y-0.5 md:space-y-2">
+              <p className="truncate text-sm font-medium text-zinc-950 dark:text-foreground md:break-all">{initialProfile.email || t.studentAccount}</p>
+              <p className="line-clamp-2 text-xs leading-4 text-zinc-500 dark:text-muted-foreground md:line-clamp-none md:text-sm md:leading-5">
                 {t.profileColorsStorageNote}
               </p>
             </div>
-            <div className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-4 text-left dark:border-border dark:bg-muted/40">
-              <p className="text-sm font-medium text-zinc-950 dark:text-foreground">{t.school}</p>
-              <p className="mt-1 text-sm text-zinc-600 dark:text-muted-foreground">
+            <div className="col-span-2 flex w-full items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-left dark:border-border dark:bg-muted/40 md:block md:rounded-2xl md:p-4">
+              <p className="text-xs font-medium text-zinc-500 dark:text-muted-foreground md:text-sm md:text-zinc-950 md:dark:text-foreground">{t.school}</p>
+              <p className="truncate text-sm font-medium text-zinc-950 dark:text-foreground md:mt-1 md:font-normal md:text-zinc-600 md:dark:text-muted-foreground">
                 {initialProfile.school || t.noSchoolOnFile}
               </p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl bg-white py-0 shadow-sm ring-zinc-200 dark:bg-card dark:ring-border">
-          <CardHeader className="border-b border-zinc-200 px-6 py-6 dark:border-border">
-            <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">{t.personalDetailsTitle}</CardTitle>
-            <CardDescription>{t.personalDetailsDescription}</CardDescription>
+        <Card className="rounded-2xl bg-white py-0 shadow-sm ring-zinc-200 dark:bg-card dark:ring-border md:rounded-3xl">
+          <CardHeader className="border-b border-zinc-200 px-4 py-3 dark:border-border md:px-6 md:py-6">
+            <CardTitle className="text-lg text-zinc-950 dark:text-foreground md:text-2xl">{t.personalDetailsTitle}</CardTitle>
+            <CardDescription className="text-xs leading-5 md:text-sm">{t.personalDetailsDescription}</CardDescription>
           </CardHeader>
-          <CardContent className="px-6 py-8">
-            <FieldGroup className="gap-6">
-              <div className="grid w-full gap-4 md:max-w-[50%]">
+          <CardContent className="px-4 py-3 md:px-6 md:py-8">
+            <FieldGroup className="gap-3 md:gap-6">
+              <div className="grid w-full grid-cols-2 gap-3 md:max-w-[70%] md:gap-4">
                 <Field>
                   <FieldLabel htmlFor="profile-first-name">{t.firstName}</FieldLabel>
                   <Input
@@ -399,7 +477,7 @@ export function ProfileSettingsForm({ initialProfile }) {
                     value={firstName}
                     onChange={(event) => setFirstName(event.target.value)}
                     placeholder={t.firstNamePlaceholder}
-                    className="h-10 rounded-xl bg-white dark:bg-input/30"
+                    className="rounded-xl bg-white dark:bg-input/30"
                   />
                 </Field>
 
@@ -410,7 +488,7 @@ export function ProfileSettingsForm({ initialProfile }) {
                     value={lastName}
                     onChange={(event) => setLastName(event.target.value)}
                     placeholder={t.lastNamePlaceholder}
-                    className="h-10 rounded-xl bg-white dark:bg-input/30"
+                    className="rounded-xl bg-white dark:bg-input/30"
                   />
                 </Field>
               </div>
@@ -421,15 +499,17 @@ export function ProfileSettingsForm({ initialProfile }) {
                   id="profile-description"
                   value={bio}
                   onChange={(event) => setBio(event.target.value)}
-                  className="min-h-36 rounded-2xl bg-white dark:bg-input/30"
+                  rows={4}
+                  className="h-28 min-h-28 max-h-72 rounded-xl bg-white dark:bg-input/30 md:h-36 md:min-h-36 md:rounded-2xl"
                   placeholder={t.profileBioPlaceholder}
                 />
               </Field>
 
-              <div className="flex justify-end">
+              <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 -mx-4 flex justify-end border-t border-zinc-200 bg-white/95 px-4 py-2 backdrop-blur dark:border-border dark:bg-card/95 md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
                 <Button
                   type="submit"
-                  className="rounded-xl px-5"
+                  size="sm"
+                  className="rounded-xl px-4"
                   disabled={isSaving || !hasProfileChanges}
                 >
                   {isSaving ? t.saving : t.saveProfile}
@@ -439,6 +519,17 @@ export function ProfileSettingsForm({ initialProfile }) {
           </CardContent>
         </Card>
       </div>
+
+      {avatarEditorSource ? (
+        <ProfilePictureEditor
+          open
+          sourceUrl={avatarEditorSource.url}
+          originalFileName={avatarEditorSource.file.name}
+          isSaving={isUpdatingAvatar}
+          onCancel={closeAvatarEditor}
+          onSave={saveCustomAvatar}
+        />
+      ) : null}
 
     </form>
   );

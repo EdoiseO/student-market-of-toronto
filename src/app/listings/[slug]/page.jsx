@@ -1,5 +1,5 @@
-import { MessageCircle, Clock3, MapPin, Tag, UserRound } from "lucide-react";
-import { cookies } from "next/headers";
+import { Clock3, MapPin, Tag } from "lucide-react";
+import { cookies, headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -11,18 +11,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { CardImage } from "@/components/card-image";
+import { CollapsibleListingDescription } from "@/components/collapsible-listing-description";
 import { FavouriteButton } from "@/components/favourite-button";
-import { ListingDescriptionContent } from "@/components/listing-description-content";
 import { ListingPhotoCarousel } from "@/components/listing-photo-carousel";
 import { ListingMoreButton } from "@/components/listing-more-button";
+import { ListingMapActions } from "@/components/listing-map-actions";
 import { ProfileAvatar } from "@/components/profile-avatar";
+import { SimilarListingsCarousel } from "@/components/similar-listings-carousel";
 import { StartConversationButton } from "@/components/start-conversation-button";
 import {
   getListingBadgeKey,
   getTranslatedListingBadge,
 } from "@/lib/listing-badges";
 import { getTranslatedConditionLabel } from "@/lib/search-listings";
+import { getPreferredMapProvider } from "@/lib/map-links";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
@@ -44,10 +46,13 @@ function formatPrice(price, language) {
 
 export default async function ListingDetailPage({ params }) {
   const resolvedParams = await params;
-  const cookieStore = await cookies();
+  const [cookieStore, requestHeaders] = await Promise.all([cookies(), headers()]);
   const supabase = createClient(cookieStore);
   const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
   const t = translations[language];
+  const preferredMapProvider = getPreferredMapProvider(
+    requestHeaders.get("user-agent"),
+  );
 
   const {
     data: { user },
@@ -68,7 +73,7 @@ export default async function ListingDetailPage({ params }) {
   const [listingImagesResult, sellerResult, favouriteResult] = await Promise.all([
     supabase
       .from("listing_images")
-      .select("image_url, storage_path, position, created_at")
+      .select("image_url, position")
       .eq("listing_id", listing.id)
       .order("position", { ascending: true }),
     supabase
@@ -113,7 +118,7 @@ export default async function ListingDetailPage({ params }) {
     .eq("category", listing.category)
     .eq("status", "active")
     .neq("slug", listing.slug)
-    .limit(5);
+    .limit(12);
 
   const similarRows = similarRowsResult.data ?? [];
 
@@ -139,11 +144,10 @@ export default async function ListingDetailPage({ params }) {
     t.studentSeller;
 
   const photos = listingImages.length
-    ? listingImages.map((image, index) => ({
-        label: `${t.photo} ${index + 1}`,
-        imageUrl: image.image_url,
-        storagePath: image.storage_path,
-      }))
+      ? listingImages.map((image, index) => ({
+          label: `${t.photo} ${index + 1}`,
+          imageUrl: image.image_url,
+        }))
     : [{ label: `${t.photo} 1` }];
 
   const campusLabel = listing.location || seller?.school || t.torontoMeetup;
@@ -167,60 +171,58 @@ export default async function ListingDetailPage({ params }) {
           firstImage.position - secondImage.position
       )
       .map((image) => image.image_url),
-    imageUrl: (item.listing_images ?? [])
-      .slice()
-      .sort(
-        (firstImage, secondImage) =>
-          firstImage.position - secondImage.position
-      )[0]?.image_url,
   }));
 
   return (
-    <main className="min-h-screen bg-zinc-100 p-6 dark:bg-background md:p-8">
-      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8">
-        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-card dark:ring-border md:p-8">
-          <div className="grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(256px,0.95fr)]">
-            <div className="flex flex-col gap-5">
-              <ListingPhotoCarousel photos={photos} title={listing.title} />
+    <main className="min-h-screen min-w-0 overflow-x-clip bg-zinc-100 px-4 pt-4 pb-28 dark:bg-background md:p-8">
+      <div className="mx-auto flex min-w-0 w-full max-w-[1440px] flex-col gap-4 md:gap-8">
+        <section className="rounded-3xl bg-white p-3 shadow-sm ring-1 ring-zinc-200 dark:bg-card dark:ring-border md:p-8">
+          <div className="grid gap-5 md:gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(256px,0.95fr)]">
+            <div className="contents xl:flex xl:flex-col xl:gap-5">
+              <div className="order-1 min-w-0 xl:order-none">
+                <ListingPhotoCarousel photos={photos} title={listing.title} />
+              </div>
 
-              <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-none dark:bg-card dark:ring-border">
-                <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border md:px-7">
-                  <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">
+              <Card className="order-4 rounded-2xl border-zinc-200 bg-white py-0 shadow-none dark:bg-card dark:ring-border md:rounded-[2rem] xl:order-none">
+                <CardHeader className="border-b border-zinc-200 px-4 py-3 dark:border-border md:px-7 md:py-5">
+                  <CardTitle className="text-lg text-zinc-950 dark:text-foreground md:text-2xl">
                     {t.description}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="px-6 py-6 md:px-7">
-                  <ListingDescriptionContent description={listing.description} />
+                <CardContent className="px-4 py-4 md:px-7 md:py-6">
+                  <CollapsibleListingDescription description={listing.description} />
                 </CardContent>
               </Card>
             </div>
 
-            <div className="flex flex-col gap-5">
-              <Card className="rounded-[2rem] border-zinc-200 bg-zinc-50 py-0 shadow-none dark:bg-muted/40 dark:ring-border">
-                <CardContent className="space-y-6 p-6 md:p-7">
+            <div className="contents xl:flex xl:flex-col xl:gap-5">
+              <Card className="order-2 rounded-2xl border-zinc-200 bg-zinc-50 py-0 shadow-none dark:bg-muted/40 dark:ring-border md:rounded-[2rem] xl:order-none">
+                <CardContent className="space-y-4 p-4 md:space-y-6 md:p-7">
                   <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-3">
+                    <div className="space-y-2 md:space-y-3">
                       <Badge
                         variant="outline"
-                        className="w-fit border-zinc-300 bg-white text-zinc-700 dark:border-border dark:bg-background dark:text-foreground"
+                        className="w-fit border-zinc-300 bg-white text-[10px] text-zinc-700 dark:border-border dark:bg-background dark:text-foreground md:text-xs"
                       >
                         {badge}
                       </Badge>
-                      <div className="space-y-2">
-                        <h1 className="text-3xl font-bold tracking-tight text-zinc-950 dark:text-foreground md:text-4xl">
+                      <div className="space-y-1.5 md:space-y-2">
+                        <h1 className="text-2xl font-bold leading-tight tracking-tight text-zinc-950 dark:text-foreground md:text-4xl md:leading-normal">
                           {listing.title}
                         </h1>
-                        <p className="text-3xl font-bold text-zinc-900 dark:text-foreground">
+                        <p className="text-2xl font-bold text-zinc-900 dark:text-foreground md:text-3xl">
                           {formatPrice(listing.price, language)}
                         </p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <FavouriteButton
-                        listingId={listing.id}
-                        initialIsFavourited={initialIsFavourited}
-                      />
+                      <div className="hidden md:block">
+                        <FavouriteButton
+                          listingId={listing.id}
+                          initialIsFavourited={initialIsFavourited}
+                        />
+                      </div>
                       <ListingMoreButton
                         slug={listing.slug}
                         listingId={listing.id}
@@ -230,100 +232,108 @@ export default async function ListingDetailPage({ params }) {
                     </div>
                   </div>
 
-                  <div className="grid gap-3 text-sm text-zinc-600 dark:text-muted-foreground sm:grid-cols-2">
-                    <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-border dark:bg-background">
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500 dark:text-muted-foreground">
+                  <div className="grid grid-cols-2 gap-2 text-sm text-zinc-600 dark:text-muted-foreground md:gap-3">
+                    <div className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-border dark:bg-background md:rounded-2xl md:p-4">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500 dark:text-muted-foreground md:text-xs md:tracking-[0.2em]">
                         {t.campus}
                       </p>
-                      <p className="mt-2 text-base font-medium text-zinc-900 dark:text-foreground">
+                      <p className="mt-1.5 text-[12px] font-medium leading-5 text-zinc-900 dark:text-foreground md:mt-2 md:text-base md:leading-normal">
                         {campusLabel}
                       </p>
                     </div>
-                    <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-border dark:bg-background">
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500 dark:text-muted-foreground">
+                    <div className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-border dark:bg-background md:rounded-2xl md:p-4">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500 dark:text-muted-foreground md:text-xs md:tracking-[0.2em]">
                         {t.condition}
                       </p>
-                      <p className="mt-2 text-base font-medium text-zinc-900 dark:text-foreground">
+                      <p className="mt-1.5 text-[12px] font-medium leading-5 text-zinc-900 dark:text-foreground md:mt-2 md:text-base md:leading-normal">
                         {getTranslatedConditionLabel(listing.condition, t)}
                       </p>
                     </div>
                   </div>
 
-                  <StartConversationButton
-                    listingId={listing.id}
-                    listingTitle={listing.title}
-                    listingStatus={listing.status}
-                    sellerId={listing.seller_id}
-                    currentUserId={user?.id ?? null}
-                    className="w-full sm:w-auto"
-                  />
+                  <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 flex items-center gap-3 border-t border-border bg-background/95 px-4 py-3 shadow-[0_-8px_24px_rgba(0,0,0,0.06)] backdrop-blur md:static md:border-0 md:bg-transparent md:p-0 md:shadow-none">
+                    <div className="md:hidden">
+                      <FavouriteButton
+                        listingId={listing.id}
+                        initialIsFavourited={initialIsFavourited}
+                      />
+                    </div>
+                    <StartConversationButton
+                      listingId={listing.id}
+                      listingTitle={listing.title}
+                      listingStatus={listing.status}
+                      sellerId={listing.seller_id}
+                      currentUserId={user?.id ?? null}
+                      className="min-h-12 min-w-0 flex-1 md:flex-none"
+                    />
+                  </div>
                 </CardContent>
               </Card>
 
-              <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-none dark:bg-card dark:ring-border">
-                <CardContent className="space-y-5 p-6 md:p-7">
+              <Card className="order-3 rounded-2xl border-zinc-200 bg-white py-0 shadow-none dark:bg-card dark:ring-border md:rounded-[2rem] xl:order-none">
+                <CardContent className="space-y-4 p-4 md:space-y-5 md:p-7">
                   {seller?.id ? (
                     <Link
                       href={`/profile/${seller.id}`}
-                      className="flex w-full items-center gap-4 rounded-2xl transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/15 dark:focus-visible:ring-white/15 sm:w-fit"
+                      className="flex min-h-11 w-full items-center gap-3 rounded-xl transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/15 dark:focus-visible:ring-white/15 sm:w-fit md:gap-4 md:rounded-2xl"
                     >
                       <ProfileAvatar
                         email={null}
                         name={sellerName}
                         avatarPresetId={seller?.avatar_preset_id ?? null}
                         avatarUrl={seller?.avatar_url ?? null}
-                        className="h-14 w-14 rounded-2xl"
-                        fallbackClassName="rounded-2xl"
+                        className="h-12 w-12 rounded-xl md:h-14 md:w-14 md:rounded-2xl"
+                        fallbackClassName="rounded-xl md:rounded-2xl"
                       />
                       <div>
-                        <p className="text-xl font-semibold text-zinc-950 dark:text-foreground">
+                        <p className="text-base font-semibold leading-tight text-zinc-950 dark:text-foreground md:text-xl md:leading-normal">
                           {sellerName}
                         </p>
-                        <p className="text-sm text-zinc-500 dark:text-muted-foreground">
+                        <p className="mt-0.5 text-xs leading-5 text-zinc-500 dark:text-muted-foreground md:mt-0 md:text-sm md:leading-normal">
                           {seller?.school || t.torontoStudent}
                         </p>
                       </div>
                     </Link>
                   ) : (
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3 md:gap-4">
                       <ProfileAvatar
                         email={null}
                         name={sellerName}
                         avatarPresetId={seller?.avatar_preset_id ?? null}
                         avatarUrl={seller?.avatar_url ?? null}
-                        className="h-14 w-14 rounded-2xl"
-                        fallbackClassName="rounded-2xl"
+                        className="h-12 w-12 rounded-xl md:h-14 md:w-14 md:rounded-2xl"
+                        fallbackClassName="rounded-xl md:rounded-2xl"
                       />
                       <div>
-                        <p className="text-xl font-semibold text-zinc-950 dark:text-foreground">
+                        <p className="text-base font-semibold leading-tight text-zinc-950 dark:text-foreground md:text-xl md:leading-normal">
                           {sellerName}
                         </p>
-                        <p className="text-sm text-zinc-500 dark:text-muted-foreground">
+                        <p className="mt-0.5 text-xs leading-5 text-zinc-500 dark:text-muted-foreground md:mt-0 md:text-sm md:leading-normal">
                           {seller?.school || t.torontoStudent}
                         </p>
                       </div>
                     </div>
                   )}
 
-                  <div className="grid gap-3 text-sm text-zinc-600 dark:text-muted-foreground sm:grid-cols-2">
-                    <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-border dark:bg-muted/40">
-                      <Clock3 className="size-4 text-zinc-500 dark:text-muted-foreground" />
+                  <div className="grid grid-cols-2 gap-2 text-zinc-600 dark:text-muted-foreground md:gap-3">
+                    <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-border dark:bg-muted/40 md:gap-3 md:rounded-2xl md:p-4">
+                      <Clock3 className="size-3.5 shrink-0 text-zinc-500 dark:text-muted-foreground md:size-4" />
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-muted-foreground">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-muted-foreground md:text-xs md:tracking-[0.16em]">
                           {t.created}
                         </p>
-                        <p className="mt-1 text-zinc-900 dark:text-foreground">
+                        <p className="mt-0.5 text-xs leading-5 text-zinc-900 dark:text-foreground md:mt-1 md:text-sm md:leading-normal">
                           {formatDate(listing.created_at, language)}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-border dark:bg-muted/40">
-                      <Tag className="size-4 text-zinc-500 dark:text-muted-foreground" />
+                    <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-border dark:bg-muted/40 md:gap-3 md:rounded-2xl md:p-4">
+                      <Tag className="size-3.5 shrink-0 text-zinc-500 dark:text-muted-foreground md:size-4" />
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-muted-foreground">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-muted-foreground md:text-xs md:tracking-[0.16em]">
                           {t.updated}
                         </p>
-                        <p className="mt-1 text-zinc-900 dark:text-foreground">
+                        <p className="mt-0.5 text-xs leading-5 text-zinc-900 dark:text-foreground md:mt-1 md:text-sm md:leading-normal">
                           {formatDate(listing.updated_at, language)}
                         </p>
                       </div>
@@ -331,11 +341,11 @@ export default async function ListingDetailPage({ params }) {
                   </div>
 
                   {seller?.bio && !seller?.is_public ? (
-                    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-border dark:bg-muted/40">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-muted-foreground">
+                    <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-border dark:bg-muted/40 md:rounded-2xl md:p-4">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-muted-foreground md:text-xs md:tracking-[0.16em]">
                         {t.aboutSeller}
                       </p>
-                      <p className="mt-2 whitespace-pre-line text-sm leading-7 text-zinc-600 dark:text-muted-foreground">
+                      <p className="mt-1.5 whitespace-pre-line text-xs leading-5 text-zinc-600 dark:text-muted-foreground md:mt-2 md:text-sm md:leading-7">
                         {seller.bio}
                       </p>
                     </div>
@@ -352,61 +362,45 @@ export default async function ListingDetailPage({ params }) {
           </div>
         </section>
 
-        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-card dark:ring-border md:p-8">
-          <div className="mb-5 flex items-center gap-3">
-            <MapPin className="size-5 text-zinc-500 dark:text-muted-foreground" />
+        <section className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-zinc-200 dark:bg-card dark:ring-border md:p-8">
+          <div className="mb-3 flex items-center gap-2 md:mb-5 md:gap-3">
+            <MapPin className="size-4 text-zinc-500 dark:text-muted-foreground md:size-5" />
             <div>
-              <h2 className="text-2xl font-bold text-zinc-950 dark:text-foreground">
+              <h2 className="text-lg font-bold text-zinc-950 dark:text-foreground md:text-2xl">
                 {t.meetupLocation}
               </h2>
-              <p className="text-sm text-zinc-500 dark:text-muted-foreground">{t.meetupLocationDesc}</p>
+              <p className="text-xs leading-5 text-zinc-500 dark:text-muted-foreground md:text-sm md:leading-normal">{t.meetupLocationDesc}</p>
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-[2rem] border border-zinc-200 bg-zinc-100 dark:border-border dark:bg-muted">
+          <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 dark:border-border dark:bg-muted md:rounded-[2rem]">
             <iframe
-              title={`${campusLabel} map`}
+              title={`${t.mapPreviewTitle}: ${campusLabel}`}
               src={`https://www.google.com/maps?q=${encodeURIComponent(
                 campusLabel
               )}&z=15&output=embed`}
-              className="h-[288px] w-full border-0"
+              className="h-[168px] w-full border-0 min-[430px]:h-[184px] md:h-[288px]"
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
+            />
+            <ListingMapActions
+              location={campusLabel}
+              preferredProvider={preferredMapProvider}
+              labels={{
+                cancel: t.cancel,
+                campusAreaLabel: t.campusAreaLabel,
+                getDirections: t.getDirections,
+                mapAppChoicesLabel: t.mapAppChoicesLabel,
+                openInAppleMaps: t.openInAppleMaps,
+                openInGoogleMaps: t.openInGoogleMaps,
+                recommendedForDevice: t.recommendedForDevice,
+              }}
             />
           </div>
         </section>
 
-        <section className="rounded-3xl bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-muted/40 dark:ring-border md:p-8">
-          <div className="mb-5 flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-bold text-zinc-950 dark:text-foreground">
-                {t.similarListings}
-              </h2>
-              <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
-                {t.similarListingsDesc}
-              </p>
-            </div>
-            <div className="hidden items-center gap-2 text-sm font-medium text-zinc-500 dark:text-muted-foreground md:flex">
-              <UserRound className="size-4" />
-              <span>{t.marketplacePicks}</span>
-            </div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-            {similarListings.map((item) => (
-              <CardImage
-                key={item.slug}
-                badge={item.badge}
-                title={item.title}
-                price={item.price}
-                meta={item.meta}
-                imageUrls={item.imageUrls}
-                imageUrl={item.imageUrl}
-                href={`/listings/${item.slug}`}
-                imageAlt={item.title}
-              />
-            ))}
-          </div>
+        <section className="rounded-3xl bg-zinc-50 p-4 shadow-sm ring-1 ring-zinc-200 dark:bg-muted/40 dark:ring-border md:p-8">
+          <SimilarListingsCarousel items={similarListings} />
         </section>
       </div>
     </main>

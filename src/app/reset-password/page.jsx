@@ -144,8 +144,8 @@ export default function ResetPasswordPage() {
 
   if (loading) {
     return (
-      <main className="flex h-svh w-full items-center justify-center overflow-hidden bg-zinc-100 p-4 dark:bg-background md:p-6">
-        <div className="flex w-full max-w-sm flex-col gap-4">
+      <main className="flex min-h-svh w-full items-start justify-center overflow-y-auto bg-zinc-100 px-4 py-6 dark:bg-background sm:items-center md:p-6">
+        <div className="flex w-full max-w-sm flex-col gap-6">
           <AuthPageBrand />
           <Card>
             <CardContent className="p-8 text-center">
@@ -158,8 +158,8 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <main className="flex h-svh w-full items-center justify-center overflow-hidden bg-zinc-100 p-4 dark:bg-background md:p-6">
-      <div className="flex w-full max-w-sm flex-col gap-4">
+    <main className="flex min-h-svh w-full items-start justify-center overflow-y-auto bg-zinc-100 px-4 py-6 dark:bg-background sm:items-center md:p-6">
+      <div className="flex w-full max-w-sm flex-col gap-6">
         <AuthPageBrand />
         <Card>
           <CardHeader>
@@ -174,6 +174,7 @@ export default function ResetPasswordPage() {
                   <Input
                     id="password"
                     type="password"
+                    autoComplete="new-password"
                     placeholder={t.newPassword}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -186,19 +187,24 @@ export default function ResetPasswordPage() {
                   <Input
                     id="confirmPassword"
                     type="password"
+                    autoComplete="new-password"
                     placeholder={t.confirmNewPassword}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
+                    aria-invalid={message === t.passwordsDoNotMatch}
                   />
+                  {message === t.passwordsDoNotMatch ? (
+                    <p role="alert" className="text-sm text-red-600 dark:text-red-400">{message}</p>
+                  ) : null}
                 </Field>
 
                 <Field>
-                  <Button type="submit" disabled={loading || !sessionReady}>
+                  <Button type="submit" className="w-full" disabled={loading || !sessionReady}>
                     {t.updatePassword}
                   </Button>
-                  {message ? (
-                    <p className="mt-2 text-center text-sm text-zinc-600 dark:text-muted-foreground">{message}</p>
+                  {message && message !== t.passwordsDoNotMatch ? (
+                    <p role="status" className="text-sm text-zinc-600 dark:text-muted-foreground">{message}</p>
                   ) : null}
                   <FieldDescription className="text-center">
                     {t.needFreshLink} <Link href="/forget-password">{t.requestAnotherResetEmail}</Link>

@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { ClientFormattedDateTime } from "@/components/client-formatted-date-time";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/context/LanguageContext";
 import {
   MESSAGE_NOTIFICATION_ROW_TYPES,
@@ -251,11 +252,11 @@ export function NotificationsButton({ user }) {
       <Popover.Trigger
         aria-label={t.notificationsButtonLabel}
         render={<Button type="button" variant="outline" size="icon" />}
-        className="relative h-10 w-10 rounded-xl"
+        className="relative size-11 rounded-xl"
       >
         <Bell className="size-4" />
         {unreadCount > 0 ? (
-          <Badge className="absolute -top-1.5 -right-1.5 rounded-full bg-blue-500 px-1.5 py-0 text-[0.65rem] leading-5 text-white ring-2 ring-background shadow-[0_0_12px_rgba(59,130,246,0.95)]">
+          <Badge className="absolute -top-1.5 -right-1.5 rounded-full bg-blue-500 px-1.5 py-0 text-xs leading-5 text-white ring-2 ring-background shadow-[0_0_12px_rgba(59,130,246,0.95)]">
             {unreadCount > 9 ? "9+" : unreadCount}
           </Badge>
         ) : null}
@@ -294,8 +295,19 @@ export function NotificationsButton({ user }) {
             </Button>
           </div>
         ) : isLoading ? (
-          <div className="px-3 py-6 text-sm text-muted-foreground">
-            {t.loadingNotifications}
+          <div role="status" aria-live="polite" className="space-y-3 px-3 py-3">
+            <span className="sr-only">{t.loadingNotifications}</span>
+            <div aria-hidden="true" className="space-y-3">
+              {Array.from({ length: 3 }, (_, index) => (
+                <div key={index} className="flex items-start gap-3">
+                  <Skeleton className="size-9 shrink-0 rounded-full" />
+                  <div className="flex-1 space-y-2 py-1">
+                    <Skeleton className="h-3 w-2/3" />
+                    <Skeleton className="h-3 w-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         ) : notifications.length > 0 ? (
           notifications.map((notification) => (
@@ -328,7 +340,7 @@ export function NotificationsButton({ user }) {
                       {notification.title}
                     </p>
                     {notification.unreadCount > 1 ? (
-                      <Badge variant="outline" className="shrink-0 rounded-full border-border bg-background px-2 py-0 text-[0.65rem] text-foreground">
+                      <Badge variant="outline" className="shrink-0 rounded-full border-border bg-background px-2 py-0 text-xs text-foreground">
                         {notification.unreadCount}
                       </Badge>
                     ) : null}

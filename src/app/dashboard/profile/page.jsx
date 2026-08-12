@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { ProfileSettingsForm } from "@/components/profile-settings-form";
+import { isNameChangeRequired } from "@/lib/moderation";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
@@ -50,15 +51,15 @@ export default async function DashboardProfilePage() {
     avatarUrl: existingProfile?.avatar_url ?? "",
     bio: existingProfile?.bio ?? "",
     isPublic: Boolean(existingProfile?.is_public),
-    requiresNameChange: user.user_metadata?.force_name_change === true,
+    requiresNameChange: isNameChangeRequired(user),
   };
 
   return (
-    <main className="min-h-screen bg-zinc-100 p-6 dark:bg-background md:p-8">
-      <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-8">
-        <section className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-zinc-200 dark:bg-card dark:ring-border">
-          <h1 className="text-4xl font-bold tracking-tight text-zinc-950 dark:text-foreground">{t.profilePageTitle}</h1>
-          <p className="mt-3 max-w-3xl text-base text-zinc-600 dark:text-muted-foreground">
+    <main className="min-h-screen bg-zinc-100 px-4 py-3 dark:bg-background md:p-8">
+      <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-3 md:gap-8">
+        <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-zinc-200 dark:bg-card dark:ring-border md:rounded-3xl md:p-8">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-foreground md:text-4xl">{t.profilePageTitle}</h1>
+          <p className="mt-1 max-w-3xl text-sm leading-5 text-zinc-600 dark:text-muted-foreground md:mt-3 md:text-base md:leading-6">
             {t.profilePageDescription}
           </p>
         </section>

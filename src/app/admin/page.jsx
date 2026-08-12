@@ -65,10 +65,12 @@ export default async function AdminPage() {
     redirect("/login");
   }
 
-  const accessUser = (await getLatestAuthUser(admin, user.id, "admin dashboard access")) ?? user;
+  const accessUser = admin
+    ? await getLatestAuthUser(admin, user.id, "admin dashboard access")
+    : user;
   const userRole = getUserModerationRole(accessUser);
 
-  if (!isModerationRole(userRole)) {
+  if (!accessUser || !isModerationRole(userRole)) {
     redirect("/");
   }
 

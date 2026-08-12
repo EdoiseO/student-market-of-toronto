@@ -33,16 +33,18 @@ export default async function AdminListingApprovalReviewPage({ params }) {
     redirect("/login");
   }
 
-  const accessUser = (await getLatestAuthUser(admin, user.id, "listing approval page access")) ?? user;
+  const accessUser = admin
+    ? await getLatestAuthUser(admin, user.id, "listing approval page access")
+    : user;
 
-  if (!isModerationRole(getUserModerationRole(accessUser))) {
+  if (!accessUser || !isModerationRole(getUserModerationRole(accessUser))) {
     redirect("/");
   }
 
   const { data: listingRow, error: listingError } = await dataClient
     .from("listings")
     .select(
-      "id, seller_id, slug, title, description, price, location, status, created_at, submitted_for_review_at, moderation_feedback, moderation_reviewed_at, moderation_reviewed_by, listing_images ( image_url, position )"
+      "id, seller_id, slug, title, description, price, location, status, content_revision, created_at, submitted_for_review_at, moderation_feedback, moderation_reviewed_at, moderation_reviewed_by, listing_images ( image_url, position )"
     )
     .eq("id", resolvedParams.listingId)
     .maybeSingle();
@@ -99,6 +101,7 @@ export default async function AdminListingApprovalReviewPage({ params }) {
     location: listingRow.location ?? t.torontoMeetup,
     imageUrl: getPrimaryListingImageUrl(listingRow.listing_images),
     status: listingRow.status,
+    contentRevision: Number(listingRow.content_revision),
     createdAt: listingRow.created_at,
     submittedForReviewAt: listingRow.submitted_for_review_at,
     moderationFeedback: listingRow.moderation_feedback ?? null,

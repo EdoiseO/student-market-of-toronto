@@ -107,7 +107,7 @@ export function isModerationUser(user) {
 }
 
 export function isNameChangeRequired(user) {
-  return user?.user_metadata?.force_name_change === true;
+  return user?.app_metadata?.force_name_change === true;
 }
 
 export function isReportsTableMissing(error) {

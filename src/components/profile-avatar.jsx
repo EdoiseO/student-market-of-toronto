@@ -1,9 +1,11 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { useLanguage } from "@/context/LanguageContext";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { REMOTE_IMAGE_BLUR_DATA_URL } from "@/lib/image-config";
 import { cn } from "@/lib/utils";
 import {
   buildDefaultAvatarUrl,
@@ -30,6 +32,32 @@ function useResolvedProfileAvatar({ email, name, avatarPresetId, avatarUrl, init
   };
 }
 
+function OptimizedAvatarImage({
+  imageUrl,
+  alt,
+  className,
+  onError,
+  sizes = "(max-width: 1023px) 80px, 120px",
+}) {
+  if (!imageUrl) {
+    return null;
+  }
+
+  return (
+    <Image
+      src={imageUrl}
+      alt={alt}
+      width={120}
+      height={120}
+      sizes={sizes}
+      placeholder="blur"
+      blurDataURL={REMOTE_IMAGE_BLUR_DATA_URL}
+      onError={onError}
+      className={cn("absolute inset-0 h-full w-full rounded-[inherit] object-cover", className)}
+    />
+  );
+}
+
 export function ProfileAvatar({
   email,
   name,
@@ -40,6 +68,7 @@ export function ProfileAvatar({
   imageClassName,
   fallbackClassName,
   size = "default",
+  imageSizes = "(max-width: 1023px) 80px, 120px",
 }) {
   const { t } = useLanguage();
   const { imageUrl, initials, preset } = useResolvedProfileAvatar({
@@ -49,25 +78,36 @@ export function ProfileAvatar({
     avatarUrl,
     initialsOverride,
   });
-  const showInitials = Boolean(preset) || !imageUrl;
+  const [failedImageUrl, setFailedImageUrl] = React.useState("");
+  const visibleImageUrl = imageUrl && imageUrl !== failedImageUrl ? imageUrl : "";
 
   return (
-    <Avatar className={className} size={size}>
-      {imageUrl ? (
-        <AvatarImage
-          src={imageUrl}
-          alt={name || t.profileAvatarLabel}
-          className={imageClassName}
-        />
-      ) : null}
+    <Avatar
+      className={cn(
+        "max-h-20 max-w-20 lg:max-h-[120px] lg:max-w-[120px]",
+        className,
+        "overflow-hidden rounded-full after:rounded-full",
+      )}
+      size={size}
+    >
       <AvatarFallback
+        aria-hidden={Boolean(visibleImageUrl)}
         className={cn(
           preset ? `${preset.className} text-white` : undefined,
           fallbackClassName,
+          "rounded-full",
         )}
       >
-        {showInitials ? initials : null}
+        {initials}
       </AvatarFallback>
+      <OptimizedAvatarImage
+        key={visibleImageUrl}
+        imageUrl={visibleImageUrl}
+        alt={name || t.profileAvatarLabel}
+        className={cn(imageClassName, "rounded-full")}
+        onError={() => setFailedImageUrl(imageUrl)}
+        sizes={imageSizes}
+      />
     </Avatar>
   );
 }
@@ -89,15 +129,20 @@ export function ProfileAvatarPreview({
     avatarUrl,
     initialsOverride,
   });
+  const [failedImageUrl, setFailedImageUrl] = React.useState("");
+  const visibleImageUrl = imageUrl && imageUrl !== failedImageUrl ? imageUrl : "";
 
-  if (imageUrl) {
+  if (visibleImageUrl) {
     return (
-      <div
-        aria-label={name || t.profileAvatarLabel}
-        role="img"
-        className={cn("overflow-hidden bg-cover bg-center bg-no-repeat", className)}
-        style={{ backgroundImage: `url(${imageUrl})` }}
-      />
+      <div className={cn("relative flex items-center justify-center overflow-hidden bg-zinc-100 text-zinc-700 dark:bg-muted dark:text-foreground", className)}>
+        <span aria-hidden="true" className={cn("font-semibold tracking-tight", initialsClassName)}>{initials}</span>
+        <OptimizedAvatarImage
+          key={visibleImageUrl}
+          imageUrl={visibleImageUrl}
+          alt={name || t.profileAvatarLabel}
+          onError={() => setFailedImageUrl(imageUrl)}
+        />
+      </div>
     );
   }
 

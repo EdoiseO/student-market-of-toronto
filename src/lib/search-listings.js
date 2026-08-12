@@ -68,6 +68,17 @@ export function formatPrice(price) {
   return `$${Number(price ?? 0).toFixed(2)}`;
 }
 
+export function buildPostgrestIlikePattern(value) {
+  const escapedValue = String(value ?? "")
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/%/g, "\\%")
+    .replace(/_/g, "\\_")
+    .replace(/\*/g, "\\*");
+
+  return `"*${escapedValue}*"`;
+}
+
 export function matchesTag(listing, tag) {
   if (!tag) return true;
   if (tag === "new") return isNewListing(listing.created_at);
@@ -94,7 +105,7 @@ export function sortListings(listings, sortBy) {
 }
 
 export function normalizeSearchRows(rows = []) {
-  return rows.map((listing) => ({
+  return (rows ?? []).map((listing) => ({
     ...listing,
     listing_images: (listing.listing_images ?? []).sort(
       (firstImage, secondImage) => firstImage.position - secondImage.position

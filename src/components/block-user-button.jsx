@@ -16,6 +16,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/context/LanguageContext";
 import { getUserBlockState, isBlockedUsersTableMissing } from "@/lib/blocks";
 import { createClient } from "@/utils/supabase/client";
@@ -63,6 +64,10 @@ export function BlockUserButton({
     return null;
   }
 
+  if (isLoading) {
+    return <Skeleton aria-hidden="true" className={`h-11 w-32 rounded-xl ${className ?? ""}`} />;
+  }
+
   async function handleUpdateBlockState() {
     if (isSubmitting) {
       return;
@@ -105,7 +110,7 @@ export function BlockUserButton({
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button type="button" variant="outline" className={className} disabled={isLoading || isSubmitting}>
+        <Button type="button" variant="outline" className={className} disabled={isSubmitting}>
           <UserX className="size-4" />
           <span>{isBlocked ? t.unblockUser : t.blockUser}</span>
         </Button>

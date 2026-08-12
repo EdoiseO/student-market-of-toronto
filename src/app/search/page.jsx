@@ -2,12 +2,15 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 
 import { CardImage } from "@/components/card-image";
+import { SearchForm } from "@/components/search-form";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { getTranslatedCategoryValue } from "@/lib/categories";
 import { getListingBadgeKey } from "@/lib/listing-badges";
 import {
+  buildPostgrestIlikePattern,
   buildSearchHref,
+  conditionOptions,
   formatPrice,
   getTranslatedConditionLabel,
   getTranslatedSortLabel,
@@ -47,7 +50,6 @@ export default async function SearchPage({ searchParams }) {
       id,
       slug,
       title,
-      description,
       price,
       previous_price,
       category,
@@ -65,8 +67,9 @@ export default async function SearchPage({ searchParams }) {
     .eq("status", "active");
 
   if (query) {
+    const searchPattern = buildPostgrestIlikePattern(query);
     listingsQuery = listingsQuery.or(
-      `title.ilike.%${query}%,description.ilike.%${query}%,category.ilike.%${query}%,location.ilike.%${query}%`
+      `title.ilike.${searchPattern},description.ilike.${searchPattern},category.ilike.${searchPattern},location.ilike.${searchPattern}`
     );
   }
 
@@ -92,7 +95,11 @@ export default async function SearchPage({ searchParams }) {
     listingsQuery = listingsQuery.order("created_at", { ascending: false });
   }
 
-  const { data: rows = [] } = await listingsQuery;
+  const { data: rows, error: listingsError } = await listingsQuery;
+
+  if (listingsError) {
+    console.error("Search listings query failed:", listingsError.message);
+  }
 
   const normalizedRows = normalizeSearchRows(rows);
 
@@ -114,8 +121,56 @@ export default async function SearchPage({ searchParams }) {
   ].filter(Boolean);
 
   return (
-    <main className="min-h-screen bg-zinc-100 p-6 dark:bg-background md:p-8">
-      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-6">
+    <main className="min-h-screen min-w-0 overflow-x-clip bg-zinc-100 px-4 py-5 dark:bg-background md:p-8">
+      <div className="sticky top-16 z-40 -mx-4 -mt-5 border-b border-border bg-background/95 px-4 py-3 shadow-sm backdrop-blur md:hidden">
+        <SearchForm className="w-full [&_input]:h-11 [&_input]:bg-background [&_input]:text-base" />
+        <div
+          aria-label={t.filters}
+          className="-mx-4 mt-2 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {conditionOptions.map((option) => {
+            const isActive = condition === option.value;
+            const label = option.value
+              ? getTranslatedConditionLabel(option.value, t)
+              : t.allConditions;
+
+            return (
+              <Link
+                key={option.value || "all-conditions"}
+                href={buildSearchHref("/search", currentParams, { condition: option.value })}
+                aria-current={isActive ? "true" : undefined}
+                className={`flex min-h-11 shrink-0 items-center rounded-full border px-4 text-sm font-medium whitespace-nowrap transition-colors ${
+                  isActive
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-background text-foreground hover:bg-accent"
+                }`}
+              >
+                {label}
+              </Link>
+            );
+          })}
+          {sortOptions.map((option) => {
+            const isActive = sortBy === option.value;
+
+            return (
+              <Link
+                key={option.value}
+                href={buildSearchHref("/search", currentParams, { sort: option.value })}
+                aria-current={isActive ? "true" : undefined}
+                className={`flex min-h-11 shrink-0 items-center rounded-full border px-4 text-sm font-medium whitespace-nowrap transition-colors ${
+                  isActive
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-background text-foreground hover:bg-accent"
+                }`}
+              >
+                {getTranslatedSortLabel(option.value, t)}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mx-auto flex min-w-0 w-full max-w-[1440px] flex-col gap-6 pt-5 md:pt-0">
         <section className="space-y-5">
             <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
               <CardContent className="space-y-4 p-6">
@@ -134,11 +189,11 @@ export default async function SearchPage({ searchParams }) {
                 </div>
 
                 {activeFilters.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] md:flex-wrap md:overflow-visible [&::-webkit-scrollbar]:hidden">
                     {activeFilters.map((filter) => (
-                      <Badge key={filter.key} variant="secondary" className="bg-zinc-100 text-zinc-800 dark:bg-muted dark:text-foreground">
+                      <Badge key={filter.key} variant="secondary" className="min-h-11 shrink-0 bg-zinc-100 px-3 text-zinc-800 dark:bg-muted dark:text-foreground">
                         <span>{filter.label}</span>
-                        <Link href={buildSearchHref("/search", currentParams, { [filter.key]: "" })} className="ml-2 text-zinc-500 hover:text-zinc-900 dark:text-muted-foreground dark:hover:text-foreground">
+                        <Link href={buildSearchHref("/search", currentParams, { [filter.key]: "" })} aria-label={`${t.clearText}: ${filter.label}`} className="ml-2 inline-flex size-11 items-center justify-center rounded-full text-zinc-500 hover:bg-background hover:text-zinc-900 dark:text-muted-foreground dark:hover:text-foreground">
                           ✕
                         </Link>
                       </Badge>
@@ -148,9 +203,22 @@ export default async function SearchPage({ searchParams }) {
               </CardContent>
             </Card>
 
-            <section className="rounded-3xl bg-zinc-50 p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-muted/40 dark:ring-border md:p-8">
-              {filteredListings.length > 0 ? (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <section className="min-w-0 rounded-3xl bg-zinc-50 p-4 shadow-sm ring-1 ring-zinc-200 dark:bg-muted/40 dark:ring-border md:p-8">
+              {listingsError ? (
+                <div role="alert" className="rounded-[1.5rem] border border-dashed border-zinc-300 bg-white px-6 py-16 text-center dark:border-border dark:bg-card">
+                  <p className="text-lg font-semibold text-zinc-950 dark:text-foreground">
+                    {language === "fr"
+                      ? "La recherche est temporairement indisponible."
+                      : "Search is temporarily unavailable."}
+                  </p>
+                  <p className="mt-2 text-sm text-zinc-500 dark:text-muted-foreground">
+                    {language === "fr"
+                      ? "Réessayez dans un instant ou modifiez vos filtres."
+                      : "Try again in a moment or adjust your filters."}
+                  </p>
+                </div>
+              ) : filteredListings.length > 0 ? (
+                <div className="grid min-w-0 grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-6">
                   {filteredListings.map((item) => (
                     <CardImage
                       key={item.id}
@@ -159,9 +227,10 @@ export default async function SearchPage({ searchParams }) {
                       price={formatPrice(item.price)}
                       meta={item.location || getTranslatedCategoryValue(item.category, t, language)}
                       imageUrls={(item.listing_images ?? []).map((image) => image.image_url)}
-                      imageUrl={item.listing_images?.[0]?.image_url ?? null}
                       imageAlt={item.title}
+                      imageSizes="(max-width: 767px) calc((100vw - 4rem) / 2), (max-width: 1023px) calc((100vw - 27rem) / 2), (max-width: 1279px) calc((100vw - 29rem) / 3), (max-width: 1535px) 16vw, 220px"
                       href={`/listings/${item.slug}`}
+                      compact
                     />
                   ))}
                 </div>

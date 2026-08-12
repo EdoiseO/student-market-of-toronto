@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
-import { extractProfileImageStoragePath } from "@/lib/profile-avatar";
+import {
+  isOwnedMessageMediaStoragePath,
+  MESSAGE_MEDIA_RESERVATION_BUCKET,
+} from "@/lib/message-media-reservations.mjs";
+import { extractOwnedProfileImageStoragePath } from "@/lib/profile-avatar";
+import { isOwnedStoragePath } from "@/lib/storage-path-ownership.mjs";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { createClient } from "@/utils/supabase/server";
 
@@ -22,24 +27,32 @@ async function deleteWhereEquals(admin, table, column, value) {
   }
 }
 
-async function deleteProfileSubjectReports(admin, userId) {
-  const { error } = await admin
-    .from("reports")
-    .delete()
-    .eq("subject_type", "profile")
-    .eq("subject_id", userId);
-
-  if (error && !isSkippableCleanupError(error)) {
-    throw error;
-  }
-}
-
 async function deleteWhereIn(admin, table, column, values) {
   if (!values.length) {
     return;
   }
 
   const { error } = await admin.from(table).delete().in(column, values);
+
+  if (error && !isSkippableCleanupError(error)) {
+    throw error;
+  }
+}
+
+async function anonymizeOwnedListings(admin, userId, listingIds) {
+  if (!listingIds.length) {
+    return;
+  }
+
+  const { error } = await admin
+    .from("listings")
+    .update({
+      title: "Deleted listing",
+      description: "",
+      status: "inactive",
+    })
+    .eq("seller_id", userId)
+    .in("id", listingIds);
 
   if (error && !isSkippableCleanupError(error)) {
     throw error;
@@ -78,6 +91,94 @@ async function removeStorageObjects(admin, bucket, paths) {
   }
 }
 
+async function removeStorageObjectsOrThrow(admin, bucket, paths) {
+  if (!paths.length) {
+    return;
+  }
+
+  const { error } = await admin.storage.from(bucket).remove(paths);
+
+  if (error) {
+    throw error;
+  }
+}
+
+async function verifyStorageObjectsAbsent(admin, bucket, paths) {
+  const pathsByFolder = new Map();
+
+  for (const storagePath of paths) {
+    const [conversationId, userId, objectName] = storagePath.split("/");
+    const folder = `${conversationId}/${userId}`;
+    const objectNames = pathsByFolder.get(folder) ?? new Set();
+    objectNames.add(objectName);
+    pathsByFolder.set(folder, objectNames);
+  }
+
+  for (const [folder, expectedAbsentNames] of pathsByFolder) {
+    let offset = 0;
+
+    while (true) {
+      const { data, error } = await admin.storage
+        .from(bucket)
+        .list(folder, { limit: 100, offset });
+
+      if (error || !Array.isArray(data)) {
+        throw error ?? new Error("Message media cleanup could not be verified.");
+      }
+
+      if (data.some((object) => expectedAbsentNames.has(object.name))) {
+        throw new Error("Message media cleanup left an attached object behind.");
+      }
+
+      if (data.length < 100) {
+        break;
+      }
+
+      offset += data.length;
+    }
+  }
+}
+
+async function retireOutstandingMessageMediaReservations(admin, userId) {
+  const { data, error } = await admin.rpc("prepare_message_media_account_cleanup", {
+    p_user_id: userId,
+  });
+
+  if (error || !Array.isArray(data)) {
+    throw error ?? new Error("Message media cleanup returned an invalid path set.");
+  }
+
+  const storagePaths = data.map((reservation) => reservation?.storage_path);
+  const uniqueStoragePaths = [...new Set(storagePaths)];
+
+  if (
+    uniqueStoragePaths.length !== storagePaths.length ||
+    uniqueStoragePaths.some(
+      (storagePath) => !isOwnedMessageMediaStoragePath(storagePath, userId),
+    )
+  ) {
+    throw new Error("Message media cleanup refused an unsafe reservation path.");
+  }
+
+  await removeStorageObjectsOrThrow(
+    admin,
+    MESSAGE_MEDIA_RESERVATION_BUCKET,
+    uniqueStoragePaths,
+  );
+
+  const { data: retiredCount, error: retireError } = await admin.rpc(
+    "retire_message_media_account_reservations",
+    {
+      p_user_id: userId,
+      p_storage_paths: uniqueStoragePaths,
+    },
+  );
+
+  if (retireError || retiredCount !== uniqueStoragePaths.length) {
+    throw retireError ?? new Error("Message media reservations were not fully retired.");
+  }
+}
+
 export async function POST() {
   const admin = createAdminClient();
 
@@ -100,6 +201,10 @@ export async function POST() {
   }
 
   try {
+    // Establish a durable database barrier before enumeration. New reservations
+    // and Storage inserts remain blocked even between these service API calls.
+    await retireOutstandingMessageMediaReservations(admin, user.id);
+
     const [{ data: profileRow, error: profileError }, { data: ownedListings, error: listingsError }] =
       await Promise.all([
         admin.from("profiles").select("avatar_url").eq("id", user.id).maybeSingle(),
@@ -115,66 +220,84 @@ export async function POST() {
     }
 
     const listingIds = (ownedListings ?? []).map((listing) => listing.id);
-    const [listingImagesResult, conversationsResult] = await Promise.all([
-      listingIds.length > 0
-        ? admin.from("listing_images").select("storage_path").in("listing_id", listingIds)
-        : Promise.resolve({ data: [], error: null }),
-      admin
-        .from("conversations")
-        .select("id")
-        .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`),
-    ]);
+    const ownedListingIds = new Set(listingIds);
+    const listingImagesResult = listingIds.length > 0
+      ? await admin
+          .from("listing_images")
+          .select("listing_id, storage_path")
+          .in("listing_id", listingIds)
+      : { data: [], error: null };
 
     if (listingImagesResult.error && !isSkippableCleanupError(listingImagesResult.error)) {
       throw listingImagesResult.error;
     }
 
-    if (conversationsResult.error && !isSkippableCleanupError(conversationsResult.error)) {
-      throw conversationsResult.error;
+    const messageAttachmentsResult = await admin
+      .from("message_attachments")
+      .select("storage_path")
+      .eq("uploader_id", user.id);
+
+    if (
+      messageAttachmentsResult.error &&
+      !isSkippableCleanupError(messageAttachmentsResult.error)
+    ) {
+      throw messageAttachmentsResult.error;
     }
 
-    const conversationIds = (conversationsResult.data ?? []).map((conversation) => conversation.id);
-    const messagesResult = conversationIds.length
-      ? await admin.from("messages").select("id").in("conversation_id", conversationIds)
-      : { data: [], error: null };
+    const attachedMessageMediaPaths = (messageAttachmentsResult.data ?? []).map(
+      (attachment) => attachment.storage_path,
+    );
+    const messageMediaPaths = [...new Set(attachedMessageMediaPaths)];
 
-    if (messagesResult.error && !isSkippableCleanupError(messagesResult.error)) {
-      throw messagesResult.error;
+    if (
+      messageMediaPaths.length !== attachedMessageMediaPaths.length ||
+      messageMediaPaths.some(
+        (storagePath) => !isOwnedMessageMediaStoragePath(storagePath, user.id),
+      )
+    ) {
+      throw new Error("Message media cleanup refused an unsafe attachment path.");
     }
-
-    const messageIds = (messagesResult.data ?? []).map((message) => message.id);
     const listingImagePaths = (listingImagesResult.data ?? [])
-      .map((image) => image.storage_path)
-      .filter(Boolean);
-    const profileImagePath = extractProfileImageStoragePath(profileRow?.avatar_url ?? null);
+      .filter(
+        (image) =>
+          ownedListingIds.has(image.listing_id) &&
+          isOwnedStoragePath(image.storage_path, user.id, image.listing_id),
+      )
+      .map((image) => image.storage_path);
+    const profileImagePath = extractOwnedProfileImageStoragePath(
+      profileRow?.avatar_url ?? null,
+      user.id,
+    );
 
     await deleteWhereEquals(admin, "notification_preferences", "user_id", user.id);
     await deleteWhereEquals(admin, "notifications", "user_id", user.id);
     await deleteWhereEquals(admin, "listing_favourites", "user_id", user.id);
     await deleteWhereEquals(admin, "conversation_user_state", "user_id", user.id);
-    await deleteWhereEquals(admin, "reports", "reporter_user_id", user.id);
-    await deleteWhereEquals(admin, "reports", "reported_user_id", user.id);
-    await deleteWhereEquals(admin, "reports", "reviewed_by", user.id);
-    await deleteWhereEquals(admin, "reports", "moderator_notes_updated_by", user.id);
-    await deleteProfileSubjectReports(admin, user.id);
-    await deleteWhereEquals(admin, "listing_moderation_history", "decided_by", user.id);
 
     if (listingIds.length > 0) {
       await deleteWhereIn(admin, "listing_favourites", "listing_id", listingIds);
       await deleteWhereIn(admin, "notifications", "listing_id", listingIds);
-      await deleteWhereIn(admin, "reports", "listing_id", listingIds);
-      await deleteWhereIn(admin, "listing_moderation_history", "listing_id", listingIds);
     }
 
     if (listingIds.length > 0) {
       await deleteWhereIn(admin, "listing_images", "listing_id", listingIds);
-      await deleteWhereIn(admin, "listings", "id", listingIds);
+      await anonymizeOwnedListings(admin, user.id, listingIds);
     }
 
     await scrubProfile(admin, user.id);
 
     await removeStorageObjects(admin, "listing-images", listingImagePaths);
     await removeStorageObjects(admin, "profile-images", profileImagePath ? [profileImagePath] : []);
+    await removeStorageObjectsOrThrow(
+      admin,
+      MESSAGE_MEDIA_RESERVATION_BUCKET,
+      messageMediaPaths,
+    );
+    await verifyStorageObjectsAbsent(
+      admin,
+      MESSAGE_MEDIA_RESERVATION_BUCKET,
+      messageMediaPaths,
+    );
 
     const { error: deleteUserError } = await admin.auth.admin.deleteUser(user.id, true);
 

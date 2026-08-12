@@ -1,16 +1,36 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { CircleCheckIcon, InfoIcon, Loader2Icon } from "lucide-react";
+import {
+  CircleCheckIcon,
+  InfoIcon,
+  Loader2Icon,
+  MessageCircleIcon,
+  SlidersHorizontalIcon,
+} from "lucide-react";
 
 import { DashboardCategoryFilter } from "@/components/dashboard-category-filter";
 import { DashboardSearchInput } from "@/components/dashboard-search-input";
 import { useLanguage } from "@/context/LanguageContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -30,6 +50,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DashboardListingActions } from "@/components/dashboard-listing-actions";
 import { CATEGORY_OPTIONS, getTranslatedCategoryValue } from "@/lib/categories";
+import { REMOTE_IMAGE_BLUR_DATA_URL } from "@/lib/image-config";
 import {
   LISTING_APPROVAL_STATUS_VALUES,
   isPendingListingApproval,
@@ -91,14 +112,18 @@ function getRejectedListingHelpText(item, t) {
   return item.moderationFeedback || t.listingRejectedDescription;
 }
 
-function PendingReviewHelpButton({ item, t, language }) {
+function PendingReviewHelpButton({ item, t, language, compact = false }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button
           type="button"
           aria-label={t.viewContext}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-700 transition hover:bg-zinc-100 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted"
+          className={
+            compact
+              ? "relative inline-flex !size-5 !min-h-5 !min-w-5 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-700 transition after:absolute after:-inset-3 after:content-[''] hover:bg-zinc-100 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted"
+              : "inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-700 transition hover:bg-zinc-100 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted"
+          }
         >
           <InfoIcon className="size-3.5" />
         </button>
@@ -112,14 +137,18 @@ function PendingReviewHelpButton({ item, t, language }) {
   );
 }
 
-function RejectedListingReasonButton({ item, t }) {
+function RejectedListingReasonButton({ item, t, compact = false }) {
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <button
           type="button"
           aria-label={t.viewContext}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-950/60"
+          className={
+            compact
+              ? "relative inline-flex !size-5 !min-h-5 !min-w-5 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-rose-700 transition after:absolute after:-inset-3 after:content-[''] hover:bg-rose-100 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-950/60"
+              : "inline-flex h-11 w-11 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-950/60"
+          }
         >
           <InfoIcon className="size-3.5" />
         </button>
@@ -139,8 +168,10 @@ function RejectedListingReasonButton({ item, t }) {
   );
 }
 
-function DashboardStatusBadge({ item, label, t, language }) {
-  const badgeClassName = getDashboardStatusBadgeClass(item);
+function DashboardStatusBadge({ item, label, t, language, compact = false }) {
+  const badgeClassName = `${getDashboardStatusBadgeClass(item)} ${
+    compact ? "h-5 rounded-full px-1.5 text-[0.6875rem]" : ""
+  }`;
 
   if (isPendingListingApproval(item)) {
     return (
@@ -159,7 +190,7 @@ function DashboardStatusBadge({ item, label, t, language }) {
           </TooltipContent>
         </Tooltip>
         <div className="md:hidden">
-          <PendingReviewHelpButton item={item} t={t} language={language} />
+          <PendingReviewHelpButton item={item} t={t} language={language} compact={compact} />
         </div>
       </div>
     );
@@ -189,7 +220,7 @@ function DashboardStatusBadge({ item, label, t, language }) {
             {getRejectedListingHelpText(item, t)}
           </TooltipContent>
         </Tooltip>
-        <RejectedListingReasonButton item={item} t={t} />
+        <RejectedListingReasonButton item={item} t={t} compact={compact} />
       </div>
     );
   }
@@ -209,11 +240,13 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
   const { t, language } = useLanguage();
   const [dashboardSearch, setDashboardSearch] = React.useState("");
   const [selectedCategory, setSelectedCategory] = React.useState("");
+  const [sortOrder, setSortOrder] = React.useState("newest");
   const [rowsPerPage, setRowsPerPage] = React.useState(7);
   const [currentPage, setCurrentPage] = React.useState(1);
 
   const normalizedDashboardSearch = dashboardSearch.trim().toLowerCase();
   const hasActiveFilters = Boolean(normalizedDashboardSearch || selectedCategory);
+  const mobileOptionCount = Number(Boolean(selectedCategory)) + Number(sortOrder !== "newest");
 
   const matchesDashboardQuery = React.useCallback(
     (item) => {
@@ -252,20 +285,36 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
   const allItems = filteredOwnedItems;
 
   const filteredItems = React.useMemo(() => {
+    let matchingItems;
+
     if (currentTab === "all") {
-      return allItems;
+      matchingItems = allItems;
+    } else if (currentTab === "favourite") {
+      matchingItems = filteredFavouriteItems;
+    } else {
+      matchingItems = filteredOwnedItems.filter((item) => item.dashboardStatus === currentTab);
     }
 
-    if (currentTab === "favourite") {
-      return filteredFavouriteItems;
-    }
+    return matchingItems.slice().sort((firstItem, secondItem) => {
+      if (sortOrder === "oldest") {
+        return new Date(firstItem.createdAt ?? 0) - new Date(secondItem.createdAt ?? 0);
+      }
 
-    return filteredOwnedItems.filter((item) => item.dashboardStatus === currentTab);
-  }, [allItems, currentTab, filteredFavouriteItems, filteredOwnedItems]);
+      if (sortOrder === "price-low") {
+        return (firstItem.priceValue ?? 0) - (secondItem.priceValue ?? 0);
+      }
+
+      if (sortOrder === "price-high") {
+        return (secondItem.priceValue ?? 0) - (firstItem.priceValue ?? 0);
+      }
+
+      return new Date(secondItem.createdAt ?? 0) - new Date(firstItem.createdAt ?? 0);
+    });
+  }, [allItems, currentTab, filteredFavouriteItems, filteredOwnedItems, sortOrder]);
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [dashboardSearch, currentTab, rowsPerPage, selectedCategory]);
+  }, [dashboardSearch, currentTab, rowsPerPage, selectedCategory, sortOrder]);
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / rowsPerPage));
   const safePage = Math.min(currentPage, totalPages);
@@ -339,8 +388,46 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
+      <div className="space-y-3 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-3 md:space-y-0">
+        <nav
+          aria-label={t.status}
+          className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:hidden"
+        >
+          {dashboardTabs.map((tab) => {
+            const isActive = currentTab === tab.key;
+            return (
+              <Button
+                key={tab.key}
+                asChild
+                variant={isActive ? "default" : "outline"}
+                size="sm"
+                className={
+                  isActive
+                    ? "min-h-11 shrink-0 snap-start rounded-full px-3 dark:bg-white dark:text-zinc-950 dark:hover:bg-white/95"
+                    : "min-h-11 shrink-0 snap-start rounded-full bg-white px-3 dark:bg-background"
+                }
+              >
+                <Link
+                  href={buildDashboardHref(tab.key)}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  <span>{tab.label}</span>
+                  <span
+                    className={`ml-0.5 min-w-6 rounded-full px-1.5 py-0.5 text-center text-xs font-semibold ${
+                      isActive
+                        ? "bg-white/20 text-white dark:bg-zinc-900/10 dark:text-zinc-950"
+                        : "bg-black/10 text-zinc-700 dark:bg-white/10 dark:text-foreground"
+                    }`}
+                  >
+                    {counts[tab.key]}
+                  </span>
+                </Link>
+              </Button>
+            );
+          })}
+        </nav>
+
+        <div className="hidden flex-wrap gap-2 md:flex">
           {dashboardTabs.map((tab) => {
             const isActive = currentTab === tab.key;
             return (
@@ -372,13 +459,102 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
           })}
         </div>
 
-        <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center">
+        <div className="flex items-center gap-2 md:hidden">
+          <div className="min-w-0 flex-1">
+            <DashboardSearchInput
+              id="dashboard-search-mobile"
+              value={dashboardSearch}
+              onValueChange={setDashboardSearch}
+            />
+          </div>
+
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button type="button" variant="outline" className="h-11 rounded-xl px-3">
+                <SlidersHorizontalIcon className="size-4" />
+                <span>{t.filters}</span>
+                {mobileOptionCount > 0 ? (
+                  <span className="flex size-5 items-center justify-center rounded-full bg-zinc-950 text-xs font-semibold text-white dark:bg-white dark:text-zinc-950">
+                    {mobileOptionCount}
+                  </span>
+                ) : null}
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side="bottom"
+              showCloseButton={false}
+              className="max-h-[80svh] overflow-y-auto rounded-t-[1.75rem] pb-[max(1rem,env(safe-area-inset-bottom))]"
+            >
+              <SheetHeader className="border-b border-zinc-200 px-4 pb-3 pt-4 text-left dark:border-border">
+                <SheetTitle className="text-lg font-semibold">{t.filters}</SheetTitle>
+                <SheetDescription>
+                  {language === "fr"
+                    ? "Les annonces se mettent à jour dès que vous choisissez une option."
+                    : "Listings update as soon as you choose an option."}
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="grid gap-4 px-4 py-2">
+                <div className="min-w-0">
+                  <Label htmlFor="dashboard-sort-mobile" className="mb-1.5 block text-xs">
+                    {t.sortByLabel}
+                  </Label>
+                  <NativeSelect
+                    id="dashboard-sort-mobile"
+                    value={sortOrder}
+                    onChange={(event) => setSortOrder(event.target.value)}
+                    className="w-full"
+                    size="sm"
+                  >
+                    <NativeSelectOption value="newest">{t.sortDateNewest}</NativeSelectOption>
+                    <NativeSelectOption value="oldest">{t.sortDateOldest}</NativeSelectOption>
+                    <NativeSelectOption value="price-low">{t.sortPriceLowHigh}</NativeSelectOption>
+                    <NativeSelectOption value="price-high">{t.sortPriceHighLow}</NativeSelectOption>
+                  </NativeSelect>
+                </div>
+
+                <DashboardCategoryFilter
+                  id="dashboard-category-filter-mobile"
+                  value={selectedCategory}
+                  onValueChange={setSelectedCategory}
+                  options={CATEGORY_OPTIONS}
+                  className="md:w-full lg:w-full"
+                  label={t.filterByCategoryLabel}
+                  showLabel
+                />
+              </div>
+
+              <SheetFooter className="grid grid-cols-2 border-t border-zinc-200 pt-3 dark:border-border">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedCategory("");
+                    setSortOrder("newest");
+                  }}
+                >
+                  {t.clearFilters}
+                </Button>
+                <SheetClose asChild>
+                  <Button type="button">{language === "fr" ? "Terminé" : "Done"}</Button>
+                </SheetClose>
+              </SheetFooter>
+            </SheetContent>
+          </Sheet>
+        </div>
+
+        <div className="hidden gap-2 md:flex md:items-center md:justify-end">
           <DashboardCategoryFilter
+            id="dashboard-category-filter-desktop"
             value={selectedCategory}
             onValueChange={setSelectedCategory}
             options={CATEGORY_OPTIONS}
           />
-          <DashboardSearchInput value={dashboardSearch} onValueChange={setDashboardSearch} />
+          <DashboardSearchInput
+            id="dashboard-search-desktop"
+            value={dashboardSearch}
+            onValueChange={setDashboardSearch}
+          />
           {showManagementActions ? (
             <Button asChild size="sm" className="h-9 rounded-lg px-3">
               <Link href="/listings/create">{t.addListing}</Link>
@@ -387,65 +563,84 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
         </div>
       </div>
 
-      <div className="space-y-4 md:hidden">
+      <div className="space-y-2.5 md:hidden">
         {paginatedItems.length > 0 ? (
           paginatedItems.map((item) => (
             <div
               key={`${item.dashboardStatus}-${item.id}`}
-              className="rounded-[1.5rem] border border-zinc-200 bg-white p-4 shadow-sm dark:border-border dark:bg-card"
+              className="relative rounded-[1.25rem] border border-zinc-200 bg-white p-2.5 shadow-sm dark:border-border dark:bg-card"
             >
-              <Link href={`/listings/${item.slug}`} className="block rounded-xl transition hover:bg-zinc-50 dark:hover:bg-muted/40">
-                <div className="flex items-center gap-3">
-                  <div className="h-14 w-18 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-border dark:bg-muted">
-                    {item.imageUrl ? (
-                      <img src={item.imageUrl} alt={item.title} className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-zinc-950 dark:text-foreground">{item.title}</p>
-                    <p className="mt-1 truncate text-sm text-zinc-500 dark:text-muted-foreground">{item.meta}</p>
-                  </div>
+              <div className="flex min-w-0 items-center gap-2.5">
+                <div className="relative size-14 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-border dark:bg-muted">
+                  {item.imageUrl ? (
+                    <Image
+                      src={item.imageUrl}
+                      alt=""
+                      fill
+                      sizes="56px"
+                      placeholder="blur"
+                      blurDataURL={REMOTE_IMAGE_BLUR_DATA_URL}
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
+                  )}
                 </div>
-              </Link>
 
-              <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-border dark:bg-muted/40">
-                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500 dark:text-muted-foreground">{t.status}</p>
-                  <div className="mt-2">
-                    <DashboardStatusBadge item={item} label={getStatusLabel(item)} t={t} language={language} />
+                <div className="min-w-0 flex-1">
+                  <Link
+                    href={`/listings/${item.slug}`}
+                    className="block rounded-md after:absolute after:inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                  >
+                    <p className="truncate text-[0.8125rem] font-semibold leading-4 text-zinc-950 dark:text-foreground">
+                      {item.title}
+                    </p>
+                  </Link>
+                  <div className="pointer-events-none mt-1 flex min-h-6 min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                    <p className="shrink-0 text-sm font-bold text-zinc-950 dark:text-foreground">
+                      {item.price}
+                    </p>
+                    <div
+                      className={`relative z-10 inline-flex ${
+                        isPendingListingApproval(item) ||
+                        item.dashboardStatus === LISTING_APPROVAL_STATUS_VALUES.rejected
+                          ? "pointer-events-auto"
+                          : "pointer-events-none"
+                      }`}
+                    >
+                      <DashboardStatusBadge
+                        item={item}
+                        label={getStatusLabel(item)}
+                        t={t}
+                        language={language}
+                        compact
+                      />
+                    </div>
+                    {showMessagesColumn && item.messageCount > 0 ? (
+                      <span
+                        className="inline-flex items-center gap-1 text-[0.6875rem] font-medium text-zinc-500 dark:text-muted-foreground"
+                        aria-label={`${item.messageCount}+ ${t.messages}`}
+                      >
+                        <MessageCircleIcon className="size-3" aria-hidden="true" />
+                        {item.messageCount}+
+                      </span>
+                    ) : null}
                   </div>
                 </div>
-                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-border dark:bg-muted/40">
-                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500 dark:text-muted-foreground">{t.price}</p>
-                  <p className="mt-2 font-medium text-zinc-900 dark:text-foreground">{item.price}</p>
-                </div>
-                {showMessagesColumn ? (
-                  <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-border dark:bg-muted/40">
-                    <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500 dark:text-muted-foreground">{t.messages}</p>
-                    <p className="mt-2 text-zinc-700 dark:text-foreground">{item.messageCount > 0 ? `${item.messageCount}+` : "0"}</p>
+
+                {showManagementActions ? (
+                  <div className="relative z-10">
+                    <DashboardListingActions
+                      id={item.id}
+                      slug={item.slug}
+                      title={item.title}
+                      status={item.dashboardStatus}
+                      submittedForReviewAt={item.submittedForReviewAt}
+                      moderationReviewedAt={item.moderationReviewedAt}
+                    />
                   </div>
                 ) : null}
-                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-border dark:bg-muted/40">
-                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500 dark:text-muted-foreground">{t.category}</p>
-                  <p className="mt-2 line-clamp-2 text-zinc-700 dark:text-foreground">
-                    {getTranslatedCategoryValue(item.category, t, language)}
-                  </p>
-                </div>
               </div>
-
-              {showManagementActions ? (
-                <div className="mt-4">
-                  <DashboardListingActions
-                    id={item.id}
-                    slug={item.slug}
-                    status={item.dashboardStatus}
-                    submittedForReviewAt={item.submittedForReviewAt}
-                    moderationReviewedAt={item.moderationReviewedAt}
-                  />
-                </div>
-              ) : null}
             </div>
           ))
         ) : filteredItems.length === 0 ? (
@@ -462,7 +657,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
               type="button"
               variant="outline"
               size="sm"
-              className={safePage === 1 ? "pointer-events-none opacity-50" : ""}
+              disabled={safePage === 1}
               onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
             >
               {t.previousPage}
@@ -474,7 +669,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
               type="button"
               variant="outline"
               size="sm"
-              className={safePage === totalPages ? "pointer-events-none opacity-50" : ""}
+              disabled={safePage === totalPages}
               onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
             >
               {t.nextPage}
@@ -506,9 +701,17 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                   <td className="px-5 py-4 align-top">
                     <Link href={`/listings/${item.slug}`} className="block rounded-xl transition hover:bg-zinc-50 dark:hover:bg-muted/40">
                       <div className="flex items-center gap-4 py-1">
-                        <div className="h-12 w-16 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-border dark:bg-muted">
+                        <div className="relative h-12 w-16 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-border dark:bg-muted">
                           {item.imageUrl ? (
-                            <img src={item.imageUrl} alt={item.title} className="h-full w-full object-cover" />
+                            <Image
+                              src={item.imageUrl}
+                              alt={item.title}
+                              fill
+                              sizes="64px"
+                              placeholder="blur"
+                              blurDataURL={REMOTE_IMAGE_BLUR_DATA_URL}
+                              className="object-cover"
+                            />
                           ) : (
                             <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
                           )}
@@ -537,6 +740,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                       <DashboardListingActions
                         id={item.id}
                         slug={item.slug}
+                        title={item.title}
                         status={item.dashboardStatus}
                         submittedForReviewAt={item.submittedForReviewAt}
                         moderationReviewedAt={item.moderationReviewedAt}
@@ -581,16 +785,16 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
               <div className="flex items-center gap-3">
                 <span className="font-medium text-zinc-700 dark:text-foreground">{t.pageLabel} {safePage} {t.ofLabel} {totalPages}</span>
                 <div className="flex items-center gap-2">
-                  <Button type="button" variant="outline" size="icon-sm" className={safePage === 1 ? "pointer-events-none opacity-50" : ""} onClick={() => setCurrentPage(1)}>
+                  <Button type="button" variant="outline" size="icon-sm" disabled={safePage === 1} onClick={() => setCurrentPage(1)}>
                     <span aria-hidden="true">«</span>
                   </Button>
-                  <Button type="button" variant="outline" size="icon-sm" className={safePage === 1 ? "pointer-events-none opacity-50" : ""} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}>
+                  <Button type="button" variant="outline" size="icon-sm" disabled={safePage === 1} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}>
                     <span aria-hidden="true">‹</span>
                   </Button>
-                  <Button type="button" variant="outline" size="icon-sm" className={safePage === totalPages ? "pointer-events-none opacity-50" : ""} onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}>
+                  <Button type="button" variant="outline" size="icon-sm" disabled={safePage === totalPages} onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}>
                     <span aria-hidden="true">›</span>
                   </Button>
-                  <Button type="button" variant="outline" size="icon-sm" className={safePage === totalPages ? "pointer-events-none opacity-50" : ""} onClick={() => setCurrentPage(totalPages)}>
+                  <Button type="button" variant="outline" size="icon-sm" disabled={safePage === totalPages} onClick={() => setCurrentPage(totalPages)}>
                     <span aria-hidden="true">»</span>
                   </Button>
                 </div>

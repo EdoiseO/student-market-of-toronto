@@ -1,3 +1,5 @@
+import { isOwnedStoragePath } from "@/lib/storage-path-ownership.mjs";
+
 export const PROFILE_IMAGES_BUCKET = "profile-images";
 
 export const PROFILE_AVATAR_PRESETS = [
@@ -95,6 +97,11 @@ export function extractProfileImageStoragePath(avatarUrl) {
   } catch {
     return null;
   }
+}
+
+export function extractOwnedProfileImageStoragePath(avatarUrl, userId) {
+  const storagePath = extractProfileImageStoragePath(avatarUrl);
+  return isOwnedStoragePath(storagePath, userId) ? storagePath : null;
 }
 
 export function getProfileAvatarPreset(presetId) {

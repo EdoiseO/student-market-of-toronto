@@ -108,6 +108,48 @@ export default async function ConversationPage({ params }) {
   }
 
   const visibleMessageRows = filterConversationMessagesForUser(messageRows ?? [], deletedAt);
+  const visibleMessageIds = visibleMessageRows.map((message) => message.id);
+  let messageAttachments = [];
+
+  if (visibleMessageIds.length > 0) {
+    const { data: attachmentRows, error: attachmentsError } = await supabase
+      .from("message_attachments")
+      .select("id, message_id, storage_path, file_name, mime_type, size_bytes, created_at")
+      .in("message_id", visibleMessageIds)
+      .order("created_at", { ascending: true });
+
+    if (attachmentsError) {
+      if (attachmentsError.code !== "42P01" && attachmentsError.code !== "PGRST205") {
+        console.error("Failed to load message attachments:", attachmentsError.message);
+      }
+    } else if (attachmentRows?.length > 0) {
+      const { data: signedRows, error: signedUrlsError } = await supabase.storage
+        .from("message-media")
+        .createSignedUrls(
+          attachmentRows.map((attachment) => attachment.storage_path),
+          60 * 60,
+        );
+
+      if (signedUrlsError) {
+        console.error("Failed to sign message attachments:", signedUrlsError.message);
+      }
+
+      messageAttachments = attachmentRows.map((attachment, index) => ({
+        ...attachment,
+        signedUrl: signedRows?.[index]?.signedUrl ?? null,
+      }));
+    }
+  }
+
+  const attachmentsByMessageId = messageAttachments.reduce((attachmentsByMessage, attachment) => {
+    attachmentsByMessage[attachment.message_id] ??= [];
+    attachmentsByMessage[attachment.message_id].push(attachment);
+    return attachmentsByMessage;
+  }, {});
+  const messagesWithAttachments = visibleMessageRows.map((message) => ({
+    ...message,
+    attachments: attachmentsByMessageId[message.id] ?? [],
+  }));
   const unreadCount = visibleMessageRows.filter(
     (message) => !message.read_at && message.sender_id !== user.id,
   ).length;
@@ -120,10 +162,10 @@ export default async function ConversationPage({ params }) {
     : false;
 
   return (
-    <main className="h-full min-h-0 overflow-hidden bg-zinc-100 px-5 pt-3 pb-5 dark:bg-background md:px-6 md:pt-3 md:pb-6 lg:px-7 lg:pt-4 lg:pb-7">
-      <div className="mx-auto flex h-full min-h-0 w-full max-w-[1040px] flex-col gap-1 overflow-hidden">
+    <main className="h-full min-h-0 overflow-hidden bg-white dark:bg-card md:bg-zinc-100 md:px-6 md:pt-3 md:pb-6 md:dark:bg-background lg:px-7 lg:pt-4 lg:pb-7">
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-[1040px] flex-col overflow-hidden md:gap-1">
         {hasMessagingSetupError ? (
-          <section className="flex min-h-[420px] items-center justify-center rounded-[2rem] border border-dashed border-zinc-300 bg-zinc-50 p-8 text-center dark:border-border dark:bg-muted/40">
+          <section className="flex min-h-[300px] items-center justify-center rounded-[2rem] border border-dashed border-zinc-300 bg-zinc-50 p-5 text-center dark:border-border dark:bg-muted/40 md:min-h-[420px] md:p-8">
             <div className="max-w-xl">
               <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-background text-foreground shadow-sm">
                 <MessageSquare className="size-6" />
@@ -141,8 +183,8 @@ export default async function ConversationPage({ params }) {
           </section>
         ) : conversation ? (
           <>
-            <div>
-              <Button asChild variant="ghost" className="h-9 rounded-full px-3">
+            <div className="shrink-0 px-2 py-1 md:px-0 md:py-0">
+              <Button asChild variant="ghost" className="min-h-11 rounded-full px-3">
                 <Link href="/messages">
                   <ArrowLeft className="size-4" />
                   <span>{t.backToMessages}</span>
@@ -153,7 +195,7 @@ export default async function ConversationPage({ params }) {
             <MessagesThread
               conversation={conversation}
               currentUserId={user.id}
-              initialMessages={visibleMessageRows}
+              initialMessages={messagesWithAttachments}
               hasDeletedMessages={Boolean(deletedAt)}
               isHiddenConversation={isHiddenConversation}
             />

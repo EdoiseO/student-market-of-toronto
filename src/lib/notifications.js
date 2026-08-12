@@ -92,6 +92,8 @@ export const defaultNotificationChannelPreferences = {
 
 export const defaultMessageNotificationPreferences = defaultNotificationChannelPreferences;
 
+export { subscribeToNotificationUpdates } from "./notification-realtime.mjs";
+
 export function normalizeNotificationChannelPreferences(preferencesRow) {
   return {
     email: preferencesRow?.email_enabled ?? defaultNotificationChannelPreferences.email,
@@ -423,57 +425,4 @@ export function groupNotificationsByConversation(notifications) {
       readAt: group.unreadNotifications.length > 0 ? null : displayNotification.readAt,
     };
   });
-}
-
-function isNotificationPreferencePayload(payload, notificationPreferenceTypes) {
-  if (!notificationPreferenceTypes?.length) {
-    return true;
-  }
-
-  const nextType = payload.new?.notification_type ?? payload.old?.notification_type;
-  return !nextType || notificationPreferenceTypes.includes(nextType);
-}
-
-export function subscribeToNotificationUpdates({
-  supabase,
-  userId,
-  channelName,
-  onChange,
-  notificationPreferenceTypes,
-}) {
-  if (!supabase || !userId || !onChange) {
-    return () => {};
-  }
-
-  const channel = supabase
-    .channel(channelName)
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "notifications",
-        filter: `user_id=eq.${userId}`,
-      },
-      onChange,
-    )
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "notification_preferences",
-        filter: `user_id=eq.${userId}`,
-      },
-      (payload) => {
-        if (isNotificationPreferencePayload(payload, notificationPreferenceTypes)) {
-          onChange(payload);
-        }
-      },
-    )
-    .subscribe();
-
-  return () => {
-    supabase.removeChannel(channel);
-  };
 }
