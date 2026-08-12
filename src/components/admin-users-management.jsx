@@ -367,7 +367,7 @@ function UserMobileList({
   t,
 }) {
   return (
-    <div className="space-y-3 md:hidden" role="list">
+    <div className="space-y-3 lg:hidden" role="list">
       {users.map((user) => (
         <article
           key={user.id}
@@ -602,7 +602,7 @@ export function AdminUsersManagement({ users, currentUserId, currentUserRole }) 
                 onBanUpdated={handleBanUpdated}
                 t={t}
               />
-              <div className="hidden md:block">
+              <div className="hidden lg:block">
                 <Table>
                   <TableHeader>
                     <TableRow>

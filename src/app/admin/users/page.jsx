@@ -7,7 +7,6 @@ import { AdminUsersManagement } from "@/components/admin-users-management";
 import { Button } from "@/components/ui/button";
 import {
   getUserModerationRole,
-  isModerationRole,
   isNameChangeRequired,
 } from "@/lib/moderation";
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
@@ -63,12 +62,6 @@ export default async function AdminUsersPage() {
     redirect("/login");
   }
 
-  const accessUser = (await getLatestAuthUser(admin, user.id, "admin users access")) ?? user;
-
-  if (!isModerationRole(getUserModerationRole(accessUser))) {
-    redirect("/");
-  }
-
   if (!admin) {
     return (
       <main className="min-h-screen bg-zinc-100 p-5 dark:bg-background md:p-6 lg:p-7">
@@ -92,6 +85,12 @@ export default async function AdminUsersPage() {
         </div>
       </main>
     );
+  }
+
+  const accessUser = await getLatestAuthUser(admin, user.id, "admin users access");
+
+  if (!accessUser || getUserModerationRole(accessUser) !== "admin") {
+    redirect("/");
   }
 
   const authUsers = await listAllUsers(admin);
@@ -135,14 +134,14 @@ export default async function AdminUsersPage() {
     <main className="min-h-screen bg-zinc-100 p-5 dark:bg-background md:p-6 lg:p-7">
       <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-6 @container/main">
         <div className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-          <div className="border-b border-zinc-200 px-6 py-5 dark:border-border lg:px-7">
+          <div className="border-b border-zinc-200 px-5 py-5 dark:border-border md:px-6 lg:px-7">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="space-y-2">
                 <div className="flex items-center gap-2 rounded-full bg-zinc-100 px-3 py-1 text-sm text-zinc-700 dark:bg-muted dark:text-muted-foreground">
                   <ShieldCheck className="size-4" />
                   <span>{t.adminDashboard}</span>
                 </div>
-                <h1 className="text-3xl font-bold tracking-tight text-zinc-950 dark:text-foreground lg:text-4xl">
+                <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-foreground md:text-3xl lg:text-4xl">
                   {t.adminUsers}
                 </h1>
                 <p className="max-w-3xl text-base text-zinc-600 dark:text-muted-foreground">
@@ -159,7 +158,7 @@ export default async function AdminUsersPage() {
             </div>
           </div>
 
-          <div className="p-8 pt-6">
+          <div className="p-5 md:p-8 md:pt-6">
             <AdminUsersManagement
               users={users}
               currentUserId={user.id}

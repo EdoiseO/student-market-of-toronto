@@ -30,7 +30,7 @@ export async function getLatestAuthUser(admin, userId, logLabel = "admin auth lo
 
   if (error || !user) {
     console.error(
-      `Falling back to session role check for ${logLabel}:`,
+      `Could not verify the latest Auth user for ${logLabel}:`,
       error?.message ?? "Missing latest auth user",
     );
     return null;

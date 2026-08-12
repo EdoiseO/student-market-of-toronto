@@ -63,11 +63,27 @@ async function insertAnnouncementNotification(admin, userId, conversationId, mes
 
   if (error) {
     if (isMessageNotificationUnsupported(error)) {
-      await admin.from("notifications").insert({
+      const { error: legacyError } = await admin.from("notifications").insert({
         ...payload,
         type: LEGACY_MESSAGE_NOTIFICATION_TYPE,
       });
+
+      if (legacyError) {
+        throw legacyError;
+      }
+
+      return;
     }
+
+    throw error;
+  }
+}
+
+async function requireQuerySuccess(query) {
+  const { error } = await query;
+
+  if (error) {
+    throw error;
   }
 }
 
@@ -93,8 +109,14 @@ export async function POST(request) {
       return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
     }
 
-    const moderationUser =
-      (await getLatestAuthUser(admin, user.id, "announcement send")) ?? user;
+    const moderationUser = await getLatestAuthUser(admin, user.id, "announcement send");
+
+    if (!moderationUser) {
+      return NextResponse.json(
+        { error: "Could not verify your current admin access." },
+        { status: 503 },
+      );
+    }
 
     if (getUserModerationRole(moderationUser) !== "admin") {
       return NextResponse.json({ error: "Admin role required." }, { status: 403 });
@@ -188,34 +210,44 @@ export async function POST(request) {
 
     const sentCount = insertedMessages?.length ?? 0;
 
-    await Promise.allSettled(
-      allConversations.map((c) =>
-        admin
-          .from("conversations")
-          .update({ last_message_at: now, last_message_preview: preview, updated_at: now })
-          .eq("id", c.id),
-      ),
-    );
-
-    await Promise.allSettled(
-      allConversations.map((c) => {
+    const deliveryResults = await Promise.allSettled(
+      allConversations.map(async (c) => {
         const msg = messageByConversationId.get(c.id);
-        return insertAnnouncementNotification(admin, c.buyer_id, c.id, msg?.id ?? null);
+
+        await Promise.all([
+          requireQuerySuccess(
+            admin
+              .from("conversations")
+              .update({ last_message_at: now, last_message_preview: preview, updated_at: now })
+              .eq("id", c.id),
+          ),
+          insertAnnouncementNotification(admin, c.buyer_id, c.id, msg?.id ?? null),
+          requireQuerySuccess(
+            admin
+              .from("conversation_user_state")
+              .upsert(
+                { conversation_id: c.id, user_id: moderationUser.id, hidden_at: now },
+                { onConflict: "conversation_id,user_id" },
+              ),
+          ),
+        ]);
       }),
     );
 
-    await Promise.allSettled(
-      allConversations.map((c) =>
-        admin
-          .from("conversation_user_state")
-          .upsert(
-            { conversation_id: c.id, user_id: moderationUser.id, hidden_at: now },
-            { onConflict: "conversation_id,user_id" },
-          ),
-      ),
-    );
+    const failedDeliveries = deliveryResults.filter((result) => result.status === "rejected");
 
-    return NextResponse.json({ sentCount, totalRecipients: recipientIds.length });
+    if (failedDeliveries.length > 0) {
+      console.error(
+        "Announcement post-processing failed for recipients:",
+        failedDeliveries.map((result) => result.reason?.message ?? "Unknown error"),
+      );
+    }
+
+    return NextResponse.json({
+      sentCount,
+      totalRecipients: recipientIds.length,
+      failureCount: failedDeliveries.length,
+    });
   } catch (error) {
     console.error("Failed to send announcement:", error?.message ?? error);
     return NextResponse.json(

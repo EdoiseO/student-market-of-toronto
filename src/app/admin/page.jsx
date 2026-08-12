@@ -318,10 +318,10 @@ export default async function AdminPage() {
     <main className="min-h-screen bg-zinc-100 p-5 dark:bg-background md:p-6 lg:p-7">
       <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 @container/main">
         <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-          <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border lg:px-7">
+          <CardHeader className="border-b border-zinc-200 px-5 py-5 dark:border-border md:px-6 lg:px-7">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <CardTitle className="text-3xl font-bold tracking-tight text-zinc-950 dark:text-foreground lg:text-4xl">
+                <CardTitle className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-foreground md:text-3xl lg:text-4xl">
                   {t.adminDashboard}
                 </CardTitle>
                 <CardDescription className="mt-2 max-w-3xl text-base text-zinc-600 dark:text-muted-foreground">
@@ -329,16 +329,18 @@ export default async function AdminPage() {
                 </CardDescription>
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                {userRole === "admin" && <AdminAnnouncementSheet />}
-                <Button asChild variant="outline" className="rounded-xl">
-                  <Link href="/admin/users">{t.adminUsers}</Link>
-                </Button>
-              </div>
+              {userRole === "admin" && (
+                <div className="flex flex-wrap gap-2">
+                  <AdminAnnouncementSheet />
+                  <Button asChild variant="outline" className="rounded-xl">
+                    <Link href="/admin/users">{t.adminUsers}</Link>
+                  </Button>
+                </div>
+              )}
             </div>
           </CardHeader>
 
-          <CardContent className="space-y-6 p-8 pt-6">
+          <CardContent className="space-y-6 p-5 md:p-8 md:pt-6">
             <AdminModerationDashboard
               initialReports={reports}
               reportsAvailable={reportsAvailable}

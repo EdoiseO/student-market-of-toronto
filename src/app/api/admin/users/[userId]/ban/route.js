@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 import { getUserModerationRole } from "@/lib/moderation";
+import { getRestorableBanDuration } from "@/lib/admin-moderation-integrity.mjs";
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { isUserStatusTableMissing } from "@/lib/user-status";
 import { createClient } from "@/utils/supabase/server";
@@ -40,12 +41,54 @@ async function syncAppBanState(admin, userId, isBanned, bannedUntil) {
 
   if (error) {
     if (isUserStatusTableMissing(error)) {
-      console.error("Ban state table is not configured in Supabase yet:", error.message);
-      return;
+      throw new Error("Ban state table is not configured in Supabase yet.", { cause: error });
     }
 
     throw error;
   }
+}
+
+async function updateBanStateWithCompensation(
+  admin,
+  targetUser,
+  nextBanDuration,
+  nextIsBanned,
+) {
+  const previousBanDuration = getRestorableBanDuration(targetUser.banned_until);
+  const {
+    data: { user: updatedUser },
+    error: authUpdateError,
+  } = await admin.auth.admin.updateUserById(targetUser.id, {
+    ban_duration: nextBanDuration,
+  });
+
+  if (authUpdateError) {
+    throw authUpdateError;
+  }
+
+  try {
+    await syncAppBanState(
+      admin,
+      targetUser.id,
+      nextIsBanned,
+      nextIsBanned ? updatedUser?.banned_until ?? null : null,
+    );
+  } catch (syncError) {
+    const { error: rollbackError } = await admin.auth.admin.updateUserById(targetUser.id, {
+      ban_duration: previousBanDuration,
+    });
+
+    if (rollbackError) {
+      console.error("Auth ban rollback failed after app-state sync error:", rollbackError.message);
+      throw new Error("Ban state could not be synchronized or safely rolled back.", {
+        cause: syncError,
+      });
+    }
+
+    throw syncError;
+  }
+
+  return updatedUser;
 }
 
 export async function POST(request, { params }) {
@@ -71,7 +114,14 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
     }
 
-    const accessUser = (await getLatestAuthUser(admin, user.id, "admin ban management")) ?? user;
+    const accessUser = await getLatestAuthUser(admin, user.id, "admin ban management");
+
+    if (!accessUser) {
+      return NextResponse.json(
+        { error: "Could not verify your current admin access." },
+        { status: 503 },
+      );
+    }
 
     if (getUserModerationRole(accessUser) !== "admin") {
       return NextResponse.json({ error: "Only admins can manage bans." }, { status: 403 });
@@ -98,18 +148,12 @@ export async function POST(request, { params }) {
     }
 
     if (action === "unban") {
-      const {
-        data: { user: updatedUser },
-        error,
-      } = await admin.auth.admin.updateUserById(targetUserId, {
-        ban_duration: "none",
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      await syncAppBanState(admin, targetUserId, false, null);
+      const updatedUser = await updateBanStateWithCompensation(
+        admin,
+        targetUser,
+        "none",
+        false,
+      );
 
       return NextResponse.json({
         success: true,
@@ -125,18 +169,12 @@ export async function POST(request, { params }) {
         return NextResponse.json({ error: "Unsupported ban duration." }, { status: 400 });
       }
 
-      const {
-        data: { user: updatedUser },
-        error,
-      } = await admin.auth.admin.updateUserById(targetUserId, {
-        ban_duration: banDuration,
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      await syncAppBanState(admin, targetUserId, true, updatedUser?.banned_until ?? null);
+      const updatedUser = await updateBanStateWithCompensation(
+        admin,
+        targetUser,
+        banDuration,
+        true,
+      );
 
       return NextResponse.json({
         success: true,
