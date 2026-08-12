@@ -326,7 +326,14 @@ export function CreateListingForm() {
             .remove(uploadedImages.map((image) => image.storagePath));
         }
 
-        await supabase.from("listings").delete().eq("id", createdListing.id);
+        const { error: discardError } = await supabase.rpc(
+          "discard_owned_listing_draft",
+          { p_listing_id: createdListing.id },
+        );
+
+        if (discardError) {
+          console.error("Failed to discard incomplete listing:", discardError.message);
+        }
         throw assetError;
       }
 

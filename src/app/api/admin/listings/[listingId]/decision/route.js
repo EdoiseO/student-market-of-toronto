@@ -6,7 +6,10 @@ import {
   LISTING_APPROVED_NOTIFICATION_TYPE,
   LISTING_REJECTED_NOTIFICATION_TYPE,
 } from "@/lib/notifications";
-import { isPendingListingApproval } from "@/lib/listing-approval";
+import {
+  isListingReviewRevisionConflict,
+  parseListingContentRevision,
+} from "@/lib/listing-integrity.mjs";
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { createClient } from "@/utils/supabase/server";
 
@@ -109,24 +112,29 @@ export async function POST(request, { params }) {
       error: authError,
     } = await supabase.auth.getUser();
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    const requestUser = user ?? session?.user ?? null;
-
-    if ((authError && !requestUser) || !requestUser) {
+    if (authError || !user) {
       return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
     }
 
-    const moderationUser =
-      (await getLatestAuthUser(admin, requestUser.id, "listing moderation")) ?? requestUser;
+    const moderationUser = await getLatestAuthUser(admin, user.id, "listing moderation");
+
+    if (!moderationUser) {
+      return NextResponse.json(
+        { error: "Could not verify your moderation access." },
+        { status: 503 },
+      );
+    }
 
     if (!isModerationRole(getUserModerationRole(moderationUser))) {
       return NextResponse.json({ error: "Moderator role required" }, { status: 403 });
     }
 
-    const { action, feedback } = await request.json();
+    const {
+      action,
+      feedback,
+      expectedContentRevision,
+      expectedSubmittedForReviewAt,
+    } = await request.json();
     const listingId = resolvedParams.listingId;
 
     if (!listingId) {
@@ -138,80 +146,60 @@ export async function POST(request, { params }) {
     }
 
     const sellerFeedback = typeof feedback === "string" ? feedback.trim() : "";
+    const reviewedContentRevision = parseListingContentRevision(expectedContentRevision);
+    const reviewedSubmissionTime = Date.parse(expectedSubmittedForReviewAt);
 
-    if (action === "rejected" && !sellerFeedback) {
+    if (reviewedContentRevision === null || Number.isNaN(reviewedSubmissionTime)) {
+      return NextResponse.json(
+        { error: "The reviewed listing revision is missing or invalid." },
+        { status: 400 },
+      );
+    }
+
+    if (action === "rejected" && (!sellerFeedback || sellerFeedback.length > 3000)) {
       return NextResponse.json(
         { error: "Seller feedback is required when rejecting a listing." },
         { status: 400 },
       );
     }
 
-    const { data: listing, error: listingError } = await admin
-      .from("listings")
-      .select(
-        "id, seller_id, slug, title, status, submitted_for_review_at, moderation_reviewed_at"
-      )
-      .eq("id", listingId)
-      .maybeSingle();
+    const { data: decisionResult, error: decisionError } = await admin.rpc(
+      "decide_listing_moderation",
+      {
+        p_listing_id: listingId,
+        p_expected_content_revision: reviewedContentRevision,
+        p_expected_submitted_for_review_at: new Date(reviewedSubmissionTime).toISOString(),
+        p_action: action,
+        p_feedback: action === "rejected" ? sellerFeedback : null,
+        p_moderator_id: moderationUser.id,
+      },
+    );
 
-    if (listingError || !listing) {
-      throw listingError ?? new Error("listing_lookup_failed");
-    }
-
-    if (!isPendingListingApproval(listing)) {
+    if (isListingReviewRevisionConflict(decisionError)) {
       return NextResponse.json(
-        { error: "This listing is no longer pending review." },
+        { error: "This listing changed after you loaded it. Reload before deciding." },
         { status: 409 },
       );
     }
 
-    const decidedAt = new Date().toISOString();
+    if (decisionError?.code === "P0002") {
+      return NextResponse.json({ error: "Listing not found." }, { status: 404 });
+    }
+
+    if (decisionError) {
+      throw decisionError;
+    }
+
+    const updatedListing = Array.isArray(decisionResult)
+      ? decisionResult[0]
+      : decisionResult;
+
+    if (!updatedListing) {
+      throw new Error("listing_decision_failed");
+    }
+
+    const decidedAt = updatedListing.moderation_reviewed_at;
     const nextStatus = action === "approved" ? "active" : "rejected";
-    const listingUpdatePayload = {
-      status: nextStatus,
-      moderation_feedback: action === "rejected" ? sellerFeedback : null,
-      moderation_reviewed_at: decidedAt,
-      moderation_reviewed_by: moderationUser.id,
-    };
-
-    let updateError = null;
-
-    const { error: sessionUpdateError } = await supabase
-      .from("listings")
-      .update(listingUpdatePayload)
-      .eq("id", listingId);
-
-    if (sessionUpdateError) {
-      console.error(
-        "Listing moderation session update failed, retrying with admin client:",
-        sessionUpdateError.message,
-      );
-
-      const { error: adminUpdateError } = await admin
-        .from("listings")
-        .update(listingUpdatePayload)
-        .eq("id", listingId);
-
-      updateError = adminUpdateError;
-    }
-
-    if (updateError) {
-      throw new Error(`listing_update_failed: ${updateError.message}`);
-    }
-
-    const { data: updatedListing, error: updatedListingError } = await admin
-      .from("listings")
-      .select(
-        "id, status, submitted_for_review_at, moderation_feedback, moderation_reviewed_at, moderation_reviewed_by"
-      )
-      .eq("id", listingId)
-      .maybeSingle();
-
-    if (updatedListingError || !updatedListing) {
-      throw new Error(
-        `listing_postcheck_failed: ${updatedListingError?.message ?? "missing updated listing"}`,
-      );
-    }
 
     if (updatedListing.status !== nextStatus) {
       throw new Error(
@@ -237,7 +225,7 @@ export async function POST(request, { params }) {
     try {
       notificationSent = await insertListingDecisionNotification(
         admin,
-        listing,
+        updatedListing,
         action,
         action === "rejected" ? sellerFeedback : null,
       );

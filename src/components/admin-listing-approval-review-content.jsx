@@ -106,6 +106,8 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
       body: JSON.stringify({
         action,
         feedback: nextFeedback,
+        expectedContentRevision: listing.contentRevision,
+        expectedSubmittedForReviewAt: listing.submittedForReviewAt,
       }),
     });
 

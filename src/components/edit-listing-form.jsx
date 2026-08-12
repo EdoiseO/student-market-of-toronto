@@ -52,7 +52,6 @@ import {
 } from "@/lib/categories";
 import {
   LISTING_APPROVAL_STATUS_VALUES,
-  isActiveListingEditReviewEnabled,
 } from "@/lib/listing-approval";
 import { getTranslatedConditionLabel } from "@/lib/search-listings";
 import { cn } from "@/lib/utils";
@@ -240,9 +239,10 @@ export function EditListingForm({ listing }) {
       normalizedCondition !== (listing.condition ?? "") ||
       isNegotiable !== Boolean(listing.is_negotiable);
     const hasMeaningfulPhotoChanges = newPhotos.length > 0 || removedPhotos.length > 0;
-    const shouldResubmitActiveListing =
-      listing.status === "active" &&
-      isActiveListingEditReviewEnabled() &&
+    const shouldResubmitListing =
+      ["active", "sold", LISTING_APPROVAL_STATUS_VALUES.pendingReview].includes(
+        listing.status,
+      ) &&
       (hasMeaningfulFieldChanges || hasMeaningfulPhotoChanges);
 
     const listingUpdateValues = {
@@ -255,13 +255,6 @@ export function EditListingForm({ listing }) {
       condition: normalizedCondition,
       is_negotiable: isNegotiable,
     };
-
-    if (shouldResubmitActiveListing) {
-      Object.assign(listingUpdateValues, {
-        status: LISTING_APPROVAL_STATUS_VALUES.pendingReview,
-        submitted_for_review_at: new Date().toISOString(),
-      });
-    }
 
     const { error: updateError } = await supabase
       .from("listings")
@@ -379,9 +372,9 @@ export function EditListingForm({ listing }) {
 
     setLoading(false);
     toast.success(
-      shouldResubmitActiveListing ? t.listingResubmittedAfterEdit : t.listingUpdatedSuccess,
+      shouldResubmitListing ? t.listingResubmittedAfterEdit : t.listingUpdatedSuccess,
     );
-    router.push(shouldResubmitActiveListing ? "/dashboard?tab=inactive" : `/listings/${listing.slug}`);
+    router.push(shouldResubmitListing ? "/dashboard?tab=inactive" : `/listings/${listing.slug}`);
     router.refresh();
   }
 

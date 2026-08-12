@@ -33,6 +33,7 @@ import {
   isListingApprovalSetupMissing,
   isPendingListingApproval,
 } from "@/lib/listing-approval"
+import { OWNED_LISTING_STATUS_ACTIONS } from "@/lib/listing-integrity.mjs"
 import { translations } from "@/lib/translations"
 
 export function DashboardListingActions({
@@ -62,7 +63,7 @@ export function DashboardListingActions({
   const canMarkAsSold = status === "active"
   const canReopenListing = status === "sold"
 
-  async function handleUpdateStatus(nextStatus) {
+  async function handleUpdateStatus(action) {
     setIsActionSheetOpen(false)
     setIsUpdatingStatus(true)
 
@@ -76,19 +77,10 @@ export function DashboardListingActions({
       return
     }
 
-    const nextValues = { status: nextStatus }
-
-    if (nextStatus === LISTING_APPROVAL_STATUS_VALUES.pendingReview) {
-      Object.assign(nextValues, {
-        submitted_for_review_at: new Date().toISOString(),
-      })
-    }
-
-    const { error } = await supabase
-      .from("listings")
-      .update(nextValues)
-      .eq("id", id)
-      .eq("seller_id", user.id)
+    const { error } = await supabase.rpc("transition_owned_listing_status", {
+      p_listing_id: id,
+      p_action: action,
+    })
 
     setIsUpdatingStatus(false)
 
@@ -145,11 +137,9 @@ export function DashboardListingActions({
       }
     }
 
-    const { error: deleteError } = await supabase
-      .from("listings")
-      .delete()
-      .eq("id", id)
-      .eq("seller_id", user.id)
+    const { error: deleteError } = await supabase.rpc("retire_owned_listing", {
+      p_listing_id: id,
+    })
 
     setIsDeleting(false)
 
@@ -197,7 +187,7 @@ export function DashboardListingActions({
                   type="button"
                   variant="outline"
                   className="w-full justify-start px-4"
-                  onClick={() => handleUpdateStatus(LISTING_APPROVAL_STATUS_VALUES.pendingReview)}
+                  onClick={() => handleUpdateStatus(OWNED_LISTING_STATUS_ACTIONS.submitForReview)}
                   disabled={isUpdatingStatus}
                 >
                   {isUpdatingStatus
@@ -212,7 +202,7 @@ export function DashboardListingActions({
                   type="button"
                   variant="outline"
                   className="w-full justify-start px-4"
-                  onClick={() => handleUpdateStatus("sold")}
+                  onClick={() => handleUpdateStatus(OWNED_LISTING_STATUS_ACTIONS.markSold)}
                   disabled={isUpdatingStatus}
                 >
                   {isUpdatingStatus ? t.saving : t.markAsSold}
@@ -223,7 +213,7 @@ export function DashboardListingActions({
                   type="button"
                   variant="outline"
                   className="w-full justify-start px-4"
-                  onClick={() => handleUpdateStatus("active")}
+                  onClick={() => handleUpdateStatus(OWNED_LISTING_STATUS_ACTIONS.reopenForReview)}
                   disabled={isUpdatingStatus}
                 >
                   {isUpdatingStatus ? t.saving : t.reopenListing}
@@ -252,17 +242,17 @@ export function DashboardListingActions({
           </Button>
         ) : null}
         {canSubmitForReview ? (
-          <Button type="button" variant="outline" size="xs" className="h-8 rounded-lg bg-white px-2.5 dark:bg-background" onClick={() => handleUpdateStatus(LISTING_APPROVAL_STATUS_VALUES.pendingReview)} disabled={isUpdatingStatus}>
+          <Button type="button" variant="outline" size="xs" className="h-8 rounded-lg bg-white px-2.5 dark:bg-background" onClick={() => handleUpdateStatus(OWNED_LISTING_STATUS_ACTIONS.submitForReview)} disabled={isUpdatingStatus}>
             {isUpdatingStatus ? t.saving : status === LISTING_APPROVAL_STATUS_VALUES.rejected ? t.resubmitForReview : t.submitForReview}
           </Button>
         ) : null}
         {canMarkAsSold ? (
-          <Button type="button" variant="outline" size="xs" className="h-8 rounded-lg bg-white px-2.5 dark:bg-background" onClick={() => handleUpdateStatus("sold")} disabled={isUpdatingStatus}>
+          <Button type="button" variant="outline" size="xs" className="h-8 rounded-lg bg-white px-2.5 dark:bg-background" onClick={() => handleUpdateStatus(OWNED_LISTING_STATUS_ACTIONS.markSold)} disabled={isUpdatingStatus}>
             {isUpdatingStatus ? t.saving : t.markAsSold}
           </Button>
         ) : null}
         {canReopenListing ? (
-          <Button type="button" variant="outline" size="xs" className="h-8 rounded-lg bg-white px-2.5 dark:bg-background" onClick={() => handleUpdateStatus("active")} disabled={isUpdatingStatus}>
+          <Button type="button" variant="outline" size="xs" className="h-8 rounded-lg bg-white px-2.5 dark:bg-background" onClick={() => handleUpdateStatus(OWNED_LISTING_STATUS_ACTIONS.reopenForReview)} disabled={isUpdatingStatus}>
             {isUpdatingStatus ? t.saving : t.reopenListing}
           </Button>
         ) : null}

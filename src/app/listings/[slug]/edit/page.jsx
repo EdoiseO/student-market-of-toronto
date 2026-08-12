@@ -14,6 +14,7 @@ const EDIT_LISTING_SELECT = `
   price,
   previous_price,
   status,
+  content_revision,
   submitted_for_review_at,
   moderation_feedback,
   moderation_reviewed_at,
