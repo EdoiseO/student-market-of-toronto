@@ -97,6 +97,31 @@ export function extractProfileImageStoragePath(avatarUrl) {
   }
 }
 
+export function extractOwnedProfileImageStoragePath(avatarUrl, userId) {
+  if (!userId || typeof userId !== "string") {
+    return null;
+  }
+
+  const storagePath = extractProfileImageStoragePath(avatarUrl);
+
+  if (!storagePath || !storagePath.startsWith(`${userId}/`)) {
+    return null;
+  }
+
+  const storagePathSegments = storagePath.split("/");
+
+  if (
+    storagePathSegments.length < 2 ||
+    storagePathSegments.some(
+      (segment) => !segment || segment === "." || segment === "..",
+    )
+  ) {
+    return null;
+  }
+
+  return storagePath;
+}
+
 export function getProfileAvatarPreset(presetId) {
   if (!presetId) {
     return null;

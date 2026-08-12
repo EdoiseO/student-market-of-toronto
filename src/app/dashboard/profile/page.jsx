@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { ProfileSettingsForm } from "@/components/profile-settings-form";
+import { isNameChangeRequired } from "@/lib/moderation";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
@@ -50,7 +51,7 @@ export default async function DashboardProfilePage() {
     avatarUrl: existingProfile?.avatar_url ?? "",
     bio: existingProfile?.bio ?? "",
     isPublic: Boolean(existingProfile?.is_public),
-    requiresNameChange: user.user_metadata?.force_name_change === true,
+    requiresNameChange: isNameChangeRequired(user),
   };
 
   return (

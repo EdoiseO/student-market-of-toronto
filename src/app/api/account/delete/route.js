@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
-import { extractProfileImageStoragePath } from "@/lib/profile-avatar";
+import { extractOwnedProfileImageStoragePath } from "@/lib/profile-avatar";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { createClient } from "@/utils/supabase/server";
 
@@ -22,24 +22,32 @@ async function deleteWhereEquals(admin, table, column, value) {
   }
 }
 
-async function deleteProfileSubjectReports(admin, userId) {
-  const { error } = await admin
-    .from("reports")
-    .delete()
-    .eq("subject_type", "profile")
-    .eq("subject_id", userId);
-
-  if (error && !isSkippableCleanupError(error)) {
-    throw error;
-  }
-}
-
 async function deleteWhereIn(admin, table, column, values) {
   if (!values.length) {
     return;
   }
 
   const { error } = await admin.from(table).delete().in(column, values);
+
+  if (error && !isSkippableCleanupError(error)) {
+    throw error;
+  }
+}
+
+async function anonymizeOwnedListings(admin, userId, listingIds) {
+  if (!listingIds.length) {
+    return;
+  }
+
+  const { error } = await admin
+    .from("listings")
+    .update({
+      title: "Deleted listing",
+      description: "",
+      status: "inactive",
+    })
+    .eq("seller_id", userId)
+    .in("id", listingIds);
 
   if (error && !isSkippableCleanupError(error)) {
     throw error;
@@ -141,29 +149,24 @@ export async function POST() {
     const listingImagePaths = (listingImagesResult.data ?? [])
       .map((image) => image.storage_path)
       .filter(Boolean);
-    const profileImagePath = extractProfileImageStoragePath(profileRow?.avatar_url ?? null);
+    const profileImagePath = extractOwnedProfileImageStoragePath(
+      profileRow?.avatar_url ?? null,
+      user.id,
+    );
 
     await deleteWhereEquals(admin, "notification_preferences", "user_id", user.id);
     await deleteWhereEquals(admin, "notifications", "user_id", user.id);
     await deleteWhereEquals(admin, "listing_favourites", "user_id", user.id);
     await deleteWhereEquals(admin, "conversation_user_state", "user_id", user.id);
-    await deleteWhereEquals(admin, "reports", "reporter_user_id", user.id);
-    await deleteWhereEquals(admin, "reports", "reported_user_id", user.id);
-    await deleteWhereEquals(admin, "reports", "reviewed_by", user.id);
-    await deleteWhereEquals(admin, "reports", "moderator_notes_updated_by", user.id);
-    await deleteProfileSubjectReports(admin, user.id);
-    await deleteWhereEquals(admin, "listing_moderation_history", "decided_by", user.id);
 
     if (listingIds.length > 0) {
       await deleteWhereIn(admin, "listing_favourites", "listing_id", listingIds);
       await deleteWhereIn(admin, "notifications", "listing_id", listingIds);
-      await deleteWhereIn(admin, "reports", "listing_id", listingIds);
-      await deleteWhereIn(admin, "listing_moderation_history", "listing_id", listingIds);
     }
 
     if (listingIds.length > 0) {
       await deleteWhereIn(admin, "listing_images", "listing_id", listingIds);
-      await deleteWhereIn(admin, "listings", "id", listingIds);
+      await anonymizeOwnedListings(admin, user.id, listingIds);
     }
 
     await scrubProfile(admin, user.id);

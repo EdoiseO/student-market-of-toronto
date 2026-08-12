@@ -36,27 +36,29 @@ async function requireModerationUser() {
     };
   }
 
-    const cookieStore = await cookies();
-    const supabase = createClient(cookieStore);
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+  if (authError || !user) {
+    return {
+      errorResponse: NextResponse.json({ error: "You must be signed in." }, { status: 401 }),
+    };
+  }
 
-    const requestUser = user ?? session?.user ?? null;
+  const moderationUser = await getLatestAuthUser(admin, user.id, "moderation actions");
 
-    if ((authError && !requestUser) || !requestUser) {
-      return {
-        errorResponse: NextResponse.json({ error: "You must be signed in." }, { status: 401 }),
-      };
-    }
-
-  const moderationUser =
-    (await getLatestAuthUser(admin, requestUser.id, "moderation actions")) ?? requestUser;
+  if (!moderationUser) {
+    return {
+      errorResponse: NextResponse.json(
+        { error: "Could not verify your moderation access." },
+        { status: 503 },
+      ),
+    };
+  }
 
   if (!isModerationRole(getUserModerationRole(moderationUser))) {
     return {
@@ -118,12 +120,41 @@ export async function POST(request) {
 
     if (action === "remove_listing") {
       const reportIds = Array.isArray(payload?.reportIds)
-        ? payload.reportIds.filter(Boolean)
+        ? [...new Set(payload.reportIds.filter(Boolean))]
         : [];
       const listingId = payload?.listingId;
 
       if (!reportIds.length || !listingId) {
         return NextResponse.json({ error: "Missing listing moderation payload." }, { status: 400 });
+      }
+
+      const { data: reportRows, error: reportLookupError } = await admin
+        .from("reports")
+        .select("id, subject_type, subject_id, listing_id, status")
+        .in("id", reportIds);
+
+      if (reportLookupError) {
+        throw reportLookupError;
+      }
+
+      const everyReportMatchesListing =
+        reportRows?.length === reportIds.length &&
+        reportRows.every((report) => {
+          const reportTargetIds = [report.listing_id, report.subject_id].filter(Boolean);
+
+          return (
+            report.subject_type === "listing" &&
+            report.status === REPORT_STATUS_VALUES.open &&
+            reportTargetIds.length > 0 &&
+            reportTargetIds.every((reportTargetId) => reportTargetId === listingId)
+          );
+        });
+
+      if (!everyReportMatchesListing) {
+        return NextResponse.json(
+          { error: "Every selected open report must belong to this listing." },
+          { status: 409 },
+        );
       }
 
       const reviewedAt = new Date().toISOString();
@@ -147,7 +178,8 @@ export async function POST(request) {
           reviewed_by: user.id,
           reviewed_at: reviewedAt,
         })
-        .in("id", reportIds);
+        .in("id", reportIds)
+        .eq("status", REPORT_STATUS_VALUES.open);
 
       if (reportsError) {
         throw reportsError;
@@ -193,11 +225,17 @@ export async function POST(request) {
       }
 
       const reviewedAt = new Date().toISOString();
+      const nextUserMetadata = {
+        ...(targetUser.user_metadata ?? {}),
+        first_name: null,
+        last_name: null,
+      };
+      delete nextUserMetadata.force_name_change;
+
       const { error: authUpdateError } = await admin.auth.admin.updateUserById(targetUserId, {
-        user_metadata: {
-          ...(targetUser.user_metadata ?? {}),
-          first_name: null,
-          last_name: null,
+        user_metadata: nextUserMetadata,
+        app_metadata: {
+          ...(targetUser.app_metadata ?? {}),
           force_name_change: true,
         },
       });

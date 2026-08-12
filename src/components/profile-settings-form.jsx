@@ -55,7 +55,23 @@ export function ProfileSettingsForm({ initialProfile }) {
   const [isUpdatingAvatar, setIsUpdatingAvatar] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
   const [isMobileViewport, setIsMobileViewport] = React.useState(false);
-  const requiresNameChange = initialProfile.requiresNameChange === true;
+  const [requiresNameChange, setRequiresNameChange] = React.useState(
+    initialProfile.requiresNameChange === true,
+  );
+
+  React.useEffect(() => {
+    let isActive = true;
+
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (isActive) {
+        setRequiresNameChange(user?.app_metadata?.force_name_change === true);
+      }
+    });
+
+    return () => {
+      isActive = false;
+    };
+  }, [supabase]);
 
   React.useEffect(() => {
     function syncIsMobileViewport() {
@@ -83,11 +99,12 @@ export function ProfileSettingsForm({ initialProfile }) {
   const currentNormalizedFirstName = normalizeProfileText(firstName);
   const currentNormalizedLastName = normalizeProfileText(lastName);
   const currentNormalizedBio = normalizeProfileText(bio);
+  const hasNameChanges =
+    currentNormalizedFirstName !== initialNormalizedFirstName ||
+    currentNormalizedLastName !== initialNormalizedLastName;
 
   const hasProfileChanges =
-    currentNormalizedFirstName !== initialNormalizedFirstName ||
-    currentNormalizedLastName !== initialNormalizedLastName ||
-    currentNormalizedBio !== initialNormalizedBio;
+    hasNameChanges || currentNormalizedBio !== initialNormalizedBio;
 
   async function saveAvatarPreset(nextPresetId) {
     setIsUpdatingAvatar(true);
@@ -224,16 +241,22 @@ export function ProfileSettingsForm({ initialProfile }) {
     setIsSaving(true);
 
     try {
-      const { error: authUpdateError } = await supabase.auth.updateUser({
-        data: {
-          first_name: normalizedFirstName,
-          last_name: normalizedLastName,
-          ...(requiresNameChange ? { force_name_change: false } : {}),
-        },
-      });
+      if (hasNameChanges || requiresNameChange) {
+        const nameResponse = await fetch("/api/account/name", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            firstName: normalizedFirstName,
+            lastName: normalizedLastName,
+          }),
+        });
+        const namePayload = await nameResponse.json().catch(() => ({}));
 
-      if (authUpdateError) {
-        throw authUpdateError;
+        if (!nameResponse.ok) {
+          throw new Error(namePayload?.error || t.profileUpdateError);
+        }
+
+        setRequiresNameChange(false);
       }
 
       const { error: profileUpsertError } = await supabase
