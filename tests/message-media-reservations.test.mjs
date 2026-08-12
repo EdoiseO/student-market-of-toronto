@@ -27,7 +27,7 @@ const storagePreflightMigrationUrl = new URL(
   import.meta.url,
 );
 const storageCompletionMigrationUrl = new URL(
-  "../supabase/migrations/20260812185223_fix_message_media_storage_completion.sql",
+  "../supabase/migrations/20260812192359_fix_message_media_storage_completion.sql",
   import.meta.url,
 );
 const accountDeleteRouteUrl = new URL("../src/app/api/account/delete/route.js", import.meta.url);
