@@ -43,6 +43,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ClientFormattedDateTime } from "@/components/client-formatted-date-time";
+import { MessageMediaGallery } from "@/components/message-media-gallery";
 import { ReportSheet } from "@/components/report-sheet";
 import { useLanguage } from "@/context/LanguageContext";
 import { REMOTE_IMAGE_BLUR_DATA_URL } from "@/lib/image-config";
@@ -95,46 +96,18 @@ function getAttachmentKind(mimeType) {
   return mimeType?.startsWith("video/") ? "video" : "image";
 }
 
-function MessageAttachment({ attachment, t }) {
-  if (!attachment.signedUrl) {
-    return (
-      <div className="flex aspect-[4/3] w-56 max-w-full items-center justify-center rounded-2xl bg-zinc-100 px-4 text-center text-xs text-zinc-500 dark:bg-muted dark:text-muted-foreground">
-        {t.attachmentUnavailable}
-      </div>
-    );
+function isGroupedWithPreviousMessage(message, previousMessage) {
+  if (!previousMessage || message.sender_id !== previousMessage.sender_id) {
+    return false;
   }
 
-  if (getAttachmentKind(attachment.mime_type) === "video") {
-    return (
-      <video
-        controls
-        playsInline
-        preload="metadata"
-        className="aspect-[4/3] w-64 max-w-full rounded-2xl bg-black object-contain"
-        aria-label={attachment.file_name}
-      >
-        <source src={attachment.signedUrl} type={attachment.mime_type} />
-      </video>
-    );
-  }
+  const currentTimestamp = new Date(message.created_at).getTime();
+  const previousTimestamp = new Date(previousMessage.created_at).getTime();
 
   return (
-    <a
-      href={attachment.signedUrl}
-      target="_blank"
-      rel="noreferrer"
-      className="relative block aspect-[4/3] w-64 max-w-full overflow-hidden rounded-2xl bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-muted"
-      aria-label={`${t.openAttachment}: ${attachment.file_name}`}
-    >
-      <Image
-        src={attachment.signedUrl}
-        alt={attachment.file_name}
-        fill
-        unoptimized
-        sizes="(max-width: 639px) 68vw, 288px"
-        className="object-contain"
-      />
-    </a>
+    Number.isFinite(currentTimestamp) &&
+    Number.isFinite(previousTimestamp) &&
+    currentTimestamp - previousTimestamp <= 5 * 60 * 1000
   );
 }
 
@@ -725,14 +698,14 @@ export function MessagesThread({
   }
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-y border-zinc-200 bg-white/95 dark:border-border dark:bg-card md:rounded-[2rem] md:border md:shadow-sm">
-      <div className="shrink-0 border-b border-zinc-200 p-3 dark:border-border md:p-5">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-y border-zinc-200 bg-white/95 dark:border-border dark:bg-card md:rounded-[1.5rem] md:border md:shadow-sm">
+      <div className="shrink-0 border-b border-zinc-200 px-3 py-2.5 dark:border-border md:px-4 md:py-3">
+        <div className="flex flex-col gap-2.5 md:flex-row md:items-center md:justify-between">
           {isAnnouncementConversation ? (
-            <div className="block rounded-2xl border border-zinc-200/80 bg-zinc-50/80 p-2.5 dark:border-border dark:bg-muted/30 lg:w-full lg:max-w-md">
+            <div className="block rounded-xl border border-zinc-200/80 bg-zinc-50/80 p-2 dark:border-border dark:bg-muted/30 md:w-full md:max-w-sm">
               <div className="flex items-center gap-3">
-                <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-zinc-600 dark:bg-muted dark:text-muted-foreground md:size-14">
-                  <Megaphone className="size-6 md:size-7" />
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-600 dark:bg-muted dark:text-muted-foreground md:size-12">
+                  <Megaphone className="size-5 md:size-6" />
                 </div>
 
                 <div className="min-w-0 flex-1">
@@ -748,16 +721,16 @@ export function MessagesThread({
           ) : hasListingLink ? (
             <Link
               href={`/listings/${conversation.listing.slug}`}
-              className="block rounded-2xl border border-zinc-200/80 bg-zinc-50/80 p-2.5 transition hover:bg-zinc-100/80 dark:border-border dark:bg-muted/30 dark:hover:bg-muted/50 lg:w-full lg:max-w-md"
+              className="block rounded-xl border border-zinc-200/80 bg-zinc-50/80 p-2 transition hover:bg-zinc-100/80 dark:border-border dark:bg-muted/30 dark:hover:bg-muted/50 md:w-full md:max-w-sm"
             >
               <div className="flex items-center gap-3">
-                <div className="relative size-12 shrink-0 overflow-hidden rounded-xl bg-zinc-100 dark:bg-muted md:size-14">
+                <div className="relative size-11 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-muted md:size-12">
                   {conversation.listing.imageUrl ? (
                     <Image
                       src={conversation.listing.imageUrl}
                       alt={conversation.listing.title}
                       fill
-                      sizes="(max-width: 767px) 48px, 56px"
+                      sizes="(max-width: 767px) 44px, 48px"
                       placeholder="blur"
                       blurDataURL={REMOTE_IMAGE_BLUR_DATA_URL}
                       className="object-cover"
@@ -781,9 +754,9 @@ export function MessagesThread({
               </div>
             </Link>
           ) : (
-            <div className="block rounded-2xl border border-zinc-200/80 bg-zinc-50/80 p-2.5 dark:border-border dark:bg-muted/30 lg:w-full lg:max-w-md">
+            <div className="block rounded-xl border border-zinc-200/80 bg-zinc-50/80 p-2 dark:border-border dark:bg-muted/30 md:w-full md:max-w-sm">
               <div className="flex items-center gap-3">
-                <div className="size-12 shrink-0 overflow-hidden rounded-xl bg-zinc-100 dark:bg-muted md:size-14">
+                <div className="size-11 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-muted md:size-12">
                   <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
                 </div>
 
@@ -800,16 +773,16 @@ export function MessagesThread({
           )}
 
           {conversation.otherParticipant.id ? (
-            <div className="flex items-center gap-2 lg:self-center">
+            <div className="flex items-center justify-between gap-2 md:self-center">
               <Link
                 href={`/profile/${conversation.otherParticipant.id}`}
-                className="flex min-w-0 items-center gap-2.5 rounded-xl transition hover:bg-zinc-50/80 dark:hover:bg-muted/40"
+                className="flex min-w-0 items-center gap-2 rounded-xl transition hover:bg-zinc-50/80 dark:hover:bg-muted/40"
               >
                 <ProfileAvatar
                   name={conversation.otherParticipant.name}
                   avatarPresetId={conversation.otherParticipant.avatarPresetId}
                   avatarUrl={conversation.otherParticipant.avatarUrl}
-                  className="size-9 border border-zinc-200 dark:border-border"
+                  className="size-8 border border-zinc-200 dark:border-border md:size-9"
                 />
 
                 <div className="min-w-0">
@@ -870,7 +843,7 @@ export function MessagesThread({
               </DropdownMenu>
             </div>
           ) : (
-            <div className="flex items-center gap-2.5 lg:self-center">
+            <div className="flex items-center gap-2 md:self-center">
               {conversation.isAnnouncement ? (
                 <div className="flex size-9 items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 text-zinc-700 dark:border-border dark:bg-muted dark:text-muted-foreground">
                   <Megaphone className="size-5" />
@@ -897,21 +870,29 @@ export function MessagesThread({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-3.5 overflow-y-auto overscroll-contain bg-zinc-50/60 px-3.5 py-4 dark:bg-muted/15 md:space-y-4 md:px-6 md:py-5">
+      <div className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain bg-zinc-50/60 px-3 py-3 dark:bg-muted/15 md:px-5 md:py-4">
         {messages.length > 0 ? (
-          messages.map((message) => {
+          messages.map((message, messageIndex) => {
             const isCurrentUser = message.sender_id === currentUserId;
             const participant = isCurrentUser
               ? conversation.currentParticipant
               : conversation.otherParticipant;
+            const isGrouped = isGroupedWithPreviousMessage(
+              message,
+              messages[messageIndex - 1],
+            );
 
             return (
               <div
                 key={message.id}
-                className={`group/message flex items-end gap-2 ${isCurrentUser ? "flex-row-reverse" : ""}`}
+                className={`group/message mx-auto flex w-full max-w-4xl items-end gap-1.5 ${
+                  isCurrentUser ? "flex-row-reverse" : ""
+                } ${isGrouped ? "pt-0.5" : messageIndex > 0 ? "pt-2.5" : ""}`}
               >
-                {conversation.isAnnouncement && !isCurrentUser ? (
-                  <div className="flex size-8 items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 text-zinc-600 dark:border-border dark:bg-muted dark:text-muted-foreground md:size-9">
+                {isGrouped ? (
+                  <span className="size-7 shrink-0 md:size-8" aria-hidden="true" />
+                ) : conversation.isAnnouncement && !isCurrentUser ? (
+                  <div className="flex size-7 items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 text-zinc-600 dark:border-border dark:bg-muted dark:text-muted-foreground md:size-8">
                     <Megaphone className="size-4.5" />
                   </div>
                 ) : (
@@ -919,12 +900,12 @@ export function MessagesThread({
                     name={participant.name}
                     avatarPresetId={participant.avatarPresetId}
                     avatarUrl={participant.avatarUrl}
-                    className="size-8 border border-zinc-200 dark:border-border md:size-9"
+                    className="size-7 border border-zinc-200 dark:border-border md:size-8"
                   />
                 )}
 
                 <div
-                  className={`relative flex min-w-0 max-w-[78vw] flex-col gap-1 sm:max-w-[68%] ${
+                  className={`relative flex min-w-0 max-w-[82vw] flex-col gap-0.5 sm:max-w-[min(70%,36rem)] ${
                     isCurrentUser ? "items-end" : "items-start"
                   }`}
                 >
@@ -953,16 +934,18 @@ export function MessagesThread({
                     </DropdownMenuContent>
                   </DropdownMenu>
 
-                  <p className="px-1 text-[0.6875rem] leading-4 text-zinc-500 dark:text-muted-foreground md:text-xs">
-                    <span className="font-semibold text-zinc-900 dark:text-foreground">
-                      {isCurrentUser ? t.you : participant.name}
-                    </span>{" "}
-                    <ClientFormattedDateTime value={message.created_at} language={language} />
-                  </p>
+                  {!isGrouped ? (
+                    <p className="px-1 text-[0.6875rem] leading-4 text-zinc-500 dark:text-muted-foreground md:text-xs">
+                      <span className="font-semibold text-zinc-900 dark:text-foreground">
+                        {isCurrentUser ? t.you : participant.name}
+                      </span>{" "}
+                      <ClientFormattedDateTime value={message.created_at} language={language} />
+                    </p>
+                  ) : null}
 
                   <div
-                    className={`w-fit rounded-[1.25rem] text-left ${
-                      message.attachments?.length > 0 ? "p-1.5" : "px-3.5 py-2.5"
+                    className={`w-fit overflow-hidden rounded-[1.1rem] text-left ${
+                      message.attachments?.length > 0 ? "p-1" : "px-3 py-2"
                     } ${
                       isCurrentUser
                         ? "rounded-tr-sm border border-zinc-300/80 bg-zinc-200/90 text-zinc-950 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
@@ -970,26 +953,12 @@ export function MessagesThread({
                     }`}
                   >
                     {message.attachments?.length > 0 ? (
-                      <div
-                        className={
-                          message.attachments.length > 1
-                            ? "grid grid-cols-2 gap-1.5 [&_a]:w-28 [&_video]:w-28 sm:[&_a]:w-36 sm:[&_video]:w-36"
-                            : ""
-                        }
-                      >
-                        {message.attachments.map((attachment) => (
-                          <MessageAttachment
-                            key={attachment.id}
-                            attachment={attachment}
-                            t={t}
-                          />
-                        ))}
-                      </div>
+                      <MessageMediaGallery attachments={message.attachments} />
                     ) : null}
                     {message.body ? (
                       <p
                         className={`whitespace-pre-wrap break-words text-[0.8125rem] leading-5 md:text-sm md:leading-6 ${
-                          message.attachments?.length > 0 ? "px-2 pb-1 pt-2" : ""
+                          message.attachments?.length > 0 ? "px-2 pb-1.5 pt-2" : ""
                         }`}
                       >
                         {message.body}
@@ -1016,8 +985,8 @@ export function MessagesThread({
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="sticky bottom-0 z-20 shrink-0 border-t border-zinc-200 bg-white/95 px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur-sm dark:border-border dark:bg-card/95 md:p-5">
-        <div className="rounded-[1.35rem] border border-zinc-200 bg-zinc-50/70 p-2.5 dark:border-border dark:bg-muted/20">
+      <form onSubmit={handleSubmit} className="sticky bottom-0 z-20 shrink-0 border-t border-zinc-200 bg-white/95 px-2.5 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-sm dark:border-border dark:bg-card/95 md:px-4 md:py-3">
+        <div className="mx-auto max-w-4xl rounded-[1.1rem] border border-zinc-200 bg-zinc-50/70 p-1.5 dark:border-border dark:bg-muted/20">
           {blockReason ? (
             <p className="px-2 pb-3 text-sm text-muted-foreground">{blockReason}</p>
           ) : null}
@@ -1039,7 +1008,7 @@ export function MessagesThread({
               {pendingAttachments.map((attachment) => (
                 <div
                   key={attachment.id}
-                  className="relative size-20 shrink-0 overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 dark:border-border dark:bg-muted"
+                  className="relative size-16 shrink-0 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 dark:border-border dark:bg-muted md:size-18"
                 >
                   {getAttachmentKind(attachment.file.type) === "video" ? (
                     <video
@@ -1056,7 +1025,7 @@ export function MessagesThread({
                       alt={attachment.file.name}
                       fill
                       unoptimized
-                      sizes="80px"
+                      sizes="(max-width: 767px) 64px, 72px"
                       className="object-cover"
                     />
                   )}
@@ -1083,13 +1052,13 @@ export function MessagesThread({
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={handleComposerKeyDown}
             placeholder={t.messageInputPlaceholder}
-            rows={2}
-            className="min-h-16 max-h-32 resize-none overflow-y-auto border-0 bg-transparent px-2 py-2 text-base leading-5 shadow-none [field-sizing:content] focus-visible:ring-0 md:min-h-14"
+            rows={1}
+            className="min-h-11 max-h-28 resize-none overflow-y-auto border-0 bg-transparent px-2 py-2.5 text-base leading-5 shadow-none [field-sizing:content] focus-visible:ring-0"
             maxLength={2000}
             disabled={!isMessagingAvailable || Boolean(blockReason) || isSending}
           />
 
-          <div className="mt-1.5 flex items-center justify-between gap-3 border-t border-zinc-200 px-1.5 pt-2 dark:border-border">
+          <div className="mt-0.5 flex items-center justify-between gap-3 border-t border-zinc-200 px-1 pt-1.5 dark:border-border">
             <div className="flex items-center gap-2">
               <Tooltip>
                 <TooltipTrigger asChild>
