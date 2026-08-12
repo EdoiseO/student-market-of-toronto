@@ -49,8 +49,8 @@ export default async function DashboardSettingsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-100 px-4 py-3 dark:bg-background md:p-8">
-      <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-3 md:gap-8">
+    <main className="min-h-screen bg-zinc-100 px-4 py-3 dark:bg-background md:p-5 lg:p-8">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 md:gap-4 lg:gap-6">
         <DashboardSettingsContent
           userEmail={user.email ?? ""}
           userId={user.id}

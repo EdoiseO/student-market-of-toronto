@@ -103,7 +103,7 @@
     height: 44px !important;
   }
 
-  button,
+  button:not([data-slot="switch"]):not([data-slot="checkbox"]):not([data-slot="radio-group-item"]),
   [data-slot="button"] {
     min-width: 44px;
     min-height: 44px;

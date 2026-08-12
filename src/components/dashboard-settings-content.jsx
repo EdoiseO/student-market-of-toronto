@@ -17,27 +17,19 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
-  CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldGroup,
   FieldLabel,
   FieldTitle,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useLanguage } from "@/context/LanguageContext";
 import {
@@ -150,8 +142,6 @@ export function DashboardSettingsContent({
         notificationPreferences[MESSAGE_NOTIFICATION_TYPE] ?? defaultNotificationChannelPreferences,
     },
   ];
-  const emailNotificationControlsLive = false;
-
   async function handleBioVisibilitySave() {
     if (!hasBioVisibilityChanges || isSavingBioVisibility) {
       return;
@@ -277,358 +267,279 @@ export function DashboardSettingsContent({
   return (
     <>
       <section className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border md:rounded-3xl md:p-8">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-4xl">{t.settings}</h1>
-        </div>
-        <p className="mt-1 max-w-4xl text-sm leading-5 text-muted-foreground md:mt-3 md:text-base md:leading-6">{t.settingsDescription}</p>
+        <h1 className="text-xl font-bold tracking-tight text-foreground md:text-4xl">
+          {t.settings}
+        </h1>
+        <p className="mt-1 max-w-4xl text-xs leading-5 text-muted-foreground md:mt-3 md:text-base md:leading-6">
+          {t.settingsDescription}
+        </p>
       </section>
 
       <div className="flex flex-col gap-3 md:gap-4">
-        <Card className="h-full rounded-2xl bg-card py-0 shadow-sm ring-border md:rounded-3xl">
-          <CardHeader className="border-b border-border px-4 py-3 md:px-6 md:py-6">
-            <CardTitle className="text-lg text-foreground md:text-2xl">{t.settingsAppearanceTitle}</CardTitle>
-            <CardDescription className="text-xs leading-5 md:text-sm">{t.settingsAppearanceDescription}</CardDescription>
-          </CardHeader>
-
-          <CardContent className="space-y-4 px-4 py-4 md:space-y-6 md:px-6 md:py-8">
-            <FieldGroup className="gap-3 md:gap-5">
-              <FieldContent>
-                <FieldTitle className="text-sm text-foreground md:text-base">
-                  {t.settingsThemePreference}
-                </FieldTitle>
-                <FieldDescription className="text-xs leading-5 md:text-sm">{t.settingsThemePreferenceDescription}</FieldDescription>
-              </FieldContent>
+        <Card className="gap-0 rounded-2xl bg-card py-0 shadow-sm ring-border md:rounded-3xl">
+          <section aria-labelledby="settings-appearance-title" className="border-b border-border px-4 py-3 md:px-6 md:py-5">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+              <div className="min-w-0">
+                <h2 id="settings-appearance-title" className="text-base font-semibold text-foreground md:text-lg">
+                  {t.settingsAppearanceTitle}
+                </h2>
+                <p className="mt-0.5 text-xs leading-5 text-muted-foreground md:text-sm">
+                  {t.settingsAppearanceDescription}
+                </p>
+              </div>
 
               <RadioGroup
                 value={themePreference}
                 onValueChange={handleThemePreferenceChange}
-                className="grid w-full max-w-[400px] grid-cols-3 gap-2 md:gap-3"
+                aria-label={t.settingsThemePreference}
+                className="grid w-full grid-cols-3 gap-1 rounded-xl bg-muted p-1 lg:w-[340px] lg:shrink-0"
               >
                 {appearanceOptions.map((option) => (
                   <FieldLabel
                     key={option.value}
                     htmlFor={`theme-preview-${option.value}`}
                     className={cn(
-                      "relative flex min-h-11 w-full items-center justify-center rounded-xl border px-2 py-2 text-center",
+                      "relative flex min-h-11 w-full min-w-0 items-center justify-center rounded-lg px-1.5 text-center transition-colors has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/50",
                       themePreference === option.value
-                        ? "border-foreground bg-accent"
-                        : "border-border bg-muted/40",
+                        ? "bg-background text-foreground shadow-sm ring-1 ring-border"
+                        : "text-muted-foreground hover:text-foreground",
                     )}
                   >
-                    <FieldTitle className="text-xs text-foreground md:text-sm">{option.title}</FieldTitle>
+                    <FieldTitle className="line-clamp-2 block min-w-0 text-[0.7rem] leading-tight md:text-sm">
+                      {option.title}
+                    </FieldTitle>
                     <RadioGroupItem value={option.value} id={`theme-preview-${option.value}`} className="sr-only" />
                   </FieldLabel>
                 ))}
               </RadioGroup>
-            </FieldGroup>
-
-            <Separator />
-
-            <div className="rounded-xl border border-dashed border-border bg-muted/40 p-3 md:rounded-2xl md:px-4 md:py-4">
-              <p className="text-xs leading-5 text-muted-foreground md:text-sm">{t.settingsThemeLiveNote}</p>
             </div>
-          </CardContent>
-        </Card>
+          </section>
 
-        <Card className="h-full rounded-2xl bg-card py-0 shadow-sm ring-border md:rounded-3xl">
-          <CardHeader className="border-b border-border px-4 py-3 md:px-6 md:py-6">
-            <CardTitle className="text-lg text-foreground md:text-2xl">{t.settingsNotificationsTitle}</CardTitle>
-            <CardDescription className="text-xs leading-5 md:text-sm">{t.settingsNotificationsDescription}</CardDescription>
-          </CardHeader>
+          <section aria-labelledby="settings-notifications-title">
+            <div className="border-b border-border px-4 py-3 md:px-6 md:py-5">
+              <h2 id="settings-notifications-title" className="text-base font-semibold text-foreground md:text-lg">
+                {t.settingsNotificationsTitle}
+              </h2>
+              <p className="mt-0.5 text-xs leading-5 text-muted-foreground md:text-sm">
+                {t.settingsNotificationsDescription}
+              </p>
+            </div>
 
-          <CardContent className="space-y-4 px-4 py-4 md:space-y-6 md:px-6 md:py-8">
-            <FieldGroup className="gap-3 md:gap-5">
-              <FieldContent>
-                <FieldTitle className="text-sm text-foreground md:text-base">
-                  {t.settingsNotificationTypesTitle}
-                </FieldTitle>
-                <FieldDescription className="text-xs leading-5 md:text-sm">{t.settingsNotificationTypesDescription}</FieldDescription>
-              </FieldContent>
+            <div className="divide-y divide-border">
+              {notificationPreferenceItems.map((preference) => {
+                const switchId = `notification-${preference.key}`;
 
-              {notificationPreferenceItems.map((preference) => (
-                <div
-                  key={preference.key}
-                  className="rounded-xl border border-border bg-muted/40 p-3 dark:bg-muted/70 dark:ring-1 dark:ring-white/8 md:rounded-2xl md:p-4"
-                >
-                  <div className="space-y-3 md:space-y-4">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-medium text-foreground">{preference.title}</p>
-                        {!preference.isLive ? (
-                          <Badge
-                            variant="outline"
-                            className="rounded-full border-border bg-background text-muted-foreground"
-                          >
-                            {t.settingsPreviewBadge}
-                          </Badge>
-                        ) : null}
-                      </div>
-                      <p className="mt-0.5 text-xs leading-5 text-muted-foreground md:mt-1 md:text-sm">{preference.description}</p>
-                    </div>
-
-                    <div className="grid gap-2 sm:grid-cols-2 md:gap-3">
-                      <div className="rounded-lg border border-border bg-background p-2.5 dark:border-white/10 dark:bg-card md:rounded-xl md:px-3 md:py-3">
-                        <Field
-                          orientation="horizontal"
-                          className="items-center justify-between gap-2 md:items-start md:gap-3"
-                        >
-                          <FieldContent>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <FieldTitle className="text-foreground">
-                                {t.settingsEmailNotifications}
-                              </FieldTitle>
-                              {!emailNotificationControlsLive ? (
-                                <Badge
-                                  variant="outline"
-                                  className="rounded-full border-border bg-background text-muted-foreground"
-                                >
-                                  {t.settingsPreviewBadge}
-                                </Badge>
-                              ) : null}
-                            </div>
-                            <FieldDescription className="hidden md:block">
-                              {t.settingsEmailNotificationsDescription}
-                            </FieldDescription>
-                          </FieldContent>
-                          <Switch
-                            checked={preference.channelPreferences.email}
-                            onCheckedChange={(checked) =>
-                              handleNotificationChannelChange(preference.key, "email", checked)
-                            }
-                            aria-label={`${preference.title} ${t.settingsEmailNotifications}`}
-                            className="mt-0.5"
-                            disabled={!preference.isLive || !emailNotificationControlsLive}
-                          />
-                        </Field>
-                      </div>
-
-                      <div className="rounded-lg border border-border bg-background p-2.5 dark:border-white/10 dark:bg-card md:rounded-xl md:px-3 md:py-3">
-                        <Field
-                          orientation="horizontal"
-                          className="items-center justify-between gap-2 md:items-start md:gap-3"
-                        >
-                          <FieldContent>
-                            <FieldTitle className="text-foreground">
-                              {t.settingsInAppNotifications}
-                            </FieldTitle>
-                            <FieldDescription className="hidden md:block">
-                              {t.settingsInAppNotificationsDescription}
-                            </FieldDescription>
-                          </FieldContent>
-                          <Switch
-                            checked={preference.channelPreferences.inApp}
-                            onCheckedChange={(checked) =>
-                              handleNotificationChannelChange(preference.key, "inApp", checked)
-                            }
-                            aria-label={`${preference.title} ${t.settingsInAppNotifications}`}
-                            className="mt-0.5"
-                            disabled={!preference.isLive}
-                          />
-                        </Field>
-                      </div>
-                    </div>
+                return (
+                  <div key={preference.key} className="flex min-h-[68px] items-center justify-between gap-4 px-4 py-3 md:px-6">
+                    <label htmlFor={switchId} className="min-w-0 flex-1 cursor-pointer">
+                      <span className="block text-sm font-medium text-foreground">
+                        {preference.title}
+                      </span>
+                      <span className="mt-0.5 block text-xs leading-5 text-muted-foreground md:text-sm">
+                        {preference.description}
+                      </span>
+                    </label>
+                    <Switch
+                      id={switchId}
+                      checked={preference.channelPreferences.inApp}
+                      onCheckedChange={(checked) =>
+                        handleNotificationChannelChange(preference.key, "inApp", checked)
+                      }
+                      aria-label={`${preference.title} ${t.settingsInAppNotifications}`}
+                      disabled={!preference.isLive}
+                    />
                   </div>
+                );
+              })}
+
+              <div className="flex min-h-[64px] items-center justify-between gap-4 px-4 py-3 md:px-6">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground">
+                    {t.settingsEmailNotifications}
+                  </p>
+                  <p className="mt-0.5 text-xs leading-5 text-muted-foreground md:text-sm">
+                    {t.settingsEmailNotificationsDescription}
+                  </p>
                 </div>
-              ))}
-            </FieldGroup>
+                <span className="shrink-0 rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                  {t.settingsPreviewBadge}
+                </span>
+              </div>
+            </div>
 
-            <Separator />
-
-            <div className="rounded-xl border border-dashed border-border bg-muted/40 p-3 md:rounded-2xl md:px-4 md:py-4">
-              <p className="text-xs leading-5 text-muted-foreground md:text-sm">
+            <div className="flex flex-col gap-2 border-t border-border bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between md:px-6">
+              <p className="max-w-3xl text-xs leading-5 text-muted-foreground">
                 {notificationPreferencesAvailable
                   ? t.settingsNotificationPreferencesLiveNote
                   : t.settingsNotificationPreferencesUnavailableNote}
               </p>
-            </div>
-
-            {notificationPreferencesAvailable ? (
-              <div className="flex justify-end">
+              {notificationPreferencesAvailable ? (
                 <Button
                   type="button"
                   size="sm"
-                  className="rounded-xl px-4"
+                  className="h-11 self-start rounded-xl px-4 sm:self-center"
                   onClick={handleNotificationPreferencesSave}
                   disabled={isSavingNotificationPreferences || !hasNotificationPreferenceChanges}
                 >
                   {isSavingNotificationPreferences ? t.saving : t.settingsSaveChanges}
                 </Button>
+              ) : null}
+            </div>
+          </section>
+
+          <section aria-labelledby="settings-profile-title" className="border-t border-border">
+            <div className="border-b border-border px-4 py-3 md:px-6 md:py-5">
+              <h2 id="settings-profile-title" className="text-base font-semibold text-foreground md:text-lg">
+                {t.settingsProfileTitle}
+              </h2>
+              <p className="mt-0.5 text-xs leading-5 text-muted-foreground md:text-sm">
+                {t.settingsProfileDescription}
+              </p>
+            </div>
+
+            <div className="flex min-h-[68px] items-center justify-between gap-4 px-4 py-3 md:px-6">
+              <label htmlFor="hide-profile-bio" className="min-w-0 flex-1 cursor-pointer">
+                <span className="block text-sm font-medium text-foreground">
+                  {t.settingsHideBioOnListingPageTitle}
+                </span>
+                <span className="mt-0.5 block text-xs leading-5 text-muted-foreground md:text-sm">
+                  {t.settingsHideBioOnListingPageDescription}
+                </span>
+                {!hasBio ? (
+                  <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">
+                    {t.settingsNoBioYet}
+                  </span>
+                ) : null}
+              </label>
+              <Switch
+                id="hide-profile-bio"
+                checked={hideBioOnListingPage}
+                onCheckedChange={setHideBioOnListingPage}
+                disabled={isSavingBioVisibility}
+                aria-label={t.settingsHideBioOnListingPageTitle}
+              />
+            </div>
+
+            {userEmail ? (
+              <div className="flex items-start justify-between gap-4 border-t border-border px-4 py-3 md:items-center md:px-6">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">{t.email}</p>
+                  <p className="mt-0.5 break-all text-xs leading-5 text-muted-foreground md:text-sm">
+                    {userEmail}
+                  </p>
+                </div>
               </div>
             ) : null}
 
-            {userEmail ? (
-              <>
-                <Separator />
-
-                <div className="rounded-xl border border-dashed border-border bg-muted/40 p-3 md:rounded-2xl md:px-4 md:py-4">
-                  <p className="text-sm font-medium text-foreground">{t.email}</p>
-                  <p className="mt-1 break-all text-sm text-muted-foreground">{userEmail}</p>
-                </div>
-              </>
-            ) : null}
-          </CardContent>
-        </Card>
-
-        <Card className="h-full rounded-2xl bg-card py-0 shadow-sm ring-border md:rounded-3xl">
-          <CardHeader className="border-b border-border px-4 py-3 md:px-6 md:py-6">
-            <CardTitle className="text-lg text-foreground md:text-2xl">{t.settingsProfileTitle}</CardTitle>
-            <CardDescription className="text-xs leading-5 md:text-sm">{t.settingsProfileDescription}</CardDescription>
-          </CardHeader>
-
-          <CardContent className="space-y-4 px-4 py-4 md:space-y-6 md:px-6 md:py-8">
-            <div className="rounded-xl border border-border bg-muted/40 p-3 md:rounded-2xl md:p-4">
-              <Field orientation="horizontal" className="items-start gap-3">
-                <Checkbox
-                  checked={hideBioOnListingPage}
-                  onCheckedChange={(checked) => setHideBioOnListingPage(checked === true)}
-                  disabled={isSavingBioVisibility}
-                  aria-label={t.settingsHideBioOnListingPageTitle}
-                  className="mt-0.5"
-                />
-                <FieldContent>
-                  <FieldTitle className="text-foreground">
-                    {t.settingsHideBioOnListingPageTitle}
-                  </FieldTitle>
-                  <FieldDescription>{t.settingsHideBioOnListingPageDescription}</FieldDescription>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground md:mt-2 md:text-sm">{t.settingsBioIdentityNote}</p>
-                  {!hasBio ? (
-                    <p className="mt-1 text-xs leading-5 text-muted-foreground md:mt-2 md:text-sm">{t.settingsNoBioYet}</p>
-                  ) : null}
-                </FieldContent>
-              </Field>
-            </div>
-
-            <div className="flex justify-end">
+            <div className="flex justify-end border-t border-border bg-muted/30 px-4 py-3 md:px-6">
               <Button
                 type="button"
                 size="sm"
-                className="rounded-xl px-4"
+                className="h-11 rounded-xl px-4"
                 onClick={handleBioVisibilitySave}
                 disabled={isSavingBioVisibility || !hasBioVisibilityChanges}
               >
                 {isSavingBioVisibility ? t.saving : t.settingsSaveChanges}
               </Button>
             </div>
-          </CardContent>
+          </section>
         </Card>
 
-        <Card className="h-full rounded-2xl border-destructive/30 bg-card py-0 shadow-sm ring-border md:rounded-3xl">
-          <CardHeader className="border-b border-destructive/20 px-4 py-3 md:px-6 md:py-6">
-            <div className="flex items-start gap-3">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive md:size-11 md:rounded-2xl">
-                <AlertTriangle className="size-5" />
+        <Card className="gap-0 rounded-2xl border-destructive/30 bg-card py-0 shadow-sm ring-border md:rounded-3xl">
+          <CardContent className="px-4 py-3 md:px-6 md:py-5">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+                <AlertTriangle className="size-4" />
               </div>
-              <div>
-                <CardTitle className="text-lg text-foreground md:text-2xl">{t.settingsDangerZoneTitle}</CardTitle>
-                <CardDescription className="text-xs leading-5 md:text-sm">{t.settingsDangerZoneDescription}</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-
-          <CardContent className="space-y-4 px-4 py-4 md:space-y-6 md:px-6 md:py-8">
-            <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 md:rounded-2xl md:p-5">
-              <div className="space-y-2">
-                <p className="text-base font-semibold text-foreground">
-                  {t.settingsDeleteAccountTitle}
-                </p>
-                <p className="text-sm text-muted-foreground">
+              <div className="min-w-[11rem] flex-1">
+                <CardTitle className="text-base text-foreground md:text-lg">
+                  {t.settingsDangerZoneTitle}
+                </CardTitle>
+                <CardDescription className="mt-0.5 text-xs leading-5 md:text-sm">
                   {t.settingsDeleteAccountDescription}
-                </p>
+                </CardDescription>
               </div>
 
-              <div className="mt-3 rounded-xl border border-destructive/15 bg-background p-3 md:mt-4 md:px-4 md:py-4">
-                <p className="text-sm font-medium text-foreground">
-                  {t.settingsDeleteAccountConsequencesTitle}
-                </p>
-                <ul className="mt-2 grid gap-1 text-xs leading-5 text-muted-foreground sm:grid-cols-2 md:mt-3 md:gap-2 md:text-sm">
-                  <li>{t.settingsDeleteAccountConsequenceListings}</li>
-                  <li>{t.settingsDeleteAccountConsequenceMessages}</li>
-                  <li>{t.settingsDeleteAccountConsequenceProfile}</li>
-                  <li>{t.settingsDeleteAccountConsequencePreferences}</li>
-                </ul>
-              </div>
+              <AlertDialog
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setConfirmationEmail("");
+                  }
+                }}
+              >
+                <AlertDialogTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    className="h-11 rounded-xl px-4"
+                    disabled={!deleteAccountAvailable}
+                  >
+                    <Trash2 className="size-4" />
+                    <span>{t.settingsDeleteAccountButton}</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="max-h-[calc(100svh-2rem)] w-[calc(100%-2rem)] gap-3 overflow-y-auto p-4 sm:p-6">
+                  <AlertDialogHeader className="gap-1 text-left">
+                    <AlertDialogTitle>{t.settingsDeleteAccountDialogTitle}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t.settingsDeleteAccountDialogDescription}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
 
-              {!deleteAccountAvailable ? (
-                <div className="mt-3 rounded-xl border border-dashed border-border bg-muted/40 p-3 text-xs leading-5 text-muted-foreground md:mt-4 md:px-4 md:py-4 md:text-sm">
-                  {t.settingsDeleteAccountUnavailable}
-                </div>
-              ) : null}
+                  <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 sm:p-4">
+                    <p className="text-sm font-medium text-foreground">
+                      {t.settingsDeleteAccountConsequencesTitle}
+                    </p>
+                    <ul className="mt-2 grid gap-1 text-xs leading-5 text-muted-foreground sm:grid-cols-2 sm:text-sm">
+                      <li>{t.settingsDeleteAccountConsequenceListings}</li>
+                      <li>{t.settingsDeleteAccountConsequenceMessages}</li>
+                      <li>{t.settingsDeleteAccountConsequenceProfile}</li>
+                      <li>{t.settingsDeleteAccountConsequencePreferences}</li>
+                    </ul>
+                  </div>
 
-              <div className="mt-3 flex justify-end md:mt-5">
-                <AlertDialog
-                  onOpenChange={(open) => {
-                    if (!open) {
-                      setConfirmationEmail("");
-                    }
-                  }}
-                >
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      className="rounded-xl px-4"
-                      disabled={!deleteAccountAvailable}
+                  <div className="rounded-xl border border-border bg-background p-3 sm:p-4">
+                    <p className="text-sm font-medium text-foreground">
+                      {t.settingsDeleteAccountConfirmLabel}
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm">
+                      {t.settingsDeleteAccountConfirmEmailHelp}
+                      <span className="break-all font-mono font-semibold text-foreground">{userEmail}</span>
+                      {t.settingsDeleteAccountConfirmEmailSuffix}
+                    </p>
+                    <Input
+                      type="email"
+                      value={confirmationEmail}
+                      onChange={(event) => setConfirmationEmail(event.target.value)}
+                      placeholder={userEmail}
+                      className="mt-3"
+                    />
+                  </div>
+
+                  <AlertDialogFooter>
+                    <AlertDialogCancel className="h-11" disabled={isDeletingAccount}>
+                      {t.cancel}
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeleteAccount}
+                      disabled={isDeletingAccount || !emailMatches}
+                      className="h-11 bg-destructive/10 text-destructive hover:bg-destructive/20"
                     >
-                      <Trash2 className="size-4" />
-                      <span>{t.settingsDeleteAccountButton}</span>
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>{t.settingsDeleteAccountDialogTitle}</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {t.settingsDeleteAccountDialogDescription}
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-
-                    <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-4">
-                      <p className="text-sm font-medium text-foreground">
-                        {t.settingsDeleteAccountConsequencesTitle}
-                      </p>
-                      <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-                        <li>{t.settingsDeleteAccountConsequenceListings}</li>
-                        <li>{t.settingsDeleteAccountConsequenceMessages}</li>
-                        <li>{t.settingsDeleteAccountConsequenceProfile}</li>
-                        <li>{t.settingsDeleteAccountConsequencePreferences}</li>
-                      </ul>
-                    </div>
-
-                    <div className="rounded-xl border border-border bg-background px-4 py-4">
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium text-foreground">
-                          {t.settingsDeleteAccountConfirmLabel}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {t.settingsDeleteAccountConfirmEmailHelp}
-                          <span className="font-mono font-semibold text-foreground">{userEmail}</span>
-                          {t.settingsDeleteAccountConfirmEmailSuffix}
-                        </p>
-                        <Input
-                          type="email"
-                          value={confirmationEmail}
-                          onChange={(event) => setConfirmationEmail(event.target.value)}
-                          placeholder={userEmail}
-                        />
-                      </div>
-                    </div>
-
-                    <AlertDialogFooter>
-                      <AlertDialogCancel disabled={isDeletingAccount}>{t.cancel}</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleDeleteAccount}
-                        disabled={isDeletingAccount || !emailMatches}
-                        className="bg-destructive/10 text-destructive hover:bg-destructive/20"
-                      >
-                        {isDeletingAccount
-                          ? t.settingsDeletingAccount
-                          : t.settingsDeleteAccountAction}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
+                      {isDeletingAccount
+                        ? t.settingsDeletingAccount
+                        : t.settingsDeleteAccountAction}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
+
+            {!deleteAccountAvailable ? (
+              <p className="mt-3 border-t border-destructive/15 pt-3 text-xs leading-5 text-muted-foreground">
+                {t.settingsDeleteAccountUnavailable}
+              </p>
+            ) : null}
           </CardContent>
         </Card>
       </div>
