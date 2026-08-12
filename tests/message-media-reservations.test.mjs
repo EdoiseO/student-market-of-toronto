@@ -26,6 +26,10 @@ const storagePreflightMigrationUrl = new URL(
   "../supabase/migrations/20260812145249_fix_message_media_upload_preflight.sql",
   import.meta.url,
 );
+const storageCompletionMigrationUrl = new URL(
+  "../supabase/migrations/20260812185223_fix_message_media_storage_completion.sql",
+  import.meta.url,
+);
 const accountDeleteRouteUrl = new URL("../src/app/api/account/delete/route.js", import.meta.url);
 
 test("message-media ownership accepts only exact conversation/user/object paths", () => {
@@ -92,6 +96,36 @@ test("Storage preflight validates reservation MIME without requiring unavailable
   assert.match(reservationSql, /object\.metadata ->> 'mimetype'[\s\S]*reservation\.mime_type/i);
   assert.match(reservationSql, /object\.metadata ->> 'size'[\s\S]*reservation\.size_bytes/i);
   assert.match(attachmentSql, /file_size_limit,[\s\S]*allowed_mime_types/i);
+});
+
+test("Storage completion rebinds the internal service role to an exact final reservation", async () => {
+  const sql = await readFile(storageCompletionMigrationUrl, "utf8");
+  const effectivePreflightSql = sql.slice(
+    0,
+    sql.indexOf("create or replace function private.lock_message_media_storage_insert"),
+  );
+
+  assert.match(sql, /storage\.allow_only_operation\('storage\.object\.upload'\)/i);
+  assert.doesNotMatch(effectivePreflightSql, /p_metadata ->> 'size'/i);
+  assert.match(sql, /elsif auth\.role\(\) = 'service_role' and authenticated_user_id is null/i);
+  assert.match(sql, /effective_user_id := new\.owner_id::uuid/i);
+  assert.match(sql, /perform private\.lock_message_media_user_quota\(effective_user_id\)/i);
+  assert.match(sql, /reservation\.storage_path = new\.name/i);
+  assert.match(sql, /reservation\.mime_type = lower\(trim\(coalesce\(new\.metadata ->> 'mimetype'/i);
+  assert.match(sql, /reservation\.size_bytes = final_size_bytes/i);
+  assert.match(sql, /reservation\.expires_at > now\(\)/i);
+  assert.match(sql, /listing\.status = 'active'/i);
+  assert.match(sql, /from public\.blocked_users blocked/i);
+  assert.doesNotMatch(sql, /authenticated_user_id is null\s+then\s+return new/i);
+});
+
+test("message-media object completion cannot overwrite an existing or attached path", async () => {
+  const sql = await readFile(storageCompletionMigrationUrl, "utf8");
+
+  assert.match(sql, /from storage\.objects object[\s\S]*object\.name = new\.name/i);
+  assert.match(sql, /from public\.message_attachments attachment[\s\S]*attachment\.storage_path = new\.name/i);
+  assert.match(sql, /before update on storage\.objects/i);
+  assert.match(sql, /Message media objects cannot be updated/i);
 });
 
 test("account deletion strictly retires owned reservations before auth deletion", async () => {
