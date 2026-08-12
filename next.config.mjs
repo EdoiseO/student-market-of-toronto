@@ -9,6 +9,11 @@ const nextConfig = {
       },
       {
         protocol: "https",
+        hostname: "bmnfynufuqjwjmtlfdxf.supabase.co",
+        pathname: "/storage/v1/object/sign/message-media/**",
+      },
+      {
+        protocol: "https",
         hostname: "images.unsplash.com",
         pathname: "/**",
       },

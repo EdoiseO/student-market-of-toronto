@@ -404,7 +404,14 @@ export const translations = {
     messageInputPlaceholder:
       "Write a message about pickup, condition, price, or availability...",
     emojiPickerSoon: "Emoji reactions are coming next.",
-    attachmentsSoon: "File attachments are not live yet.",
+    attachMedia: "Add photos or videos",
+    mediaAttachmentHelp: "Up to 3 photos or videos, 10 MB each.",
+    selectedMedia: "Selected media",
+    removeAttachment: "Remove attachment",
+    openAttachment: "Open attachment",
+    attachmentUnavailable: "This attachment is unavailable.",
+    mediaUploadError: "We could not send that media. Please try again.",
+    mediaMessageSetupRequired: "Media messages are not available on this build yet.",
     sendMessage: "Send message",
     sendingMessage: "Sending...",
     messageSendError: "We could not send your message right now.",
@@ -1265,7 +1272,15 @@ export const translations = {
     messageInputPlaceholder:
       "Écrivez un message au sujet de la remise, de l'état, du prix ou de la disponibilité...",
     emojiPickerSoon: "Les réactions emoji arrivent à la prochaine étape.",
-    attachmentsSoon: "Les pièces jointes ne sont pas encore disponibles.",
+    attachMedia: "Ajouter des photos ou des vidéos",
+    mediaAttachmentHelp: "Jusqu’à 3 photos ou vidéos de 10 Mo chacune.",
+    selectedMedia: "Médias sélectionnés",
+    removeAttachment: "Retirer la pièce jointe",
+    openAttachment: "Ouvrir la pièce jointe",
+    attachmentUnavailable: "Cette pièce jointe n’est pas disponible.",
+    mediaUploadError: "Nous n’avons pas pu envoyer ce média. Réessayez.",
+    mediaMessageSetupRequired:
+      "Les messages avec média ne sont pas encore disponibles sur cette version.",
     sendMessage: "Envoyer le message",
     sendingMessage: "Envoi...",
     messageSendError:

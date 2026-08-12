@@ -115,34 +115,29 @@ export async function POST() {
     }
 
     const listingIds = (ownedListings ?? []).map((listing) => listing.id);
-    const [listingImagesResult, conversationsResult] = await Promise.all([
-      listingIds.length > 0
-        ? admin.from("listing_images").select("storage_path").in("listing_id", listingIds)
-        : Promise.resolve({ data: [], error: null }),
-      admin
-        .from("conversations")
-        .select("id")
-        .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`),
-    ]);
+    const listingImagesResult = listingIds.length > 0
+      ? await admin.from("listing_images").select("storage_path").in("listing_id", listingIds)
+      : { data: [], error: null };
 
     if (listingImagesResult.error && !isSkippableCleanupError(listingImagesResult.error)) {
       throw listingImagesResult.error;
     }
 
-    if (conversationsResult.error && !isSkippableCleanupError(conversationsResult.error)) {
-      throw conversationsResult.error;
+    const messageAttachmentsResult = await admin
+      .from("message_attachments")
+      .select("storage_path")
+      .eq("uploader_id", user.id);
+
+    if (
+      messageAttachmentsResult.error &&
+      !isSkippableCleanupError(messageAttachmentsResult.error)
+    ) {
+      throw messageAttachmentsResult.error;
     }
 
-    const conversationIds = (conversationsResult.data ?? []).map((conversation) => conversation.id);
-    const messagesResult = conversationIds.length
-      ? await admin.from("messages").select("id").in("conversation_id", conversationIds)
-      : { data: [], error: null };
-
-    if (messagesResult.error && !isSkippableCleanupError(messagesResult.error)) {
-      throw messagesResult.error;
-    }
-
-    const messageIds = (messagesResult.data ?? []).map((message) => message.id);
+    const messageMediaPaths = (messageAttachmentsResult.data ?? [])
+      .map((attachment) => attachment.storage_path)
+      .filter((storagePath) => storagePath?.split("/")?.[1] === user.id);
     const listingImagePaths = (listingImagesResult.data ?? [])
       .map((image) => image.storage_path)
       .filter(Boolean);
@@ -175,6 +170,7 @@ export async function POST() {
 
     await removeStorageObjects(admin, "listing-images", listingImagePaths);
     await removeStorageObjects(admin, "profile-images", profileImagePath ? [profileImagePath] : []);
+    await removeStorageObjects(admin, "message-media", messageMediaPaths);
 
     const { error: deleteUserError } = await admin.auth.admin.deleteUser(user.id, true);
 

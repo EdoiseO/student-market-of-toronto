@@ -14,6 +14,7 @@ import {
   SendHorizontal,
   SmilePlus,
   Trash2,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -57,7 +58,14 @@ import {
   isConversationUserStateTableMissing,
   isListingMessagingAvailable,
   isListingMessagingUnavailableError,
+  isMessageAttachmentSetupMissing,
+  MAX_MESSAGE_ATTACHMENT_BYTES,
+  MAX_MESSAGE_ATTACHMENTS,
+  MESSAGE_ATTACHMENT_ACCEPT,
+  MESSAGE_ATTACHMENT_MIME_TYPES,
   MESSAGE_CONVERSATION_SELECT,
+  MESSAGE_MEDIA_BUCKET,
+  sanitizeMessageAttachmentFileName,
 } from "@/lib/messages";
 import { createClient } from "@/utils/supabase/client";
 
@@ -67,6 +75,61 @@ function formatPrice(price, language) {
     currency: "CAD",
     maximumFractionDigits: 0,
   }).format(Number(price ?? 0));
+}
+
+function formatAttachmentSize(bytes, language) {
+  return new Intl.NumberFormat(language === "fr" ? "fr-CA" : "en-CA", {
+    style: "unit",
+    unit: bytes >= 1024 * 1024 ? "megabyte" : "kilobyte",
+    maximumFractionDigits: 1,
+  }).format(bytes / (bytes >= 1024 * 1024 ? 1024 * 1024 : 1024));
+}
+
+function getAttachmentKind(mimeType) {
+  return mimeType?.startsWith("video/") ? "video" : "image";
+}
+
+function MessageAttachment({ attachment, t }) {
+  if (!attachment.signedUrl) {
+    return (
+      <div className="flex aspect-[4/3] w-56 max-w-full items-center justify-center rounded-2xl bg-zinc-100 px-4 text-center text-xs text-zinc-500 dark:bg-muted dark:text-muted-foreground">
+        {t.attachmentUnavailable}
+      </div>
+    );
+  }
+
+  if (getAttachmentKind(attachment.mime_type) === "video") {
+    return (
+      <video
+        controls
+        playsInline
+        preload="metadata"
+        className="aspect-[4/3] w-64 max-w-full rounded-2xl bg-black object-contain"
+        aria-label={attachment.file_name}
+      >
+        <source src={attachment.signedUrl} type={attachment.mime_type} />
+      </video>
+    );
+  }
+
+  return (
+    <a
+      href={attachment.signedUrl}
+      target="_blank"
+      rel="noreferrer"
+      className="relative block aspect-[4/3] w-64 max-w-full overflow-hidden rounded-2xl bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-muted"
+      aria-label={`${t.openAttachment}: ${attachment.file_name}`}
+    >
+      <Image
+        src={attachment.signedUrl}
+        alt={attachment.file_name}
+        fill
+        unoptimized
+        sizes="(max-width: 639px) 68vw, 288px"
+        className="object-contain"
+      />
+    </a>
+  );
 }
 
 export function MessagesThread({
@@ -82,6 +145,9 @@ export function MessagesThread({
   const [messages, setMessages] = React.useState(initialMessages ?? []);
   const [draft, setDraft] = React.useState("");
   const [isSending, setIsSending] = React.useState(false);
+  const [pendingAttachments, setPendingAttachments] = React.useState([]);
+  const pendingAttachmentsRef = React.useRef([]);
+  const mediaInputRef = React.useRef(null);
   const [reportMessageTarget, setReportMessageTarget] = React.useState(null);
   const [blockState, setBlockState] = React.useState({
     blockedByCurrentUser: false,
@@ -240,6 +306,102 @@ export function MessagesThread({
   }, [conversation.id, initialMessages]);
 
   React.useEffect(() => {
+    pendingAttachmentsRef.current = pendingAttachments;
+  }, [pendingAttachments]);
+
+  React.useEffect(() => {
+    return () => {
+      pendingAttachmentsRef.current.forEach((attachment) =>
+        URL.revokeObjectURL(attachment.previewUrl),
+      );
+    };
+  }, []);
+
+  function clearPendingAttachments() {
+    setPendingAttachments((currentAttachments) => {
+      currentAttachments.forEach((attachment) =>
+        URL.revokeObjectURL(attachment.previewUrl),
+      );
+      return [];
+    });
+  }
+
+  function removePendingAttachment(attachmentId) {
+    setPendingAttachments((currentAttachments) => {
+      const attachment = currentAttachments.find((item) => item.id === attachmentId);
+
+      if (attachment) {
+        URL.revokeObjectURL(attachment.previewUrl);
+      }
+
+      return currentAttachments.filter((item) => item.id !== attachmentId);
+    });
+  }
+
+  function handleMediaSelection(event) {
+    const selectedFiles = Array.from(event.target.files ?? []);
+    event.target.value = "";
+
+    if (selectedFiles.length === 0) {
+      return;
+    }
+
+    const availableSlots = MAX_MESSAGE_ATTACHMENTS - pendingAttachments.length;
+
+    if (availableSlots <= 0) {
+      toast.error(
+        language === "fr"
+          ? `Vous pouvez joindre jusqu’à ${MAX_MESSAGE_ATTACHMENTS} fichiers.`
+          : `You can attach up to ${MAX_MESSAGE_ATTACHMENTS} files.`,
+      );
+      return;
+    }
+
+    const acceptedFiles = [];
+
+    if (selectedFiles.length > availableSlots) {
+      toast.error(
+        language === "fr"
+          ? `Vous pouvez joindre jusqu’à ${MAX_MESSAGE_ATTACHMENTS} fichiers.`
+          : `You can attach up to ${MAX_MESSAGE_ATTACHMENTS} files.`,
+      );
+    }
+
+    for (const file of selectedFiles.slice(0, availableSlots)) {
+      if (!MESSAGE_ATTACHMENT_MIME_TYPES.has(file.type)) {
+        toast.error(
+          language === "fr"
+            ? `${file.name} n’est pas un format d’image ou de vidéo pris en charge.`
+            : `${file.name} is not a supported image or video format.`,
+        );
+        continue;
+      }
+
+      if (file.size <= 0 || file.size > MAX_MESSAGE_ATTACHMENT_BYTES) {
+        toast.error(
+          language === "fr"
+            ? `${file.name} doit faire moins de 10 Mo.`
+            : `${file.name} must be smaller than 10 MB.`,
+        );
+        continue;
+      }
+
+      acceptedFiles.push({
+        id: crypto.randomUUID(),
+        file,
+        previewUrl: URL.createObjectURL(file),
+      });
+    }
+
+    if (acceptedFiles.length > 0) {
+      setPendingAttachments((currentAttachments) => [
+        ...currentAttachments,
+        ...acceptedFiles,
+      ]);
+    }
+  }
+
+  React.useEffect(() => {
     let isMounted = true;
 
     async function loadBlockState() {
@@ -313,7 +475,7 @@ export function MessagesThread({
   async function handleSubmit(event) {
     event.preventDefault();
 
-    if (!draft.trim()) {
+    if (isSending || (!draft.trim() && pendingAttachments.length === 0)) {
       return;
     }
 
@@ -366,30 +528,114 @@ export function MessagesThread({
       }
     }
 
-    const { data, error } = await supabase.rpc("send_conversation_message", {
-      p_conversation_id: conversation.id,
-      p_body: draft,
-    });
+    const attachmentsToSend = [...pendingAttachments];
+    const uploadedPaths = [];
+    let messageWasCreated = false;
 
-    setIsSending(false);
+    try {
+      const attachmentPayload = [];
 
-    if (error) {
-      toast.error(
-        isListingMessagingUnavailableError(error)
-          ? getListingMessagingUnavailableText(
-              getListingMessagingUnavailableStatusFromError(error),
-              t,
-            )
-          : t.messageSendError,
-      );
-      console.error("Failed to send message:", error.message);
+      for (const attachment of attachmentsToSend) {
+        const storagePath = `${conversation.id}/${currentUserId}/${crypto.randomUUID()}-${sanitizeMessageAttachmentFileName(attachment.file.name)}`;
+        const { data: uploadedObject, error: uploadError } = await supabase.storage
+          .from(MESSAGE_MEDIA_BUCKET)
+          .upload(storagePath, attachment.file, {
+            cacheControl: "3600",
+            contentType: attachment.file.type,
+            upsert: false,
+          });
+
+        if (uploadError) {
+          throw uploadError;
+        }
+
+        const uploadedPath = uploadedObject?.path ?? storagePath;
+        uploadedPaths.push(uploadedPath);
+        attachmentPayload.push({
+          storage_path: uploadedPath,
+          file_name: sanitizeMessageAttachmentFileName(attachment.file.name),
+          mime_type: attachment.file.type,
+          size_bytes: attachment.file.size,
+        });
+      }
+
+      const messageOperation = attachmentPayload.length > 0
+        ? supabase.rpc("send_conversation_message_with_attachments", {
+            p_conversation_id: conversation.id,
+            p_body: draft,
+            p_attachments: attachmentPayload,
+          })
+        : supabase.rpc("send_conversation_message", {
+            p_conversation_id: conversation.id,
+            p_body: draft,
+          });
+      const { data, error } = await messageOperation;
+
+      if (error) {
+        throw error;
+      }
+
+      messageWasCreated = true;
+      const createdMessage = Array.isArray(data) ? data[0] : data;
+
+      if (createdMessage) {
+        let signedRows = [];
+
+        if (uploadedPaths.length > 0) {
+          const { data: signedUrlRows, error: signedUrlsError } = await supabase.storage
+            .from(MESSAGE_MEDIA_BUCKET)
+            .createSignedUrls(uploadedPaths, 60 * 60);
+
+          if (signedUrlsError) {
+            console.error("Failed to sign sent message media:", signedUrlsError.message);
+          } else {
+            signedRows = signedUrlRows ?? [];
+          }
+        }
+
+        setMessages((currentMessages) => [
+          ...currentMessages,
+          {
+            ...createdMessage,
+            attachments: attachmentPayload.map((attachment, index) => ({
+              id: `${createdMessage.id}-${index}`,
+              message_id: createdMessage.id,
+              ...attachment,
+              signedUrl: signedRows[index]?.signedUrl ?? null,
+            })),
+          },
+        ]);
+      }
+
+      clearPendingAttachments();
+      setDraft("");
+    } catch (error) {
+      if (!messageWasCreated && uploadedPaths.length > 0) {
+        const { error: cleanupError } = await supabase.storage
+          .from(MESSAGE_MEDIA_BUCKET)
+          .remove(uploadedPaths);
+
+        if (cleanupError) {
+          console.error("Failed to clean up unsent message media:", cleanupError.message);
+        }
+      }
+
+      if (isListingMessagingUnavailableError(error)) {
+        toast.error(
+          getListingMessagingUnavailableText(
+            getListingMessagingUnavailableStatusFromError(error),
+            t,
+          ),
+        );
+      } else if (isMessageAttachmentSetupMissing(error)) {
+        toast.error(t.mediaMessageSetupRequired);
+      } else {
+        toast.error(attachmentsToSend.length > 0 ? t.mediaUploadError : t.messageSendError);
+      }
+
+      console.error("Failed to send message:", error?.message ?? error);
+      setIsSending(false);
       return;
-    }
-
-    const createdMessage = Array.isArray(data) ? data[0] : data;
-
-    if (createdMessage) {
-      setMessages((currentMessages) => [...currentMessages, createdMessage]);
     }
 
     const { error: unhideError } = await supabase.from("conversation_user_state").upsert(
@@ -405,7 +651,7 @@ export function MessagesThread({
       console.error("Failed to restore hidden conversation after send:", unhideError.message);
     }
 
-    setDraft("");
+    setIsSending(false);
     router.refresh();
   }
 
@@ -416,7 +662,7 @@ export function MessagesThread({
 
     event.preventDefault();
 
-    if (!draft.trim() || isSending) {
+    if ((!draft.trim() && pendingAttachments.length === 0) || isSending) {
       return;
     }
 
@@ -664,15 +910,40 @@ export function MessagesThread({
                   </p>
 
                   <div
-                    className={`w-fit rounded-[1.25rem] px-3.5 py-2.5 text-left ${
+                    className={`w-fit rounded-[1.25rem] text-left ${
+                      message.attachments?.length > 0 ? "p-1.5" : "px-3.5 py-2.5"
+                    } ${
                       isCurrentUser
                         ? "rounded-tr-sm border border-zinc-300/80 bg-zinc-200/90 text-zinc-950 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
                         : "rounded-tl-sm border border-zinc-200 bg-white/90 text-zinc-900 dark:border-border dark:bg-card dark:text-foreground"
                     }`}
                   >
-                    <p className="whitespace-pre-wrap break-words text-[0.8125rem] leading-5 md:text-sm md:leading-6">
-                      {message.body}
-                    </p>
+                    {message.attachments?.length > 0 ? (
+                      <div
+                        className={
+                          message.attachments.length > 1
+                            ? "grid grid-cols-2 gap-1.5 [&_a]:w-28 [&_video]:w-28 sm:[&_a]:w-36 sm:[&_video]:w-36"
+                            : ""
+                        }
+                      >
+                        {message.attachments.map((attachment) => (
+                          <MessageAttachment
+                            key={attachment.id}
+                            attachment={attachment}
+                            t={t}
+                          />
+                        ))}
+                      </div>
+                    ) : null}
+                    {message.body ? (
+                      <p
+                        className={`whitespace-pre-wrap break-words text-[0.8125rem] leading-5 md:text-sm md:leading-6 ${
+                          message.attachments?.length > 0 ? "px-2 pb-1 pt-2" : ""
+                        }`}
+                      >
+                        {message.body}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -701,6 +972,60 @@ export function MessagesThread({
           ) : null}
           {!isMessagingAvailable ? (
             <p className="px-2 pb-3 text-sm text-muted-foreground">{messagingUnavailableText}</p>
+          ) : null}
+          <input
+            ref={mediaInputRef}
+            type="file"
+            accept={MESSAGE_ATTACHMENT_ACCEPT}
+            multiple
+            className="sr-only"
+            aria-label={t.attachMedia}
+            onChange={handleMediaSelection}
+            disabled={!isMessagingAvailable || Boolean(blockReason) || isSending}
+          />
+          {pendingAttachments.length > 0 ? (
+            <div className="mb-2 flex gap-2 overflow-x-auto px-1 pb-1" aria-label={t.selectedMedia}>
+              {pendingAttachments.map((attachment) => (
+                <div
+                  key={attachment.id}
+                  className="relative size-20 shrink-0 overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 dark:border-border dark:bg-muted"
+                >
+                  {getAttachmentKind(attachment.file.type) === "video" ? (
+                    <video
+                      src={attachment.previewUrl}
+                      muted
+                      playsInline
+                      preload="metadata"
+                      className="h-full w-full object-cover"
+                      aria-label={attachment.file.name}
+                    />
+                  ) : (
+                    <Image
+                      src={attachment.previewUrl}
+                      alt={attachment.file.name}
+                      fill
+                      unoptimized
+                      sizes="80px"
+                      className="object-cover"
+                    />
+                  )}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="icon-sm"
+                    className="absolute right-1 top-1 size-11 rounded-full bg-black/75 text-white hover:bg-black md:size-8 md:min-h-8 md:min-w-8"
+                    aria-label={`${t.removeAttachment}: ${attachment.file.name}`}
+                    onClick={() => removePendingAttachment(attachment.id)}
+                    disabled={isSending}
+                  >
+                    <X className="size-3.5" />
+                  </Button>
+                  <span className="absolute inset-x-1 bottom-1 truncate rounded-md bg-black/70 px-1.5 py-0.5 text-[0.625rem] text-white">
+                    {formatAttachmentSize(attachment.file.size, language)}
+                  </span>
+                </div>
+              ))}
+            </div>
           ) : null}
           <Textarea
             value={draft}
@@ -737,21 +1062,25 @@ export function MessagesThread({
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span tabIndex={0}>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      className="size-11 rounded-full text-zinc-500 dark:text-muted-foreground"
-                      disabled
-                      aria-label={t.attachmentsSoon}
-                    >
-                      <Paperclip className="size-4" />
-                    </Button>
-                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="size-11 rounded-full text-zinc-500 dark:text-muted-foreground"
+                    disabled={
+                      !isMessagingAvailable ||
+                      Boolean(blockReason) ||
+                      isSending ||
+                      pendingAttachments.length >= MAX_MESSAGE_ATTACHMENTS
+                    }
+                    aria-label={t.attachMedia}
+                    onClick={() => mediaInputRef.current?.click()}
+                  >
+                    <Paperclip className="size-4" />
+                  </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top" sideOffset={8}>
-                  {t.attachmentsSoon}
+                  {t.mediaAttachmentHelp}
                 </TooltipContent>
               </Tooltip>
 
@@ -762,7 +1091,12 @@ export function MessagesThread({
 
             <Button
               type="submit"
-              disabled={!isMessagingAvailable || Boolean(blockReason) || isSending || !draft.trim()}
+              disabled={
+                !isMessagingAvailable ||
+                Boolean(blockReason) ||
+                isSending ||
+                (!draft.trim() && pendingAttachments.length === 0)
+              }
               size="icon-lg"
               className="size-11 rounded-full"
               aria-label={isSending ? t.sendingMessage : t.sendMessage}

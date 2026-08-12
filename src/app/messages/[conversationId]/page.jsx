@@ -108,6 +108,48 @@ export default async function ConversationPage({ params }) {
   }
 
   const visibleMessageRows = filterConversationMessagesForUser(messageRows ?? [], deletedAt);
+  const visibleMessageIds = visibleMessageRows.map((message) => message.id);
+  let messageAttachments = [];
+
+  if (visibleMessageIds.length > 0) {
+    const { data: attachmentRows, error: attachmentsError } = await supabase
+      .from("message_attachments")
+      .select("id, message_id, storage_path, file_name, mime_type, size_bytes, created_at")
+      .in("message_id", visibleMessageIds)
+      .order("created_at", { ascending: true });
+
+    if (attachmentsError) {
+      if (attachmentsError.code !== "42P01" && attachmentsError.code !== "PGRST205") {
+        console.error("Failed to load message attachments:", attachmentsError.message);
+      }
+    } else if (attachmentRows?.length > 0) {
+      const { data: signedRows, error: signedUrlsError } = await supabase.storage
+        .from("message-media")
+        .createSignedUrls(
+          attachmentRows.map((attachment) => attachment.storage_path),
+          60 * 60,
+        );
+
+      if (signedUrlsError) {
+        console.error("Failed to sign message attachments:", signedUrlsError.message);
+      }
+
+      messageAttachments = attachmentRows.map((attachment, index) => ({
+        ...attachment,
+        signedUrl: signedRows?.[index]?.signedUrl ?? null,
+      }));
+    }
+  }
+
+  const attachmentsByMessageId = messageAttachments.reduce((attachmentsByMessage, attachment) => {
+    attachmentsByMessage[attachment.message_id] ??= [];
+    attachmentsByMessage[attachment.message_id].push(attachment);
+    return attachmentsByMessage;
+  }, {});
+  const messagesWithAttachments = visibleMessageRows.map((message) => ({
+    ...message,
+    attachments: attachmentsByMessageId[message.id] ?? [],
+  }));
   const unreadCount = visibleMessageRows.filter(
     (message) => !message.read_at && message.sender_id !== user.id,
   ).length;
@@ -153,7 +195,7 @@ export default async function ConversationPage({ params }) {
             <MessagesThread
               conversation={conversation}
               currentUserId={user.id}
-              initialMessages={visibleMessageRows}
+              initialMessages={messagesWithAttachments}
               hasDeletedMessages={Boolean(deletedAt)}
               isHiddenConversation={isHiddenConversation}
             />
