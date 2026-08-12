@@ -188,7 +188,7 @@ export function ReportSheet({
                       onChange={(event) => setDetails(event.target.value)}
                       placeholder={detailsPlaceholder}
                       rows={2}
-                      className="min-h-16 resize-none border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0"
+                      className="h-20 min-h-20 max-h-48 resize-y border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0"
                       maxLength={600}
                     />
                   </div>

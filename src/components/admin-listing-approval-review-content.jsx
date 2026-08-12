@@ -281,7 +281,7 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
                     onChange={(event) => setFeedback(event.target.value)}
                     placeholder={t.adminListingFeedbackPlaceholder}
                     rows={6}
-                    className="min-h-28 resize-y border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0"
+                    className="h-40 min-h-32 max-h-80 resize-y border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0"
                     maxLength={3000}
                     disabled={!isPendingReview || isProcessing}
                   />

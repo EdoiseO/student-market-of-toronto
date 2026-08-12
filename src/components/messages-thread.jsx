@@ -714,7 +714,7 @@ export function MessagesThread({
             onKeyDown={handleComposerKeyDown}
             placeholder={t.messageInputPlaceholder}
             rows={2}
-            className="min-h-16 resize-none border-0 bg-transparent px-2 py-2 text-base shadow-none focus-visible:ring-0"
+            className="h-16 min-h-16 max-h-40 resize-none border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0"
             maxLength={2000}
             disabled={!isMessagingAvailable || Boolean(blockReason) || isSending}
           />

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useLanguage } from "@/context/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Sheet,
   SheetContent,
@@ -407,14 +408,13 @@ export function StartConversationButton({
               </SheetHeader>
 
               <div className="flex-1">
-                <textarea
-                  data-slot="textarea"
+                <Textarea
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
                   placeholder={t.messageInputPlaceholder}
-                  rows={10}
+                  rows={6}
                   maxLength={2000}
-                  className="min-h-16 w-full resize-none rounded-xl border border-input bg-transparent px-2.5 py-2 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 md:text-sm dark:bg-input/30"
+                  className="h-40 min-h-32 max-h-[min(40svh,20rem)] rounded-xl"
                 />
               </div>
             </div>

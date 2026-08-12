@@ -445,7 +445,7 @@ export function CreateListingForm() {
                     value={description}
                     onChange={(event) => setDescription(event.target.value)}
                     rows={4}
-                    className="h-28 min-h-28 resize-y overflow-y-auto [field-sizing:fixed] md:h-40 md:min-h-40"
+                    className="h-32 min-h-32 max-h-72 md:h-40 md:min-h-40"
                     placeholder={t.descriptionPlaceholder}
                   />
                 </Field>

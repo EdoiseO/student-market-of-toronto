@@ -5,6 +5,7 @@ import { Megaphone } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Sheet,
   SheetContent,
@@ -99,15 +100,14 @@ export function AdminAnnouncementSheet() {
               </SheetHeader>
 
               <div className="flex-1">
-                <textarea
-                  data-slot="textarea"
+                <Textarea
                   value={message}
                   onChange={(event) => setMessage(event.target.value)}
                   placeholder={t.newAnnouncementPlaceholder}
-                  rows={10}
+                  rows={6}
                   maxLength={2000}
                   disabled={isSending}
-                  className="min-h-16 w-full resize-none rounded-xl border border-input bg-transparent px-2.5 py-2 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 md:text-sm dark:bg-input/30"
+                  className="h-40 min-h-32 max-h-[min(40svh,20rem)] rounded-xl"
                 />
                 <p className="mt-2 text-right text-xs text-muted-foreground">
                   {message.length} / 2000

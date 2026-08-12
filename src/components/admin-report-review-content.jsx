@@ -75,7 +75,7 @@ function ModeratorNotesCard({
                 placeholder={t.adminModeratorNotesPlaceholder}
                 rows={compact ? 3 : 6}
                 maxLength={4000}
-                className={`${compact ? "min-h-20" : "min-h-32"} resize-y border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0`}
+                className={`${compact ? "h-24 min-h-24" : "h-40 min-h-32"} max-h-80 resize-y border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0`}
               />
             </div>
 

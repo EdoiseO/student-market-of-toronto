@@ -422,7 +422,7 @@ export function ProfileSettingsForm({ initialProfile }) {
                   value={bio}
                   onChange={(event) => setBio(event.target.value)}
                   rows={4}
-                  className="h-28 min-h-28 resize-y overflow-y-auto rounded-xl bg-white [field-sizing:fixed] dark:bg-input/30 md:h-36 md:min-h-36 md:rounded-2xl"
+                  className="h-32 min-h-32 max-h-72 rounded-xl bg-white dark:bg-input/30 md:h-36 md:min-h-36 md:rounded-2xl"
                   placeholder={t.profileBioPlaceholder}
                 />
               </Field>
