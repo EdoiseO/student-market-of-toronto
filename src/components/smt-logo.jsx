@@ -2,7 +2,7 @@ import Image from "next/image";
 
 import { cn } from "@/lib/utils";
 
-const SMT_LOGO_SRC = "/SMT_logo.png?v=20260411";
+const SMT_LOGO_SRC = "/SMT_logo.png";
 
 export function SMTLogo({ className, priority = false }) {
   return (
@@ -11,8 +11,8 @@ export function SMTLogo({ className, priority = false }) {
       alt="Student Market of Toronto"
       width={1094}
       height={615}
+      sizes="(max-width: 767px) 128px, 176px"
       priority={priority}
-      unoptimized
       className={cn("h-auto w-full dark:invert", className)}
     />
   );

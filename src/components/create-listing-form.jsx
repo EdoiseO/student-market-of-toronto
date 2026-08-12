@@ -44,7 +44,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { ListingPhotoChip, useLocalPhotoPreviews } from "@/components/listing-photo-chip";
 import { Textarea } from "@/components/ui/textarea";
-import { useFileDropzone } from "@/hooks/use-file-dropzone";
+import {
+  getValidListingImageFiles,
+  LISTING_IMAGE_MAX_COUNT,
+  useFileDropzone,
+} from "@/hooks/use-file-dropzone";
 import { TORONTO_CAMPUS_OPTIONS } from "@/lib/campuses";
 import { CATEGORY_OPTIONS, getTranslatedCategoryValue } from "@/lib/categories";
 import { useLanguage } from "@/context/LanguageContext";
@@ -134,6 +138,8 @@ export function CreateListingForm() {
   const [condition, setCondition] = React.useState("");
   const [isNegotiable, setIsNegotiable] = React.useState(false);
   const [photos, setPhotos] = React.useState([]);
+  const [showAllPhotoPreviews, setShowAllPhotoPreviews] = React.useState(false);
+  const [photoError, setPhotoError] = React.useState("");
   const [error, setError] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isSubmitWarningOpen, setIsSubmitWarningOpen] = React.useState(false);
@@ -147,11 +153,24 @@ export function CreateListingForm() {
       return;
     }
 
-    setPhotos((currentPhotos) => [
-      ...currentPhotos,
-      ...selectedFiles,
-    ]);
-  }, []);
+    const validFiles = getValidListingImageFiles(selectedFiles);
+    const availableSlots = Math.max(0, LISTING_IMAGE_MAX_COUNT - photos.length);
+    const acceptedFiles = validFiles.slice(0, availableSlots);
+    const hasRejectedFiles = validFiles.length !== selectedFiles.length;
+    const exceedsCount = validFiles.length > availableSlots;
+
+    setPhotoError(
+      hasRejectedFiles || exceedsCount
+        ? language === "fr"
+          ? "Utilisez jusqu’à 10 images JPEG, PNG ou WebP de 5 Mo maximum chacune."
+          : "Use up to 10 JPEG, PNG, or WebP images, no larger than 5 MB each."
+        : "",
+    );
+
+    if (acceptedFiles.length > 0) {
+      setPhotos((currentPhotos) => [...currentPhotos, ...acceptedFiles]);
+    }
+  }, [language, photos.length]);
 
   const { isDragActive, dropzoneProps } = useFileDropzone(appendPhotos);
 
@@ -172,6 +191,8 @@ export function CreateListingForm() {
     setCondition("");
     setIsNegotiable(false);
     setPhotos([]);
+    setPhotoError("");
+    setShowAllPhotoPreviews(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -470,7 +491,7 @@ export function CreateListingForm() {
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp"
                       multiple
                       className="hidden"
                       onChange={(event) => {
@@ -480,10 +501,13 @@ export function CreateListingForm() {
                         event.target.value = ""
                       }}
                     />
+                    {photoError ? (
+                      <p role="alert" className="text-sm text-red-600 dark:text-red-400">{photoError}</p>
+                    ) : null}
 
                     {photoPreviews.length > 0 ? (
-                      <div className="flex flex-wrap gap-4">
-                        {photoPreviews.map((photo, index) => (
+                      <div className="flex flex-wrap gap-3">
+                        {(showAllPhotoPreviews ? photoPreviews : photoPreviews.slice(0, 4)).map((photo, index) => (
                           <ListingPhotoChip
                             key={photo.id}
                             index={index}
@@ -496,6 +520,17 @@ export function CreateListingForm() {
                             }}
                           />
                         ))}
+                        {photoPreviews.length > 4 ? (
+                          <button
+                            type="button"
+                            onClick={() => setShowAllPhotoPreviews((isExpanded) => !isExpanded)}
+                            className="flex size-20 shrink-0 items-center justify-center rounded-2xl border border-zinc-300 bg-zinc-100 text-sm font-semibold text-zinc-700 dark:border-border dark:bg-muted dark:text-foreground"
+                            aria-expanded={showAllPhotoPreviews}
+                            aria-label={showAllPhotoPreviews ? "Show fewer photo previews" : `${photoPreviews.length - 4} additional photos selected`}
+                          >
+                            {showAllPhotoPreviews ? "Show less" : `+${photoPreviews.length - 4} more`}
+                          </button>
+                        ) : null}
                       </div>
                     ) : null}
                   </CardContent>
@@ -555,13 +590,14 @@ export function CreateListingForm() {
               </div>
             </div>
 
-            <div className="mt-8 flex flex-wrap items-center justify-end gap-3">
+            <div className="mt-8 flex flex-col items-stretch justify-end gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               {error ? (
-                <p className="mr-auto text-sm text-red-600">{error}</p>
+                <p role="alert" className="w-full text-sm text-red-600 sm:mr-auto sm:w-auto">{error}</p>
               ) : null}
               <Button
                 type="button"
                 variant="outline"
+                className="w-full sm:w-auto"
                 disabled={isSubmitting}
                 onClick={() => handleSubmit("draft")}
               >
@@ -572,7 +608,7 @@ export function CreateListingForm() {
                 onOpenChange={handleSubmitWarningOpenChange}
               >
                 <AlertDialogTrigger asChild>
-                  <Button type="button" disabled={isSubmitting}>
+                  <Button type="button" className="w-full sm:w-auto" disabled={isSubmitting}>
                     {isSubmitting ? t.saving : t.submitForReview}
                   </Button>
                 </AlertDialogTrigger>

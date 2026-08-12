@@ -610,7 +610,6 @@ export function DashboardSettingsContent({
                           value={confirmationEmail}
                           onChange={(event) => setConfirmationEmail(event.target.value)}
                           placeholder={userEmail}
-                          className="h-10"
                         />
                       </div>
                     </div>

@@ -187,7 +187,7 @@ function SearchField({ value, onChange, placeholder }) {
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="h-10 rounded-full bg-background pl-9"
+        className="rounded-full bg-background pl-9"
         aria-label={placeholder}
       />
     </div>

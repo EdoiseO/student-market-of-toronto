@@ -290,14 +290,14 @@ export function ProfileSettingsForm({ initialProfile }) {
           <CardContent className="flex flex-col items-center gap-6 px-6 pt-4 pb-8 text-center">
             <Popover open={isAvatarPickerOpen} onOpenChange={setIsAvatarPickerOpen}>
               <PopoverAnchor asChild>
-                <div className="relative flex aspect-square w-full max-w-[208px] items-center justify-center self-center rounded-[2rem] border border-dashed border-zinc-300 bg-zinc-50 dark:border-border dark:bg-muted/40">
+                <div className="relative flex size-20 items-center justify-center self-center rounded-[1.5rem] border border-dashed border-zinc-300 bg-zinc-50 dark:border-border dark:bg-muted/40 lg:size-[120px] lg:rounded-[2rem]">
                   <ProfileAvatarPreview
                     email={initialProfile.email}
                     name={`${firstName} ${lastName}`.trim()}
                     avatarPresetId={avatarPresetId}
                     avatarUrl={avatarUrl}
-                    className="h-full w-full rounded-[calc(2rem-1px)]"
-                    initialsClassName="text-6xl md:text-7xl"
+                    className="h-full w-full rounded-[calc(1.5rem-1px)] lg:rounded-[calc(2rem-1px)]"
+                    initialsClassName="text-3xl lg:text-5xl"
                   />
                   <PopoverTrigger asChild>
                     <button
@@ -323,7 +323,7 @@ export function ProfileSettingsForm({ initialProfile }) {
                     </PopoverDescription>
                   </PopoverHeader>
 
-                  <div className="grid grid-cols-5 gap-4">
+                  <div className="grid grid-cols-4 gap-4">
                     {PROFILE_AVATAR_PRESETS.map((preset) => {
                       const isSelected = avatarPresetId === preset.id;
 
@@ -333,7 +333,7 @@ export function ProfileSettingsForm({ initialProfile }) {
                           type="button"
                           onClick={() => saveAvatarPreset(preset.id)}
                           disabled={isUpdatingAvatar}
-                          className={`flex aspect-square items-center justify-center rounded-full border-2 transition ${
+                          className={`flex min-h-11 min-w-11 aspect-square items-center justify-center rounded-full border-2 transition ${
                             isSelected
                               ? "border-zinc-950 ring-4 ring-zinc-200 dark:border-ring dark:ring-border"
                               : "border-transparent hover:scale-[1.02]"
@@ -353,7 +353,7 @@ export function ProfileSettingsForm({ initialProfile }) {
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={isUpdatingAvatar}
-                      className="flex aspect-square items-center justify-center rounded-full border-2 border-dashed border-zinc-300 bg-zinc-50 text-zinc-700 transition hover:bg-zinc-100 dark:border-border dark:bg-muted/40 dark:text-foreground dark:hover:bg-muted"
+                      className="flex min-h-11 min-w-11 aspect-square items-center justify-center rounded-full border-2 border-dashed border-zinc-300 bg-zinc-50 text-zinc-700 transition hover:bg-zinc-100 dark:border-border dark:bg-muted/40 dark:text-foreground dark:hover:bg-muted"
                       aria-label={t.uploadCustomProfilePicture}
                     >
                       <Plus className="size-6" />
@@ -399,7 +399,7 @@ export function ProfileSettingsForm({ initialProfile }) {
                     value={firstName}
                     onChange={(event) => setFirstName(event.target.value)}
                     placeholder={t.firstNamePlaceholder}
-                    className="h-10 rounded-xl bg-white dark:bg-input/30"
+                    className="rounded-xl bg-white dark:bg-input/30"
                   />
                 </Field>
 
@@ -410,7 +410,7 @@ export function ProfileSettingsForm({ initialProfile }) {
                     value={lastName}
                     onChange={(event) => setLastName(event.target.value)}
                     placeholder={t.lastNamePlaceholder}
-                    className="h-10 rounded-xl bg-white dark:bg-input/30"
+                    className="rounded-xl bg-white dark:bg-input/30"
                   />
                 </Field>
               </div>

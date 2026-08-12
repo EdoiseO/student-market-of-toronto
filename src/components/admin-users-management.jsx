@@ -474,7 +474,7 @@ export function AdminUsersManagement({ users, currentUserId, currentUserRole }) 
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder={t.adminSearchUsersPlaceholder}
-                className="h-10 rounded-full bg-background pl-9"
+                className="rounded-full bg-background pl-9"
                 aria-label={t.adminSearchUsersPlaceholder}
               />
             </div>

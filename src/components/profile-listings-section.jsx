@@ -1,9 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { UserRound } from "lucide-react";
+import { ChevronLeft, ChevronRight, UserRound } from "lucide-react";
 
 import { CardImage } from "@/components/card-image";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -14,19 +15,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import { useLanguage } from "@/context/LanguageContext";
 import { getTranslatedCategoryTitle, normalizeCategoryValue } from "@/lib/categories";
-
-const PROFILE_LISTINGS_PER_PAGE = 24;
 
 function formatPrice(price, language) {
   return new Intl.NumberFormat(language === "fr" ? "fr-CA" : "en-CA", {
@@ -48,7 +38,9 @@ export function ProfileListingsSection({ listings, sellerSchool }) {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [categoryFilter, setCategoryFilter] = React.useState("");
   const [sortOrder, setSortOrder] = React.useState("newest");
-  const [currentPage, setCurrentPage] = React.useState(1);
+  const scrollerRef = React.useRef(null);
+  const [canScrollBack, setCanScrollBack] = React.useState(false);
+  const [canScrollForward, setCanScrollForward] = React.useState(listings.length > 1);
 
   const categoryOptions = React.useMemo(() => {
     return [...new Set(listings.map((listing) => normalizeCategoryValue(listing.category)).filter(Boolean))];
@@ -78,31 +70,69 @@ export function ProfileListingsSection({ listings, sellerSchool }) {
       });
   }, [categoryFilter, listings, searchQuery, sortOrder]);
 
+  const updateScrollState = React.useCallback(() => {
+    const scroller = scrollerRef.current;
+
+    if (!scroller) {
+      return;
+    }
+
+    const maxScrollLeft = scroller.scrollWidth - scroller.clientWidth;
+    setCanScrollBack(scroller.scrollLeft > 4);
+    setCanScrollForward(scroller.scrollLeft < maxScrollLeft - 4);
+  }, []);
+
   React.useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, categoryFilter, sortOrder]);
+    const scroller = scrollerRef.current;
 
-  const totalPages = Math.max(1, Math.ceil(filteredListings.length / PROFILE_LISTINGS_PER_PAGE));
-  const safeCurrentPage = Math.min(currentPage, totalPages);
+    if (!scroller) {
+      return undefined;
+    }
 
-  const paginatedListings = React.useMemo(() => {
-    const startIndex = (safeCurrentPage - 1) * PROFILE_LISTINGS_PER_PAGE;
-    return filteredListings.slice(startIndex, startIndex + PROFILE_LISTINGS_PER_PAGE);
-  }, [filteredListings, safeCurrentPage]);
+    scroller.scrollTo({ left: 0 });
+    updateScrollState();
+    scroller.addEventListener("scroll", updateScrollState, { passive: true });
+
+    const resizeObserver = new ResizeObserver(updateScrollState);
+    resizeObserver.observe(scroller);
+
+    return () => {
+      scroller.removeEventListener("scroll", updateScrollState);
+      resizeObserver.disconnect();
+    };
+  }, [filteredListings, updateScrollState]);
+
+  function scrollListings(direction) {
+    const scroller = scrollerRef.current;
+
+    if (!scroller) {
+      return;
+    }
+
+    scroller.scrollBy({
+      left: direction * Math.max(176, scroller.clientWidth * 0.8),
+      behavior: "smooth",
+    });
+  }
+
+  const previousListingsLabel =
+    language === "fr" ? "Annonces précédentes du vendeur" : "Previous seller listings";
+  const nextListingsLabel =
+    language === "fr" ? "Annonces suivantes du vendeur" : "Next seller listings";
 
   return (
     <>
-      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div className="flex items-center gap-3">
-          <UserRound className="size-5 text-zinc-500 dark:text-muted-foreground" />
+      <div className="mb-3 flex flex-col gap-2.5 sm:mb-4 sm:gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <UserRound className="size-4 text-zinc-500 dark:text-muted-foreground sm:size-5" />
           <div>
-            <h2 className="text-2xl font-bold text-zinc-950 dark:text-foreground">{t.activeListingsTitle}</h2>
-            <p className="text-sm text-zinc-500 dark:text-muted-foreground">{t.activeListingsDescription}</p>
+            <h2 id="profile-active-listings-title" className="text-xl font-bold text-zinc-950 dark:text-foreground sm:text-2xl">{t.activeListingsTitle}</h2>
+            <p className="text-xs leading-4 text-zinc-500 dark:text-muted-foreground sm:text-sm">{t.activeListingsDescription}</p>
           </div>
         </div>
 
-        <div className="flex w-full flex-col gap-3 sm:flex-row lg:ml-auto lg:flex-1 lg:justify-end lg:items-center lg:gap-2">
-          <div className="w-full sm:max-w-[152px]">
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:flex-row sm:gap-3 lg:ml-auto lg:flex-1 lg:items-center lg:justify-end lg:gap-2">
+          <div className="min-w-0 sm:w-full sm:max-w-[152px]">
             <Label htmlFor="profile-listings-sort" className="sr-only">
               {t.sortListingsLabel}
             </Label>
@@ -117,7 +147,7 @@ export function ProfileListingsSection({ listings, sellerSchool }) {
             </NativeSelect>
           </div>
 
-          <div className="w-full sm:max-w-[168px]">
+          <div className="min-w-0 sm:w-full sm:max-w-[168px]">
             <Label htmlFor="profile-listings-category" className="sr-only">
               {t.filterByCategoryLabel}
             </Label>
@@ -141,7 +171,7 @@ export function ProfileListingsSection({ listings, sellerSchool }) {
             </NativeSelect>
           </div>
 
-          <div className="w-full sm:max-w-[240px] lg:w-[240px] lg:max-w-none">
+          <div className="col-span-2 min-w-0 sm:w-full sm:max-w-[240px] lg:w-[240px] lg:max-w-none">
             <Label htmlFor="profile-listings-search" className="sr-only">
               {t.searchListingsLabel}
             </Label>
@@ -150,137 +180,64 @@ export function ProfileListingsSection({ listings, sellerSchool }) {
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder={t.searchListingsPlaceholder}
-              className="h-10 rounded-xl bg-white dark:bg-input/30"
+              className="rounded-xl bg-white dark:bg-input/30"
             />
           </div>
+
+          {filteredListings.length > 1 ? (
+            <div className="hidden shrink-0 items-center gap-2 md:flex">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-[44px] min-h-[44px] w-[44px] min-w-[44px] rounded-full"
+                aria-label={previousListingsLabel}
+                disabled={!canScrollBack}
+                onClick={() => scrollListings(-1)}
+              >
+                <ChevronLeft className="size-5" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-[44px] min-h-[44px] w-[44px] min-w-[44px] rounded-full"
+                aria-label={nextListingsLabel}
+                disabled={!canScrollForward}
+                onClick={() => scrollListings(1)}
+              >
+                <ChevronRight className="size-5" />
+              </Button>
+            </div>
+          ) : null}
         </div>
       </div>
 
       {filteredListings.length > 0 ? (
-        <>
-          <div className="grid gap-5 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-            {paginatedListings.map((listing) => (
+        <section
+          ref={scrollerRef}
+          aria-labelledby="profile-active-listings-title"
+          className="-mx-2 flex snap-x snap-mandatory gap-3 overflow-x-auto px-2 pb-3 scroll-smooth overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {filteredListings.map((listing) => (
+            <div
+              key={listing.id}
+              className="w-40 flex-none snap-start sm:w-44 md:w-48 lg:w-52"
+            >
               <CardImage
-                key={listing.id}
                 badge={listing.badge}
                 title={listing.title}
                 price={formatPrice(listing.price, language)}
                 meta={listing.location || sellerSchool || t.torontoMeetup}
                 imageUrls={(listing.listing_images ?? []).map((image) => image.image_url)}
-                imageUrl={listing.listing_images?.[0]?.image_url ?? null}
                 href={`/listings/${listing.slug}`}
                 imageAlt={listing.title}
+                imageSizes="(max-width: 639px) 160px, (max-width: 767px) 176px, (max-width: 1023px) 192px, 208px"
+                compact
               />
-            ))}
-          </div>
-
-          {totalPages > 1 ? (
-            <Pagination className="mt-8">
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    text={t.previousPage}
-                    className={safeCurrentPage === 1 ? "pointer-events-none opacity-50" : ""}
-                    aria-disabled={safeCurrentPage === 1}
-                    onClick={(event) => {
-                      event.preventDefault();
-
-                      if (safeCurrentPage === 1) {
-                        return;
-                      }
-
-                      setCurrentPage((page) => Math.max(1, page - 1));
-                    }}
-                  />
-                </PaginationItem>
-
-                {safeCurrentPage > 2 && totalPages > 3 ? (
-                  <>
-                    <PaginationItem>
-                      <PaginationLink
-                        href="#"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          setCurrentPage(1);
-                        }}
-                      >
-                        1
-                      </PaginationLink>
-                    </PaginationItem>
-                    {safeCurrentPage > 3 ? (
-                      <PaginationItem>
-                        <PaginationEllipsis />
-                      </PaginationItem>
-                    ) : null}
-                  </>
-                ) : null}
-
-                {Array.from({ length: totalPages }, (_, index) => index + 1)
-                  .filter((pageNumber) => {
-                    if (totalPages <= 3) {
-                      return true;
-                    }
-
-                    return Math.abs(pageNumber - safeCurrentPage) <= 1;
-                  })
-                  .map((pageNumber) => (
-                    <PaginationItem key={pageNumber}>
-                      <PaginationLink
-                        href="#"
-                        isActive={pageNumber === safeCurrentPage}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          setCurrentPage(pageNumber);
-                        }}
-                      >
-                        {pageNumber}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ))}
-
-                {safeCurrentPage < totalPages - 1 && totalPages > 3 ? (
-                  <>
-                    {safeCurrentPage < totalPages - 2 ? (
-                      <PaginationItem>
-                        <PaginationEllipsis />
-                      </PaginationItem>
-                    ) : null}
-                    <PaginationItem>
-                      <PaginationLink
-                        href="#"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          setCurrentPage(totalPages);
-                        }}
-                      >
-                        {totalPages}
-                      </PaginationLink>
-                    </PaginationItem>
-                  </>
-                ) : null}
-
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    text={t.nextPage}
-                    className={safeCurrentPage === totalPages ? "pointer-events-none opacity-50" : ""}
-                    aria-disabled={safeCurrentPage === totalPages}
-                    onClick={(event) => {
-                      event.preventDefault();
-
-                      if (safeCurrentPage === totalPages) {
-                        return;
-                      }
-
-                      setCurrentPage((page) => Math.min(totalPages, page + 1));
-                    }}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          ) : null}
-        </>
+            </div>
+          ))}
+        </section>
       ) : (
         <Card className="rounded-3xl border-zinc-200 bg-zinc-50 py-0 shadow-none dark:bg-muted/40 dark:ring-border">
           <CardHeader className="px-6 py-6">

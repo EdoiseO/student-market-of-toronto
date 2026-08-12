@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { CollapsibleProfileBio } from "@/components/collapsible-profile-bio";
 import { ProfileAvatar } from "@/components/profile-avatar";
 import { ProfileListingsSection } from "@/components/profile-listings-section";
 import { ProfileReportButton } from "@/components/profile-report-button";
@@ -22,6 +23,13 @@ function formatDate(dateString, language) {
   return new Intl.DateTimeFormat(language === "fr" ? "fr-CA" : "en-CA", {
     month: "short",
     day: "numeric",
+    year: "numeric",
+  }).format(new Date(dateString));
+}
+
+function formatShortDate(dateString, language) {
+  return new Intl.DateTimeFormat(language === "fr" ? "fr-CA" : "en-CA", {
+    month: "short",
     year: "numeric",
   }).format(new Date(dateString));
 }
@@ -94,82 +102,83 @@ export default async function PublicProfilePage({ params }) {
   }));
 
   return (
-    <main className="min-h-screen bg-zinc-100 p-5 dark:bg-background md:p-6 lg:p-8">
-      <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 lg:gap-7">
-        <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200 dark:bg-card dark:ring-border sm:p-6 lg:p-7">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-6">
+    <main className="min-h-screen bg-zinc-100 p-4 dark:bg-background md:p-6 lg:p-8">
+      <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-3 md:gap-6 lg:gap-7">
+        <section className="rounded-[1.5rem] bg-white p-3 shadow-sm ring-1 ring-zinc-200 dark:bg-card dark:ring-border sm:p-6 lg:rounded-3xl lg:p-7">
+          <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-3 lg:grid-cols-[auto_minmax(0,1fr)_minmax(288px,304px)] lg:gap-x-6">
             <div className="shrink-0">
               <ProfileAvatar
                 email={null}
                 name={sellerName}
                 avatarPresetId={profile.avatar_preset_id ?? null}
                 avatarUrl={profile.avatar_url ?? null}
-                className="h-24 w-24 rounded-3xl after:rounded-3xl sm:h-28 sm:w-28 lg:h-32 lg:w-32"
-                imageClassName="rounded-3xl"
-                fallbackClassName="rounded-3xl"
+                className="size-16 max-h-none max-w-none rounded-2xl after:rounded-2xl sm:size-28 sm:rounded-3xl sm:after:rounded-3xl lg:size-32"
+                imageClassName="rounded-2xl sm:rounded-3xl"
+                fallbackClassName="rounded-2xl sm:rounded-3xl"
               />
             </div>
 
-            <div className="flex-1 space-y-4">
-              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                <div className="space-y-2">
-                  <Badge variant="outline" className="border-zinc-300 bg-zinc-50 text-zinc-700 dark:border-border dark:bg-muted dark:text-foreground">
-                    {t.seller}
-                  </Badge>
-                  <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-foreground sm:text-3xl lg:text-4xl">
-                    {sellerName}
-                  </h1>
-                  <p className="text-base text-zinc-600 dark:text-muted-foreground">{profile.school || t.torontoStudent}</p>
+            <div className="min-w-0 self-center">
+              <Badge variant="outline" className="mb-1 h-5 border-zinc-300 bg-zinc-50 px-2 text-xs text-zinc-700 dark:border-border dark:bg-muted dark:text-foreground sm:mb-2 sm:h-auto">
+                {t.seller}
+              </Badge>
+              <h1 className="truncate text-xl font-bold tracking-tight text-zinc-950 dark:text-foreground sm:text-3xl lg:text-4xl">
+                {sellerName}
+              </h1>
+              <p className="mt-0.5 truncate text-xs text-zinc-600 dark:text-muted-foreground sm:mt-2 sm:text-base">
+                {profile.school || t.torontoStudent}
+              </p>
+            </div>
+
+            <div className="col-span-2 flex min-w-0 items-center gap-2 lg:col-span-1 lg:col-start-3 lg:row-start-1 lg:gap-3">
+              <div className="grid min-w-0 flex-1 grid-cols-2 gap-2 lg:gap-3">
+                <div className="flex min-w-0 items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-2.5 py-2 dark:border-border dark:bg-muted/40 sm:rounded-2xl sm:p-4 lg:gap-3">
+                  <ListIcon className="size-3.5 shrink-0 text-zinc-500 dark:text-muted-foreground sm:size-4" />
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold uppercase tracking-[0.08em] text-zinc-500 dark:text-muted-foreground sm:tracking-[0.16em]">
+                      {t.activeListingsTitle}
+                    </p>
+                    <p className="text-sm font-semibold text-zinc-900 dark:text-foreground sm:mt-1 sm:text-base sm:font-normal">
+                      {sellerListings.length}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="flex min-w-0 flex-col gap-3 lg:max-w-[304px] lg:items-end">
-                  <div className="flex w-full items-center gap-3">
-                    <div className="grid flex-1 gap-3 sm:grid-cols-2">
-                      <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-border dark:bg-muted/40">
-                        <ListIcon className="size-4 text-zinc-500 dark:text-muted-foreground" />
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-muted-foreground">
-                            {t.activeListingsTitle}
-                          </p>
-                          <p className="mt-1 text-zinc-900 dark:text-foreground">{sellerListings.length}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-border dark:bg-muted/40">
-                        <Clock3 className="size-4 text-zinc-500 dark:text-muted-foreground" />
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-muted-foreground">
-                            {t.memberSince}
-                          </p>
-                          <p className="mt-1 text-zinc-900 dark:text-foreground">
-                            {profile.created_at ? formatDate(profile.created_at, language) : "—"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <ProfileReportButton profileId={profile.id} currentUserId={user.id} />
+                <div className="flex min-w-0 items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-2.5 py-2 dark:border-border dark:bg-muted/40 sm:rounded-2xl sm:p-4 lg:gap-3">
+                  <Clock3 className="size-3.5 shrink-0 text-zinc-500 dark:text-muted-foreground sm:size-4" />
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold uppercase tracking-[0.08em] text-zinc-500 dark:text-muted-foreground sm:tracking-[0.16em]">
+                      {t.memberSince}
+                    </p>
+                    <p className="truncate text-xs font-medium text-zinc-900 dark:text-foreground sm:mt-1 sm:text-base sm:font-normal">
+                      {profile.created_at ? (
+                        <>
+                          <span className="sm:hidden">{formatShortDate(profile.created_at, language)}</span>
+                          <span className="hidden sm:inline">{formatDate(profile.created_at, language)}</span>
+                        </>
+                      ) : "—"}
+                    </p>
                   </div>
                 </div>
               </div>
+
+              <ProfileReportButton profileId={profile.id} currentUserId={user.id} />
             </div>
           </div>
 
-          <div className="mt-5 w-full max-w-5xl rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-border dark:bg-muted/40 sm:p-5 lg:p-6">
-            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-muted-foreground">
+          <div className="mt-3 w-full max-w-5xl rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 dark:border-border dark:bg-muted/40 sm:mt-5 sm:rounded-2xl sm:p-5 lg:p-6">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-muted-foreground sm:mb-3 sm:text-sm sm:tracking-[0.16em]">
               {t.profileDescriptionTitle}
             </p>
             {profile.bio ? (
-              <p className="whitespace-pre-line text-base leading-7 text-zinc-600 dark:text-muted-foreground">
-                {profile.bio}
-              </p>
+              <CollapsibleProfileBio bio={profile.bio} />
             ) : (
-              <p className="text-base text-zinc-500 dark:text-muted-foreground">{t.profileNoBio}</p>
+              <p className="text-xs leading-5 text-zinc-500 dark:text-muted-foreground sm:text-base">{t.profileNoBio}</p>
             )}
           </div>
         </section>
 
-        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-card dark:ring-border lg:p-7">
+        <section className="rounded-[1.5rem] bg-white p-3 shadow-sm ring-1 ring-zinc-200 dark:bg-card dark:ring-border sm:rounded-3xl sm:p-6 lg:p-7">
           {sellerListings.length > 0 ? (
             <ProfileListingsSection listings={sellerListings} sellerSchool={profile.school || ""} />
           ) : (

@@ -39,7 +39,11 @@ import {
   useLocalPhotoPreviews,
 } from "@/components/listing-photo-chip";
 import { Textarea } from "@/components/ui/textarea";
-import { useFileDropzone } from "@/hooks/use-file-dropzone";
+import {
+  getValidListingImageFiles,
+  LISTING_IMAGE_MAX_COUNT,
+  useFileDropzone,
+} from "@/hooks/use-file-dropzone";
 import { TORONTO_CAMPUS_OPTIONS } from "@/lib/campuses";
 import {
   CATEGORY_OPTIONS,
@@ -109,6 +113,8 @@ export function EditListingForm({ listing }) {
   const [photos, setPhotos] = React.useState(listing.listing_images ?? []);
   const [removedPhotos, setRemovedPhotos] = React.useState([]);
   const [newPhotos, setNewPhotos] = React.useState([]);
+  const [showAllPhotoPreviews, setShowAllPhotoPreviews] = React.useState(false);
+  const [photoError, setPhotoError] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState("");
 
@@ -121,8 +127,27 @@ export function EditListingForm({ listing }) {
       return;
     }
 
-    setNewPhotos((currentPhotos) => [...currentPhotos, ...selectedFiles]);
-  }, []);
+    const validFiles = getValidListingImageFiles(selectedFiles);
+    const availableSlots = Math.max(
+      0,
+      LISTING_IMAGE_MAX_COUNT - photos.length - newPhotos.length,
+    );
+    const acceptedFiles = validFiles.slice(0, availableSlots);
+    const hasRejectedFiles = validFiles.length !== selectedFiles.length;
+    const exceedsCount = validFiles.length > availableSlots;
+
+    setPhotoError(
+      hasRejectedFiles || exceedsCount
+        ? language === "fr"
+          ? "Utilisez jusqu’à 10 images JPEG, PNG ou WebP de 5 Mo maximum chacune."
+          : "Use up to 10 JPEG, PNG, or WebP images, no larger than 5 MB each."
+        : "",
+    );
+
+    if (acceptedFiles.length > 0) {
+      setNewPhotos((currentPhotos) => [...currentPhotos, ...acceptedFiles]);
+    }
+  }, [language, newPhotos.length, photos.length]);
 
   const { isDragActive, dropzoneProps } = useFileDropzone(appendNewPhotos);
 
@@ -361,30 +386,30 @@ export function EditListingForm({ listing }) {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-100 p-6 dark:bg-background md:p-8">
-      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8">
-        <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-          <CardHeader className="border-b border-zinc-200 px-8 py-7 dark:border-border">
-            <CardTitle className="text-4xl font-bold tracking-tight text-zinc-950 dark:text-foreground">
+    <main className="min-h-screen bg-zinc-100 px-3 py-3 dark:bg-background md:p-8">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 md:gap-8">
+        <Card className="rounded-[1.5rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border md:rounded-[2rem]">
+          <CardHeader className="border-b border-zinc-200 px-4 py-4 dark:border-border sm:px-6 sm:py-5 md:px-8 md:py-7">
+            <CardTitle className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-foreground md:text-4xl">
               {t.editListing}
             </CardTitle>
-            <CardDescription className="max-w-2xl text-base text-zinc-600 dark:text-muted-foreground">
+            <CardDescription className="max-w-2xl text-sm leading-5 text-zinc-600 dark:text-muted-foreground md:text-base md:leading-6">
               {t.editListingDesc}
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="p-8">
+          <CardContent className="p-4 sm:p-6 md:p-8">
             {listing.status === LISTING_APPROVAL_STATUS_VALUES.rejected ? (
-              <div className="mb-6 rounded-[1.5rem] border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200">
+              <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs leading-5 text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200 md:mb-6 md:rounded-[1.5rem] md:p-5 md:text-sm">
                 <p className="font-semibold">{t.listingRejectedTitle}</p>
-                <p className="mt-2 leading-6">
+                <p className="mt-1.5 md:mt-2 md:leading-6">
                   {listing.moderation_feedback || t.listingRejectedDescription}
                 </p>
               </div>
             ) : null}
 
-            <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(288px,0.85fr)]">
-              <FieldGroup>
+            <div className="grid gap-5 md:gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(288px,0.85fr)]">
+              <FieldGroup className="gap-4 md:gap-5">
                 <Field>
                   <FieldLabel>{t.title}</FieldLabel>
                   <Input
@@ -418,7 +443,7 @@ export function EditListingForm({ listing }) {
                   <Textarea
                     value={description}
                     onChange={(event) => setDescription(event.target.value)}
-                    className="min-h-40 resize-none"
+                    className="h-28 min-h-28 resize-none overflow-y-auto [field-sizing:fixed] md:h-auto md:min-h-40 md:overflow-visible md:[field-sizing:content]"
                     placeholder={t.descriptionPlaceholder}
                   />
                 </Field>
@@ -433,31 +458,31 @@ export function EditListingForm({ listing }) {
                 />
               </FieldGroup>
 
-              <div className="flex flex-col gap-6">
-                <Card className="rounded-[1.75rem] border border-dashed border-zinc-300 bg-zinc-50 py-0 shadow-none dark:border-border dark:bg-muted/70 dark:ring-1 dark:ring-white/8">
-                  <CardContent className="space-y-5 p-6">
+              <div className="flex flex-col gap-4 md:gap-6">
+                <Card className="rounded-[1.25rem] border border-dashed border-zinc-300 bg-zinc-50 py-0 shadow-none dark:border-border dark:bg-muted/70 dark:ring-1 dark:ring-white/8 md:rounded-[1.75rem]">
+                  <CardContent className="space-y-3 p-3 md:space-y-5 md:p-6">
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className={cn(
-                        "flex min-h-56 w-full flex-col items-center justify-center rounded-[1.5rem] border bg-white px-6 py-10 text-center transition dark:bg-card",
+                        "flex min-h-32 w-full flex-col items-center justify-center rounded-2xl border bg-white px-4 py-5 text-center transition dark:bg-card md:min-h-56 md:rounded-[1.5rem] md:px-6 md:py-10",
                         isDragActive
                           ? "border-zinc-950 ring-2 ring-zinc-950/10 dark:border-ring dark:ring-ring/20"
                           : "border-zinc-200 hover:border-zinc-400 dark:border-border dark:hover:border-ring"
                       )}
                       {...dropzoneProps}
                     >
-                      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-950 text-white dark:bg-primary dark:text-primary-foreground">
-                        <ImagePlus className="size-6" />
+                      <div className="mb-2 flex size-11 items-center justify-center rounded-full bg-zinc-950 text-white dark:bg-primary dark:text-primary-foreground md:mb-4 md:size-14">
+                        <ImagePlus className="size-5 md:size-6" />
                       </div>
-                      <p className="text-lg font-semibold text-zinc-950 dark:text-foreground">
+                      <p className="text-base font-semibold text-zinc-950 dark:text-foreground md:text-lg">
                         {t.addPhotos}
                       </p>
-                      <p className="mt-2 text-sm text-zinc-500 dark:text-muted-foreground">
+                      <p className="mt-1 text-xs text-zinc-500 dark:text-muted-foreground md:mt-2 md:text-sm">
                         {isDragActive ? t.dropImages : t.dragDrop}
                       </p>
                       {photos.length + newPhotos.length > 0 ? (
-                        <p className="mt-4 text-sm font-medium text-zinc-700 dark:text-foreground">
+                        <p className="mt-2 text-xs font-medium text-zinc-700 dark:text-foreground md:mt-4 md:text-sm">
                           {photos.length + newPhotos.length} {t.filesAvailableLabel}
                         </p>
                       ) : null}
@@ -465,7 +490,7 @@ export function EditListingForm({ listing }) {
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp"
                       multiple
                       className="hidden"
                       onChange={(event) => {
@@ -475,12 +500,16 @@ export function EditListingForm({ listing }) {
                         event.target.value = "";
                       }}
                     />
+                    {photoError ? (
+                      <p role="alert" className="text-sm text-red-600 dark:text-red-400">{photoError}</p>
+                    ) : null}
 
                     {photos.length > 0 || newPhotoPreviews.length > 0 ? (
-                      <div className="flex flex-wrap gap-4">
-                        {photos.map((photo, index) => (
+                      <div className="-mx-1 flex snap-x snap-mandatory flex-nowrap gap-2 overflow-x-auto px-1 pb-1 md:flex-wrap md:gap-3 md:overflow-visible md:pb-0">
+                        {photos.slice(0, showAllPhotoPreviews ? photos.length : 4).map((photo, index) => (
                           <ListingPhotoChip
                             key={photo.id}
+                            compact
                             index={index}
                             imageUrl={photo.image_url}
                             alt={`${t.existingPhoto} ${index + 1}`}
@@ -492,9 +521,10 @@ export function EditListingForm({ listing }) {
                             }}
                           />
                         ))}
-                        {newPhotoPreviews.map((photo, index) => (
+                        {newPhotoPreviews.slice(0, showAllPhotoPreviews ? newPhotoPreviews.length : Math.max(0, 4 - photos.length)).map((photo, index) => (
                           <ListingPhotoChip
                             key={photo.id}
+                            compact
                             index={photos.length + index}
                             imageUrl={photo.imageUrl}
                             alt={photo.alt}
@@ -505,13 +535,24 @@ export function EditListingForm({ listing }) {
                             }}
                           />
                         ))}
+                        {photos.length + newPhotoPreviews.length > 4 ? (
+                          <button
+                            type="button"
+                            onClick={() => setShowAllPhotoPreviews((isExpanded) => !isExpanded)}
+                            className="flex size-16 shrink-0 snap-start items-center justify-center rounded-2xl border border-zinc-300 bg-zinc-100 px-1 text-center text-xs font-semibold leading-4 text-zinc-700 dark:border-border dark:bg-muted dark:text-foreground sm:size-20 sm:text-sm"
+                            aria-expanded={showAllPhotoPreviews}
+                            aria-label={showAllPhotoPreviews ? "Show fewer photo previews" : `${photos.length + newPhotoPreviews.length - 4} additional photos selected`}
+                          >
+                            {showAllPhotoPreviews ? "Show less" : `+${photos.length + newPhotoPreviews.length - 4} more`}
+                          </button>
+                        ) : null}
                       </div>
                     ) : null}
                   </CardContent>
                 </Card>
 
-                <Card className="rounded-[1.75rem] border-zinc-200 bg-zinc-50 py-0 shadow-none dark:bg-muted/70 dark:ring-1 dark:ring-white/8">
-                  <CardContent className="space-y-5 p-6">
+                <Card className="rounded-[1.25rem] border-zinc-200 bg-zinc-50 py-0 shadow-none dark:bg-muted/70 dark:ring-1 dark:ring-white/8 md:rounded-[1.75rem]">
+                  <CardContent className="space-y-3 p-3 md:space-y-5 md:p-6">
                     <ListingCombobox
                       label={t.campus}
                       placeholder={t.campusPlaceholder}
@@ -523,7 +564,7 @@ export function EditListingForm({ listing }) {
 
                     <Field
                       orientation="horizontal"
-                      className="items-start rounded-2xl border border-zinc-200 bg-white p-4 dark:border-white/10 dark:bg-card"
+                      className="items-start rounded-xl border border-zinc-200 bg-white p-3 dark:border-white/10 dark:bg-card md:rounded-2xl md:p-4"
                     >
                       <Checkbox
                         id="negotiable"
@@ -536,10 +577,10 @@ export function EditListingForm({ listing }) {
                       </div>
                     </Field>
 
-                    <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-white/10 dark:bg-card">
-                      <div className="mb-3 flex items-center gap-2 text-zinc-900 dark:text-foreground">
+                    <div className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-white/10 dark:bg-card md:rounded-2xl md:p-4">
+                      <div className="mb-2 flex items-center gap-2 text-zinc-900 dark:text-foreground md:mb-3">
                         <Sparkles className="size-4" />
-                        <p className="text-sm font-semibold uppercase tracking-[0.18em]">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] md:text-sm md:tracking-[0.18em]">
                           {t.tagPreview}
                         </p>
                       </div>
@@ -554,13 +595,13 @@ export function EditListingForm({ listing }) {
                           </Badge>
                         ))}
                       </div>
-                      <p className="mt-3 text-sm text-zinc-500 dark:text-muted-foreground">
+                      <p className="mt-2 text-xs leading-5 text-zinc-500 dark:text-muted-foreground md:mt-3 md:text-sm">
                         {t.editTagPreviewDesc}
                       </p>
                     </div>
 
-                    <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-500 dark:border-white/10 dark:bg-card dark:text-muted-foreground">
-                      <div className="mb-2 flex items-center gap-2 text-zinc-900 dark:text-foreground">
+                    <div className="rounded-xl border border-zinc-200 bg-white p-3 text-xs leading-5 text-zinc-500 dark:border-white/10 dark:bg-card dark:text-muted-foreground md:rounded-2xl md:p-4 md:text-sm">
+                      <div className="mb-1.5 flex items-center gap-2 text-zinc-900 dark:text-foreground md:mb-2">
                         <Info className="size-4" />
                         <span className="font-medium">{t.recommendation}</span>
                       </div>
@@ -571,18 +612,19 @@ export function EditListingForm({ listing }) {
               </div>
             </div>
 
-            {error ? <p className="mt-6 text-sm text-red-600">{error}</p> : null}
+            {error ? <p role="alert" className="mt-4 text-sm text-red-600 md:mt-6">{error}</p> : null}
 
-            <div className="mt-8 flex flex-wrap items-center justify-end gap-3">
+            <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 -mx-4 mt-5 grid grid-cols-2 gap-2 border-t border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-border dark:bg-card/95 sm:static sm:mx-0 sm:mt-8 sm:flex sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-3 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
               <Button
                 type="button"
                 variant="outline"
+                className="w-full sm:w-auto"
                 onClick={() => router.back()}
                 disabled={loading}
               >
                 {t.cancel}
               </Button>
-              <Button type="button" onClick={handleSave} disabled={loading}>
+              <Button type="button" className="w-full sm:w-auto" onClick={handleSave} disabled={loading}>
                 {loading ? t.saving : t.saveChanges}
               </Button>
             </div>

@@ -1,8 +1,7 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { CircleCheckIcon, InfoIcon, Loader2Icon } from "lucide-react";
 
@@ -30,6 +29,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DashboardListingActions } from "@/components/dashboard-listing-actions";
 import { CATEGORY_OPTIONS, getTranslatedCategoryValue } from "@/lib/categories";
+import { REMOTE_IMAGE_BLUR_DATA_URL } from "@/lib/image-config";
 import {
   LISTING_APPROVAL_STATUS_VALUES,
   isPendingListingApproval,
@@ -98,7 +98,7 @@ function PendingReviewHelpButton({ item, t, language }) {
         <button
           type="button"
           aria-label={t.viewContext}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-700 transition hover:bg-zinc-100 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-700 transition hover:bg-zinc-100 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted"
         >
           <InfoIcon className="size-3.5" />
         </button>
@@ -119,7 +119,7 @@ function RejectedListingReasonButton({ item, t }) {
         <button
           type="button"
           aria-label={t.viewContext}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-950/60"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-950/60"
         >
           <InfoIcon className="size-3.5" />
         </button>
@@ -392,60 +392,51 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
           paginatedItems.map((item) => (
             <div
               key={`${item.dashboardStatus}-${item.id}`}
-              className="rounded-[1.5rem] border border-zinc-200 bg-white p-4 shadow-sm dark:border-border dark:bg-card"
+              className="rounded-[1.5rem] border border-zinc-200 bg-white p-3 shadow-sm dark:border-border dark:bg-card"
             >
-              <Link href={`/listings/${item.slug}`} className="block rounded-xl transition hover:bg-zinc-50 dark:hover:bg-muted/40">
-                <div className="flex items-center gap-3">
-                  <div className="h-14 w-18 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-border dark:bg-muted">
+              <div className="flex items-start gap-3">
+                <Link href={`/listings/${item.slug}`} className="flex min-w-0 flex-1 items-start gap-3 rounded-xl transition hover:bg-zinc-50 dark:hover:bg-muted/40">
+                  <div className="relative size-[60px] shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-border dark:bg-muted">
                     {item.imageUrl ? (
-                      <img src={item.imageUrl} alt={item.title} className="h-full w-full object-cover" />
+                      <Image
+                        src={item.imageUrl}
+                        alt={item.title}
+                        fill
+                        sizes="60px"
+                        placeholder="blur"
+                        blurDataURL={REMOTE_IMAGE_BLUR_DATA_URL}
+                        className="object-cover"
+                      />
                     ) : (
                       <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
                     )}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-zinc-950 dark:text-foreground">{item.title}</p>
-                    <p className="mt-1 truncate text-sm text-zinc-500 dark:text-muted-foreground">{item.meta}</p>
+                  <div className="min-w-0 flex-1 pr-1">
+                    <p className="line-clamp-2 text-sm font-semibold leading-snug text-zinc-950 dark:text-foreground">{item.title}</p>
+                    <p className="mt-1 text-base font-bold text-zinc-950 dark:text-foreground">{item.price}</p>
+                    {item.meta ? <p className="mt-1 truncate text-xs text-zinc-500 dark:text-muted-foreground">{item.meta}</p> : null}
                   </div>
-                </div>
-              </Link>
-
-              <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-border dark:bg-muted/40">
-                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500 dark:text-muted-foreground">{t.status}</p>
-                  <div className="mt-2">
-                    <DashboardStatusBadge item={item} label={getStatusLabel(item)} t={t} language={language} />
-                  </div>
-                </div>
-                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-border dark:bg-muted/40">
-                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500 dark:text-muted-foreground">{t.price}</p>
-                  <p className="mt-2 font-medium text-zinc-900 dark:text-foreground">{item.price}</p>
-                </div>
-                {showMessagesColumn ? (
-                  <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-border dark:bg-muted/40">
-                    <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500 dark:text-muted-foreground">{t.messages}</p>
-                    <p className="mt-2 text-zinc-700 dark:text-foreground">{item.messageCount > 0 ? `${item.messageCount}+` : "0"}</p>
-                  </div>
-                ) : null}
-                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-border dark:bg-muted/40">
-                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500 dark:text-muted-foreground">{t.category}</p>
-                  <p className="mt-2 line-clamp-2 text-zinc-700 dark:text-foreground">
-                    {getTranslatedCategoryValue(item.category, t, language)}
-                  </p>
-                </div>
-              </div>
-
-              {showManagementActions ? (
-                <div className="mt-4">
+                </Link>
+                {showManagementActions ? (
                   <DashboardListingActions
                     id={item.id}
                     slug={item.slug}
+                    title={item.title}
                     status={item.dashboardStatus}
                     submittedForReviewAt={item.submittedForReviewAt}
                     moderationReviewedAt={item.moderationReviewedAt}
                   />
-                </div>
-              ) : null}
+                ) : null}
+              </div>
+
+              <div className="mt-3 flex min-h-11 items-center justify-between gap-3 border-t border-zinc-100 pt-3 dark:border-border">
+                <DashboardStatusBadge item={item} label={getStatusLabel(item)} t={t} language={language} />
+                {showMessagesColumn && item.messageCount > 0 ? (
+                  <span className="text-xs text-zinc-500 dark:text-muted-foreground">
+                    {item.messageCount}+ {t.messages}
+                  </span>
+                ) : null}
+              </div>
             </div>
           ))
         ) : filteredItems.length === 0 ? (
@@ -462,7 +453,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
               type="button"
               variant="outline"
               size="sm"
-              className={safePage === 1 ? "pointer-events-none opacity-50" : ""}
+              disabled={safePage === 1}
               onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
             >
               {t.previousPage}
@@ -474,7 +465,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
               type="button"
               variant="outline"
               size="sm"
-              className={safePage === totalPages ? "pointer-events-none opacity-50" : ""}
+              disabled={safePage === totalPages}
               onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
             >
               {t.nextPage}
@@ -506,9 +497,17 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                   <td className="px-5 py-4 align-top">
                     <Link href={`/listings/${item.slug}`} className="block rounded-xl transition hover:bg-zinc-50 dark:hover:bg-muted/40">
                       <div className="flex items-center gap-4 py-1">
-                        <div className="h-12 w-16 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-border dark:bg-muted">
+                        <div className="relative h-12 w-16 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-border dark:bg-muted">
                           {item.imageUrl ? (
-                            <img src={item.imageUrl} alt={item.title} className="h-full w-full object-cover" />
+                            <Image
+                              src={item.imageUrl}
+                              alt={item.title}
+                              fill
+                              sizes="64px"
+                              placeholder="blur"
+                              blurDataURL={REMOTE_IMAGE_BLUR_DATA_URL}
+                              className="object-cover"
+                            />
                           ) : (
                             <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
                           )}
@@ -537,6 +536,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                       <DashboardListingActions
                         id={item.id}
                         slug={item.slug}
+                        title={item.title}
                         status={item.dashboardStatus}
                         submittedForReviewAt={item.submittedForReviewAt}
                         moderationReviewedAt={item.moderationReviewedAt}
@@ -581,16 +581,16 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
               <div className="flex items-center gap-3">
                 <span className="font-medium text-zinc-700 dark:text-foreground">{t.pageLabel} {safePage} {t.ofLabel} {totalPages}</span>
                 <div className="flex items-center gap-2">
-                  <Button type="button" variant="outline" size="icon-sm" className={safePage === 1 ? "pointer-events-none opacity-50" : ""} onClick={() => setCurrentPage(1)}>
+                  <Button type="button" variant="outline" size="icon-sm" disabled={safePage === 1} onClick={() => setCurrentPage(1)}>
                     <span aria-hidden="true">«</span>
                   </Button>
-                  <Button type="button" variant="outline" size="icon-sm" className={safePage === 1 ? "pointer-events-none opacity-50" : ""} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}>
+                  <Button type="button" variant="outline" size="icon-sm" disabled={safePage === 1} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}>
                     <span aria-hidden="true">‹</span>
                   </Button>
-                  <Button type="button" variant="outline" size="icon-sm" className={safePage === totalPages ? "pointer-events-none opacity-50" : ""} onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}>
+                  <Button type="button" variant="outline" size="icon-sm" disabled={safePage === totalPages} onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}>
                     <span aria-hidden="true">›</span>
                   </Button>
-                  <Button type="button" variant="outline" size="icon-sm" className={safePage === totalPages ? "pointer-events-none opacity-50" : ""} onClick={() => setCurrentPage(totalPages)}>
+                  <Button type="button" variant="outline" size="icon-sm" disabled={safePage === totalPages} onClick={() => setCurrentPage(totalPages)}>
                     <span aria-hidden="true">»</span>
                   </Button>
                 </div>

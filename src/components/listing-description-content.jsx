@@ -4,7 +4,7 @@ export function ListingDescriptionContent({ description, className }) {
   return (
     <div
       className={cn(
-        "whitespace-pre-wrap break-words text-base leading-8 text-zinc-600 dark:text-muted-foreground",
+        "whitespace-pre-wrap break-words text-sm leading-6 text-zinc-600 dark:text-muted-foreground md:text-base md:leading-8",
         className,
       )}
     >

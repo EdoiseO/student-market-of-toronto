@@ -1,7 +1,15 @@
 import * as React from "react";
 
-function getImageFiles(fileList) {
-  return Array.from(fileList ?? []).filter((file) => file.type.startsWith("image/"));
+export const LISTING_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+export const LISTING_IMAGE_MAX_COUNT = 10;
+export const LISTING_IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+export function getValidListingImageFiles(fileList) {
+  return Array.from(fileList ?? []).filter(
+    (file) =>
+      LISTING_IMAGE_MIME_TYPES.includes(file.type) &&
+      file.size <= LISTING_IMAGE_MAX_BYTES,
+  );
 }
 
 export function useFileDropzone(onFilesAdded) {
@@ -47,7 +55,7 @@ export function useFileDropzone(onFilesAdded) {
     dragDepth.current = 0;
     setIsDragActive(false);
 
-    const imageFiles = getImageFiles(event.dataTransfer?.files);
+    const imageFiles = Array.from(event.dataTransfer?.files ?? []);
 
     if (imageFiles.length > 0) {
       onFilesAdded(imageFiles);

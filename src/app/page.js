@@ -5,7 +5,7 @@ import { CATEGORIES, getCategoryValuesBySlug } from "@/lib/categories";
 import HomePageContent from "@/components/home-page-content";
 import { getListingBadgeKey } from "@/lib/listing-badges";
 
-const HOME_SECTION_LIMIT = 6;
+const HOME_SECTION_LIMIT = 4;
 
 export default async function Page() {
   const cookieStore = await cookies();

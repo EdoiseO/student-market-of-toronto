@@ -77,7 +77,7 @@ export function SearchForm({
             }
           }}
           placeholder={t.searchListingsPlaceholderGlobal}
-          className="h-10 rounded-xl pl-9 pr-10 text-sm"
+          className="h-12 rounded-xl pl-9 pr-12 text-base"
         />
         <SearchIcon
           className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 opacity-50 select-none" />
@@ -85,7 +85,7 @@ export function SearchForm({
           <button
             type="button"
             onClick={clearSearchQuery}
-            className="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-muted-foreground dark:hover:bg-muted dark:hover:text-foreground"
+            className="absolute right-0.5 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-muted-foreground dark:hover:bg-muted dark:hover:text-foreground"
             aria-label={t.clearSearch}
           >
             <XIcon className="size-3.5" />
