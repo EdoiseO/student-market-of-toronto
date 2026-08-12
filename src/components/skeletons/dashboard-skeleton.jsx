@@ -2,19 +2,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 function MobileListingCardSkeleton() {
   return (
-    <div className="rounded-[1.5rem] border border-border bg-card p-3 shadow-sm">
-      <div className="flex min-w-0 items-start gap-3">
-        <Skeleton className="size-[60px] shrink-0 rounded-lg" />
-        <div className="min-w-0 flex-1 space-y-2 py-0.5">
+    <div className="rounded-[1.25rem] border border-border bg-card p-2.5 shadow-sm">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <Skeleton className="size-14 shrink-0 rounded-lg" />
+        <div className="min-w-0 flex-1 space-y-2">
           <Skeleton className="h-4 w-4/5" />
-          <Skeleton className="h-5 w-20" />
-          <Skeleton className="h-3 w-3/5" />
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-4 w-12" />
+            <Skeleton className="h-5 w-14 rounded-full" />
+          </div>
         </div>
-        <Skeleton className="size-11 shrink-0 rounded-lg" />
-      </div>
-      <div className="mt-3 flex min-h-11 items-center justify-between gap-3 border-t border-border pt-3">
-        <Skeleton className="h-6 w-20 rounded-full" />
-        <Skeleton className="h-3 w-16" />
+        <Skeleton className="size-11 shrink-0 rounded-full" />
       </div>
     </div>
   );
@@ -76,7 +74,7 @@ export function DashboardSkeleton() {
           </div>
         </div>
 
-        <div className="space-y-4 md:hidden">
+        <div className="space-y-2.5 md:hidden">
           {Array.from({ length: 3 }, (_, index) => (
             <MobileListingCardSkeleton key={index} />
           ))}

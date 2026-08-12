@@ -7,6 +7,7 @@ import {
   CircleCheckIcon,
   InfoIcon,
   Loader2Icon,
+  MessageCircleIcon,
   SlidersHorizontalIcon,
 } from "lucide-react";
 
@@ -111,14 +112,18 @@ function getRejectedListingHelpText(item, t) {
   return item.moderationFeedback || t.listingRejectedDescription;
 }
 
-function PendingReviewHelpButton({ item, t, language }) {
+function PendingReviewHelpButton({ item, t, language, compact = false }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button
           type="button"
           aria-label={t.viewContext}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-700 transition hover:bg-zinc-100 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted"
+          className={
+            compact
+              ? "relative inline-flex !size-5 !min-h-5 !min-w-5 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-700 transition after:absolute after:-inset-3 after:content-[''] hover:bg-zinc-100 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted"
+              : "inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-700 transition hover:bg-zinc-100 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted"
+          }
         >
           <InfoIcon className="size-3.5" />
         </button>
@@ -132,14 +137,18 @@ function PendingReviewHelpButton({ item, t, language }) {
   );
 }
 
-function RejectedListingReasonButton({ item, t }) {
+function RejectedListingReasonButton({ item, t, compact = false }) {
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <button
           type="button"
           aria-label={t.viewContext}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-950/60"
+          className={
+            compact
+              ? "relative inline-flex !size-5 !min-h-5 !min-w-5 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-rose-700 transition after:absolute after:-inset-3 after:content-[''] hover:bg-rose-100 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-950/60"
+              : "inline-flex h-11 w-11 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-950/60"
+          }
         >
           <InfoIcon className="size-3.5" />
         </button>
@@ -159,8 +168,10 @@ function RejectedListingReasonButton({ item, t }) {
   );
 }
 
-function DashboardStatusBadge({ item, label, t, language }) {
-  const badgeClassName = getDashboardStatusBadgeClass(item);
+function DashboardStatusBadge({ item, label, t, language, compact = false }) {
+  const badgeClassName = `${getDashboardStatusBadgeClass(item)} ${
+    compact ? "h-5 rounded-full px-1.5 text-[0.6875rem]" : ""
+  }`;
 
   if (isPendingListingApproval(item)) {
     return (
@@ -179,7 +190,7 @@ function DashboardStatusBadge({ item, label, t, language }) {
           </TooltipContent>
         </Tooltip>
         <div className="md:hidden">
-          <PendingReviewHelpButton item={item} t={t} language={language} />
+          <PendingReviewHelpButton item={item} t={t} language={language} compact={compact} />
         </div>
       </div>
     );
@@ -209,7 +220,7 @@ function DashboardStatusBadge({ item, label, t, language }) {
             {getRejectedListingHelpText(item, t)}
           </TooltipContent>
         </Tooltip>
-        <RejectedListingReasonButton item={item} t={t} />
+        <RejectedListingReasonButton item={item} t={t} compact={compact} />
       </div>
     );
   }
@@ -552,54 +563,82 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
         </div>
       </div>
 
-      <div className="space-y-4 md:hidden">
+      <div className="space-y-2.5 md:hidden">
         {paginatedItems.length > 0 ? (
           paginatedItems.map((item) => (
             <div
               key={`${item.dashboardStatus}-${item.id}`}
-              className="rounded-[1.5rem] border border-zinc-200 bg-white p-3 shadow-sm dark:border-border dark:bg-card"
+              className="relative rounded-[1.25rem] border border-zinc-200 bg-white p-2.5 shadow-sm dark:border-border dark:bg-card"
             >
-              <div className="flex items-start gap-3">
-                <Link href={`/listings/${item.slug}`} className="flex min-w-0 flex-1 items-start gap-3 rounded-xl transition hover:bg-zinc-50 dark:hover:bg-muted/40">
-                  <div className="relative size-[60px] shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-border dark:bg-muted">
-                    {item.imageUrl ? (
-                      <Image
-                        src={item.imageUrl}
-                        alt={item.title}
-                        fill
-                        sizes="60px"
-                        placeholder="blur"
-                        blurDataURL={REMOTE_IMAGE_BLUR_DATA_URL}
-                        className="object-cover"
-                      />
-                    ) : (
-                      <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1 pr-1">
-                    <p className="line-clamp-2 text-sm font-semibold leading-snug text-zinc-950 dark:text-foreground">{item.title}</p>
-                    <p className="mt-1 text-base font-bold text-zinc-950 dark:text-foreground">{item.price}</p>
-                    {item.meta ? <p className="mt-1 truncate text-xs text-zinc-500 dark:text-muted-foreground">{item.meta}</p> : null}
-                  </div>
-                </Link>
-                {showManagementActions ? (
-                  <DashboardListingActions
-                    id={item.id}
-                    slug={item.slug}
-                    title={item.title}
-                    status={item.dashboardStatus}
-                    submittedForReviewAt={item.submittedForReviewAt}
-                    moderationReviewedAt={item.moderationReviewedAt}
-                  />
-                ) : null}
-              </div>
+              <div className="flex min-w-0 items-center gap-2.5">
+                <div className="relative size-14 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-border dark:bg-muted">
+                  {item.imageUrl ? (
+                    <Image
+                      src={item.imageUrl}
+                      alt=""
+                      fill
+                      sizes="56px"
+                      placeholder="blur"
+                      blurDataURL={REMOTE_IMAGE_BLUR_DATA_URL}
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
+                  )}
+                </div>
 
-              <div className="mt-3 flex min-h-11 items-center justify-between gap-3 border-t border-zinc-100 pt-3 dark:border-border">
-                <DashboardStatusBadge item={item} label={getStatusLabel(item)} t={t} language={language} />
-                {showMessagesColumn && item.messageCount > 0 ? (
-                  <span className="text-xs text-zinc-500 dark:text-muted-foreground">
-                    {item.messageCount}+ {t.messages}
-                  </span>
+                <div className="min-w-0 flex-1">
+                  <Link
+                    href={`/listings/${item.slug}`}
+                    className="block rounded-md after:absolute after:inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                  >
+                    <p className="truncate text-sm font-semibold leading-5 text-zinc-950 dark:text-foreground">
+                      {item.title}
+                    </p>
+                  </Link>
+                  <div className="pointer-events-none mt-1 flex min-h-6 min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                    <p className="shrink-0 text-sm font-bold text-zinc-950 dark:text-foreground">
+                      {item.price}
+                    </p>
+                    <div
+                      className={`relative z-10 inline-flex ${
+                        isPendingListingApproval(item) ||
+                        item.dashboardStatus === LISTING_APPROVAL_STATUS_VALUES.rejected
+                          ? "pointer-events-auto"
+                          : "pointer-events-none"
+                      }`}
+                    >
+                      <DashboardStatusBadge
+                        item={item}
+                        label={getStatusLabel(item)}
+                        t={t}
+                        language={language}
+                        compact
+                      />
+                    </div>
+                    {showMessagesColumn && item.messageCount > 0 ? (
+                      <span
+                        className="inline-flex items-center gap-1 text-[0.6875rem] font-medium text-zinc-500 dark:text-muted-foreground"
+                        aria-label={`${item.messageCount}+ ${t.messages}`}
+                      >
+                        <MessageCircleIcon className="size-3" aria-hidden="true" />
+                        {item.messageCount}+
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+
+                {showManagementActions ? (
+                  <div className="relative z-10">
+                    <DashboardListingActions
+                      id={item.id}
+                      slug={item.slug}
+                      title={item.title}
+                      status={item.dashboardStatus}
+                      submittedForReviewAt={item.submittedForReviewAt}
+                      moderationReviewedAt={item.moderationReviewedAt}
+                    />
+                  </div>
                 ) : null}
               </div>
             </div>
