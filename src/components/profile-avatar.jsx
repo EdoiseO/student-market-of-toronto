@@ -32,7 +32,13 @@ function useResolvedProfileAvatar({ email, name, avatarPresetId, avatarUrl, init
   };
 }
 
-function OptimizedAvatarImage({ imageUrl, alt, className, onError }) {
+function OptimizedAvatarImage({
+  imageUrl,
+  alt,
+  className,
+  onError,
+  sizes = "(max-width: 1023px) 80px, 120px",
+}) {
   if (!imageUrl) {
     return null;
   }
@@ -43,7 +49,7 @@ function OptimizedAvatarImage({ imageUrl, alt, className, onError }) {
       alt={alt}
       width={120}
       height={120}
-      sizes="(max-width: 1023px) 80px, 120px"
+      sizes={sizes}
       placeholder="blur"
       blurDataURL={REMOTE_IMAGE_BLUR_DATA_URL}
       onError={onError}
@@ -62,6 +68,7 @@ export function ProfileAvatar({
   imageClassName,
   fallbackClassName,
   size = "default",
+  imageSizes = "(max-width: 1023px) 80px, 120px",
 }) {
   const { t } = useLanguage();
   const { imageUrl, initials, preset } = useResolvedProfileAvatar({
@@ -94,6 +101,7 @@ export function ProfileAvatar({
         alt={name || t.profileAvatarLabel}
         className={imageClassName}
         onError={() => setFailedImageUrl(imageUrl)}
+        sizes={imageSizes}
       />
     </Avatar>
   );

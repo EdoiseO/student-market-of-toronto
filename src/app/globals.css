@@ -126,6 +126,11 @@
     min-width: 44px;
     min-height: 44px;
   }
+
+  /* Keep the fixed nav out of the reduced visual viewport while typing. */
+  body:has(input:focus, textarea:focus, select:focus) [data-mobile-bottom-nav] {
+    display: none;
+  }
 }
 
 @media (min-width: 1200px) {

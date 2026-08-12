@@ -47,6 +47,7 @@ export function MobileBottomNav({ user }) {
 
   return (
     <nav
+      data-mobile-bottom-nav
       aria-label={language === "fr" ? "Navigation principale" : "Primary navigation"}
       className="fixed inset-x-0 bottom-0 z-50 flex h-[calc(4rem+env(safe-area-inset-bottom))] items-start justify-around border-t border-border bg-background/95 px-1 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_30px_rgba(0,0,0,0.06)] backdrop-blur md:hidden"
     >
@@ -59,15 +60,16 @@ export function MobileBottomNav({ user }) {
             href={item.href}
             aria-current={item.isActive ? "page" : undefined}
             className={cn(
-              "relative flex h-16 min-w-14 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 text-xs font-medium text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              "relative flex h-16 min-w-14 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 text-xs font-medium text-muted-foreground transition-colors [-webkit-tap-highlight-color:transparent] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               item.isActive && "text-foreground",
             )}
           >
             <span
               className={cn(
                 "flex size-8 items-center justify-center rounded-full transition-colors",
-                item.isActive && "bg-accent text-accent-foreground",
-                item.isPrimary && "size-11 bg-primary text-primary-foreground shadow-sm",
+                item.isPrimary
+                  ? "size-11 bg-zinc-950 text-white shadow-sm dark:bg-white dark:text-zinc-950"
+                  : item.isActive && "bg-accent text-accent-foreground",
               )}
             >
               <Icon className={item.isPrimary ? "size-6" : "size-5"} strokeWidth={2.25} />

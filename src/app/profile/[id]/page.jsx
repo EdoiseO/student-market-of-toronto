@@ -112,17 +112,18 @@ export default async function PublicProfilePage({ params }) {
                 name={sellerName}
                 avatarPresetId={profile.avatar_preset_id ?? null}
                 avatarUrl={profile.avatar_url ?? null}
-                className="size-16 max-h-none max-w-none rounded-2xl after:rounded-2xl sm:size-28 sm:rounded-3xl sm:after:rounded-3xl lg:size-32"
+                className="size-16 max-h-none max-w-none rounded-2xl after:rounded-2xl sm:size-28 sm:rounded-3xl sm:after:rounded-3xl"
                 imageClassName="rounded-2xl sm:rounded-3xl"
+                imageSizes="(max-width: 639px) 64px, 112px"
                 fallbackClassName="rounded-2xl sm:rounded-3xl"
               />
             </div>
 
             <div className="min-w-0 self-center">
-              <Badge variant="outline" className="mb-1 h-5 border-zinc-300 bg-zinc-50 px-2 text-xs text-zinc-700 dark:border-border dark:bg-muted dark:text-foreground sm:mb-2 sm:h-auto">
+              <Badge variant="outline" className="mb-1 h-4 min-h-0 border-zinc-300 bg-zinc-50 px-1.5 text-xs leading-none text-zinc-700 dark:border-border dark:bg-muted dark:text-foreground sm:mb-2 sm:h-auto sm:px-2">
                 {t.seller}
               </Badge>
-              <h1 className="truncate text-xl font-bold tracking-tight text-zinc-950 dark:text-foreground sm:text-3xl lg:text-4xl">
+              <h1 className="truncate text-lg font-bold leading-5 tracking-tight text-zinc-950 dark:text-foreground sm:text-3xl sm:leading-normal lg:text-4xl">
                 {sellerName}
               </h1>
               <p className="mt-0.5 truncate text-xs text-zinc-600 dark:text-muted-foreground sm:mt-2 sm:text-base">

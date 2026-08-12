@@ -186,7 +186,7 @@ export function ProfileListingsSection({ listings, sellerSchool }) {
         <div className="flex items-center gap-2 sm:gap-3">
           <UserRound className="size-4 text-zinc-500 dark:text-muted-foreground sm:size-5" />
           <div>
-            <h2 id="profile-active-listings-title" className="text-xl font-bold text-zinc-950 dark:text-foreground sm:text-2xl">{t.activeListingsTitle}</h2>
+            <h2 id="profile-active-listings-title" className="text-xl font-bold leading-6 text-zinc-950 dark:text-foreground sm:text-2xl sm:leading-normal">{t.activeListingsTitle}</h2>
             <p className="text-xs leading-4 text-zinc-500 dark:text-muted-foreground sm:text-sm">{t.activeListingsDescription}</p>
           </div>
         </div>
@@ -305,6 +305,10 @@ export function ProfileListingsSection({ listings, sellerSchool }) {
         </Sheet>
       </div>
 
+      <p role="status" aria-live="polite" className="sr-only">
+        {filteredListings.length} {filteredListings.length === 1 ? t.listingResultSingular : t.listingResultPlural}
+      </p>
+
       {filteredListings.length > 0 ? (
         <section
           ref={scrollerRef}
@@ -328,7 +332,6 @@ export function ProfileListingsSection({ listings, sellerSchool }) {
                 imageAlt={listing.title}
                 imageSizes="(max-width: 429px) calc((100vw - 3.75rem) / 2), (max-width: 639px) 192px, (max-width: 767px) 176px, (max-width: 1023px) 192px, 208px"
                 compact
-                rail
               />
             </div>
           ))}
@@ -345,6 +348,7 @@ export function ProfileListingsSection({ listings, sellerSchool }) {
               onClick={() => {
                 setSearchQuery("");
                 setCategoryFilter("");
+                setSortOrder("newest");
               }}
               className="text-sm font-medium text-zinc-900 underline underline-offset-4 dark:text-foreground"
             >
