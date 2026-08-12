@@ -67,6 +67,12 @@ import {
   MESSAGE_MEDIA_BUCKET,
   sanitizeMessageAttachmentFileName,
 } from "@/lib/messages";
+import {
+  buildMessageMediaUploadPlan,
+  cleanupExpiredMessageMediaUploads,
+  releaseMessageMediaUploadReservations,
+  reserveMessageMediaUploads,
+} from "@/lib/message-media-reservations.mjs";
 import { createClient } from "@/utils/supabase/client";
 
 function formatPrice(price, language) {
@@ -530,18 +536,49 @@ export function MessagesThread({
 
     const attachmentsToSend = [...pendingAttachments];
     const uploadedPaths = [];
+    let reservedPaths = [];
     let messageWasCreated = false;
 
     try {
-      const attachmentPayload = [];
+      const uploadPlan = buildMessageMediaUploadPlan({
+        attachments: attachmentsToSend,
+        conversationId: conversation.id,
+        userId: currentUserId,
+        randomUUID: () => crypto.randomUUID(),
+        sanitizeFileName: sanitizeMessageAttachmentFileName,
+      });
+      const attachmentPayload = uploadPlan.map((item) => item.payload);
 
-      for (const attachment of attachmentsToSend) {
-        const storagePath = `${conversation.id}/${currentUserId}/${crypto.randomUUID()}-${sanitizeMessageAttachmentFileName(attachment.file.name)}`;
+      if (uploadPlan.length > 0) {
+        const expiredCleanupResult = await cleanupExpiredMessageMediaUploads(supabase);
+
+        if (expiredCleanupResult.error && !isMessageAttachmentSetupMissing(expiredCleanupResult.error)) {
+          console.error(
+            "Failed to clean up expired message media reservations:",
+            expiredCleanupResult.error.message,
+          );
+        }
+
+        // Record the exact planned paths before the RPC. If the response is lost
+        // after the database commits, the catch path can still release them.
+        reservedPaths = uploadPlan.map((item) => item.storagePath);
+        const { error: reservationError } = await reserveMessageMediaUploads(
+          supabase,
+          conversation.id,
+          uploadPlan,
+        );
+
+        if (reservationError) {
+          throw reservationError;
+        }
+      }
+
+      for (const item of uploadPlan) {
         const { data: uploadedObject, error: uploadError } = await supabase.storage
           .from(MESSAGE_MEDIA_BUCKET)
-          .upload(storagePath, attachment.file, {
+          .upload(item.storagePath, item.file, {
             cacheControl: "3600",
-            contentType: attachment.file.type,
+            contentType: item.file.type,
             upsert: false,
           });
 
@@ -549,14 +586,13 @@ export function MessagesThread({
           throw uploadError;
         }
 
-        const uploadedPath = uploadedObject?.path ?? storagePath;
+        const uploadedPath = uploadedObject?.path ?? item.storagePath;
+
+        if (uploadedPath !== item.storagePath) {
+          throw new Error("Uploaded message media path did not match its reservation.");
+        }
+
         uploadedPaths.push(uploadedPath);
-        attachmentPayload.push({
-          storage_path: uploadedPath,
-          file_name: sanitizeMessageAttachmentFileName(attachment.file.name),
-          mime_type: attachment.file.type,
-          size_bytes: attachment.file.size,
-        });
       }
 
       const messageOperation = attachmentPayload.length > 0
@@ -576,6 +612,7 @@ export function MessagesThread({
       }
 
       messageWasCreated = true;
+      reservedPaths = [];
       const createdMessage = Array.isArray(data) ? data[0] : data;
 
       if (createdMessage) {
@@ -617,6 +654,20 @@ export function MessagesThread({
 
         if (cleanupError) {
           console.error("Failed to clean up unsent message media:", cleanupError.message);
+        }
+      }
+
+      if (!messageWasCreated && reservedPaths.length > 0) {
+        const { error: releaseError } = await releaseMessageMediaUploadReservations(
+          supabase,
+          reservedPaths,
+        );
+
+        if (releaseError) {
+          console.error(
+            "Failed to release unsent message media reservations:",
+            releaseError.message,
+          );
         }
       }
 
