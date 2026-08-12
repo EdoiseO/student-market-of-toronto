@@ -97,7 +97,7 @@ export function ListingFormSkeleton({ mode = "create" }) {
           </header>
 
           <div className="p-4 sm:p-6 md:p-8">
-            <div className="grid gap-5 md:gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(288px,0.85fr)]">
+            <div className="grid gap-5 pb-24 md:gap-8 md:pb-0 xl:grid-cols-[minmax(0,1fr)_minmax(288px,0.85fr)]">
               <div className="space-y-4 md:space-y-5">
                 <FieldSkeleton />
                 <FieldSkeleton />
