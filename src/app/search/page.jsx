@@ -172,18 +172,18 @@ export default async function SearchPage({ searchParams }) {
 
       <div className="mx-auto flex min-w-0 w-full max-w-[1440px] flex-col gap-6 pt-5 md:pt-0">
         <section className="space-y-5">
-            <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-              <CardContent className="space-y-4 p-6">
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <Card className="rounded-2xl border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border md:rounded-[2rem]">
+              <CardContent className="space-y-3 px-4 py-3.5 md:space-y-4 md:p-6">
+                <div className="flex items-end justify-between gap-3 md:items-center">
                   <div>
-                    <p className="text-sm font-medium uppercase tracking-[0.18em] text-zinc-500 dark:text-muted-foreground">
+                    <p className="text-[0.6875rem] font-medium uppercase tracking-[0.16em] text-zinc-500 dark:text-muted-foreground md:text-sm md:tracking-[0.18em]">
                       {t.results}
                     </p>
-                    <h2 className="text-2xl font-bold text-zinc-950 dark:text-foreground">
+                    <h2 className="mt-0.5 text-lg font-bold leading-tight text-zinc-950 dark:text-foreground md:mt-0 md:text-2xl">
                       {filteredListings.length} {filteredListings.length === 1 ? t.listingResultSingular : t.listingResultPlural}
                     </h2>
                   </div>
-                  <div className="text-sm text-zinc-500 dark:text-muted-foreground">
+                  <div className="max-w-[52%] text-right text-xs leading-4 text-zinc-500 dark:text-muted-foreground md:max-w-none md:text-sm md:leading-normal">
                     {query ? `${t.showingMatchesFor} “${query}”` : t.showingAllActiveListings}
                   </div>
                 </div>
