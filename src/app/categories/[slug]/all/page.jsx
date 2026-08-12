@@ -101,7 +101,7 @@ export default async function CategoryAllPage({ params, searchParams }) {
 
         <section className="rounded-3xl bg-zinc-50 p-4 shadow-sm ring-1 ring-zinc-200 dark:bg-muted/40 dark:ring-border md:p-6">
           {paginatedItems.length > 0 ? (
-            <div className="grid min-w-0 grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid min-w-0 grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-6">
               {paginatedItems.map((item) => (
                 <CardImage
                   key={item.id}
@@ -112,7 +112,7 @@ export default async function CategoryAllPage({ params, searchParams }) {
                   imageUrls={(item.listing_images ?? []).map((image) => image.image_url)}
                   href={`/listings/${item.slug}`}
                   imageAlt={item.title}
-                  imageSizes="(max-width: 767px) calc((100vw - 5rem) / 2), (max-width: 1023px) calc((100vw - 27rem) / 2), (max-width: 1279px) calc((100vw - 29rem) / 3), 25vw"
+                  imageSizes="(max-width: 767px) calc((100vw - 5rem) / 2), (max-width: 1023px) calc((100vw - 27rem) / 2), (max-width: 1279px) calc((100vw - 29rem) / 3), (max-width: 1535px) 16vw, 220px"
                   compact
                 />
               ))}

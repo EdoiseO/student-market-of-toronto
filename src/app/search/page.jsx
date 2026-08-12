@@ -218,7 +218,7 @@ export default async function SearchPage({ searchParams }) {
                   </p>
                 </div>
               ) : filteredListings.length > 0 ? (
-                <div className="grid min-w-0 grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="grid min-w-0 grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-6">
                   {filteredListings.map((item) => (
                     <CardImage
                       key={item.id}
@@ -228,7 +228,7 @@ export default async function SearchPage({ searchParams }) {
                       meta={item.location || getTranslatedCategoryValue(item.category, t, language)}
                       imageUrls={(item.listing_images ?? []).map((image) => image.image_url)}
                       imageAlt={item.title}
-                      imageSizes="(max-width: 767px) calc((100vw - 4rem) / 2), (max-width: 1023px) calc((100vw - 27rem) / 2), (max-width: 1279px) calc((100vw - 29rem) / 3), 25vw"
+                      imageSizes="(max-width: 767px) calc((100vw - 4rem) / 2), (max-width: 1023px) calc((100vw - 27rem) / 2), (max-width: 1279px) calc((100vw - 29rem) / 3), (max-width: 1535px) 16vw, 220px"
                       href={`/listings/${item.slug}`}
                       compact
                     />

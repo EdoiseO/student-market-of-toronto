@@ -45,20 +45,24 @@ export default function HomePageContent({ listingSections }) {
             </div>
 
             {section.items.length > 0 ? (
-              <div className="grid min-w-0 grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-                {section.items.map((item) => (
-                  <CardImage
+              <div className="grid min-w-0 grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-6">
+                {section.items.map((item, itemIndex) => (
+                  <div
                     key={item.id}
-                    badge={item.badge}
-                    title={item.title}
-                    price={`$${Number(item.price).toFixed(2)}`}
-                    meta={item.location ?? ""}
-                    imageUrls={(item.listing_images ?? []).map((image) => image.image_url)}
-                    imageAlt={item.title}
-                    imageSizes="(max-width: 767px) calc((100vw - 5rem) / 2), (max-width: 1023px) calc((100vw - 27rem) / 2), (max-width: 1279px) calc((100vw - 29rem) / 3), 25vw"
-                    href={`/listings/${item.slug}`}
-                    compact
-                  />
+                    className={itemIndex >= 4 ? "hidden min-w-0 xl:block" : "min-w-0"}
+                  >
+                    <CardImage
+                      badge={item.badge}
+                      title={item.title}
+                      price={`$${Number(item.price).toFixed(2)}`}
+                      meta={item.location ?? ""}
+                      imageUrls={(item.listing_images ?? []).map((image) => image.image_url)}
+                      imageAlt={item.title}
+                      imageSizes="(max-width: 767px) calc((100vw - 5rem) / 2), (max-width: 1023px) calc((100vw - 27rem) / 2), (max-width: 1279px) calc((100vw - 29rem) / 3), (max-width: 1535px) 16vw, 220px"
+                      href={`/listings/${item.slug}`}
+                      compact
+                    />
+                  </div>
                 ))}
               </div>
             ) : (

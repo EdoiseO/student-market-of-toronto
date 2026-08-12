@@ -3,14 +3,24 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 function ListingPhotoGallerySkeleton() {
   return (
-    <div className="flex snap-x snap-mandatory gap-2 overflow-hidden pb-2 md:grid md:grid-cols-1 md:gap-4 md:pb-0 xl:grid-cols-2">
-      {Array.from({ length: 2 }, (_, index) => (
-        <Skeleton
-          key={index}
-          className="h-[216px] max-h-[240px] w-[85vw] shrink-0 rounded-2xl min-[430px]:h-[232px] md:h-[280px] md:w-full md:max-h-none"
-        />
-      ))}
-    </div>
+    <>
+      <div className="flex snap-x snap-mandatory gap-2 overflow-hidden pb-2 md:grid md:grid-cols-1 md:gap-4 md:pb-0 xl:hidden">
+        {Array.from({ length: 2 }, (_, index) => (
+          <Skeleton
+            key={index}
+            className="h-[216px] max-h-[240px] w-[85vw] shrink-0 rounded-2xl min-[430px]:h-[232px] md:h-[280px] md:w-full md:max-h-none"
+          />
+        ))}
+      </div>
+      <div className="hidden space-y-3 xl:block">
+        <Skeleton className="aspect-[16/9] w-full rounded-[2rem]" />
+        <div className="flex justify-center gap-2.5">
+          {Array.from({ length: 4 }, (_, index) => (
+            <Skeleton key={index} className="h-16 w-20 rounded-xl" />
+          ))}
+        </div>
+      </div>
+    </>
   );
 }
 

@@ -1,4 +1,4 @@
-import { ListingGridSkeleton } from "@/components/skeletons/listing-grid-skeleton";
+import { ListingCardSkeleton } from "@/components/skeletons/listing-card-skeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const HOME_CATEGORY_COUNT = 10;
@@ -12,14 +12,19 @@ function CategorySectionSkeleton({ detailed = false }) {
       </div>
 
       {detailed ? (
-        <ListingGridSkeleton count={4} compact />
+        <div className="grid min-w-0 grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-6">
+          {Array.from({ length: 6 }, (_, index) => (
+            <div key={index} className={index >= 4 ? "hidden xl:block" : undefined}>
+              <ListingCardSkeleton compact />
+            </div>
+          ))}
+        </div>
       ) : (
-        <div className="grid min-w-0 grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-          {Array.from({ length: 4 }, (_, index) => (
-            <Skeleton
-              key={index}
-              className="h-[200px] w-full rounded-xl md:h-[228px] lg:h-[240px]"
-            />
+        <div className="grid min-w-0 grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-6">
+          {Array.from({ length: 6 }, (_, index) => (
+            <div key={index} className={index >= 4 ? "hidden xl:block" : undefined}>
+              <Skeleton className="h-[200px] w-full rounded-xl md:h-[228px] lg:h-[240px]" />
+            </div>
           ))}
         </div>
       )}

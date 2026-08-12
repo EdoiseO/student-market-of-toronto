@@ -7,31 +7,65 @@ import { Dialog as DialogPrimitive } from "radix-ui";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+} from "@/components/ui/carousel";
 import { REMOTE_IMAGE_BLUR_DATA_URL } from "@/lib/image-config";
 import { cn } from "@/lib/utils";
 
 export function ListingPhotoCarousel({ photos, title }) {
   const [isViewerOpen, setIsViewerOpen] = React.useState(false);
   const [activePhotoIndex, setActivePhotoIndex] = React.useState(0);
+  const [desktopCarouselApi, setDesktopCarouselApi] = React.useState();
   const activePhoto = photos[activePhotoIndex];
   const hasMultiplePhotos = photos.length > 1;
+  const desktopCarouselOptions = React.useMemo(
+    () => ({ loop: hasMultiplePhotos }),
+    [hasMultiplePhotos],
+  );
 
   function openPhoto(index) {
     setActivePhotoIndex(index);
+    desktopCarouselApi?.scrollTo(index);
     setIsViewerOpen(true);
   }
 
   function showPreviousPhoto() {
-    setActivePhotoIndex((currentIndex) =>
-      currentIndex === 0 ? photos.length - 1 : currentIndex - 1,
-    );
+    setActivePhotoIndex((currentIndex) => {
+      const previousIndex = currentIndex === 0 ? photos.length - 1 : currentIndex - 1;
+      desktopCarouselApi?.scrollTo(previousIndex);
+      return previousIndex;
+    });
   }
 
   function showNextPhoto() {
-    setActivePhotoIndex((currentIndex) =>
-      currentIndex === photos.length - 1 ? 0 : currentIndex + 1,
-    );
+    setActivePhotoIndex((currentIndex) => {
+      const nextIndex = currentIndex === photos.length - 1 ? 0 : currentIndex + 1;
+      desktopCarouselApi?.scrollTo(nextIndex);
+      return nextIndex;
+    });
   }
+
+  React.useEffect(() => {
+    if (!desktopCarouselApi) {
+      return undefined;
+    }
+
+    const updateActivePhoto = () => {
+      setActivePhotoIndex(desktopCarouselApi.selectedScrollSnap());
+    };
+
+    updateActivePhoto();
+    desktopCarouselApi.on("select", updateActivePhoto);
+    desktopCarouselApi.on("reInit", updateActivePhoto);
+
+    return () => {
+      desktopCarouselApi.off("select", updateActivePhoto);
+      desktopCarouselApi.off("reInit", updateActivePhoto);
+    };
+  }, [desktopCarouselApi]);
 
   function handleViewerKeyDown(event) {
     if (!hasMultiplePhotos) {
@@ -52,8 +86,9 @@ export function ListingPhotoCarousel({ photos, title }) {
   return (
     <DialogPrimitive.Root open={isViewerOpen} onOpenChange={setIsViewerOpen}>
       <div
+        role="region"
         aria-label={`${title} photos`}
-        className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-1 md:gap-4 md:overflow-visible md:pb-0 xl:grid-cols-2"
+        className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-1 md:gap-4 md:overflow-visible md:pb-0 xl:hidden"
       >
         {photos.map((photo, index) => (
           <div
@@ -101,6 +136,115 @@ export function ListingPhotoCarousel({ photos, title }) {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="hidden space-y-3 xl:block">
+        <Carousel
+          className="w-full"
+          setApi={setDesktopCarouselApi}
+          opts={desktopCarouselOptions}
+        >
+          <CarouselContent>
+            {photos.map((photo, index) => (
+              <CarouselItem key={`${photo.label}-desktop-${index}`}>
+                <div className="relative aspect-[16/9] overflow-hidden rounded-[2rem] border border-zinc-200 bg-zinc-100 dark:border-border dark:bg-zinc-950">
+                  {photo.imageUrl ? (
+                    <button
+                      type="button"
+                      aria-label={`View ${title} photo ${index + 1} full size`}
+                      className="relative block h-full w-full cursor-zoom-in outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-primary/70"
+                      onClick={() => openPhoto(index)}
+                    >
+                      <Image
+                        src={photo.imageUrl}
+                        alt={`${title} photo ${index + 1}`}
+                        fill
+                        sizes="(min-width: 1280px) min(58vw, 820px), 100vw"
+                        priority={index === 0}
+                        placeholder="blur"
+                        blurDataURL={REMOTE_IMAGE_BLUR_DATA_URL}
+                        className="object-contain"
+                      />
+                      <span className="absolute right-5 top-5 z-10 flex size-11 items-center justify-center rounded-full bg-black/65 text-white shadow-sm backdrop-blur-sm">
+                        <Maximize2 className="size-5" aria-hidden="true" />
+                      </span>
+                    </button>
+                  ) : (
+                    <span className="flex h-full w-full items-center justify-center text-8xl font-semibold text-zinc-500 dark:text-muted-foreground">
+                      {index + 1}
+                    </span>
+                  )}
+                  <div className="pointer-events-none absolute left-5 top-5 z-10">
+                    <Badge variant="secondary" className="bg-white/90 text-zinc-950 dark:bg-background/90 dark:text-foreground">
+                      {photo.label}
+                    </Badge>
+                  </div>
+                </div>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+
+          {hasMultiplePhotos ? (
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                className="absolute bottom-0 left-4 top-0 z-20 my-auto rounded-full bg-white/90 text-zinc-900 shadow-sm hover:bg-white dark:bg-background/90 dark:text-foreground dark:hover:bg-background"
+                aria-label="Show previous photo"
+                onClick={() => desktopCarouselApi?.scrollPrev()}
+              >
+                <ChevronLeft className="size-5" />
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                className="absolute bottom-0 right-4 top-0 z-20 my-auto rounded-full bg-white/90 text-zinc-900 shadow-sm hover:bg-white dark:bg-background/90 dark:text-foreground dark:hover:bg-background"
+                aria-label="Show next photo"
+                onClick={() => desktopCarouselApi?.scrollNext()}
+              >
+                <ChevronRight className="size-5" />
+              </Button>
+            </>
+          ) : null}
+        </Carousel>
+
+        {hasMultiplePhotos ? (
+          <div className="flex items-center justify-center gap-2.5" aria-label={`${title} photo previews`}>
+            {photos.map((photo, index) => (
+              <button
+                key={`${photo.label}-thumbnail-${index}`}
+                type="button"
+                aria-label={`Show ${title} photo ${index + 1}`}
+                aria-current={activePhotoIndex === index ? "true" : undefined}
+                onClick={() => desktopCarouselApi?.scrollTo(index)}
+                className={cn(
+                  "relative h-16 w-20 overflow-hidden rounded-xl border bg-zinc-100 outline-none transition focus-visible:ring-2 focus-visible:ring-ring dark:bg-muted",
+                  activePhotoIndex === index
+                    ? "border-zinc-900 ring-2 ring-zinc-900/10 dark:border-ring dark:ring-ring/20"
+                    : "border-zinc-200 hover:border-zinc-400 dark:border-border dark:hover:border-ring",
+                )}
+              >
+                {photo.imageUrl ? (
+                  <Image
+                    src={photo.imageUrl}
+                    alt=""
+                    fill
+                    sizes="80px"
+                    placeholder="blur"
+                    blurDataURL={REMOTE_IMAGE_BLUR_DATA_URL}
+                    className="object-cover"
+                  />
+                ) : (
+                  <span className="flex h-full w-full items-center justify-center text-xl font-semibold text-zinc-500 dark:text-muted-foreground">
+                    {index + 1}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       <DialogPrimitive.Portal>

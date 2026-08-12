@@ -78,7 +78,7 @@ function getAllListingsPreview(listings, limit, usedIds) {
 
 function CategoryListingGrid({ items }) {
   return (
-    <div className="grid min-w-0 grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid min-w-0 grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-6">
       {items.map((item) => (
         <CardImage
           key={item.id}
@@ -89,7 +89,7 @@ function CategoryListingGrid({ items }) {
           imageUrls={(item.listing_images ?? []).map((image) => image.image_url)}
           href={`/listings/${item.slug}`}
           imageAlt={item.title}
-          imageSizes="(max-width: 767px) calc((100vw - 5rem) / 2), (max-width: 1023px) calc((100vw - 27rem) / 2), (max-width: 1279px) calc((100vw - 29rem) / 3), 25vw"
+          imageSizes="(max-width: 767px) calc((100vw - 5rem) / 2), (max-width: 1023px) calc((100vw - 27rem) / 2), (max-width: 1279px) calc((100vw - 29rem) / 3), (max-width: 1535px) 16vw, 220px"
           compact
         />
       ))}
