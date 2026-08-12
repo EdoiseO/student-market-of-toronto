@@ -83,15 +83,6 @@ export async function POST(request) {
     };
     delete nextUserMetadata.force_name_change;
 
-    const { error: authUpdateError } = await admin.auth.admin.updateUserById(user.id, {
-      user_metadata: nextUserMetadata,
-      app_metadata: nextAppMetadata,
-    });
-
-    if (authUpdateError) {
-      throw authUpdateError;
-    }
-
     const { error: profileError } = await admin.from("profiles").upsert(
       {
         id: user.id,
@@ -103,6 +94,15 @@ export async function POST(request) {
 
     if (profileError) {
       throw profileError;
+    }
+
+    const { error: authUpdateError } = await admin.auth.admin.updateUserById(user.id, {
+      user_metadata: nextUserMetadata,
+      app_metadata: nextAppMetadata,
+    });
+
+    if (authUpdateError) {
+      throw authUpdateError;
     }
 
     return NextResponse.json({ success: true, requiresNameChange: false });

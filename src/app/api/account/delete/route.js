@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 import { extractOwnedProfileImageStoragePath } from "@/lib/profile-avatar";
+import { isOwnedStoragePath } from "@/lib/storage-path-ownership.mjs";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { createClient } from "@/utils/supabase/server";
 
@@ -123,8 +124,12 @@ export async function POST() {
     }
 
     const listingIds = (ownedListings ?? []).map((listing) => listing.id);
+    const ownedListingIds = new Set(listingIds);
     const listingImagesResult = listingIds.length > 0
-      ? await admin.from("listing_images").select("storage_path").in("listing_id", listingIds)
+      ? await admin
+          .from("listing_images")
+          .select("listing_id, storage_path")
+          .in("listing_id", listingIds)
       : { data: [], error: null };
 
     if (listingImagesResult.error && !isSkippableCleanupError(listingImagesResult.error)) {
@@ -147,8 +152,12 @@ export async function POST() {
       .map((attachment) => attachment.storage_path)
       .filter((storagePath) => storagePath?.split("/")?.[1] === user.id);
     const listingImagePaths = (listingImagesResult.data ?? [])
-      .map((image) => image.storage_path)
-      .filter(Boolean);
+      .filter(
+        (image) =>
+          ownedListingIds.has(image.listing_id) &&
+          isOwnedStoragePath(image.storage_path, user.id, image.listing_id),
+      )
+      .map((image) => image.storage_path);
     const profileImagePath = extractOwnedProfileImageStoragePath(
       profileRow?.avatar_url ?? null,
       user.id,
