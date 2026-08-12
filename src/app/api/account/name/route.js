@@ -2,6 +2,10 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { isNameChangeRequired } from "@/lib/moderation";
+import {
+  REJECTED_PROFILE_NAME_FINGERPRINT_KEY,
+  matchesRejectedProfileName,
+} from "@/lib/name-sanction.mjs";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { createClient } from "@/utils/supabase/server";
 
@@ -70,10 +74,24 @@ export async function POST(request) {
       );
     }
 
+    const rejectedNameFingerprint =
+      latestUser.app_metadata?.[REJECTED_PROFILE_NAME_FINGERPRINT_KEY];
+
+    if (
+      requiresNameChange &&
+      matchesRejectedProfileName(firstName, lastName, rejectedNameFingerprint)
+    ) {
+      return NextResponse.json(
+        { error: "Choose a different first or last name." },
+        { status: 409 },
+      );
+    }
+
     const nextAppMetadata = { ...(latestUser.app_metadata ?? {}) };
 
     if (requiresNameChange) {
       delete nextAppMetadata.force_name_change;
+      delete nextAppMetadata[REJECTED_PROFILE_NAME_FINGERPRINT_KEY];
     }
 
     const nextUserMetadata = {

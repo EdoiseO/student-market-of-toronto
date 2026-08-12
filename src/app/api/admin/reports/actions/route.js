@@ -6,6 +6,11 @@ import {
   getUserModerationRole,
   REPORT_STATUS_VALUES,
 } from "@/lib/moderation";
+import {
+  REJECTED_PROFILE_NAME_FINGERPRINT_KEY,
+  areOpenProfileReportsBoundToUser,
+  getProfileNameFingerprint,
+} from "@/lib/name-sanction.mjs";
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { createClient } from "@/utils/supabase/server";
 
@@ -86,7 +91,7 @@ export async function POST(request) {
 
     if (action === "update_status") {
       const reportIds = Array.isArray(payload?.reportIds)
-        ? payload.reportIds.filter(Boolean)
+        ? [...new Set(payload.reportIds.filter(Boolean))]
         : [];
       const nextStatus = payload?.status;
 
@@ -197,7 +202,7 @@ export async function POST(request) {
       }
 
       const reportIds = Array.isArray(payload?.reportIds)
-        ? payload.reportIds.filter(Boolean)
+        ? [...new Set(payload.reportIds.filter(Boolean))]
         : [];
       const targetUserId = payload?.userId;
 
@@ -205,6 +210,22 @@ export async function POST(request) {
         return NextResponse.json(
           { error: "Missing name change moderation payload." },
           { status: 400 },
+        );
+      }
+
+      const { data: reportRows, error: reportLookupError } = await admin
+        .from("reports")
+        .select("id, subject_type, subject_id, reported_user_id, status")
+        .in("id", reportIds);
+
+      if (reportLookupError) {
+        throw reportLookupError;
+      }
+
+      if (!areOpenProfileReportsBoundToUser(reportRows, reportIds, targetUserId)) {
+        return NextResponse.json(
+          { error: "Every selected open profile report must belong to this user." },
+          { status: 409 },
         );
       }
 
@@ -224,7 +245,22 @@ export async function POST(request) {
         );
       }
 
+      const { data: targetProfile, error: targetProfileError } = await admin
+        .from("profiles")
+        .select("first_name, last_name")
+        .eq("id", targetUserId)
+        .maybeSingle();
+
+      if (targetProfileError) {
+        throw targetProfileError;
+      }
+
       const reviewedAt = new Date().toISOString();
+      const rejectedNameFingerprint =
+        getProfileNameFingerprint(
+          targetProfile?.first_name ?? targetUser.user_metadata?.first_name,
+          targetProfile?.last_name ?? targetUser.user_metadata?.last_name,
+        ) ?? targetUser.app_metadata?.[REJECTED_PROFILE_NAME_FINGERPRINT_KEY] ?? null;
       const nextUserMetadata = {
         ...(targetUser.user_metadata ?? {}),
         first_name: null,
@@ -232,12 +268,18 @@ export async function POST(request) {
       };
       delete nextUserMetadata.force_name_change;
 
+      const nextAppMetadata = {
+        ...(targetUser.app_metadata ?? {}),
+        force_name_change: true,
+      };
+
+      if (rejectedNameFingerprint) {
+        nextAppMetadata[REJECTED_PROFILE_NAME_FINGERPRINT_KEY] = rejectedNameFingerprint;
+      }
+
       const { error: authUpdateError } = await admin.auth.admin.updateUserById(targetUserId, {
         user_metadata: nextUserMetadata,
-        app_metadata: {
-          ...(targetUser.app_metadata ?? {}),
-          force_name_change: true,
-        },
+        app_metadata: nextAppMetadata,
       });
 
       if (authUpdateError) {
@@ -263,7 +305,8 @@ export async function POST(request) {
           reviewed_by: user.id,
           reviewed_at: reviewedAt,
         })
-        .in("id", reportIds);
+        .in("id", reportIds)
+        .eq("status", REPORT_STATUS_VALUES.open);
 
       if (reportsError) {
         throw reportsError;

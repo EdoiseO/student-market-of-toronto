@@ -43,9 +43,11 @@ export default async function AdminReportReviewPage({ params }) {
     redirect("/login");
   }
 
-  const accessUser = (await getLatestAuthUser(admin, user.id, "report review access")) ?? user;
+  const accessUser = admin
+    ? await getLatestAuthUser(admin, user.id, "report review access")
+    : user;
 
-  if (!isModerationRole(getUserModerationRole(accessUser))) {
+  if (!accessUser || !isModerationRole(getUserModerationRole(accessUser))) {
     redirect("/");
   }
 
