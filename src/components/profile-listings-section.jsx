@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChevronLeft, ChevronRight, UserRound } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, SlidersHorizontal, UserRound } from "lucide-react";
 
 import { CardImage } from "@/components/card-image";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { useLanguage } from "@/context/LanguageContext";
 import { getTranslatedCategoryTitle, normalizeCategoryValue } from "@/lib/categories";
 
@@ -119,6 +129,56 @@ export function ProfileListingsSection({ listings, sellerSchool }) {
     language === "fr" ? "Annonces précédentes du vendeur" : "Previous seller listings";
   const nextListingsLabel =
     language === "fr" ? "Annonces suivantes du vendeur" : "Next seller listings";
+  const activeFilterCount = Number(Boolean(categoryFilter)) + Number(sortOrder !== "newest");
+
+  function renderSortControl(id) {
+    return (
+      <div className="min-w-0">
+        <Label htmlFor={id} className="mb-1.5 block text-xs">
+          {t.sortListingsLabel}
+        </Label>
+        <NativeSelect
+          id={id}
+          value={sortOrder}
+          onChange={(event) => setSortOrder(event.target.value)}
+          className="w-full"
+          size="sm"
+        >
+          <NativeSelectOption value="newest">{t.newestFirst}</NativeSelectOption>
+          <NativeSelectOption value="oldest">{t.oldestFirst}</NativeSelectOption>
+        </NativeSelect>
+      </div>
+    );
+  }
+
+  function renderCategoryControl(id) {
+    return (
+      <div className="min-w-0">
+        <Label htmlFor={id} className="mb-1.5 block text-xs">
+          {t.filterByCategoryLabel}
+        </Label>
+        <NativeSelect
+          id={id}
+          value={categoryFilter}
+          onChange={(event) => setCategoryFilter(event.target.value)}
+          className="w-full"
+          size="sm"
+        >
+          <NativeSelectOption value="">{t.allCategories}</NativeSelectOption>
+          {categoryOptions.map((categoryValue) => (
+            <NativeSelectOption key={categoryValue} value={categoryValue}>
+              {getTranslatedCategoryTitle(
+                getCategorySlugFromValue(categoryValue),
+                t,
+                language,
+                categoryValue,
+              )}
+            </NativeSelectOption>
+          ))}
+        </NativeSelect>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -131,47 +191,16 @@ export function ProfileListingsSection({ listings, sellerSchool }) {
           </div>
         </div>
 
-        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:flex-row sm:gap-3 lg:ml-auto lg:flex-1 lg:items-center lg:justify-end lg:gap-2">
-          <div className="min-w-0 sm:w-full sm:max-w-[152px]">
-            <Label htmlFor="profile-listings-sort" className="sr-only">
-              {t.sortListingsLabel}
-            </Label>
-            <NativeSelect
-              id="profile-listings-sort"
-              value={sortOrder}
-              onChange={(event) => setSortOrder(event.target.value)}
-              className="w-full"
-            >
-              <NativeSelectOption value="newest">{t.newestFirst}</NativeSelectOption>
-              <NativeSelectOption value="oldest">{t.oldestFirst}</NativeSelectOption>
-            </NativeSelect>
+        <div className="hidden w-full gap-2 md:flex md:flex-row md:items-end lg:ml-auto lg:flex-1 lg:justify-end">
+          <div className="w-full max-w-[152px] [&_label]:sr-only">
+            {renderSortControl("profile-listings-sort-desktop")}
           </div>
 
-          <div className="min-w-0 sm:w-full sm:max-w-[168px]">
-            <Label htmlFor="profile-listings-category" className="sr-only">
-              {t.filterByCategoryLabel}
-            </Label>
-            <NativeSelect
-              id="profile-listings-category"
-              value={categoryFilter}
-              onChange={(event) => setCategoryFilter(event.target.value)}
-              className="w-full"
-            >
-              <NativeSelectOption value="">{t.allCategories}</NativeSelectOption>
-              {categoryOptions.map((categoryValue) => (
-                <NativeSelectOption key={categoryValue} value={categoryValue}>
-                  {getTranslatedCategoryTitle(
-                    getCategorySlugFromValue(categoryValue),
-                    t,
-                    language,
-                    categoryValue,
-                  )}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
+          <div className="w-full max-w-[168px] [&_label]:sr-only">
+            {renderCategoryControl("profile-listings-category-desktop")}
           </div>
 
-          <div className="col-span-2 min-w-0 sm:w-full sm:max-w-[240px] lg:w-[240px] lg:max-w-none">
+          <div className="w-full max-w-[240px] lg:w-[240px] lg:max-w-none">
             <Label htmlFor="profile-listings-search" className="sr-only">
               {t.searchListingsLabel}
             </Label>
@@ -180,7 +209,7 @@ export function ProfileListingsSection({ listings, sellerSchool }) {
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder={t.searchListingsPlaceholder}
-              className="rounded-xl bg-white dark:bg-input/30"
+              className="h-11 rounded-xl bg-white dark:bg-input/30"
             />
           </div>
 
@@ -213,16 +242,81 @@ export function ProfileListingsSection({ listings, sellerSchool }) {
         </div>
       </div>
 
+      <div className="mb-3 flex items-center gap-2 md:hidden">
+        <div className="relative min-w-0 flex-1">
+          <Label htmlFor="profile-listings-search-mobile" className="sr-only">
+            {t.searchListingsLabel}
+          </Label>
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500 dark:text-muted-foreground" />
+          <Input
+            id="profile-listings-search-mobile"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder={t.searchListingsLabel}
+            className="h-11 rounded-xl bg-white pl-9 text-base dark:bg-input/30"
+          />
+        </div>
+
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button type="button" variant="outline" className="h-11 rounded-xl px-3">
+              <SlidersHorizontal className="size-4" />
+              <span>{t.filters}</span>
+              {activeFilterCount > 0 ? (
+                <span className="flex size-5 items-center justify-center rounded-full bg-zinc-950 text-xs font-semibold text-white dark:bg-white dark:text-zinc-950">
+                  {activeFilterCount}
+                </span>
+              ) : null}
+            </Button>
+          </SheetTrigger>
+          <SheetContent
+            side="bottom"
+            showCloseButton={false}
+            className="max-h-[80svh] overflow-y-auto rounded-t-[1.75rem] pb-[max(1rem,env(safe-area-inset-bottom))]"
+          >
+            <SheetHeader className="border-b border-zinc-200 px-4 pb-3 pt-4 text-left dark:border-border">
+              <SheetTitle className="text-lg font-semibold">{t.filters}</SheetTitle>
+              <SheetDescription>
+                {language === "fr"
+                  ? "Les annonces se mettent à jour dès que vous choisissez une option."
+                  : "Listings update as soon as you choose an option."}
+              </SheetDescription>
+            </SheetHeader>
+            <div className="grid gap-4 px-4 py-2">
+              {renderSortControl("profile-listings-sort-mobile")}
+              {renderCategoryControl("profile-listings-category-mobile")}
+            </div>
+            <SheetFooter className="grid grid-cols-2 border-t border-zinc-200 pt-3 dark:border-border">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setSortOrder("newest");
+                  setCategoryFilter("");
+                }}
+              >
+                {t.clearFilters}
+              </Button>
+              <SheetClose asChild>
+                <Button type="button">{language === "fr" ? "Terminé" : "Done"}</Button>
+              </SheetClose>
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
+      </div>
+
       {filteredListings.length > 0 ? (
         <section
           ref={scrollerRef}
+          role="list"
           aria-labelledby="profile-active-listings-title"
-          className="-mx-2 flex snap-x snap-mandatory gap-3 overflow-x-auto px-2 pb-3 scroll-smooth overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="-mx-1 flex snap-x snap-mandatory items-start gap-3 overflow-x-auto px-1 pb-3 scroll-smooth overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {filteredListings.map((listing) => (
             <div
               key={listing.id}
-              className="w-40 flex-none snap-start sm:w-44 md:w-48 lg:w-52"
+              role="listitem"
+              className="w-[calc((100%_-_0.75rem)/2)] max-w-48 min-w-0 flex-none snap-start self-start sm:w-44 md:w-48 lg:w-52 lg:max-w-52"
             >
               <CardImage
                 badge={listing.badge}
@@ -232,8 +326,9 @@ export function ProfileListingsSection({ listings, sellerSchool }) {
                 imageUrls={(listing.listing_images ?? []).map((image) => image.image_url)}
                 href={`/listings/${listing.slug}`}
                 imageAlt={listing.title}
-                imageSizes="(max-width: 639px) 160px, (max-width: 767px) 176px, (max-width: 1023px) 192px, 208px"
+                imageSizes="(max-width: 429px) calc((100vw - 3.75rem) / 2), (max-width: 639px) 192px, (max-width: 767px) 176px, (max-width: 1023px) 192px, 208px"
                 compact
+                rail
               />
             </div>
           ))}

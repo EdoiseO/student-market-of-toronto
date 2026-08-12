@@ -66,7 +66,7 @@ export function SimilarListingsCarousel({ items }) {
     <>
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-zinc-950 dark:text-foreground">
+          <h2 id="similar-listings-title" className="text-2xl font-bold text-zinc-950 dark:text-foreground">
             {t.similarListings}
           </h2>
           <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
@@ -105,13 +105,15 @@ export function SimilarListingsCarousel({ items }) {
       {items.length > 0 ? (
         <div
           ref={scrollerRef}
-          aria-label={t.similarListings}
-          className="-mx-2 flex snap-x snap-mandatory gap-3 overflow-x-auto px-2 pb-3 scroll-smooth overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          role="list"
+          aria-labelledby="similar-listings-title"
+          className="-mx-1 flex snap-x snap-mandatory items-start gap-3 overflow-x-auto px-1 pb-3 scroll-smooth overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {items.map((item) => (
             <div
               key={item.slug}
-              className="w-40 flex-none snap-start sm:w-44 md:w-48 lg:w-52"
+              role="listitem"
+              className="w-[calc((100%_-_0.75rem)/2)] max-w-48 min-w-0 flex-none snap-start self-start sm:w-44 md:w-48 lg:w-52 lg:max-w-52"
             >
               <CardImage
                 badge={item.badge}
@@ -121,8 +123,9 @@ export function SimilarListingsCarousel({ items }) {
                 imageUrls={item.imageUrls}
                 href={`/listings/${item.slug}`}
                 imageAlt={item.title}
-                imageSizes="208px"
+                imageSizes="(max-width: 429px) calc((100vw - 3.75rem) / 2), (max-width: 639px) 192px, (max-width: 767px) 176px, (max-width: 1023px) 192px, 208px"
                 compact
+                rail
               />
             </div>
           ))}

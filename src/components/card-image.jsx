@@ -30,6 +30,7 @@ export function CardImage({
   actionLabel,
   href = "#",
   compact = false,
+  rail = false,
 }) {
   const { t } = useLanguage();
   const images = React.useMemo(() => {
@@ -84,9 +85,12 @@ export function CardImage({
     <Link
       href={href}
       className={cn(
-        "group block h-full [content-visibility:auto] focus-visible:outline-none",
+        "group block [-webkit-tap-highlight-color:transparent] [content-visibility:auto] focus-visible:outline-none active:opacity-90",
+        rail ? "h-auto" : "h-full",
         compact
-          ? "[contain-intrinsic-size:auto_276px]"
+          ? rail
+            ? "[contain-intrinsic-size:auto_236px]"
+            : "[contain-intrinsic-size:auto_276px]"
           : "[contain-intrinsic-size:auto_360px]",
       )}
       onMouseEnter={handlePointerEnter}
@@ -95,12 +99,17 @@ export function CardImage({
       onBlur={handlePointerLeave}
       aria-label={`${actionLabel ?? t.viewListing}: ${title}`}
     >
-      <Card className="flex h-full w-full max-w-none flex-col gap-0 overflow-hidden border-zinc-200 bg-white pt-0 shadow-sm ring-1 ring-zinc-200/80 transition-transform group-hover:-translate-y-0.5 group-focus-visible:-translate-y-0.5 group-focus-visible:ring-2 group-focus-visible:ring-zinc-900/15 dark:border-border dark:bg-card dark:ring-border dark:group-focus-visible:ring-white/15">
+      <Card className={cn(
+        "flex w-full max-w-none flex-col gap-0 overflow-hidden border-zinc-200 bg-white pt-0 shadow-sm ring-1 ring-zinc-200/80 transition-transform group-hover:-translate-y-0.5 group-focus-visible:-translate-y-0.5 group-focus-visible:ring-2 group-focus-visible:ring-zinc-900/15 dark:border-border dark:bg-card dark:ring-border dark:group-focus-visible:ring-white/15",
+        rail ? "h-auto" : "h-full",
+      )}>
         <div
           className={cn(
             "relative w-full shrink-0 aspect-[4/3] overflow-hidden bg-zinc-200 dark:bg-muted",
             compact
-              ? "h-[108px] min-[430px]:h-[116px] md:h-[136px] lg:h-[148px]"
+              ? rail
+                ? "h-auto aspect-[4/3]"
+                : "h-[108px] min-[430px]:h-[116px] md:h-[136px] lg:h-[148px]"
               : "h-[156px] min-[430px]:h-[168px] md:h-[200px] lg:h-[220px]",
           )}
         >
