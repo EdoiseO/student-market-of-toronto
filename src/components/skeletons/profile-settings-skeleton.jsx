@@ -2,43 +2,41 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function ProfileSettingsSkeleton() {
   return (
-    <div aria-hidden="true" className="flex flex-col gap-8">
-      <section className="rounded-3xl bg-card p-8 shadow-sm ring-1 ring-border">
-        <Skeleton className="h-10 w-52" />
-        <Skeleton className="mt-3 h-4 w-full max-w-3xl" />
-        <Skeleton className="mt-2 h-4 w-4/5 max-w-2xl" />
+    <div aria-hidden="true" className="flex flex-col gap-3 md:gap-8">
+      <section className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border md:rounded-3xl md:p-8">
+        <Skeleton className="h-7 w-40 md:h-10 md:w-52" />
+        <Skeleton className="mt-2 h-3 w-full max-w-3xl md:mt-3 md:h-4" />
       </section>
 
-      <div className="grid gap-8 xl:grid-cols-[320px_minmax(0,1fr)]">
-        <section className="overflow-hidden rounded-3xl bg-card shadow-sm ring-1 ring-border">
-          <div className="border-b border-border px-6 py-6">
-            <Skeleton className="h-7 w-40" />
-            <Skeleton className="mt-3 h-4 w-full" />
-            <Skeleton className="mt-2 h-4 w-4/5" />
+      <div className="grid gap-3 md:gap-8 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <section className="overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border md:rounded-3xl">
+          <div className="border-b border-border px-4 py-3 md:px-6 md:py-6">
+            <Skeleton className="h-5 w-32 md:h-7 md:w-40" />
+            <Skeleton className="mt-2 h-3 w-4/5 md:mt-3 md:h-4 md:w-full" />
           </div>
-          <div className="flex flex-col items-center gap-6 px-6 pt-4 pb-8 text-center">
-            <div className="relative">
-              <Skeleton className="size-20 rounded-[1.5rem] lg:size-[120px] lg:rounded-[2rem]" />
+          <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 px-4 py-3 md:flex md:flex-col md:gap-6 md:px-6 md:pb-8 md:pt-4">
+            <div className="relative self-center">
+              <Skeleton className="size-16 rounded-2xl md:size-20 md:rounded-[1.5rem] lg:size-[120px] lg:rounded-[2rem]" />
               <Skeleton className="absolute right-1 bottom-1 size-11 rounded-full" />
             </div>
-            <div className="w-full space-y-2">
-              <Skeleton className="mx-auto h-4 w-44 max-w-full" />
-              <Skeleton className="mx-auto h-3 w-4/5" />
+            <div className="min-w-0 space-y-1 md:w-full md:space-y-2">
+              <Skeleton className="h-4 w-36 max-w-full md:mx-auto md:w-44" />
+              <Skeleton className="h-3 w-4/5 md:mx-auto" />
             </div>
-            <div className="w-full space-y-2 rounded-2xl border border-border p-4 text-left">
-              <Skeleton className="h-4 w-16" />
-              <Skeleton className="h-3 w-3/4" />
+            <div className="col-span-2 flex w-full justify-between gap-3 rounded-xl border border-border p-3 md:block md:space-y-2 md:rounded-2xl md:p-4">
+              <Skeleton className="h-3 w-16 md:h-4" />
+              <Skeleton className="h-3 w-32 md:w-3/4" />
             </div>
           </div>
         </section>
 
-        <section className="overflow-hidden rounded-3xl bg-card shadow-sm ring-1 ring-border">
-          <div className="border-b border-border px-6 py-6">
-            <Skeleton className="h-7 w-48" />
-            <Skeleton className="mt-3 h-4 w-full max-w-xl" />
+        <section className="overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border md:rounded-3xl">
+          <div className="border-b border-border px-4 py-3 md:px-6 md:py-6">
+            <Skeleton className="h-5 w-40 md:h-7 md:w-48" />
+            <Skeleton className="mt-2 h-3 w-full max-w-xl md:mt-3 md:h-4" />
           </div>
-          <div className="space-y-6 px-6 py-8">
-            <div className="grid gap-4 md:max-w-[50%]">
+          <div className="space-y-3 px-4 py-3 md:space-y-6 md:px-6 md:py-8">
+            <div className="grid grid-cols-2 gap-3 md:max-w-[70%] md:gap-4">
               {Array.from({ length: 2 }, (_, index) => (
                 <div key={index} className="space-y-2">
                   <Skeleton className="h-4 w-24" />
@@ -48,7 +46,7 @@ export function ProfileSettingsSkeleton() {
             </div>
             <div className="space-y-2">
               <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-36 w-full rounded-2xl" />
+              <Skeleton className="h-28 w-full rounded-xl md:h-36 md:rounded-2xl" />
             </div>
             <div className="flex justify-end">
               <Skeleton className="h-11 w-32 rounded-xl" />
