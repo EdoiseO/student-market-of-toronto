@@ -105,7 +105,7 @@ export default async function PublicProfilePage({ params }) {
     <main className="min-h-screen bg-zinc-100 p-4 dark:bg-background md:p-6 lg:p-8">
       <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-3 md:gap-6 lg:gap-7">
         <section className="rounded-[1.5rem] bg-white p-3 shadow-sm ring-1 ring-zinc-200 dark:bg-card dark:ring-border sm:p-6 lg:rounded-3xl lg:p-7">
-          <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-3 lg:grid-cols-[auto_minmax(0,1fr)_minmax(288px,304px)] lg:gap-x-6">
+          <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-3 lg:grid-cols-[auto_minmax(0,1fr)_minmax(420px,456px)] lg:gap-x-6">
             <div className="shrink-0">
               <ProfileAvatar
                 email={null}
@@ -136,8 +136,9 @@ export default async function PublicProfilePage({ params }) {
                 <div className="flex min-w-0 items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-2.5 py-2 dark:border-border dark:bg-muted/40 sm:rounded-2xl sm:p-4 lg:gap-3">
                   <ListIcon className="size-3.5 shrink-0 text-zinc-500 dark:text-muted-foreground sm:size-4" />
                   <div className="min-w-0">
-                    <p className="truncate text-xs font-semibold uppercase tracking-[0.08em] text-zinc-500 dark:text-muted-foreground sm:tracking-[0.16em]">
-                      {t.activeListingsTitle}
+                    <p className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.08em] text-zinc-500 dark:text-muted-foreground sm:tracking-[0.16em]">
+                      <span className="sm:hidden">{t.profileListingsStatLabel}</span>
+                      <span className="hidden sm:inline">{t.activeListingsTitle}</span>
                     </p>
                     <p className="text-sm font-semibold text-zinc-900 dark:text-foreground sm:mt-1 sm:text-base sm:font-normal">
                       {sellerListings.length}
@@ -148,10 +149,11 @@ export default async function PublicProfilePage({ params }) {
                 <div className="flex min-w-0 items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-2.5 py-2 dark:border-border dark:bg-muted/40 sm:rounded-2xl sm:p-4 lg:gap-3">
                   <Clock3 className="size-3.5 shrink-0 text-zinc-500 dark:text-muted-foreground sm:size-4" />
                   <div className="min-w-0">
-                    <p className="truncate text-xs font-semibold uppercase tracking-[0.08em] text-zinc-500 dark:text-muted-foreground sm:tracking-[0.16em]">
-                      {t.memberSince}
+                    <p className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.08em] text-zinc-500 dark:text-muted-foreground sm:tracking-[0.16em]">
+                      <span className="sm:hidden">{t.profileJoinedStatLabel}</span>
+                      <span className="hidden sm:inline">{t.memberSince}</span>
                     </p>
-                    <p className="truncate text-xs font-medium text-zinc-900 dark:text-foreground sm:mt-1 sm:text-base sm:font-normal">
+                    <p className="whitespace-nowrap text-xs font-medium text-zinc-900 dark:text-foreground sm:mt-1 sm:text-base sm:font-normal">
                       {profile.created_at ? (
                         <>
                           <span className="sm:hidden">{formatShortDate(profile.created_at, language)}</span>

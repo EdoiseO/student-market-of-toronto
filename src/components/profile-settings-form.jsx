@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useLanguage } from "@/context/LanguageContext";
 
 import { ProfileAvatarPreview } from "@/components/profile-avatar";
+import { ProfilePictureEditor } from "@/components/profile-picture-editor";
 import { createClient } from "@/utils/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +35,12 @@ import {
   PROFILE_IMAGES_BUCKET,
   PROFILE_AVATAR_PRESETS,
 } from "@/lib/profile-avatar";
+import {
+  isSupportedProfileImageType,
+  PROFILE_IMAGE_SOURCE_MAX_BYTES,
+  readProfileImageDimensions,
+  validateProfileImageDimensions,
+} from "@/lib/profile-image-crop.mjs";
 
 function normalizeProfileText(value) {
   const normalizedValue = value.trim();
@@ -52,6 +59,7 @@ export function ProfileSettingsForm({ initialProfile }) {
   const [avatarUrl, setAvatarUrl] = React.useState(initialProfile.avatarUrl ?? "");
   const [bio, setBio] = React.useState(initialProfile.bio ?? "");
   const [isAvatarPickerOpen, setIsAvatarPickerOpen] = React.useState(false);
+  const [avatarEditorSource, setAvatarEditorSource] = React.useState(null);
   const [isUpdatingAvatar, setIsUpdatingAvatar] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
   const [isMobileViewport, setIsMobileViewport] = React.useState(false);
@@ -85,6 +93,14 @@ export function ProfileSettingsForm({ initialProfile }) {
       window.removeEventListener("resize", syncIsMobileViewport);
     };
   }, []);
+
+  React.useEffect(() => {
+    return () => {
+      if (avatarEditorSource?.url) {
+        URL.revokeObjectURL(avatarEditorSource.url);
+      }
+    };
+  }, [avatarEditorSource]);
 
   const initials = [firstName, lastName]
     .filter(Boolean)
@@ -147,6 +163,14 @@ export function ProfileSettingsForm({ initialProfile }) {
     }
   }
 
+  function closeAvatarEditor() {
+    setAvatarEditorSource(null);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
   async function handleCustomAvatarChange(event) {
     const selectedFile = event.target.files?.[0];
 
@@ -154,13 +178,43 @@ export function ProfileSettingsForm({ initialProfile }) {
       return;
     }
 
-    if (!selectedFile.type.startsWith("image/")) {
+    if (!isSupportedProfileImageType(selectedFile.type)) {
       toast.error(t.chooseImageFile);
+      event.target.value = "";
       return;
     }
 
-    if (selectedFile.size > 2 * 1024 * 1024) {
-      toast.error(t.chooseImageUnder2MB);
+    if (selectedFile.size > PROFILE_IMAGE_SOURCE_MAX_BYTES) {
+      toast.error(t.chooseImageUnder10MB);
+      event.target.value = "";
+      return;
+    }
+
+    const sourceUrl = URL.createObjectURL(selectedFile);
+
+    try {
+      const { width, height } = await readProfileImageDimensions(sourceUrl);
+
+      if (!validateProfileImageDimensions(width, height)) {
+        throw new Error("Selected profile image dimensions exceed the editor limit.");
+      }
+
+      setAvatarEditorSource({
+        file: selectedFile,
+        url: sourceUrl,
+      });
+      setIsAvatarPickerOpen(false);
+    } catch (error) {
+      URL.revokeObjectURL(sourceUrl);
+      event.target.value = "";
+      console.error("Failed to open selected profile image", error);
+      toast.error(t.profilePhotoCropOpenError);
+    }
+  }
+
+  async function saveCustomAvatar(croppedFile) {
+    if (croppedFile.size > 2 * 1024 * 1024) {
+      toast.error(t.customProfileImageError);
       return;
     }
 
@@ -168,12 +222,14 @@ export function ProfileSettingsForm({ initialProfile }) {
 
     try {
       const existingStoragePath = extractProfileImageStoragePath(avatarUrl);
-      const storagePath = buildProfileImageStoragePath(initialProfile.id, selectedFile.name);
+      const storagePath = buildProfileImageStoragePath(initialProfile.id, croppedFile.name);
 
       const { error: uploadError } = await supabase.storage
         .from(PROFILE_IMAGES_BUCKET)
-        .upload(storagePath, selectedFile, {
+        .upload(storagePath, croppedFile, {
           upsert: false,
+          contentType: croppedFile.type,
+          cacheControl: "3600",
         });
 
       if (uploadError) {
@@ -209,14 +265,13 @@ export function ProfileSettingsForm({ initialProfile }) {
 
       setAvatarPresetId(null);
       setAvatarUrl(publicUrl);
-      setIsAvatarPickerOpen(false);
+      closeAvatarEditor();
       toast.success(t.customProfileImageUpdated);
       router.refresh();
     } catch (error) {
       console.error("Failed to save custom avatar image", error);
       toast.error(t.customProfileImageError);
     } finally {
-      event.target.value = "";
       setIsUpdatingAvatar(false);
     }
   }
@@ -313,13 +368,13 @@ export function ProfileSettingsForm({ initialProfile }) {
           <CardContent className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 px-4 py-3 text-left md:flex md:flex-col md:gap-6 md:px-6 md:pb-8 md:pt-4 md:text-center">
             <Popover open={isAvatarPickerOpen} onOpenChange={setIsAvatarPickerOpen}>
               <PopoverAnchor asChild>
-                <div className="relative flex size-16 items-center justify-center self-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 dark:border-border dark:bg-muted/40 md:size-20 md:rounded-[1.5rem] lg:size-[120px] lg:rounded-[2rem]">
+                <div className="relative flex size-16 items-center justify-center self-center rounded-full border border-dashed border-zinc-300 bg-zinc-50 dark:border-border dark:bg-muted/40 md:size-20 lg:size-[120px]">
                   <ProfileAvatarPreview
                     email={initialProfile.email}
                     name={`${firstName} ${lastName}`.trim()}
                     avatarPresetId={avatarPresetId}
                     avatarUrl={avatarUrl}
-                    className="h-full w-full rounded-[calc(1rem-1px)] md:rounded-[calc(1.5rem-1px)] lg:rounded-[calc(2rem-1px)]"
+                    className="h-full w-full rounded-full"
                     initialsClassName="text-2xl md:text-3xl lg:text-5xl"
                   />
                   <PopoverTrigger asChild>
@@ -386,7 +441,7 @@ export function ProfileSettingsForm({ initialProfile }) {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
                     className="hidden"
                     onChange={handleCustomAvatarChange}
                   />
@@ -464,6 +519,17 @@ export function ProfileSettingsForm({ initialProfile }) {
           </CardContent>
         </Card>
       </div>
+
+      {avatarEditorSource ? (
+        <ProfilePictureEditor
+          open
+          sourceUrl={avatarEditorSource.url}
+          originalFileName={avatarEditorSource.file.name}
+          isSaving={isUpdatingAvatar}
+          onCancel={closeAvatarEditor}
+          onSave={saveCustomAvatar}
+        />
+      ) : null}
 
     </form>
   );

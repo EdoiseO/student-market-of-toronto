@@ -5,7 +5,7 @@ export function ProfileSkeleton() {
   return (
     <div aria-hidden="true" className="flex min-w-0 flex-col gap-3 md:gap-6">
       <section className="rounded-[1.5rem] bg-card p-3 shadow-sm ring-1 ring-border sm:p-6 lg:rounded-3xl lg:p-7">
-        <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-3 lg:grid-cols-[auto_minmax(0,1fr)_minmax(288px,304px)] lg:gap-x-6">
+        <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-3 lg:grid-cols-[auto_minmax(0,1fr)_minmax(420px,456px)] lg:gap-x-6">
           <Skeleton className="size-16 rounded-2xl sm:size-28 sm:rounded-3xl" />
           <div className="flex min-w-0 self-center flex-col gap-2">
             <Skeleton className="h-4 w-14 rounded-full" />
@@ -19,8 +19,8 @@ export function ProfileSkeleton() {
                 <div key={index} className="flex min-w-0 items-center gap-2 rounded-xl border border-border p-2.5 sm:rounded-2xl sm:p-4">
                   <Skeleton className="size-4 shrink-0 rounded-full" />
                   <div className="min-w-0 flex-1 space-y-1.5">
-                    <Skeleton className="h-2.5 w-16 max-w-full" />
-                    <Skeleton className="h-3.5 w-12" />
+                    <Skeleton className="h-2.5 w-16 max-w-full sm:w-24" />
+                    <Skeleton className="h-3.5 w-12 sm:w-24" />
                   </div>
                 </div>
               ))}

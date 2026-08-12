@@ -432,6 +432,8 @@ export const translations = {
     profileDescriptionTitle: "Description",
     profileNoBio: "This seller has not added a bio yet.",
     memberSince: "Member Since",
+    profileJoinedStatLabel: "Joined",
+    profileListingsStatLabel: "Listings",
     activeListingsTitle: "Active Listings",
     activeListingsDescription: "Current listings from this seller that are still available.",
     noActiveListingsTitle: "No active listings right now",
@@ -730,10 +732,10 @@ export const translations = {
     profilePageDescription:
       "Manage the student details shown across your marketplace account. Name changes sync with your profile so seller identity stays consistent.",
     profilePhotoTitle: "Profile picture",
-    profilePhotoDescription: "Choose a color style or add your own image.",
+    profilePhotoDescription: "Choose a color style or upload and crop your own photo.",
     chooseProfilePictureStyle: "Choose profile picture style",
     chooseProfilePicture: "Choose profile picture",
-    chooseProfilePictureDescription: "Pick a color style or add your own image.",
+    chooseProfilePictureDescription: "Pick a color style or upload a photo to crop and zoom.",
     uploadCustomProfilePicture: "Upload a custom profile picture",
     studentAccount: "Student account",
     profileColorsStorageNote:
@@ -751,7 +753,17 @@ export const translations = {
     profilePhotoStyleUpdateError:
       "We could not update your profile photo style.",
     chooseImageFile: "Please choose an image file.",
-    chooseImageUnder2MB: "Please choose an image under 2MB.",
+    chooseImageUnder10MB: "Please choose an image under 10MB.",
+    profilePhotoCropTitle: "Crop profile picture",
+    profilePhotoCropDescription:
+      "Drag the image to frame it. Pinch or use the slider to zoom.",
+    profilePhotoCropImageAlt: "Profile picture being cropped",
+    profilePhotoCropZoom: "Zoom",
+    profilePhotoCropReset: "Reset",
+    profilePhotoCropSave: "Save picture",
+    profilePhotoCropSaving: "Saving...",
+    profilePhotoCropOpenError:
+      "We could not open that image. Try a smaller JPEG, PNG, or WebP file.",
     customProfileImageUpdated: "Custom profile image updated.",
     customProfileImageError: "We could not save that image.",
     profileUpdated: "Profile updated.",
@@ -1303,6 +1315,8 @@ export const translations = {
     profileDescriptionTitle: "Description",
     profileNoBio: "Ce vendeur n'a pas encore ajouté de bio.",
     memberSince: "Membre depuis",
+    profileJoinedStatLabel: "Inscription",
+    profileListingsStatLabel: "Annonces",
     activeListingsTitle: "Annonces actives",
     activeListingsDescription:
       "Les annonces de ce vendeur qui sont encore disponibles.",
@@ -1630,11 +1644,11 @@ export const translations = {
       "Gérez les informations affichées sur votre compte étudiant. Les changements de nom sont synchronisés avec votre profil afin que votre identité de vendeur reste cohérente.",
     profilePhotoTitle: "Photo de profil",
     profilePhotoDescription:
-      "Choisissez un style de couleur ou ajoutez votre propre photo.",
+      "Choisissez un style de couleur ou téléversez et recadrez votre propre photo.",
     chooseProfilePictureStyle: "Choisir le style de photo de profil",
     chooseProfilePicture: "Choisir une photo de profil",
     chooseProfilePictureDescription:
-      "Choisissez un style de couleur ou ajoutez votre propre photo.",
+      "Choisissez un style de couleur ou téléversez une photo à recadrer et à zoomer.",
     uploadCustomProfilePicture: "Téléverser une photo de profil personnalisée",
     studentAccount: "Compte étudiant",
     profileColorsStorageNote:
@@ -1652,7 +1666,17 @@ export const translations = {
     profilePhotoStyleUpdateError:
       "Nous n'avons pas pu mettre à jour le style de votre photo de profil.",
     chooseImageFile: "Veuillez choisir un fichier image.",
-    chooseImageUnder2MB: "Veuillez choisir une image de moins de 2 Mo.",
+    chooseImageUnder10MB: "Veuillez choisir une image de moins de 10 Mo.",
+    profilePhotoCropTitle: "Recadrer la photo de profil",
+    profilePhotoCropDescription:
+      "Faites glisser l'image pour la cadrer. Pincez ou utilisez le curseur pour zoomer.",
+    profilePhotoCropImageAlt: "Photo de profil en cours de recadrage",
+    profilePhotoCropZoom: "Zoom",
+    profilePhotoCropReset: "Réinitialiser",
+    profilePhotoCropSave: "Enregistrer la photo",
+    profilePhotoCropSaving: "Enregistrement...",
+    profilePhotoCropOpenError:
+      "Nous n'avons pas pu ouvrir cette image. Essayez un fichier JPEG, PNG ou WebP plus petit.",
     customProfileImageUpdated:
       "La photo de profil personnalisée a été mise à jour.",
     customProfileImageError: "Nous n'avons pas pu enregistrer cette image.",
