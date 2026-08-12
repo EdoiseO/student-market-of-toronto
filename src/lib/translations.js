@@ -401,8 +401,7 @@ export const translations = {
     firstMessageSheetDescription:
       "Your conversation will appear in Messages after you send the first message.",
     sendFirstMessage: "Send first message",
-    messageInputPlaceholder:
-      "Write a message about pickup, condition, price, or availability...",
+    messageInputPlaceholder: "Write a message...",
     emojiPickerSoon: "Emoji reactions are coming next.",
     attachMedia: "Add photos or videos",
     mediaAttachmentHelp: "Up to 3 photos or videos, 10 MB each.",
@@ -1281,8 +1280,7 @@ export const translations = {
     firstMessageSheetDescription:
       "Votre conversation apparaîtra dans Messages après l'envoi du premier message.",
     sendFirstMessage: "Envoyer le premier message",
-    messageInputPlaceholder:
-      "Écrivez un message au sujet de la remise, de l'état, du prix ou de la disponibilité...",
+    messageInputPlaceholder: "Écrivez un message…",
     emojiPickerSoon: "Les réactions emoji arrivent à la prochaine étape.",
     attachMedia: "Ajouter des photos ou des vidéos",
     mediaAttachmentHelp: "Jusqu’à 3 photos ou vidéos de 10 Mo chacune.",

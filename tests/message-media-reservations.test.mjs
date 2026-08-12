@@ -14,8 +14,16 @@ const reservationMigrationUrl = new URL(
   "../supabase/migrations/20260812112419_enforce_message_media_reservations.sql",
   import.meta.url,
 );
+const attachmentMigrationUrl = new URL(
+  "../supabase/migrations/20260812102614_add_message_media_attachments.sql",
+  import.meta.url,
+);
 const storagePolicyGrantMigrationUrl = new URL(
   "../supabase/migrations/20260812142916_grant_message_media_storage_policy_schema_usage.sql",
+  import.meta.url,
+);
+const storagePreflightMigrationUrl = new URL(
+  "../supabase/migrations/20260812145249_fix_message_media_upload_preflight.sql",
   import.meta.url,
 );
 const accountDeleteRouteUrl = new URL("../src/app/api/account/delete/route.js", import.meta.url);
@@ -72,6 +80,18 @@ test("authenticated Storage policy callers can resolve only the reserved-upload 
   assert.match(sql, /grant usage on schema private to authenticated/i);
   assert.doesNotMatch(sql, /grant (select|insert|update|delete|all) on/i);
   assert.doesNotMatch(sql, /grant execute on all functions/i);
+});
+
+test("Storage preflight validates reservation MIME without requiring unavailable final size", async () => {
+  const preflightSql = await readFile(storagePreflightMigrationUrl, "utf8");
+  const reservationSql = await readFile(reservationMigrationUrl, "utf8");
+  const attachmentSql = await readFile(attachmentMigrationUrl, "utf8");
+
+  assert.match(preflightSql, /reservation\.mime_type\s*=\s*lower\(coalesce\(p_metadata ->> 'mimetype'/i);
+  assert.doesNotMatch(preflightSql, /p_metadata ->> 'size'/i);
+  assert.match(reservationSql, /object\.metadata ->> 'mimetype'[\s\S]*reservation\.mime_type/i);
+  assert.match(reservationSql, /object\.metadata ->> 'size'[\s\S]*reservation\.size_bytes/i);
+  assert.match(attachmentSql, /file_size_limit,[\s\S]*allowed_mime_types/i);
 });
 
 test("account deletion strictly retires owned reservations before auth deletion", async () => {
