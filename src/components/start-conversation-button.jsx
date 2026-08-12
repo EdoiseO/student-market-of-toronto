@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { useLanguage } from "@/context/LanguageContext";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sheet,
   SheetContent,
@@ -44,6 +45,9 @@ export function StartConversationButton({
   const [isComposerOpen, setIsComposerOpen] = React.useState(false);
   const [draft, setDraft] = React.useState("");
   const [isSendingFirstMessage, setIsSendingFirstMessage] = React.useState(false);
+  const [isLoadingBlockState, setIsLoadingBlockState] = React.useState(
+    Boolean(currentUserId && sellerId && currentUserId !== sellerId),
+  );
   const isMessagingAvailable = isListingMessagingAvailable(listingStatus);
   const [blockState, setBlockState] = React.useState({
     blockedByCurrentUser: false,
@@ -57,6 +61,7 @@ export function StartConversationButton({
 
     async function loadBlockState() {
       if (!currentUserId || !sellerId || currentUserId === sellerId) {
+        setIsLoadingBlockState(false);
         return;
       }
 
@@ -64,11 +69,13 @@ export function StartConversationButton({
 
       if (nextBlockState.error) {
         console.error("Failed to load listing message block state:", nextBlockState.error.message);
-        return;
       }
 
       if (isMounted) {
-        setBlockState(nextBlockState);
+        if (!nextBlockState.error) {
+          setBlockState(nextBlockState);
+        }
+        setIsLoadingBlockState(false);
       }
     }
 
@@ -161,6 +168,10 @@ export function StartConversationButton({
         </Link>
       </Button>
     );
+  }
+
+  if (isLoadingBlockState) {
+    return <Skeleton aria-hidden="true" className={`h-11 min-w-32 rounded-xl ${className ?? ""}`} />;
   }
 
   async function handleStartConversation() {

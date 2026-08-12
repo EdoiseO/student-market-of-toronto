@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,6 +60,10 @@ export function ProfileReportButton({ profileId, currentUserId = null }) {
 
   if (!isVisible || !blockState.available) {
     return null;
+  }
+
+  if (isLoadingBlockState) {
+    return <Skeleton aria-hidden="true" className="size-11 rounded-xl" />;
   }
 
   async function handleUpdateBlockState() {
@@ -108,7 +113,6 @@ export function ProfileReportButton({ profileId, currentUserId = null }) {
             variant="outline"
             size="icon"
             aria-label={t.moreActions}
-            disabled={isLoadingBlockState}
             className="size-11 rounded-xl border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-100 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted"
           >
             <Ellipsis className="size-5" />
