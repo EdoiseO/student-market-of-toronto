@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Ellipsis, Eye, EyeOff, Megaphone, Trash2 } from "lucide-react";
@@ -27,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useLanguage } from "@/context/LanguageContext";
+import { REMOTE_IMAGE_BLUR_DATA_URL } from "@/lib/image-config";
 import {
   isConversationUserStateDeletedAtColumnMissing,
   isConversationUserStateTableMissing,
@@ -123,10 +125,14 @@ export function ConversationListItem({ conversation, dateValue, showHidden = fal
               <Megaphone className="size-10" />
             </div>
           ) : conversation.listing.imageUrl ? (
-            <img
+            <Image
               src={conversation.listing.imageUrl}
               alt={conversation.listing.title}
-              className="h-full w-full object-cover"
+              fill
+              sizes="64px"
+              placeholder="blur"
+              blurDataURL={REMOTE_IMAGE_BLUR_DATA_URL}
+              className="object-cover"
             />
           ) : (
             <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
@@ -138,7 +144,7 @@ export function ConversationListItem({ conversation, dateValue, showHidden = fal
                 name={conversation.otherParticipant.name}
                 avatarPresetId={conversation.otherParticipant.avatarPresetId}
                 avatarUrl={conversation.otherParticipant.avatarUrl}
-                className="size-7 border border-zinc-200 dark:border-border"
+                className="size-8 border border-zinc-200 dark:border-border"
               />
             </div>
           ) : null}
@@ -153,7 +159,7 @@ export function ConversationListItem({ conversation, dateValue, showHidden = fal
                     {conversation.listing.title}
                   </p>
                   {conversation.isAnnouncement ? (
-                    <Badge variant="secondary" className="rounded-full px-2 py-0 text-[0.65rem]">
+                    <Badge variant="secondary" className="rounded-full px-2 py-0 text-xs">
                       {t.announcements}
                     </Badge>
                   ) : null}

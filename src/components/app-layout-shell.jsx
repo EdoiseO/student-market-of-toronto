@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 
 import { CreateListingFab } from "@/components/create-listing-fab";
 import { AppSidebar } from "@/components/app-sidebar";
+import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -47,12 +48,19 @@ export function AppLayoutShell({ children, user }) {
             >
               <AppSidebar user={user} />
               <SidebarInset
-                className={isMessagesConversationPage ? "min-h-0 overflow-hidden" : undefined}
+                className={
+                  isMessagesConversationPage
+                    ? "min-h-0 overflow-hidden pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0"
+                    : "min-w-0 overflow-x-clip pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0"
+                }
               >
                 {children}
-                <CreateListingFab user={user} />
+                <div className="hidden md:block">
+                  <CreateListingFab user={user} />
+                </div>
               </SidebarInset>
             </div>
+            <MobileBottomNav user={user} />
           </SidebarProvider>
         </div>
       ) : (

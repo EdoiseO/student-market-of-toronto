@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -43,6 +44,7 @@ import {
 import { ClientFormattedDateTime } from "@/components/client-formatted-date-time";
 import { ReportSheet } from "@/components/report-sheet";
 import { useLanguage } from "@/context/LanguageContext";
+import { REMOTE_IMAGE_BLUR_DATA_URL } from "@/lib/image-config";
 import {
   getMessagingBlockReason,
   getUserBlockState,
@@ -426,14 +428,14 @@ export function MessagesThread({
   }
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card">
-      <div className="border-b border-zinc-200 p-6 dark:border-border">
+    <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-y border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card md:rounded-[2rem] md:border">
+      <div className="shrink-0 border-b border-zinc-200 p-4 dark:border-border md:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           {isAnnouncementConversation ? (
             <div className="block rounded-2xl bg-zinc-50 p-4 dark:bg-muted/40 lg:w-full lg:max-w-md">
               <div className="flex items-center gap-4">
-                <div className="flex h-18 w-18 shrink-0 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-700 dark:bg-muted dark:text-muted-foreground">
-                  <Megaphone className="size-10" />
+                <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-700 dark:bg-muted dark:text-muted-foreground md:size-18">
+                  <Megaphone className="size-8 md:size-10" />
                 </div>
 
                 <div className="min-w-0 flex-1">
@@ -452,12 +454,16 @@ export function MessagesThread({
               className="block rounded-2xl bg-zinc-50 p-4 transition hover:bg-background dark:bg-muted/40 dark:hover:bg-background lg:w-full lg:max-w-md"
             >
               <div className="flex items-center gap-4">
-                <div className="h-18 w-18 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted">
+                <div className="relative size-14 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted md:size-18">
                   {conversation.listing.imageUrl ? (
-                    <img
+                    <Image
                       src={conversation.listing.imageUrl}
                       alt={conversation.listing.title}
-                      className="h-full w-full object-cover"
+                      fill
+                      sizes="(max-width: 767px) 56px, 72px"
+                      placeholder="blur"
+                      blurDataURL={REMOTE_IMAGE_BLUR_DATA_URL}
+                      className="object-cover"
                     />
                   ) : (
                     <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
@@ -480,7 +486,7 @@ export function MessagesThread({
           ) : (
             <div className="block rounded-2xl bg-zinc-50 p-4 dark:bg-muted/40 lg:w-full lg:max-w-md">
               <div className="flex items-center gap-4">
-                <div className="h-18 w-18 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted">
+                <div className="size-14 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted md:size-18">
                   <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
                 </div>
 
@@ -525,7 +531,7 @@ export function MessagesThread({
                     type="button"
                     variant="outline"
                     size="icon-sm"
-                    className="rounded-full"
+                    className="size-11 rounded-full"
                     aria-label={t.moreActions}
                     disabled={isHiding || isDeletingConversation || isUpdatingBlockState}
                   >
@@ -594,7 +600,7 @@ export function MessagesThread({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto bg-zinc-50/70 px-6 pt-3 pb-6 dark:bg-muted/20">
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain bg-zinc-50/70 px-4 pt-3 pb-5 dark:bg-muted/20 md:px-6 md:pb-6">
         {messages.length > 0 ? (
           messages.map((message) => {
             const isCurrentUser = message.sender_id === currentUserId;
@@ -621,7 +627,7 @@ export function MessagesThread({
                 )}
 
                 <div
-                  className={`relative flex max-w-[85%] flex-col gap-1.5 sm:max-w-[70%] ${
+                  className={`relative flex min-w-0 max-w-[80vw] flex-col gap-1.5 sm:max-w-[70%] ${
                     isCurrentUser ? "items-end" : "items-start"
                   }`}
                 >
@@ -632,7 +638,7 @@ export function MessagesThread({
                         variant="outline"
                         size="icon-sm"
                         aria-label={t.moreActions}
-                        className={`absolute top-1/2 z-10 -translate-y-1/2 rounded-full border-zinc-300 bg-white text-zinc-700 opacity-0 shadow-sm transition group-hover/message:opacity-100 group-focus-within/message:opacity-100 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted ${
+                        className={`absolute top-1/2 z-10 size-11 -translate-y-1/2 rounded-full border-zinc-300 bg-white text-zinc-700 opacity-0 shadow-sm transition group-hover/message:opacity-100 group-focus-within/message:opacity-100 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted ${
                           isCurrentUser ? "right-full mr-2" : "left-full ml-2"
                         }`}
                       >
@@ -679,7 +685,7 @@ export function MessagesThread({
             );
           })
         ) : (
-          <div className="flex h-full min-h-[280px] items-center justify-center rounded-[1.75rem] border border-dashed border-zinc-300 bg-white/80 p-8 text-center dark:border-border dark:bg-card/80">
+          <div className="flex h-full min-h-[220px] items-center justify-center rounded-[1.75rem] border border-dashed border-zinc-300 bg-white/80 p-5 text-center dark:border-border dark:bg-card/80 md:min-h-[280px] md:p-8">
             <div className="max-w-md">
               <h2 className="text-lg font-semibold text-zinc-950 dark:text-foreground">
                 {t.noMessagesYetTitle}
@@ -694,7 +700,7 @@ export function MessagesThread({
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="border-t border-zinc-200 p-6 dark:border-border">
+      <form onSubmit={handleSubmit} className="sticky bottom-0 z-20 shrink-0 border-t border-zinc-200 bg-background px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-border md:p-6">
         <div className="rounded-[1.75rem] border border-zinc-200 bg-background p-3 shadow-sm dark:border-border dark:bg-background">
           {blockReason ? (
             <p className="px-2 pb-3 text-sm text-muted-foreground">{blockReason}</p>
@@ -708,7 +714,7 @@ export function MessagesThread({
             onKeyDown={handleComposerKeyDown}
             placeholder={t.messageInputPlaceholder}
             rows={2}
-            className="min-h-16 resize-none border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0"
+            className="min-h-16 resize-none border-0 bg-transparent px-2 py-2 text-base shadow-none focus-visible:ring-0"
             maxLength={2000}
             disabled={!isMessagingAvailable || Boolean(blockReason) || isSending}
           />
@@ -722,7 +728,7 @@ export function MessagesThread({
                       type="button"
                       variant="ghost"
                       size="icon-sm"
-                      className="rounded-full text-zinc-500 dark:text-muted-foreground"
+                      className="size-11 rounded-full text-zinc-500 dark:text-muted-foreground"
                       disabled
                       aria-label={t.emojiPickerSoon}
                     >
@@ -742,7 +748,7 @@ export function MessagesThread({
                       type="button"
                       variant="ghost"
                       size="icon-sm"
-                      className="rounded-full text-zinc-500 dark:text-muted-foreground"
+                      className="size-11 rounded-full text-zinc-500 dark:text-muted-foreground"
                       disabled
                       aria-label={t.attachmentsSoon}
                     >
@@ -764,7 +770,7 @@ export function MessagesThread({
               type="submit"
               disabled={!isMessagingAvailable || Boolean(blockReason) || isSending || !draft.trim()}
               size="icon-lg"
-              className="rounded-full"
+              className="size-11 rounded-full"
               aria-label={isSending ? t.sendingMessage : t.sendMessage}
             >
               <SendHorizontal className="size-4.5" />

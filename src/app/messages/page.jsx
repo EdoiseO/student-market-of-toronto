@@ -150,18 +150,18 @@ export default async function MessagesPage() {
   );
 
   return (
-    <main className="min-h-screen bg-zinc-100 p-5 dark:bg-background md:p-6 lg:p-7">
-      <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6">
-        <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:border-border dark:bg-card">
-          <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border lg:px-7">
-            <CardTitle className="text-3xl font-bold tracking-tight text-zinc-950 dark:text-foreground lg:text-4xl">
+    <main className="min-h-screen min-w-0 overflow-x-clip bg-white dark:bg-card md:bg-zinc-100 md:p-6 md:dark:bg-background lg:p-7">
+      <div className="mx-auto flex min-w-0 w-full max-w-[1360px] flex-col md:gap-6">
+        <Card className="rounded-none border-0 bg-white py-0 shadow-none dark:bg-card md:rounded-[2rem] md:border md:border-zinc-200 md:shadow-sm md:dark:border-border">
+          <CardHeader className="border-b border-zinc-200 px-4 py-5 dark:border-border md:px-6 lg:px-7">
+            <CardTitle className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-foreground md:text-3xl lg:text-4xl">
               {t.messages}
             </CardTitle>
           </CardHeader>
 
-          <CardContent className="p-6 lg:p-7">
+          <CardContent className="px-4 py-4 md:p-6 lg:p-7">
             {hasMessagingSetupError ? (
-              <section className="flex min-h-[420px] items-center justify-center rounded-[2rem] border border-dashed border-zinc-300 bg-zinc-50 p-8 text-center dark:border-border dark:bg-muted/40">
+              <section className="flex min-h-[300px] items-center justify-center rounded-[2rem] border border-dashed border-zinc-300 bg-zinc-50 p-5 text-center dark:border-border dark:bg-muted/40 md:min-h-[420px] md:p-8">
                 <div className="max-w-xl">
                   <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-background text-foreground shadow-sm">
                     <MessageSquare className="size-6" />
@@ -179,7 +179,7 @@ export default async function MessagesPage() {
               </section>
             ) : conversations.length > 0 ? (
               <section>
-                <div className="space-y-3">
+                <div className="space-y-3 pb-4 md:pb-0">
                   {conversations.map((conversation) => (
                     <ConversationListItem
                       key={conversation.id}
@@ -190,7 +190,7 @@ export default async function MessagesPage() {
                 </div>
               </section>
             ) : (
-              <section className="flex min-h-[420px] items-center justify-center rounded-[2rem] border border-dashed border-zinc-300 bg-zinc-50 p-8 text-center dark:border-border dark:bg-muted/40">
+              <section className="flex min-h-[300px] items-center justify-center rounded-[2rem] border border-dashed border-zinc-300 bg-zinc-50 p-5 text-center dark:border-border dark:bg-muted/40 md:min-h-[420px] md:p-8">
                 <div className="max-w-xl">
                   <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-background text-foreground shadow-sm">
                     <MessageSquare className="size-6" />

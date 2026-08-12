@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import LanguageSwitcher from "@/components/language-switcher";
@@ -9,7 +10,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { useSidebar } from "@/components/ui/sidebar"
-import { PanelLeftIcon } from "lucide-react"
+import { PanelLeftIcon, SearchIcon, StoreIcon } from "lucide-react"
 
 import { useLanguage } from "@/context/LanguageContext";
 import { translations } from "@/lib/translations";
@@ -40,7 +41,30 @@ export function SiteHeader({ user }) {
   return (
     <header
       className="sticky top-0 z-50 flex w-full items-center border-b bg-background">
-      <div className="grid w-full grid-cols-1 gap-3 px-4 py-3 md:h-(--header-height) md:grid-cols-[minmax(192px,1fr)_minmax(0,416px)] md:items-center md:px-5 md:py-0 xl:grid-cols-[minmax(224px,1fr)_minmax(336px,784px)_minmax(0,1fr)]">
+      <div className="flex h-16 w-full items-center gap-2 px-4 md:hidden">
+        <Link
+          href="/"
+          className="flex min-h-[44px] min-w-0 flex-1 items-center gap-2 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <StoreIcon className="size-5" />
+          </span>
+          <span className="truncate text-base font-bold tracking-tight">{t.studentMarket}</span>
+        </Link>
+
+        <Link
+          href="/search"
+          aria-label={t.searchListingsLabel}
+          className="flex size-[44px] shrink-0 items-center justify-center rounded-xl border border-border bg-background text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <SearchIcon className="size-5" />
+        </Link>
+        <div className="shrink-0 [&_button]:min-h-[44px] [&_button]:min-w-[44px]">
+          <NotificationsButton user={user} />
+        </div>
+      </div>
+
+      <div className="hidden w-full grid-cols-1 gap-3 px-4 py-3 md:grid md:h-(--header-height) md:grid-cols-[minmax(192px,1fr)_minmax(0,416px)] md:items-center md:px-5 md:py-0 xl:grid-cols-[minmax(224px,1fr)_minmax(336px,784px)_minmax(0,1fr)]">
         <div className="flex min-w-0 items-center gap-2">
           <Button
             className="h-10 w-10 rounded-xl"

@@ -82,6 +82,52 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
+/*
+ * Phone density system
+ *
+ * Mobile layouts use local spacing and type utilities for density. Controls
+ * retain physical touch and input sizes so the compact presentation does not
+ * come at the cost of accessibility or trigger iOS form zoom.
+ */
+@media (max-width: 47.999rem) {
+  .min-h-11 {
+    min-height: 44px !important;
+  }
+
+  .min-w-11 {
+    min-width: 44px !important;
+  }
+
+  .size-11 {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  button,
+  [data-slot="button"] {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  [data-slot="input"],
+  [data-slot="input-group"],
+  [data-slot="native-select"] {
+    min-height: 44px;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    font-size: 16px;
+    min-height: 44px;
+  }
+
+  [data-slot="field-description"] > a {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
 @media (min-width: 1200px) {
   html {
     font-size: 80%;
