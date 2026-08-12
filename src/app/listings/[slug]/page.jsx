@@ -1,5 +1,5 @@
 import { Clock3, MapPin, Tag } from "lucide-react";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -15,6 +15,7 @@ import { CollapsibleListingDescription } from "@/components/collapsible-listing-
 import { FavouriteButton } from "@/components/favourite-button";
 import { ListingPhotoCarousel } from "@/components/listing-photo-carousel";
 import { ListingMoreButton } from "@/components/listing-more-button";
+import { ListingMapActions } from "@/components/listing-map-actions";
 import { ProfileAvatar } from "@/components/profile-avatar";
 import { SimilarListingsCarousel } from "@/components/similar-listings-carousel";
 import { StartConversationButton } from "@/components/start-conversation-button";
@@ -23,6 +24,7 @@ import {
   getTranslatedListingBadge,
 } from "@/lib/listing-badges";
 import { getTranslatedConditionLabel } from "@/lib/search-listings";
+import { getPreferredMapProvider } from "@/lib/map-links";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
@@ -44,10 +46,13 @@ function formatPrice(price, language) {
 
 export default async function ListingDetailPage({ params }) {
   const resolvedParams = await params;
-  const cookieStore = await cookies();
+  const [cookieStore, requestHeaders] = await Promise.all([cookies(), headers()]);
   const supabase = createClient(cookieStore);
   const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
   const t = translations[language];
+  const preferredMapProvider = getPreferredMapProvider(
+    requestHeaders.get("user-agent"),
+  );
 
   const {
     data: { user },
@@ -370,7 +375,7 @@ export default async function ListingDetailPage({ params }) {
 
           <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 dark:border-border dark:bg-muted md:rounded-[2rem]">
             <iframe
-              title={`${campusLabel} map`}
+              title={`${t.mapPreviewTitle}: ${campusLabel}`}
               src={`https://www.google.com/maps?q=${encodeURIComponent(
                 campusLabel
               )}&z=15&output=embed`}
@@ -379,6 +384,12 @@ export default async function ListingDetailPage({ params }) {
               referrerPolicy="no-referrer-when-downgrade"
             />
           </div>
+
+          <ListingMapActions
+            location={campusLabel}
+            preferredProvider={preferredMapProvider}
+            language={language}
+          />
         </section>
 
         <section className="rounded-3xl bg-zinc-50 p-4 shadow-sm ring-1 ring-zinc-200 dark:bg-muted/40 dark:ring-border md:p-8">
