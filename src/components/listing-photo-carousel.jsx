@@ -22,20 +22,25 @@ export function ListingPhotoCarousel({ photos, title }) {
   const activePhoto = photos[activePhotoIndex];
   const hasMultiplePhotos = photos.length > 1;
   const desktopCarouselOptions = React.useMemo(
-    () => ({ loop: hasMultiplePhotos }),
+    () => ({
+      loop: hasMultiplePhotos,
+      duration: 20,
+      breakpoints: {
+        "(prefers-reduced-motion: reduce)": { duration: 0 },
+      },
+    }),
     [hasMultiplePhotos],
   );
 
   function openPhoto(index) {
     setActivePhotoIndex(index);
-    desktopCarouselApi?.scrollTo(index);
+    desktopCarouselApi?.scrollTo(index, true);
     setIsViewerOpen(true);
   }
 
   function showPreviousPhoto() {
     setActivePhotoIndex((currentIndex) => {
       const previousIndex = currentIndex === 0 ? photos.length - 1 : currentIndex - 1;
-      desktopCarouselApi?.scrollTo(previousIndex);
       return previousIndex;
     });
   }
@@ -43,9 +48,16 @@ export function ListingPhotoCarousel({ photos, title }) {
   function showNextPhoto() {
     setActivePhotoIndex((currentIndex) => {
       const nextIndex = currentIndex === photos.length - 1 ? 0 : currentIndex + 1;
-      desktopCarouselApi?.scrollTo(nextIndex);
       return nextIndex;
     });
+  }
+
+  function handleViewerOpenChange(open) {
+    setIsViewerOpen(open);
+
+    if (!open) {
+      desktopCarouselApi?.scrollTo(activePhotoIndex, true);
+    }
   }
 
   React.useEffect(() => {
@@ -84,7 +96,7 @@ export function ListingPhotoCarousel({ photos, title }) {
   }
 
   return (
-    <DialogPrimitive.Root open={isViewerOpen} onOpenChange={setIsViewerOpen}>
+    <DialogPrimitive.Root open={isViewerOpen} onOpenChange={handleViewerOpenChange}>
       <div
         role="region"
         aria-label={`${title} photos`}
@@ -192,7 +204,7 @@ export function ListingPhotoCarousel({ photos, title }) {
                 size="icon"
                 className="absolute bottom-0 left-4 top-0 z-20 my-auto rounded-full bg-white/90 text-zinc-900 shadow-sm hover:bg-white dark:bg-background/90 dark:text-foreground dark:hover:bg-background"
                 aria-label="Show previous photo"
-                onClick={() => desktopCarouselApi?.scrollPrev()}
+                onClick={() => desktopCarouselApi?.scrollPrev(true)}
               >
                 <ChevronLeft className="size-5" />
               </Button>
@@ -202,7 +214,7 @@ export function ListingPhotoCarousel({ photos, title }) {
                 size="icon"
                 className="absolute bottom-0 right-4 top-0 z-20 my-auto rounded-full bg-white/90 text-zinc-900 shadow-sm hover:bg-white dark:bg-background/90 dark:text-foreground dark:hover:bg-background"
                 aria-label="Show next photo"
-                onClick={() => desktopCarouselApi?.scrollNext()}
+                onClick={() => desktopCarouselApi?.scrollNext(true)}
               >
                 <ChevronRight className="size-5" />
               </Button>
@@ -218,7 +230,7 @@ export function ListingPhotoCarousel({ photos, title }) {
                 type="button"
                 aria-label={`Show ${title} photo ${index + 1}`}
                 aria-current={activePhotoIndex === index ? "true" : undefined}
-                onClick={() => desktopCarouselApi?.scrollTo(index)}
+                onClick={() => desktopCarouselApi?.scrollTo(index, true)}
                 className={cn(
                   "relative h-16 w-20 overflow-hidden rounded-xl border bg-zinc-100 outline-none transition focus-visible:ring-2 focus-visible:ring-ring dark:bg-muted",
                   activePhotoIndex === index
@@ -293,26 +305,22 @@ export function ListingPhotoCarousel({ photos, title }) {
 
             {hasMultiplePhotos ? (
               <>
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/55 text-white shadow-sm hover:bg-white/15 hover:text-white sm:left-4"
+                  className="absolute left-2 top-1/2 z-10 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/55 text-white shadow-sm backdrop-blur-sm transition-colors duration-100 hover:bg-black/70 active:bg-black/80 motion-reduce:transition-none sm:left-4"
                   aria-label="Show previous photo"
                   onClick={showPreviousPhoto}
                 >
                   <ChevronLeft className="size-7" />
-                </Button>
-                <Button
+                </button>
+                <button
                   type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/55 text-white shadow-sm hover:bg-white/15 hover:text-white sm:right-4"
+                  className="absolute right-2 top-1/2 z-10 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/55 text-white shadow-sm backdrop-blur-sm transition-colors duration-100 hover:bg-black/70 active:bg-black/80 motion-reduce:transition-none sm:right-4"
                   aria-label="Show next photo"
                   onClick={showNextPhoto}
                 >
                   <ChevronRight className="size-7" />
-                </Button>
+                </button>
               </>
             ) : null}
           </div>
