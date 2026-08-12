@@ -3,13 +3,34 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { CircleCheckIcon, InfoIcon, Loader2Icon } from "lucide-react";
+import {
+  CircleCheckIcon,
+  InfoIcon,
+  ListFilterIcon,
+  Loader2Icon,
+  PlusIcon,
+} from "lucide-react";
 
 import { DashboardCategoryFilter } from "@/components/dashboard-category-filter";
 import { DashboardSearchInput } from "@/components/dashboard-search-input";
 import { useLanguage } from "@/context/LanguageContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -209,11 +230,13 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
   const { t, language } = useLanguage();
   const [dashboardSearch, setDashboardSearch] = React.useState("");
   const [selectedCategory, setSelectedCategory] = React.useState("");
+  const [sortOrder, setSortOrder] = React.useState("newest");
   const [rowsPerPage, setRowsPerPage] = React.useState(7);
   const [currentPage, setCurrentPage] = React.useState(1);
 
   const normalizedDashboardSearch = dashboardSearch.trim().toLowerCase();
   const hasActiveFilters = Boolean(normalizedDashboardSearch || selectedCategory);
+  const mobileOptionCount = Number(Boolean(selectedCategory)) + Number(sortOrder !== "newest");
 
   const matchesDashboardQuery = React.useCallback(
     (item) => {
@@ -252,20 +275,36 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
   const allItems = filteredOwnedItems;
 
   const filteredItems = React.useMemo(() => {
+    let matchingItems;
+
     if (currentTab === "all") {
-      return allItems;
+      matchingItems = allItems;
+    } else if (currentTab === "favourite") {
+      matchingItems = filteredFavouriteItems;
+    } else {
+      matchingItems = filteredOwnedItems.filter((item) => item.dashboardStatus === currentTab);
     }
 
-    if (currentTab === "favourite") {
-      return filteredFavouriteItems;
-    }
+    return matchingItems.slice().sort((firstItem, secondItem) => {
+      if (sortOrder === "oldest") {
+        return new Date(firstItem.createdAt ?? 0) - new Date(secondItem.createdAt ?? 0);
+      }
 
-    return filteredOwnedItems.filter((item) => item.dashboardStatus === currentTab);
-  }, [allItems, currentTab, filteredFavouriteItems, filteredOwnedItems]);
+      if (sortOrder === "price-low") {
+        return (firstItem.priceValue ?? 0) - (secondItem.priceValue ?? 0);
+      }
+
+      if (sortOrder === "price-high") {
+        return (secondItem.priceValue ?? 0) - (firstItem.priceValue ?? 0);
+      }
+
+      return new Date(secondItem.createdAt ?? 0) - new Date(firstItem.createdAt ?? 0);
+    });
+  }, [allItems, currentTab, filteredFavouriteItems, filteredOwnedItems, sortOrder]);
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [dashboardSearch, currentTab, rowsPerPage, selectedCategory]);
+  }, [dashboardSearch, currentTab, rowsPerPage, selectedCategory, sortOrder]);
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / rowsPerPage));
   const safePage = Math.min(currentPage, totalPages);
@@ -339,8 +378,46 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
+      <div className="space-y-3 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-3 md:space-y-0">
+        <nav
+          aria-label={t.status}
+          className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:hidden"
+        >
+          {dashboardTabs.map((tab) => {
+            const isActive = currentTab === tab.key;
+            return (
+              <Button
+                key={tab.key}
+                asChild
+                variant={isActive ? "default" : "outline"}
+                size="sm"
+                className={
+                  isActive
+                    ? "min-h-11 shrink-0 snap-start rounded-full px-3 dark:bg-white dark:text-zinc-950 dark:hover:bg-white/95"
+                    : "min-h-11 shrink-0 snap-start rounded-full bg-white px-3 dark:bg-background"
+                }
+              >
+                <Link
+                  href={buildDashboardHref(tab.key)}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  <span>{tab.label}</span>
+                  <span
+                    className={`ml-0.5 min-w-6 rounded-full px-1.5 py-0.5 text-center text-xs font-semibold ${
+                      isActive
+                        ? "bg-white/20 text-white dark:bg-zinc-900/10 dark:text-zinc-950"
+                        : "bg-black/10 text-zinc-700 dark:bg-white/10 dark:text-foreground"
+                    }`}
+                  >
+                    {counts[tab.key]}
+                  </span>
+                </Link>
+              </Button>
+            );
+          })}
+        </nav>
+
+        <div className="hidden flex-wrap gap-2 md:flex">
           {dashboardTabs.map((tab) => {
             const isActive = currentTab === tab.key;
             return (
@@ -372,13 +449,111 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
           })}
         </div>
 
-        <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center">
+        <div className="space-y-2 md:hidden">
+          <DashboardSearchInput
+            id="dashboard-search-mobile"
+            value={dashboardSearch}
+            onValueChange={setDashboardSearch}
+          />
+          <div className="flex gap-2">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button
+                  type="button"
+                  variant={mobileOptionCount > 0 ? "secondary" : "outline"}
+                  className="flex-1 justify-center rounded-xl bg-white px-3 dark:bg-background"
+                >
+                  <ListFilterIcon className="size-4" />
+                  {t.filters}
+                  {mobileOptionCount > 0 ? (
+                    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-xs font-semibold text-primary-foreground">
+                      {mobileOptionCount}
+                    </span>
+                  ) : null}
+                </Button>
+              </SheetTrigger>
+              <SheetContent
+                side="bottom"
+                className="rounded-t-3xl px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2"
+              >
+                <div className="mx-auto h-1.5 w-12 rounded-full bg-muted" aria-hidden="true" />
+                <SheetHeader className="px-0 pb-2 pt-3 text-left">
+                  <SheetTitle className="text-lg font-semibold">{t.filters}</SheetTitle>
+                  <SheetDescription>{t.filterDashboardByCategory}</SheetDescription>
+                </SheetHeader>
+
+                <div className="space-y-5 py-1">
+                  <div>
+                    <DashboardCategoryFilter
+                      id="dashboard-category-filter-mobile"
+                      value={selectedCategory}
+                      onValueChange={setSelectedCategory}
+                      options={CATEGORY_OPTIONS}
+                      className="md:w-full lg:w-full"
+                      label={t.filterByCategoryLabel}
+                      showLabel
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="dashboard-sort-mobile">{t.sortByLabel}</Label>
+                    <NativeSelect
+                      id="dashboard-sort-mobile"
+                      value={sortOrder}
+                      onChange={(event) => setSortOrder(event.target.value)}
+                      className="w-full"
+                    >
+                      <NativeSelectOption value="newest">{t.sortDateNewest}</NativeSelectOption>
+                      <NativeSelectOption value="oldest">{t.sortDateOldest}</NativeSelectOption>
+                      <NativeSelectOption value="price-low">{t.sortPriceLowHigh}</NativeSelectOption>
+                      <NativeSelectOption value="price-high">{t.sortPriceHighLow}</NativeSelectOption>
+                    </NativeSelect>
+                  </div>
+                </div>
+
+                <SheetFooter className="grid grid-cols-2 px-0 pb-0 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      setSelectedCategory("");
+                      setSortOrder("newest");
+                    }}
+                    disabled={mobileOptionCount === 0}
+                  >
+                    {t.clearFilters}
+                  </Button>
+                  <SheetClose asChild>
+                    <Button type="button" className="w-full">{t.applyFilters}</Button>
+                  </SheetClose>
+                </SheetFooter>
+              </SheetContent>
+            </Sheet>
+
+            {showManagementActions ? (
+              <Button asChild className="flex-1 rounded-xl px-3">
+                <Link href="/listings/create">
+                  <PlusIcon className="size-4" />
+                  {t.addListing}
+                </Link>
+              </Button>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="hidden gap-2 md:flex md:items-center md:justify-end">
           <DashboardCategoryFilter
+            id="dashboard-category-filter-desktop"
             value={selectedCategory}
             onValueChange={setSelectedCategory}
             options={CATEGORY_OPTIONS}
           />
-          <DashboardSearchInput value={dashboardSearch} onValueChange={setDashboardSearch} />
+          <DashboardSearchInput
+            id="dashboard-search-desktop"
+            value={dashboardSearch}
+            onValueChange={setDashboardSearch}
+          />
           {showManagementActions ? (
             <Button asChild size="sm" className="h-9 rounded-lg px-3">
               <Link href="/listings/create">{t.addListing}</Link>

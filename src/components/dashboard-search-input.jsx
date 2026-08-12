@@ -6,17 +6,21 @@ import { useLanguage } from "@/context/LanguageContext";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function DashboardSearchInput({ value, onValueChange }) {
+export function DashboardSearchInput({
+  value,
+  onValueChange,
+  id = "dashboard-search",
+}) {
   const { t, language } = useLanguage();
   const widthClassName = language === "fr" ? "md:w-[156px] lg:w-[172px]" : "md:w-[180px] lg:w-[200px]";
 
   return (
     <div className={`relative w-full ${widthClassName}`}>
-      <Label htmlFor="dashboard-search" className="sr-only">
+      <Label htmlFor={id} className="sr-only">
         {t.dashboardSearchLabel}
       </Label>
       <Input
-        id="dashboard-search"
+        id={id}
         value={value}
         onChange={(event) => onValueChange(event.target.value)}
         onKeyDown={(event) => {

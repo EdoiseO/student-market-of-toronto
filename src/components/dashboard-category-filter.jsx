@@ -2,22 +2,31 @@
 
 import { useLanguage } from "@/context/LanguageContext";
 import { getTranslatedCategoryValue } from "@/lib/categories";
+import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import {
   NativeSelect,
   NativeSelectOption,
 } from "@/components/ui/native-select";
 
-export function DashboardCategoryFilter({ value, onValueChange, options }) {
+export function DashboardCategoryFilter({
+  value,
+  onValueChange,
+  options,
+  id = "dashboard-category-filter",
+  className = "",
+  label = null,
+  showLabel = false,
+}) {
   const { t, language } = useLanguage();
 
   return (
-    <div className="w-full md:w-[160px] lg:w-[170px]">
-      <Label htmlFor="dashboard-category-filter" className="sr-only">
-        {t.filterDashboardByCategory}
+    <div className={cn("w-full md:w-[160px] lg:w-[170px]", className)}>
+      <Label htmlFor={id} className={showLabel ? "mb-2" : "sr-only"}>
+        {label ?? t.filterDashboardByCategory}
       </Label>
       <NativeSelect
-        id="dashboard-category-filter"
+        id={id}
         value={value ?? ""}
         onChange={(event) => onValueChange(event.target.value)}
         className="w-full"

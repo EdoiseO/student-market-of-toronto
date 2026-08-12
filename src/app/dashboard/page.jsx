@@ -69,6 +69,8 @@ function normalizeDashboardListing(
     meta: listing.location ?? "",
     imageUrl: getPrimaryImageUrl(listing.listing_images),
     price: `$${Number(listing.price).toFixed(2)}`,
+    priceValue: Number(listing.price),
+    createdAt: listing.created_at,
     category: normalizeCategoryValue(listing.category),
     status: listing.status,
     dashboardStatus,
@@ -146,6 +148,7 @@ export default async function DashboardPage({ searchParams }) {
               category,
               status,
               location,
+              created_at,
               listing_images (
                 image_url,
                 position
