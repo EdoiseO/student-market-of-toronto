@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { SignOutButton } from "@/components/sign-out-button";
 import { Switch } from "@/components/ui/switch";
 import { useLanguage } from "@/context/LanguageContext";
 import {
@@ -443,6 +444,30 @@ export function DashboardSettingsContent({
               </Button>
             </div>
           </section>
+        </Card>
+
+        <Card className="gap-0 rounded-2xl bg-card py-0 shadow-sm ring-border md:hidden">
+          <CardContent className="px-4 py-3">
+            <section
+              aria-labelledby="settings-mobile-account-title"
+              className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="min-w-0">
+                <CardTitle
+                  id="settings-mobile-account-title"
+                  className="text-base text-foreground"
+                >
+                  {t.account}
+                </CardTitle>
+                <CardDescription className="mt-0.5 text-xs leading-5">
+                  {t.signOutDescription}
+                </CardDescription>
+              </div>
+              <div className="w-full shrink-0 sm:w-36">
+                <SignOutButton />
+              </div>
+            </section>
+          </CardContent>
         </Card>
 
         <Card className="gap-0 rounded-2xl border-destructive/30 bg-card py-0 shadow-sm ring-border md:rounded-3xl">
