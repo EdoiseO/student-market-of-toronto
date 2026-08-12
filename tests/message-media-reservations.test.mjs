@@ -76,6 +76,28 @@ test("account deletion strictly retires owned reservations before auth deletion"
   assert.match(source, /if \(error\) \{\s+throw error;\s+\}/);
 });
 
+test("account deletion verifies attached media is absent before deleting Auth", async () => {
+  const source = await readFile(accountDeleteRouteUrl, "utf8");
+  const attachedMediaRemove = source.match(
+    /await removeStorageObjectsOrThrow\(\s*admin,\s*MESSAGE_MEDIA_RESERVATION_BUCKET,\s*messageMediaPaths,\s*\);/,
+  );
+  const attachedMediaVerifyIndex = source.indexOf("await verifyStorageObjectsAbsent(");
+  const authDeleteIndex = source.indexOf("admin.auth.admin.deleteUser(user.id, true)");
+
+  assert.ok(attachedMediaRemove?.index >= 0);
+  assert.ok(attachedMediaVerifyIndex > attachedMediaRemove.index);
+  assert.ok(authDeleteIndex > attachedMediaVerifyIndex);
+  assert.match(source, /\.list\(folder, \{ limit: 100, offset \}\)/);
+  assert.match(
+    source,
+    /messageMediaPaths\.some\(\s*\(storagePath\) => !isOwnedMessageMediaStoragePath\(storagePath, user\.id\)/,
+  );
+  assert.doesNotMatch(
+    source,
+    /removeStorageObjects\(admin, MESSAGE_MEDIA_RESERVATION_BUCKET, messageMediaPaths\)/,
+  );
+});
+
 test("buildMessageMediaUploadPlan binds each file to an exact user and conversation path", () => {
   const ids = ["first-id", "second-id"];
   const plan = buildMessageMediaUploadPlan({

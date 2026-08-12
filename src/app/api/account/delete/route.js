@@ -103,6 +103,42 @@ async function removeStorageObjectsOrThrow(admin, bucket, paths) {
   }
 }
 
+async function verifyStorageObjectsAbsent(admin, bucket, paths) {
+  const pathsByFolder = new Map();
+
+  for (const storagePath of paths) {
+    const [conversationId, userId, objectName] = storagePath.split("/");
+    const folder = `${conversationId}/${userId}`;
+    const objectNames = pathsByFolder.get(folder) ?? new Set();
+    objectNames.add(objectName);
+    pathsByFolder.set(folder, objectNames);
+  }
+
+  for (const [folder, expectedAbsentNames] of pathsByFolder) {
+    let offset = 0;
+
+    while (true) {
+      const { data, error } = await admin.storage
+        .from(bucket)
+        .list(folder, { limit: 100, offset });
+
+      if (error || !Array.isArray(data)) {
+        throw error ?? new Error("Message media cleanup could not be verified.");
+      }
+
+      if (data.some((object) => expectedAbsentNames.has(object.name))) {
+        throw new Error("Message media cleanup left an attached object behind.");
+      }
+
+      if (data.length < 100) {
+        break;
+      }
+
+      offset += data.length;
+    }
+  }
+}
+
 async function retireOutstandingMessageMediaReservations(admin, userId) {
   const { data, error } = await admin.rpc("prepare_message_media_account_cleanup", {
     p_user_id: userId,
@@ -208,9 +244,19 @@ export async function POST() {
       throw messageAttachmentsResult.error;
     }
 
-    const messageMediaPaths = (messageAttachmentsResult.data ?? [])
-      .map((attachment) => attachment.storage_path)
-      .filter((storagePath) => isOwnedMessageMediaStoragePath(storagePath, user.id));
+    const attachedMessageMediaPaths = (messageAttachmentsResult.data ?? []).map(
+      (attachment) => attachment.storage_path,
+    );
+    const messageMediaPaths = [...new Set(attachedMessageMediaPaths)];
+
+    if (
+      messageMediaPaths.length !== attachedMessageMediaPaths.length ||
+      messageMediaPaths.some(
+        (storagePath) => !isOwnedMessageMediaStoragePath(storagePath, user.id),
+      )
+    ) {
+      throw new Error("Message media cleanup refused an unsafe attachment path.");
+    }
     const listingImagePaths = (listingImagesResult.data ?? [])
       .filter(
         (image) =>
@@ -242,7 +288,16 @@ export async function POST() {
 
     await removeStorageObjects(admin, "listing-images", listingImagePaths);
     await removeStorageObjects(admin, "profile-images", profileImagePath ? [profileImagePath] : []);
-    await removeStorageObjects(admin, MESSAGE_MEDIA_RESERVATION_BUCKET, messageMediaPaths);
+    await removeStorageObjectsOrThrow(
+      admin,
+      MESSAGE_MEDIA_RESERVATION_BUCKET,
+      messageMediaPaths,
+    );
+    await verifyStorageObjectsAbsent(
+      admin,
+      MESSAGE_MEDIA_RESERVATION_BUCKET,
+      messageMediaPaths,
+    );
 
     const { error: deleteUserError } = await admin.auth.admin.deleteUser(user.id, true);
 
