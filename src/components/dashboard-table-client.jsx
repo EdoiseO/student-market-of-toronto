@@ -592,7 +592,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                     href={`/listings/${item.slug}`}
                     className="block rounded-md after:absolute after:inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                   >
-                    <p className="truncate text-sm font-semibold leading-5 text-zinc-950 dark:text-foreground">
+                    <p className="truncate text-[0.8125rem] font-semibold leading-4 text-zinc-950 dark:text-foreground">
                       {item.title}
                     </p>
                   </Link>

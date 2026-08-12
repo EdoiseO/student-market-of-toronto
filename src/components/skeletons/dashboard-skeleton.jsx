@@ -6,7 +6,7 @@ function MobileListingCardSkeleton() {
       <div className="flex min-w-0 items-center gap-2.5">
         <Skeleton className="size-14 shrink-0 rounded-lg" />
         <div className="min-w-0 flex-1 space-y-2">
-          <Skeleton className="h-4 w-4/5" />
+          <Skeleton className="h-3.5 w-4/5" />
           <div className="flex items-center gap-2">
             <Skeleton className="h-4 w-12" />
             <Skeleton className="h-5 w-14 rounded-full" />
