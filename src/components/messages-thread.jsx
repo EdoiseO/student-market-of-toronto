@@ -428,21 +428,21 @@ export function MessagesThread({
   }
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-y border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card md:rounded-[2rem] md:border">
-      <div className="shrink-0 border-b border-zinc-200 p-4 dark:border-border md:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-y border-zinc-200 bg-white/95 dark:border-border dark:bg-card md:rounded-[2rem] md:border md:shadow-sm">
+      <div className="shrink-0 border-b border-zinc-200 p-3 dark:border-border md:p-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           {isAnnouncementConversation ? (
-            <div className="block rounded-2xl bg-zinc-50 p-4 dark:bg-muted/40 lg:w-full lg:max-w-md">
-              <div className="flex items-center gap-4">
-                <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-700 dark:bg-muted dark:text-muted-foreground md:size-18">
-                  <Megaphone className="size-8 md:size-10" />
+            <div className="block rounded-2xl border border-zinc-200/80 bg-zinc-50/80 p-2.5 dark:border-border dark:bg-muted/30 lg:w-full lg:max-w-md">
+              <div className="flex items-center gap-3">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-zinc-600 dark:bg-muted dark:text-muted-foreground md:size-14">
+                  <Megaphone className="size-6 md:size-7" />
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-base font-semibold text-zinc-950 dark:text-foreground">
+                  <p className="truncate text-[0.8125rem] font-semibold leading-4 text-zinc-950 dark:text-foreground md:text-sm md:leading-5">
                     {t.announcements}
                   </p>
-                  <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
+                  <p className="mt-1 line-clamp-1 text-xs text-zinc-500 dark:text-muted-foreground">
                     {t.announcementConversationDescription}
                   </p>
                 </div>
@@ -451,16 +451,16 @@ export function MessagesThread({
           ) : hasListingLink ? (
             <Link
               href={`/listings/${conversation.listing.slug}`}
-              className="block rounded-2xl bg-zinc-50 p-4 transition hover:bg-background dark:bg-muted/40 dark:hover:bg-background lg:w-full lg:max-w-md"
+              className="block rounded-2xl border border-zinc-200/80 bg-zinc-50/80 p-2.5 transition hover:bg-zinc-100/80 dark:border-border dark:bg-muted/30 dark:hover:bg-muted/50 lg:w-full lg:max-w-md"
             >
-              <div className="flex items-center gap-4">
-                <div className="relative size-14 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted md:size-18">
+              <div className="flex items-center gap-3">
+                <div className="relative size-12 shrink-0 overflow-hidden rounded-xl bg-zinc-100 dark:bg-muted md:size-14">
                   {conversation.listing.imageUrl ? (
                     <Image
                       src={conversation.listing.imageUrl}
                       alt={conversation.listing.title}
                       fill
-                      sizes="(max-width: 767px) 56px, 72px"
+                      sizes="(max-width: 767px) 48px, 56px"
                       placeholder="blur"
                       blurDataURL={REMOTE_IMAGE_BLUR_DATA_URL}
                       className="object-cover"
@@ -471,30 +471,30 @@ export function MessagesThread({
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-base font-semibold text-zinc-950 dark:text-foreground">
+                  <p className="truncate text-[0.8125rem] font-semibold leading-4 text-zinc-950 dark:text-foreground md:text-sm md:leading-5">
                     {conversation.listing.title}
                   </p>
-                  <p className="mt-1 truncate text-sm font-medium text-zinc-900 dark:text-foreground">
+                  <p className="mt-1 truncate text-xs font-semibold text-zinc-900 dark:text-foreground">
                     {formatPrice(conversation.listing.price, language)}
                   </p>
-                  <p className="mt-1 truncate text-sm text-zinc-500 dark:text-muted-foreground">
+                  <p className="mt-0.5 truncate text-[0.6875rem] leading-4 text-zinc-500 dark:text-muted-foreground md:text-xs">
                     {conversation.listing.location || t.torontoMeetup}
                   </p>
                 </div>
               </div>
             </Link>
           ) : (
-            <div className="block rounded-2xl bg-zinc-50 p-4 dark:bg-muted/40 lg:w-full lg:max-w-md">
-              <div className="flex items-center gap-4">
-                <div className="size-14 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted md:size-18">
+            <div className="block rounded-2xl border border-zinc-200/80 bg-zinc-50/80 p-2.5 dark:border-border dark:bg-muted/30 lg:w-full lg:max-w-md">
+              <div className="flex items-center gap-3">
+                <div className="size-12 shrink-0 overflow-hidden rounded-xl bg-zinc-100 dark:bg-muted md:size-14">
                   <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-base font-semibold text-zinc-950 dark:text-foreground">
+                  <p className="truncate text-[0.8125rem] font-semibold leading-4 text-zinc-950 dark:text-foreground md:text-sm md:leading-5">
                     {t.deletedListingTitle}
                   </p>
-                  <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
+                  <p className="mt-1 line-clamp-1 text-xs text-zinc-500 dark:text-muted-foreground">
                     {t.deletedListingDescription}
                   </p>
                 </div>
@@ -506,20 +506,20 @@ export function MessagesThread({
             <div className="flex items-center gap-2 lg:self-center">
               <Link
                 href={`/profile/${conversation.otherParticipant.id}`}
-                className="flex items-center gap-3 rounded-xl transition hover:bg-zinc-50/80 dark:hover:bg-muted/40"
+                className="flex min-w-0 items-center gap-2.5 rounded-xl transition hover:bg-zinc-50/80 dark:hover:bg-muted/40"
               >
                 <ProfileAvatar
                   name={conversation.otherParticipant.name}
                   avatarPresetId={conversation.otherParticipant.avatarPresetId}
                   avatarUrl={conversation.otherParticipant.avatarUrl}
-                  className="size-10 border border-zinc-200 dark:border-border"
+                  className="size-9 border border-zinc-200 dark:border-border"
                 />
 
-                <div>
-                  <h1 className="text-lg font-semibold text-zinc-950 dark:text-foreground">
+                <div className="min-w-0">
+                  <h1 className="truncate text-sm font-semibold text-zinc-950 dark:text-foreground md:text-base">
                     {conversation.otherParticipant.name}
                   </h1>
-                  <p className="text-xs text-zinc-500 dark:text-muted-foreground">
+                  <p className="truncate text-[0.6875rem] leading-4 text-zinc-500 dark:text-muted-foreground md:text-xs">
                     {conversation.otherParticipant.school || t.torontoStudent}
                   </p>
                 </div>
@@ -573,25 +573,25 @@ export function MessagesThread({
               </DropdownMenu>
             </div>
           ) : (
-            <div className="flex items-center gap-3 lg:self-center">
+            <div className="flex items-center gap-2.5 lg:self-center">
               {conversation.isAnnouncement ? (
-                <div className="flex size-10 items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 text-zinc-700 dark:border-border dark:bg-muted dark:text-muted-foreground">
-                  <Megaphone className="size-6" />
+                <div className="flex size-9 items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 text-zinc-700 dark:border-border dark:bg-muted dark:text-muted-foreground">
+                  <Megaphone className="size-5" />
                 </div>
               ) : (
                 <ProfileAvatar
                   name={conversation.otherParticipant.name}
                   avatarPresetId={conversation.otherParticipant.avatarPresetId}
                   avatarUrl={conversation.otherParticipant.avatarUrl}
-                  className="size-10 border border-zinc-200 dark:border-border"
+                  className="size-9 border border-zinc-200 dark:border-border"
                 />
               )}
 
               <div>
-                <h1 className="text-lg font-semibold text-zinc-950 dark:text-foreground">
+                <h1 className="text-sm font-semibold text-zinc-950 dark:text-foreground md:text-base">
                   {conversation.otherParticipant.name}
                 </h1>
-                <p className="text-xs text-zinc-500 dark:text-muted-foreground">
+                <p className="text-[0.6875rem] leading-4 text-zinc-500 dark:text-muted-foreground md:text-xs">
                   {conversation.otherParticipant.school || t.torontoStudent}
                 </p>
               </div>
@@ -600,7 +600,7 @@ export function MessagesThread({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain bg-zinc-50/70 px-4 pt-3 pb-5 dark:bg-muted/20 md:px-6 md:pb-6">
+      <div className="min-h-0 flex-1 space-y-3.5 overflow-y-auto overscroll-contain bg-zinc-50/60 px-3.5 py-4 dark:bg-muted/15 md:space-y-4 md:px-6 md:py-5">
         {messages.length > 0 ? (
           messages.map((message) => {
             const isCurrentUser = message.sender_id === currentUserId;
@@ -611,23 +611,23 @@ export function MessagesThread({
             return (
               <div
                 key={message.id}
-                className={`group/message flex items-end gap-3 ${isCurrentUser ? "flex-row-reverse" : ""}`}
+                className={`group/message flex items-end gap-2 ${isCurrentUser ? "flex-row-reverse" : ""}`}
               >
                 {conversation.isAnnouncement && !isCurrentUser ? (
-                  <div className="flex size-10 items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 text-zinc-700 shadow-sm dark:border-border dark:bg-muted dark:text-muted-foreground">
-                    <Megaphone className="size-6" />
+                  <div className="flex size-8 items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 text-zinc-600 dark:border-border dark:bg-muted dark:text-muted-foreground md:size-9">
+                    <Megaphone className="size-4.5" />
                   </div>
                 ) : (
                   <ProfileAvatar
                     name={participant.name}
                     avatarPresetId={participant.avatarPresetId}
                     avatarUrl={participant.avatarUrl}
-                    className="size-10 border border-zinc-200 shadow-sm dark:border-border"
+                    className="size-8 border border-zinc-200 dark:border-border md:size-9"
                   />
                 )}
 
                 <div
-                  className={`relative flex min-w-0 max-w-[80vw] flex-col gap-1.5 sm:max-w-[70%] ${
+                  className={`relative flex min-w-0 max-w-[78vw] flex-col gap-1 sm:max-w-[68%] ${
                     isCurrentUser ? "items-end" : "items-start"
                   }`}
                 >
@@ -656,13 +656,7 @@ export function MessagesThread({
                     </DropdownMenuContent>
                   </DropdownMenu>
 
-                  <p
-                    className={`px-1 text-xs ${
-                      isCurrentUser
-                        ? "text-zinc-500 dark:text-muted-foreground"
-                        : "text-zinc-500 dark:text-muted-foreground"
-                    }`}
-                  >
+                  <p className="px-1 text-[0.6875rem] leading-4 text-zinc-500 dark:text-muted-foreground md:text-xs">
                     <span className="font-semibold text-zinc-900 dark:text-foreground">
                       {isCurrentUser ? t.you : participant.name}
                     </span>{" "}
@@ -670,13 +664,13 @@ export function MessagesThread({
                   </p>
 
                   <div
-                    className={`w-fit rounded-[1.5rem] px-4 py-3 text-left shadow-sm ${
+                    className={`w-fit rounded-[1.25rem] px-3.5 py-2.5 text-left ${
                       isCurrentUser
-                        ? "rounded-tr-md bg-primary text-primary-foreground"
-                        : "rounded-tl-md border border-zinc-200 bg-white text-zinc-900 dark:border-border dark:bg-card dark:text-foreground"
+                        ? "rounded-tr-sm border border-zinc-300/80 bg-zinc-200/90 text-zinc-950 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                        : "rounded-tl-sm border border-zinc-200 bg-white/90 text-zinc-900 dark:border-border dark:bg-card dark:text-foreground"
                     }`}
                   >
-                    <p className="whitespace-pre-wrap break-words text-sm leading-6">
+                    <p className="whitespace-pre-wrap break-words text-[0.8125rem] leading-5 md:text-sm md:leading-6">
                       {message.body}
                     </p>
                   </div>
@@ -685,7 +679,7 @@ export function MessagesThread({
             );
           })
         ) : (
-          <div className="flex h-full min-h-[220px] items-center justify-center rounded-[1.75rem] border border-dashed border-zinc-300 bg-white/80 p-5 text-center dark:border-border dark:bg-card/80 md:min-h-[280px] md:p-8">
+          <div className="flex h-full min-h-[220px] items-center justify-center rounded-[1.5rem] border border-dashed border-zinc-300 bg-white/70 p-5 text-center dark:border-border dark:bg-card/70 md:min-h-[280px] md:p-8">
             <div className="max-w-md">
               <h2 className="text-lg font-semibold text-zinc-950 dark:text-foreground">
                 {t.noMessagesYetTitle}
@@ -700,8 +694,8 @@ export function MessagesThread({
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="sticky bottom-0 z-20 shrink-0 border-t border-zinc-200 bg-background px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-border md:p-6">
-        <div className="rounded-[1.75rem] border border-zinc-200 bg-background p-3 shadow-sm dark:border-border dark:bg-background">
+      <form onSubmit={handleSubmit} className="sticky bottom-0 z-20 shrink-0 border-t border-zinc-200 bg-white/95 px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur-sm dark:border-border dark:bg-card/95 md:p-5">
+        <div className="rounded-[1.35rem] border border-zinc-200 bg-zinc-50/70 p-2.5 dark:border-border dark:bg-muted/20">
           {blockReason ? (
             <p className="px-2 pb-3 text-sm text-muted-foreground">{blockReason}</p>
           ) : null}
@@ -714,12 +708,12 @@ export function MessagesThread({
             onKeyDown={handleComposerKeyDown}
             placeholder={t.messageInputPlaceholder}
             rows={2}
-            className="h-16 min-h-16 max-h-40 resize-none border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0"
+            className="h-12 min-h-12 max-h-32 resize-none border-0 bg-transparent px-2 py-1.5 text-base leading-5 shadow-none focus-visible:ring-0 md:h-14 md:min-h-14"
             maxLength={2000}
             disabled={!isMessagingAvailable || Boolean(blockReason) || isSending}
           />
 
-          <div className="mt-2 flex items-center justify-between gap-3 border-t border-zinc-200 px-2 pt-3 dark:border-border">
+          <div className="mt-1.5 flex items-center justify-between gap-3 border-t border-zinc-200 px-1.5 pt-2 dark:border-border">
             <div className="flex items-center gap-2">
               <Tooltip>
                 <TooltipTrigger asChild>
