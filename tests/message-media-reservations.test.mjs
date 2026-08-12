@@ -14,6 +14,10 @@ const reservationMigrationUrl = new URL(
   "../supabase/migrations/20260812112419_enforce_message_media_reservations.sql",
   import.meta.url,
 );
+const storagePolicyGrantMigrationUrl = new URL(
+  "../supabase/migrations/20260812142916_grant_message_media_storage_policy_schema_usage.sql",
+  import.meta.url,
+);
 const accountDeleteRouteUrl = new URL("../src/app/api/account/delete/route.js", import.meta.url);
 
 test("message-media ownership accepts only exact conversation/user/object paths", () => {
@@ -59,6 +63,15 @@ test("reservation migration serializes Storage inserts and restricts cleanup pri
     sql,
     /revoke execute on function public\.send_conversation_message_with_attachments\(uuid, text, jsonb\)\s+from service_role/i,
   );
+});
+
+test("authenticated Storage policy callers can resolve only the reserved-upload helper", async () => {
+  const sql = await readFile(storagePolicyGrantMigrationUrl, "utf8");
+
+  assert.match(sql, /revoke usage on schema private from public, anon, service_role/i);
+  assert.match(sql, /grant usage on schema private to authenticated/i);
+  assert.doesNotMatch(sql, /grant (select|insert|update|delete|all) on/i);
+  assert.doesNotMatch(sql, /grant execute on all functions/i);
 });
 
 test("account deletion strictly retires owned reservations before auth deletion", async () => {
