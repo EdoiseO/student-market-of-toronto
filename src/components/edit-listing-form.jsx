@@ -386,7 +386,7 @@ export function EditListingForm({ listing }) {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-100 px-3 py-3 dark:bg-background md:p-8">
+    <main className="min-h-screen bg-zinc-100 px-4 py-3 dark:bg-background md:p-8">
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 md:gap-8">
         <Card className="rounded-[1.5rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border md:rounded-[2rem]">
           <CardHeader className="border-b border-zinc-200 px-4 py-4 dark:border-border sm:px-6 sm:py-5 md:px-8 md:py-7">
@@ -443,7 +443,8 @@ export function EditListingForm({ listing }) {
                   <Textarea
                     value={description}
                     onChange={(event) => setDescription(event.target.value)}
-                    className="h-28 min-h-28 resize-none overflow-y-auto [field-sizing:fixed] md:h-auto md:min-h-40 md:overflow-visible md:[field-sizing:content]"
+                    rows={4}
+                    className="h-28 min-h-28 resize-y overflow-y-auto [field-sizing:fixed] md:h-40 md:min-h-40"
                     placeholder={t.descriptionPlaceholder}
                   />
                 </Field>
@@ -577,7 +578,7 @@ export function EditListingForm({ listing }) {
                       </div>
                     </Field>
 
-                    <div className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-white/10 dark:bg-card md:rounded-2xl md:p-4">
+                    <div className="hidden rounded-2xl border border-zinc-200 bg-white p-4 dark:border-white/10 dark:bg-card md:block">
                       <div className="mb-2 flex items-center gap-2 text-zinc-900 dark:text-foreground md:mb-3">
                         <Sparkles className="size-4" />
                         <p className="text-xs font-semibold uppercase tracking-[0.16em] md:text-sm md:tracking-[0.18em]">
@@ -600,7 +601,7 @@ export function EditListingForm({ listing }) {
                       </p>
                     </div>
 
-                    <div className="rounded-xl border border-zinc-200 bg-white p-3 text-xs leading-5 text-zinc-500 dark:border-white/10 dark:bg-card dark:text-muted-foreground md:rounded-2xl md:p-4 md:text-sm">
+                    <div className="hidden rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-500 dark:border-white/10 dark:bg-card dark:text-muted-foreground md:block">
                       <div className="mb-1.5 flex items-center gap-2 text-zinc-900 dark:text-foreground md:mb-2">
                         <Info className="size-4" />
                         <span className="font-medium">{t.recommendation}</span>
@@ -614,17 +615,17 @@ export function EditListingForm({ listing }) {
 
             {error ? <p role="alert" className="mt-4 text-sm text-red-600 md:mt-6">{error}</p> : null}
 
-            <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 -mx-4 mt-5 grid grid-cols-2 gap-2 border-t border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-border dark:bg-card/95 sm:static sm:mx-0 sm:mt-8 sm:flex sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-3 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+            <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 -mx-4 mt-5 grid grid-cols-2 gap-2 border-t border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-border dark:bg-card/95 md:static md:mx-0 md:mt-8 md:flex md:flex-row md:flex-wrap md:items-center md:justify-end md:gap-3 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
               <Button
                 type="button"
                 variant="outline"
-                className="w-full sm:w-auto"
+                className="w-full md:w-auto"
                 onClick={() => router.back()}
                 disabled={loading}
               >
                 {t.cancel}
               </Button>
-              <Button type="button" className="w-full sm:w-auto" onClick={handleSave} disabled={loading}>
+              <Button type="button" className="w-full md:w-auto" onClick={handleSave} disabled={loading}>
                 {loading ? t.saving : t.saveChanges}
               </Button>
             </div>

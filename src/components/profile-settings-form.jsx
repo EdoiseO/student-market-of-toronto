@@ -267,11 +267,11 @@ export function ProfileSettingsForm({ initialProfile }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-8">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4 pb-4 md:gap-8 md:pb-0">
       {requiresNameChange ? (
-        <Card className="rounded-3xl border-amber-300 bg-amber-50 py-0 shadow-sm dark:border-amber-500/40 dark:bg-amber-500/10">
-          <CardHeader className="px-6 py-5">
-            <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
+        <Card className="rounded-2xl border-amber-300 bg-amber-50 py-0 shadow-sm dark:border-amber-500/40 dark:bg-amber-500/10 md:rounded-3xl">
+          <CardHeader className="px-4 py-4 md:px-6 md:py-5">
+            <CardTitle className="text-lg text-zinc-950 dark:text-foreground md:text-xl">
               {t.profileNameChangeRequiredTitle}
             </CardTitle>
             <CardDescription className="text-zinc-700 dark:text-zinc-200">
@@ -281,13 +281,13 @@ export function ProfileSettingsForm({ initialProfile }) {
         </Card>
       ) : null}
 
-      <div className="grid gap-8 xl:grid-cols-[320px_minmax(0,1fr)]">
-        <Card className="rounded-3xl bg-white py-0 shadow-sm ring-zinc-200 dark:bg-card dark:ring-border">
-          <CardHeader className="border-b border-zinc-200 px-6 py-6 dark:border-border">
-            <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">{t.profilePhotoTitle}</CardTitle>
+      <div className="grid gap-4 md:gap-8 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <Card className="rounded-2xl bg-white py-0 shadow-sm ring-zinc-200 dark:bg-card dark:ring-border md:rounded-3xl">
+          <CardHeader className="border-b border-zinc-200 px-4 py-4 dark:border-border md:px-6 md:py-6">
+            <CardTitle className="text-lg text-zinc-950 dark:text-foreground md:text-2xl">{t.profilePhotoTitle}</CardTitle>
             <CardDescription>{t.profilePhotoDescription}</CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col items-center gap-6 px-6 pt-4 pb-8 text-center">
+          <CardContent className="flex flex-col items-center gap-4 px-4 pb-4 pt-3 text-center md:gap-6 md:px-6 md:pb-8 md:pt-4">
             <Popover open={isAvatarPickerOpen} onOpenChange={setIsAvatarPickerOpen}>
               <PopoverAnchor asChild>
                 <div className="relative flex size-20 items-center justify-center self-center rounded-[1.5rem] border border-dashed border-zinc-300 bg-zinc-50 dark:border-border dark:bg-muted/40 lg:size-[120px] lg:rounded-[2rem]">
@@ -369,13 +369,13 @@ export function ProfileSettingsForm({ initialProfile }) {
                   />
               </PopoverContent>
             </Popover>
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-zinc-950 dark:text-foreground">{initialProfile.email || t.studentAccount}</p>
-              <p className="text-sm text-zinc-500 dark:text-muted-foreground">
+            <div className="min-w-0 max-w-full space-y-1 md:space-y-2">
+              <p className="break-all text-sm font-medium text-zinc-950 dark:text-foreground">{initialProfile.email || t.studentAccount}</p>
+              <p className="text-xs leading-5 text-zinc-500 dark:text-muted-foreground md:text-sm">
                 {t.profileColorsStorageNote}
               </p>
             </div>
-            <div className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-4 text-left dark:border-border dark:bg-muted/40">
+            <div className="w-full rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-left dark:border-border dark:bg-muted/40 md:rounded-2xl md:p-4">
               <p className="text-sm font-medium text-zinc-950 dark:text-foreground">{t.school}</p>
               <p className="mt-1 text-sm text-zinc-600 dark:text-muted-foreground">
                 {initialProfile.school || t.noSchoolOnFile}
@@ -384,13 +384,13 @@ export function ProfileSettingsForm({ initialProfile }) {
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl bg-white py-0 shadow-sm ring-zinc-200 dark:bg-card dark:ring-border">
-          <CardHeader className="border-b border-zinc-200 px-6 py-6 dark:border-border">
-            <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">{t.personalDetailsTitle}</CardTitle>
+        <Card className="rounded-2xl bg-white py-0 shadow-sm ring-zinc-200 dark:bg-card dark:ring-border md:rounded-3xl">
+          <CardHeader className="border-b border-zinc-200 px-4 py-4 dark:border-border md:px-6 md:py-6">
+            <CardTitle className="text-lg text-zinc-950 dark:text-foreground md:text-2xl">{t.personalDetailsTitle}</CardTitle>
             <CardDescription>{t.personalDetailsDescription}</CardDescription>
           </CardHeader>
-          <CardContent className="px-6 py-8">
-            <FieldGroup className="gap-6">
+          <CardContent className="px-4 py-4 md:px-6 md:py-8">
+            <FieldGroup className="gap-4 md:gap-6">
               <div className="grid w-full gap-4 md:max-w-[50%]">
                 <Field>
                   <FieldLabel htmlFor="profile-first-name">{t.firstName}</FieldLabel>
@@ -421,15 +421,16 @@ export function ProfileSettingsForm({ initialProfile }) {
                   id="profile-description"
                   value={bio}
                   onChange={(event) => setBio(event.target.value)}
-                  className="min-h-36 rounded-2xl bg-white dark:bg-input/30"
+                  rows={4}
+                  className="h-28 min-h-28 resize-y overflow-y-auto rounded-xl bg-white [field-sizing:fixed] dark:bg-input/30 md:h-36 md:min-h-36 md:rounded-2xl"
                   placeholder={t.profileBioPlaceholder}
                 />
               </Field>
 
-              <div className="flex justify-end">
+              <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 -mx-4 flex border-t border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-border dark:bg-card/95 md:static md:mx-0 md:justify-end md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
                 <Button
                   type="submit"
-                  className="rounded-xl px-5"
+                  className="w-full rounded-xl px-5 md:w-auto"
                   disabled={isSaving || !hasProfileChanges}
                 >
                   {isSaving ? t.saving : t.saveProfile}
