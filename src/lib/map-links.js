@@ -27,11 +27,11 @@ export function getPreferredMapProvider(userAgent) {
 export function buildMapProviderUrls(query) {
   const normalizedQuery = normalizeMapQuery(query);
   const appleMapsUrl = new URL("https://maps.apple.com/");
-  const googleMapsUrl = new URL("https://www.google.com/maps/search/");
+  const googleMapsUrl = new URL("https://www.google.com/maps/dir/");
 
-  appleMapsUrl.searchParams.set("q", normalizedQuery);
+  appleMapsUrl.searchParams.set("daddr", normalizedQuery);
   googleMapsUrl.searchParams.set("api", "1");
-  googleMapsUrl.searchParams.set("query", normalizedQuery);
+  googleMapsUrl.searchParams.set("destination", normalizedQuery);
 
   return {
     [MAP_PROVIDERS.apple]: appleMapsUrl.href,

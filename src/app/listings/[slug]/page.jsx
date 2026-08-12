@@ -383,13 +383,20 @@ export default async function ListingDetailPage({ params }) {
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
             />
+            <ListingMapActions
+              location={campusLabel}
+              preferredProvider={preferredMapProvider}
+              labels={{
+                cancel: t.cancel,
+                campusAreaLabel: t.campusAreaLabel,
+                getDirections: t.getDirections,
+                mapAppChoicesLabel: t.mapAppChoicesLabel,
+                openInAppleMaps: t.openInAppleMaps,
+                openInGoogleMaps: t.openInGoogleMaps,
+                recommendedForDevice: t.recommendedForDevice,
+              }}
+            />
           </div>
-
-          <ListingMapActions
-            location={campusLabel}
-            preferredProvider={preferredMapProvider}
-            language={language}
-          />
         </section>
 
         <section className="rounded-3xl bg-zinc-50 p-4 shadow-sm ring-1 ring-zinc-200 dark:bg-muted/40 dark:ring-border md:p-8">
