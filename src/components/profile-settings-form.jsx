@@ -500,12 +500,12 @@ export function ProfileSettingsForm({ initialProfile }) {
                   value={bio}
                   onChange={(event) => setBio(event.target.value)}
                   rows={4}
-                  className="h-28 min-h-28 max-h-72 rounded-xl bg-white dark:bg-input/30 md:h-36 md:min-h-36 md:rounded-2xl"
+                  className="h-32 min-h-32 max-h-72 rounded-xl bg-white dark:bg-input/30 md:h-36 md:min-h-36 md:rounded-2xl"
                   placeholder={t.profileBioPlaceholder}
                 />
               </Field>
 
-              <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 -mx-4 flex justify-end border-t border-zinc-200 bg-white/95 px-4 py-2 backdrop-blur dark:border-border dark:bg-card/95 md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
+              <div className="-mx-4 flex justify-end border-t border-zinc-200 bg-white px-4 py-2 dark:border-border dark:bg-card md:mx-0 md:border-0 md:bg-transparent md:p-0">
                 <Button
                   type="submit"
                   size="sm"
