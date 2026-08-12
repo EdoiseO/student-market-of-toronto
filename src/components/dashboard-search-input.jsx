@@ -26,14 +26,14 @@ export function DashboardSearchInput({ value, onValueChange }) {
           }
         }}
         placeholder={t.searchYourListingsPlaceholder}
-        className="h-9 rounded-lg bg-white pl-8 pr-9 text-sm dark:bg-input/30"
+        className="h-12 rounded-lg bg-white pl-8 pr-12 text-base dark:bg-input/30"
       />
       <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-zinc-500 dark:text-muted-foreground" />
       {value.length > 0 ? (
         <button
           type="button"
           onClick={() => onValueChange("")}
-          className="absolute right-1.5 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-muted-foreground dark:hover:bg-muted dark:hover:text-foreground"
+          className="absolute right-1.5 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-muted-foreground dark:hover:bg-muted dark:hover:text-foreground"
           aria-label={t.clearDashboardSearch}
         >
           <XIcon className="size-3.5" />

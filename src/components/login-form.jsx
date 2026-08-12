@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/LanguageContext";
@@ -22,6 +23,7 @@ import { Input } from "@/components/ui/input";
 
 export function LoginForm({ className, ...props }) {
   const { t } = useLanguage();
+  const router = useRouter();
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -40,7 +42,8 @@ export function LoginForm({ className, ...props }) {
     if (error) setError(error.message);
     else {
       setSuccess(t.loggedInSuccess);
-      window.location.href = "/";
+      router.replace("/");
+      router.refresh();
     }
   }
 
@@ -61,6 +64,7 @@ export function LoginForm({ className, ...props }) {
                 <Input
                   id="email"
                   type="email"
+                  autoComplete="email"
                   placeholder="m@example.com"
                   required
                   value={formData.email}
@@ -75,7 +79,7 @@ export function LoginForm({ className, ...props }) {
                   <FieldLabel htmlFor="password">{t.password}</FieldLabel>
                   <Link
                     href="/forget-password"
-                    className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
+                    className="ml-auto inline-flex min-h-11 items-center text-sm underline-offset-4 hover:underline"
                   >
                     {t.forgotPassword}
                   </Link>
@@ -83,19 +87,21 @@ export function LoginForm({ className, ...props }) {
                 <Input
                   id="password"
                   type="password"
+                  autoComplete="current-password"
                   required
                   value={formData.password}
                   onChange={(e) =>
                     setFormData({ ...formData, password: e.target.value })
                   }
+                  aria-invalid={Boolean(error)}
                 />
+                {error ? <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
               </Field>
 
               <Field>
-                <Button type="submit">{t.login}</Button>
-                {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+                <Button type="submit" className="w-full">{t.login}</Button>
                 {success && (
-                  <p className="mt-2 text-sm text-green-600 dark:text-green-400">{success}</p>
+                  <p role="status" className="text-sm text-green-600 dark:text-green-400">{success}</p>
                 )}
                 <FieldDescription className="text-center">
                   {t.noAccount} <Link href="/register">{t.signUp}</Link>

@@ -45,8 +45,8 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="flex h-svh w-full items-center justify-center overflow-hidden bg-zinc-100 p-4 dark:bg-background md:p-6">
-      <div className="flex w-full max-w-sm flex-col gap-4">
+    <main className="flex min-h-svh w-full items-start justify-center overflow-y-auto bg-zinc-100 px-4 py-6 dark:bg-background sm:items-center md:p-6">
+      <div className="flex w-full max-w-sm flex-col gap-6">
         <AuthPageBrand />
         <Card>
           <CardHeader>
@@ -61,18 +61,19 @@ export default function ForgotPasswordPage() {
                   <Input
                     id="email"
                     type="email"
+                    autoComplete="email"
                     placeholder="m@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
                   />
+                  {message ? (
+                    <p role="status" className="text-sm text-zinc-600 dark:text-muted-foreground">{message}</p>
+                  ) : null}
                 </Field>
 
                 <Field>
-                  <Button type="submit">{t.sendResetLink}</Button>
-                  {message ? (
-                    <p className="mt-2 text-center text-sm text-zinc-600 dark:text-muted-foreground">{message}</p>
-                  ) : null}
+                  <Button type="submit" className="w-full">{t.sendResetLink}</Button>
                   <FieldDescription className="text-center">
                     {t.rememberedPassword} <Link href="/login">{t.backToLogin}</Link>
                   </FieldDescription>

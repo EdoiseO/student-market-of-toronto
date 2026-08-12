@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { Settings2Icon, UserRoundIcon } from "lucide-react";
 
 import { DashboardTableClient } from "@/components/dashboard-table-client";
 import { normalizeCategoryValue } from "@/lib/categories";
@@ -11,6 +12,7 @@ import {
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 const DASHBOARD_LISTING_SELECT = `
   id,
@@ -206,6 +208,20 @@ export default async function DashboardPage({ searchParams }) {
             <p className="max-w-2xl text-base text-zinc-600 dark:text-muted-foreground">
               {t.dashboardDescription}
             </p>
+            <nav aria-label={t.account} className="mt-3 grid grid-cols-2 gap-2 md:hidden">
+              <Button asChild variant="outline" className="justify-start rounded-xl bg-white px-3 dark:bg-background">
+                <Link href="/dashboard/profile">
+                  <UserRoundIcon className="size-4" />
+                  {t.profile}
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="justify-start rounded-xl bg-white px-3 dark:bg-background">
+                <Link href="/dashboard/settings">
+                  <Settings2Icon className="size-4" />
+                  {t.settings}
+                </Link>
+              </Button>
+            </nav>
           </CardHeader>
 
           <CardContent className="space-y-5 p-8 pt-3">

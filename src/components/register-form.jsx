@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/LanguageContext";
@@ -51,6 +52,13 @@ export function RegisterForm({ className, ...props }) {
   };
   const schoolEmailError = showSchoolEmailHint
     ? getSchoolEmailError(form.email)
+    : "";
+  const passwordMismatchError = error === t.passwordsDoNotMatch;
+  const passwordBackendError = error && !passwordMismatchError && /password/i.test(error)
+    ? error
+    : "";
+  const formError = error && !passwordMismatchError && !passwordBackendError && error !== schoolEmailError
+    ? error
     : "";
 
   function updateField(name, value) {
@@ -124,6 +132,7 @@ export function RegisterForm({ className, ...props }) {
                 <Input
                   id="firstName"
                   type="text"
+                  autoComplete="given-name"
                   placeholder="John"
                   required
                   value={form.firstName}
@@ -136,6 +145,7 @@ export function RegisterForm({ className, ...props }) {
                 <Input
                   id="lastName"
                   type="text"
+                  autoComplete="family-name"
                   placeholder="Doe"
                   required
                   value={form.lastName}
@@ -148,13 +158,15 @@ export function RegisterForm({ className, ...props }) {
                 <Input
                   id="email"
                   type="email"
+                  autoComplete="email"
                   placeholder="john.doe@mail.utoronto.ca"
                   required
                   value={form.email}
                   onChange={(e) => updateField("email", e.target.value)}
+                  aria-invalid={Boolean(schoolEmailError)}
                 />
                 {schoolEmailError && (
-                  <p className="text-sm text-red-600 dark:text-red-400">{schoolEmailError}</p>
+                  <p role="alert" className="text-sm text-red-600 dark:text-red-400">{schoolEmailError}</p>
                 )}
               </Field>
 
@@ -163,10 +175,15 @@ export function RegisterForm({ className, ...props }) {
                 <Input
                   id="password"
                   type="password"
+                  autoComplete="new-password"
                   required
                   value={form.password}
                   onChange={(e) => updateField("password", e.target.value)}
+                  aria-invalid={Boolean(passwordBackendError)}
                 />
+                {passwordBackendError ? (
+                  <p role="alert" className="text-sm text-red-600 dark:text-red-400">{passwordBackendError}</p>
+                ) : null}
               </Field>
 
               <Field>
@@ -176,12 +193,17 @@ export function RegisterForm({ className, ...props }) {
                 <Input
                   id="confirmPassword"
                   type="password"
+                  autoComplete="new-password"
                   required
                   value={form.confirmPassword}
                   onChange={(e) =>
                     updateField("confirmPassword", e.target.value)
                   }
+                  aria-invalid={passwordMismatchError}
                 />
+                {passwordMismatchError ? (
+                  <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                ) : null}
               </Field>
 
               <Field>
@@ -200,13 +222,15 @@ export function RegisterForm({ className, ...props }) {
               </Field>
 
               <Field>
-                <Button type="submit">{t.signUp}</Button>
-                {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+                <Button type="submit" className="w-full">{t.signUp}</Button>
                 {success && (
-                  <p className="mt-2 text-sm text-green-600 dark:text-green-400">{success}</p>
+                  <p role="status" className="text-sm text-green-600 dark:text-green-400">{success}</p>
                 )}
+                {formError ? (
+                  <p role="alert" className="text-sm text-red-600 dark:text-red-400">{formError}</p>
+                ) : null}
                 <FieldDescription className="text-center">
-                  {t.alreadyHaveAccount} <a href="/login">{t.login}</a>
+                  {t.alreadyHaveAccount} <Link href="/login">{t.login}</Link>
                 </FieldDescription>
               </Field>
             </FieldGroup>
