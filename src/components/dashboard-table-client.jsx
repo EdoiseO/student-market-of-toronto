@@ -6,9 +6,8 @@ import Link from "next/link";
 import {
   CircleCheckIcon,
   InfoIcon,
-  ListFilterIcon,
   Loader2Icon,
-  PlusIcon,
+  SlidersHorizontalIcon,
 } from "lucide-react";
 
 import { DashboardCategoryFilter } from "@/components/dashboard-category-filter";
@@ -449,97 +448,88 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
           })}
         </div>
 
-        <div className="space-y-2 md:hidden">
-          <DashboardSearchInput
-            id="dashboard-search-mobile"
-            value={dashboardSearch}
-            onValueChange={setDashboardSearch}
-          />
-          <div className="flex gap-2">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button
-                  type="button"
-                  variant={mobileOptionCount > 0 ? "secondary" : "outline"}
-                  className="flex-1 justify-center rounded-xl bg-white px-3 dark:bg-background"
-                >
-                  <ListFilterIcon className="size-4" />
-                  {t.filters}
-                  {mobileOptionCount > 0 ? (
-                    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-xs font-semibold text-primary-foreground">
-                      {mobileOptionCount}
-                    </span>
-                  ) : null}
-                </Button>
-              </SheetTrigger>
-              <SheetContent
-                side="bottom"
-                className="rounded-t-3xl px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2"
-              >
-                <div className="mx-auto h-1.5 w-12 rounded-full bg-muted" aria-hidden="true" />
-                <SheetHeader className="px-0 pb-2 pt-3 text-left">
-                  <SheetTitle className="text-lg font-semibold">{t.filters}</SheetTitle>
-                  <SheetDescription>{t.filterDashboardByCategory}</SheetDescription>
-                </SheetHeader>
+        <div className="flex items-center gap-2 md:hidden">
+          <div className="min-w-0 flex-1">
+            <DashboardSearchInput
+              id="dashboard-search-mobile"
+              value={dashboardSearch}
+              onValueChange={setDashboardSearch}
+            />
+          </div>
 
-                <div className="space-y-5 py-1">
-                  <div>
-                    <DashboardCategoryFilter
-                      id="dashboard-category-filter-mobile"
-                      value={selectedCategory}
-                      onValueChange={setSelectedCategory}
-                      options={CATEGORY_OPTIONS}
-                      className="md:w-full lg:w-full"
-                      label={t.filterByCategoryLabel}
-                      showLabel
-                    />
-                  </div>
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button type="button" variant="outline" className="h-11 rounded-xl px-3">
+                <SlidersHorizontalIcon className="size-4" />
+                <span>{t.filters}</span>
+                {mobileOptionCount > 0 ? (
+                  <span className="flex size-5 items-center justify-center rounded-full bg-zinc-950 text-xs font-semibold text-white dark:bg-white dark:text-zinc-950">
+                    {mobileOptionCount}
+                  </span>
+                ) : null}
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side="bottom"
+              showCloseButton={false}
+              className="max-h-[80svh] overflow-y-auto rounded-t-[1.75rem] pb-[max(1rem,env(safe-area-inset-bottom))]"
+            >
+              <SheetHeader className="border-b border-zinc-200 px-4 pb-3 pt-4 text-left dark:border-border">
+                <SheetTitle className="text-lg font-semibold">{t.filters}</SheetTitle>
+                <SheetDescription>
+                  {language === "fr"
+                    ? "Les annonces se mettent à jour dès que vous choisissez une option."
+                    : "Listings update as soon as you choose an option."}
+                </SheetDescription>
+              </SheetHeader>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="dashboard-sort-mobile">{t.sortByLabel}</Label>
-                    <NativeSelect
-                      id="dashboard-sort-mobile"
-                      value={sortOrder}
-                      onChange={(event) => setSortOrder(event.target.value)}
-                      className="w-full"
-                    >
-                      <NativeSelectOption value="newest">{t.sortDateNewest}</NativeSelectOption>
-                      <NativeSelectOption value="oldest">{t.sortDateOldest}</NativeSelectOption>
-                      <NativeSelectOption value="price-low">{t.sortPriceLowHigh}</NativeSelectOption>
-                      <NativeSelectOption value="price-high">{t.sortPriceHighLow}</NativeSelectOption>
-                    </NativeSelect>
-                  </div>
+              <div className="grid gap-4 px-4 py-2">
+                <div className="min-w-0">
+                  <Label htmlFor="dashboard-sort-mobile" className="mb-1.5 block text-xs">
+                    {t.sortByLabel}
+                  </Label>
+                  <NativeSelect
+                    id="dashboard-sort-mobile"
+                    value={sortOrder}
+                    onChange={(event) => setSortOrder(event.target.value)}
+                    className="w-full"
+                    size="sm"
+                  >
+                    <NativeSelectOption value="newest">{t.sortDateNewest}</NativeSelectOption>
+                    <NativeSelectOption value="oldest">{t.sortDateOldest}</NativeSelectOption>
+                    <NativeSelectOption value="price-low">{t.sortPriceLowHigh}</NativeSelectOption>
+                    <NativeSelectOption value="price-high">{t.sortPriceHighLow}</NativeSelectOption>
+                  </NativeSelect>
                 </div>
 
-                <SheetFooter className="grid grid-cols-2 px-0 pb-0 pt-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => {
-                      setSelectedCategory("");
-                      setSortOrder("newest");
-                    }}
-                    disabled={mobileOptionCount === 0}
-                  >
-                    {t.clearFilters}
-                  </Button>
-                  <SheetClose asChild>
-                    <Button type="button" className="w-full">{t.applyFilters}</Button>
-                  </SheetClose>
-                </SheetFooter>
-              </SheetContent>
-            </Sheet>
+                <DashboardCategoryFilter
+                  id="dashboard-category-filter-mobile"
+                  value={selectedCategory}
+                  onValueChange={setSelectedCategory}
+                  options={CATEGORY_OPTIONS}
+                  className="md:w-full lg:w-full"
+                  label={t.filterByCategoryLabel}
+                  showLabel
+                />
+              </div>
 
-            {showManagementActions ? (
-              <Button asChild className="flex-1 rounded-xl px-3">
-                <Link href="/listings/create">
-                  <PlusIcon className="size-4" />
-                  {t.addListing}
-                </Link>
-              </Button>
-            ) : null}
-          </div>
+              <SheetFooter className="grid grid-cols-2 border-t border-zinc-200 pt-3 dark:border-border">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedCategory("");
+                    setSortOrder("newest");
+                  }}
+                >
+                  {t.clearFilters}
+                </Button>
+                <SheetClose asChild>
+                  <Button type="button">{language === "fr" ? "Terminé" : "Done"}</Button>
+                </SheetClose>
+              </SheetFooter>
+            </SheetContent>
+          </Sheet>
         </div>
 
         <div className="hidden gap-2 md:flex md:items-center md:justify-end">

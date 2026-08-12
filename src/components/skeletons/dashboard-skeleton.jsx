@@ -64,17 +64,14 @@ export function DashboardSkeleton() {
             ))}
           </div>
 
-          <div className="space-y-2 md:hidden">
-            <Skeleton className="h-12 w-full rounded-lg" />
-            <div className="flex gap-2">
-              <Skeleton className="h-11 flex-1 rounded-xl" />
-              <Skeleton className="h-11 flex-1 rounded-xl" />
-            </div>
+          <div className="flex items-center gap-2 md:hidden">
+            <Skeleton className="h-11 min-w-0 flex-1 rounded-xl" />
+            <Skeleton className="h-11 w-28 shrink-0 rounded-xl" />
           </div>
 
           <div className="hidden items-center justify-end gap-2 md:flex">
-            <Skeleton className="h-12 w-[170px] rounded-lg" />
-            <Skeleton className="h-12 w-[200px] rounded-lg" />
+            <Skeleton className="h-11 w-[170px] rounded-xl" />
+            <Skeleton className="h-11 w-[200px] rounded-xl" />
             <Skeleton className="h-9 w-24 rounded-lg" />
           </div>
         </div>

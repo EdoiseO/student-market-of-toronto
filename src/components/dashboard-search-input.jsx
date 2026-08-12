@@ -30,9 +30,9 @@ export function DashboardSearchInput({
           }
         }}
         placeholder={t.searchYourListingsPlaceholder}
-        className="h-12 rounded-lg bg-white pl-8 pr-12 text-base dark:bg-input/30"
+        className="h-11 rounded-xl bg-white pl-9 pr-12 text-base dark:bg-input/30"
       />
-      <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-zinc-500 dark:text-muted-foreground" />
+      <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500 dark:text-muted-foreground" />
       {value.length > 0 ? (
         <button
           type="button"

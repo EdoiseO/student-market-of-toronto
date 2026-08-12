@@ -22,7 +22,7 @@ export function DashboardCategoryFilter({
 
   return (
     <div className={cn("w-full md:w-[160px] lg:w-[170px]", className)}>
-      <Label htmlFor={id} className={showLabel ? "mb-2" : "sr-only"}>
+      <Label htmlFor={id} className={showLabel ? "mb-1.5 block text-xs" : "sr-only"}>
         {label ?? t.filterDashboardByCategory}
       </Label>
       <NativeSelect
@@ -30,7 +30,7 @@ export function DashboardCategoryFilter({
         value={value ?? ""}
         onChange={(event) => onValueChange(event.target.value)}
         className="w-full"
-        size="default"
+        size="sm"
       >
         <NativeSelectOption value="">{t.allCategories}</NativeSelectOption>
         {options.map((option) => (
