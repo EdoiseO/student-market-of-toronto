@@ -40,7 +40,7 @@ set search_path = ''
 as $$
 declare
   normalized_email text := pg_catalog.lower(pg_catalog.btrim(
-    pg_catalog.coalesce(event -> 'user' ->> 'email', '')
+    coalesce(event -> 'user' ->> 'email', '')
   ));
   school_name text;
 begin

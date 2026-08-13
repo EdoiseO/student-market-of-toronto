@@ -23,9 +23,13 @@ const expectedSchoolDomains = [
 ];
 
 test("Auth creation hook enforces the exact normalized Toronto school allowlist", async () => {
-  const [hookSql, retiredHookAclSql, clientAllowlist] = await Promise.all([
+  const [hookSql, hookRuntimeFixSql, retiredHookAclSql, clientAllowlist] = await Promise.all([
     readFile(
       repoFile("supabase/migrations/20260812233338_enforce_toronto_school_signup_hook.sql"),
+      "utf8",
+    ),
+    readFile(
+      repoFile("supabase/migrations/20260813011731_fix_toronto_school_auth_hook_runtime.sql"),
       "utf8",
     ),
     readFile(
@@ -44,6 +48,12 @@ test("Auth creation hook enforces the exact normalized Toronto school allowlist"
   assert.deepEqual(migrationDomains, expectedSchoolDomains);
   assert.deepEqual(clientDomains, expectedSchoolDomains);
   assert.match(hookSql, /lower\(pg_catalog\.btrim[\s\S]*event -> 'user' ->> 'email'/i);
+  assert.doesNotMatch(hookSql, /pg_catalog\.coalesce/i);
+  assert.match(
+    hookRuntimeFixSql,
+    /coalesce\(event -> 'user' ->> 'email', ''\)/i,
+  );
+  assert.doesNotMatch(hookRuntimeFixSql, /pg_catalog\.coalesce/i);
   assert.match(
     hookSql,
     /school_name := private\.toronto_school_name_for_email\(normalized_email\)/i,
