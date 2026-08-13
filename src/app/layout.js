@@ -29,11 +29,6 @@ export const metadata = {
   },
 };
 
-function normalizeMetadataText(value) {
-  const normalizedValue = value?.trim();
-  return normalizedValue ? normalizedValue : null;
-}
-
 export default async function RootLayout({ children }) {
   const cookieStore = await cookies();
   const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
@@ -46,10 +41,6 @@ export default async function RootLayout({ children }) {
   let profile = null;
 
   if (user) {
-    const metadataFirstName = normalizeMetadataText(user.user_metadata?.first_name);
-    const metadataLastName = normalizeMetadataText(user.user_metadata?.last_name);
-    const metadataSchool = normalizeMetadataText(user.user_metadata?.school);
-
     const { data: existingProfile, error: profileError } = await supabase
       .from("profiles")
       .select("id, first_name, last_name, school, avatar_preset_id, avatar_url, bio, is_public")
@@ -60,39 +51,11 @@ export default async function RootLayout({ children }) {
       console.error("Failed to load profile for layout sync:", profileError.message);
     }
 
-    const syncedFirstName = metadataFirstName ?? existingProfile?.first_name ?? null;
-    const syncedLastName = metadataLastName ?? existingProfile?.last_name ?? null;
-    const syncedSchool = metadataSchool ?? existingProfile?.school ?? null;
-
-    const shouldSyncProfile =
-      !existingProfile ||
-      existingProfile.first_name !== syncedFirstName ||
-      existingProfile.last_name !== syncedLastName ||
-      existingProfile.school !== syncedSchool;
-
-    if (shouldSyncProfile) {
-      const { error: profileUpsertError } = await supabase
-        .from("profiles")
-        .upsert(
-          {
-            id: user.id,
-            first_name: syncedFirstName,
-            last_name: syncedLastName,
-            school: syncedSchool,
-          },
-          { onConflict: "id" },
-        );
-
-      if (profileUpsertError) {
-        console.error("Failed to sync profile from auth metadata:", profileUpsertError.message);
-      }
-    }
-
     profile = {
       id: user.id,
-      first_name: syncedFirstName,
-      last_name: syncedLastName,
-      school: syncedSchool,
+      first_name: existingProfile?.first_name ?? null,
+      last_name: existingProfile?.last_name ?? null,
+      school: existingProfile?.school ?? null,
       avatar_preset_id: existingProfile?.avatar_preset_id ?? null,
       avatar_url: existingProfile?.avatar_url ?? null,
       bio: existingProfile?.bio ?? null,
@@ -101,10 +64,7 @@ export default async function RootLayout({ children }) {
   }
 
   const displayName =
-    [
-      profile?.first_name ?? user?.user_metadata?.first_name,
-      profile?.last_name ?? user?.user_metadata?.last_name,
-    ]
+    [profile?.first_name, profile?.last_name]
       .filter(Boolean)
       .join(" ")
       .trim() || (language === "fr" ? "Étudiant" : "Student");
@@ -114,10 +74,7 @@ export default async function RootLayout({ children }) {
         id: user.id,
         name: displayName,
         email: user.email ?? "",
-        school:
-          profile?.school ??
-          user.user_metadata?.school ??
-          (language === "fr" ? "Étudiant de Toronto" : "Toronto student"),
+        school: profile?.school ?? (language === "fr" ? "Étudiant de Toronto" : "Toronto student"),
         role: getUserModerationRole(user),
         avatarPresetId: profile?.avatar_preset_id ?? null,
         avatarUrl: profile?.avatar_url ?? null,

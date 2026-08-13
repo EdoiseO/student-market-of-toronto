@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { CardImage } from "@/components/card-image";
 import { getListingBadgeKey } from "@/lib/listing-badges";
+import { getNearbyPageNumbers, parseCatalogPage } from "@/lib/catalog-pagination.mjs";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 import {
@@ -21,6 +22,7 @@ import {
 } from "@/components/ui/pagination";
 
 const ITEMS_PER_PAGE = 18;
+const LISTING_IMAGE_LIMIT = 10;
 
 function buildCategoryAllPageHref(slug, pageNumber) {
   return pageNumber === 1
@@ -49,7 +51,23 @@ export default async function CategoryAllPage({ params, searchParams }) {
     language,
     section.title
   );
-  const { data: allItems } = await supabase
+  const countQuery = await supabase
+    .from("listings")
+    .select("id", { count: "exact", head: true })
+    .in("category", categoryValues)
+    .eq("status", "active");
+
+  if (countQuery.error) {
+    console.error("Failed to count category listings:", countQuery.error.message);
+  }
+
+  const listingCount = countQuery.count ?? 0;
+  const currentPage = parseCatalogPage(resolvedSearchParams?.page);
+  const totalPages = Math.max(1, Math.ceil(listingCount / ITEMS_PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIndex = (safePage - 1) * ITEMS_PER_PAGE;
+
+  const { data: pageItems, error: pageItemsError } = await supabase
     .from("listings")
     .select(`
       id,
@@ -69,21 +87,22 @@ export default async function CategoryAllPage({ params, searchParams }) {
     `)
     .in("category", categoryValues)
     .eq("status", "active")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: true })
+    .order("position", { referencedTable: "listing_images", ascending: true })
+    .limit(LISTING_IMAGE_LIMIT, { referencedTable: "listing_images" })
+    .range(startIndex, startIndex + ITEMS_PER_PAGE - 1);
 
-  const listings = (allItems ?? []).map((listing) => ({
+  if (pageItemsError) {
+    console.error("Failed to load category listing page:", pageItemsError.message);
+  }
+
+  const paginatedItems = (pageItems ?? []).map((listing) => ({
     ...listing,
     listing_images: (listing.listing_images ?? []).sort(
       (firstImage, secondImage) => firstImage.position - secondImage.position
     ),
   }));
-
-  const requestedPage = Number.parseInt(resolvedSearchParams?.page ?? "1", 10);
-  const currentPage = Number.isNaN(requestedPage) || requestedPage < 1 ? 1 : requestedPage;
-  const totalPages = Math.max(1, Math.ceil(listings.length / ITEMS_PER_PAGE));
-  const safePage = Math.min(currentPage, totalPages);
-  const startIndex = (safePage - 1) * ITEMS_PER_PAGE;
-  const paginatedItems = listings.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   return (
     <main className="min-h-screen min-w-0 overflow-x-clip bg-zinc-100 px-4 py-6 dark:bg-background md:p-8">
@@ -149,14 +168,7 @@ export default async function CategoryAllPage({ params, searchParams }) {
                   </>
                 ) : null}
 
-                {Array.from({ length: totalPages }, (_, index) => index + 1)
-                  .filter((pageNumber) => {
-                    if (totalPages <= 3) {
-                      return true;
-                    }
-
-                    return Math.abs(pageNumber - safePage) <= 1;
-                  })
+                {getNearbyPageNumbers(safePage, totalPages)
                   .map((pageNumber) => (
                     <PaginationItem key={pageNumber}>
                       <PaginationLink

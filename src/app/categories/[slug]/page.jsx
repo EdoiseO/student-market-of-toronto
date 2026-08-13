@@ -13,6 +13,8 @@ import {
 } from "@/lib/categories";
 
 const SECTION_ITEM_LIMIT = 6;
+const SECTION_CANDIDATE_LIMIT = SECTION_ITEM_LIMIT * 3;
+const LISTING_IMAGE_LIMIT = 10;
 
 function normalizeListings(rows = []) {
   return rows.map((listing) => ({
@@ -22,15 +24,6 @@ function normalizeListings(rows = []) {
     ),
     view_count: Number(listing.view_count ?? 0),
   }));
-}
-
-function getHotScore(listing) {
-  const createdAt = new Date(listing.created_at).getTime();
-  const ageInDays = Number.isNaN(createdAt)
-    ? 365
-    : Math.max(1, (Date.now() - createdAt) / (1000 * 60 * 60 * 24));
-
-  return listing.view_count / ageInDays;
 }
 
 function pickUniqueListings(candidates, limit, usedIds) {
@@ -146,51 +139,103 @@ export default async function CategoryPage({ params }) {
     section.title
   );
   const categoryTitleLower = categoryTitle.toLowerCase();
-  const { data: allItems } = await supabase
-    .from("listings")
-    .select(`
-      id,
-      slug,
-      title,
-      price,
-      previous_price,
-      location,
-      status,
-      is_featured,
-      is_negotiable,
-      created_at,
-      view_count,
-      listing_images (
-        image_url,
-        position
-      )
-    `)
-    .in("category", categoryValues)
-    .eq("status", "active")
-    .order("created_at", { ascending: false });
+  const [promotedResult, trendingResult, recentResult] = await Promise.all([
+    supabase.rpc("get_active_category_listing_ids", {
+      p_categories: categoryValues,
+      p_mode: "featured",
+      p_limit: SECTION_ITEM_LIMIT,
+    }),
+    supabase.rpc("get_active_category_listing_ids", {
+      p_categories: categoryValues,
+      p_mode: "trending",
+      p_limit: SECTION_CANDIDATE_LIMIT,
+    }),
+    supabase.rpc("get_active_category_listing_ids", {
+      p_categories: categoryValues,
+      p_mode: "recent",
+      p_limit: SECTION_CANDIDATE_LIMIT,
+    }),
+  ]);
 
-  const listings = normalizeListings(allItems);
+  for (const [mode, result] of [
+    ["promoted", promotedResult],
+    ["trending", trendingResult],
+    ["recent", recentResult],
+  ]) {
+    if (result.error) {
+      console.error(`Failed to load ${mode} category listing IDs:`, result.error.message);
+    }
+  }
+
+  const promotedIds = (promotedResult.data ?? []).map((row) => row.listing_id);
+  const trendingIds = (trendingResult.data ?? []).map((row) => row.listing_id);
+  const recentIds = (recentResult.data ?? []).map((row) => row.listing_id);
+  const requestedIds = [...new Set([...promotedIds, ...trendingIds, ...recentIds])];
+
+  const { data: boundedItems, error: boundedItemsError } = requestedIds.length > 0
+    ? await supabase
+        .from("listings")
+        .select(`
+          id,
+          slug,
+          title,
+          price,
+          previous_price,
+          location,
+          status,
+          is_featured,
+          is_negotiable,
+          created_at,
+          view_count,
+          listing_images (
+            image_url,
+            position
+          )
+        `)
+        .in("id", requestedIds)
+        .eq("status", "active")
+        .order("position", { referencedTable: "listing_images", ascending: true })
+        .limit(LISTING_IMAGE_LIMIT, { referencedTable: "listing_images" })
+        .limit(requestedIds.length)
+    : { data: [], error: null };
+
+  if (boundedItemsError) {
+    console.error("Failed to load bounded category listings:", boundedItemsError.message);
+  }
+
+  const listingById = new Map(
+    normalizeListings(boundedItems).map((listing) => [listing.id, listing]),
+  );
+  const listingsForIds = (ids) => ids.map((id) => listingById.get(id)).filter(Boolean);
+  const promotedCandidates = listingsForIds(promotedIds);
+  const trendingCandidates = listingsForIds(trendingIds);
+  const recentCandidates = listingsForIds(recentIds);
   const usedIds = new Set();
 
   const promotedItems = pickUniqueListings(
-    listings.filter((item) => item.is_featured),
+    promotedCandidates,
     SECTION_ITEM_LIMIT,
     usedIds,
   );
 
   const trendingItems = pickUniqueListings(
-    [...listings].sort((firstItem, secondItem) => getHotScore(secondItem) - getHotScore(firstItem)),
+    trendingCandidates,
     SECTION_ITEM_LIMIT,
     usedIds,
   );
 
   const recentlyAddedItems = pickUniqueListings(
-    listings,
+    recentCandidates,
     SECTION_ITEM_LIMIT,
     usedIds,
   );
 
-  const allAvailablePreview = getAllListingsPreview(listings, SECTION_ITEM_LIMIT, usedIds);
+  const allAvailablePreview = getAllListingsPreview(
+    recentCandidates,
+    SECTION_ITEM_LIMIT,
+    usedIds,
+  );
+  const hasListings = requestedIds.length > 0;
 
   return (
     <main className="min-h-screen min-w-0 overflow-x-clip bg-zinc-100 px-4 py-6 dark:bg-background md:p-8">
@@ -204,7 +249,7 @@ export default async function CategoryPage({ params }) {
           </p>
         </section>
 
-        {listings.length > 0 ? (
+        {hasListings ? (
           <>
             <CategorySection
               title={t.promoted}

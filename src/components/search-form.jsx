@@ -3,6 +3,10 @@
 import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useLanguage } from "@/context/LanguageContext";
+import {
+  MAX_SEARCH_QUERY_LENGTH,
+  normalizeSearchQuery,
+} from "@/lib/catalog-pagination.mjs";
 
 import { Label } from "@/components/ui/label"
 import { SidebarInput } from "@/components/ui/sidebar"
@@ -15,7 +19,9 @@ export function SearchForm({
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const searchValue = pathname === "/search" ? (searchParams.get("q") ?? "") : "";
+  const searchValue = pathname === "/search"
+    ? normalizeSearchQuery(searchParams.get("q"))
+    : "";
   const inputRef = React.useRef(null);
   const [value, setValue] = React.useState(searchValue);
 
@@ -42,7 +48,7 @@ export function SearchForm({
   function handleSubmit(event) {
     event.preventDefault();
 
-    const query = value.trim();
+    const query = normalizeSearchQuery(value);
     const params = pathname.startsWith("/search")
       ? new URLSearchParams(searchParams.toString())
       : new URLSearchParams();
@@ -69,7 +75,8 @@ export function SearchForm({
           id="search"
           name="q"
           value={value}
-          onChange={(event) => setValue(event.target.value)}
+          maxLength={MAX_SEARCH_QUERY_LENGTH}
+          onChange={(event) => setValue(event.target.value.slice(0, MAX_SEARCH_QUERY_LENGTH))}
           onKeyDown={(event) => {
             if (event.key === "Escape" && value.length > 0) {
               event.preventDefault();

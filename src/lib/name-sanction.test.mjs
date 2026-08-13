@@ -2,8 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  REJECTED_PROFILE_NAME_FINGERPRINT_HISTORY_KEY,
+  REJECTED_PROFILE_NAME_FINGERPRINT_KEY,
+  appendRejectedProfileNameFingerprint,
   areOpenProfileReportsBoundToUser,
   getProfileNameFingerprint,
+  getRejectedProfileNameFingerprints,
   matchesRejectedProfileName,
 } from "./name-sanction.mjs";
 
@@ -37,6 +41,30 @@ test("fingerprints canonical equivalents as the same profile name", () => {
 test("allows backward-compatible replacement when an old sanction has no fingerprint", () => {
   assert.equal(matchesRejectedProfileName("Jane", "Doe", null), false);
   assert.equal(getProfileNameFingerprint(null, null), null);
+});
+
+test("retains a bounded rejected-name history across later sanctions", () => {
+  const firstFingerprint = getProfileNameFingerprint("Rejected", "One");
+  const secondFingerprint = getProfileNameFingerprint("Rejected", "Two");
+  const metadata = {
+    [REJECTED_PROFILE_NAME_FINGERPRINT_KEY]: firstFingerprint,
+    [REJECTED_PROFILE_NAME_FINGERPRINT_HISTORY_KEY]: [firstFingerprint],
+  };
+  const history = appendRejectedProfileNameFingerprint(metadata, secondFingerprint);
+
+  assert.deepEqual(history, [firstFingerprint, secondFingerprint]);
+  assert.deepEqual(
+    getRejectedProfileNameFingerprints({
+      [REJECTED_PROFILE_NAME_FINGERPRINT_HISTORY_KEY]: Array.from(
+        { length: 25 },
+        (_, index) => `fingerprint-${index}`,
+      ),
+    }),
+    Array.from({ length: 20 }, (_, index) => `fingerprint-${index + 5}`),
+  );
+  assert.equal(matchesRejectedProfileName("Rejected", "One", history), true);
+  assert.equal(matchesRejectedProfileName("Rejected", "Two", history), true);
+  assert.equal(matchesRejectedProfileName("Accepted", "Name", history), false);
 });
 
 test("accepts only a complete set of open profile reports bound to the target", () => {

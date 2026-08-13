@@ -247,10 +247,6 @@ export function CreateListingForm() {
           condition,
           location: campus,
           status,
-          submitted_for_review_at:
-            status === LISTING_APPROVAL_STATUS_VALUES.pendingReview
-              ? new Date().toISOString()
-              : null,
           is_negotiable: isNegotiable,
         })
         .select("id, slug")

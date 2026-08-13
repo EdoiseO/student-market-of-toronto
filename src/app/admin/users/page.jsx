@@ -13,14 +13,10 @@ import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
-function getUserName(profile, authUser, t) {
+function getUserName(profile, t) {
   const profileName = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ").trim();
-  const metadataName = [authUser?.user_metadata?.first_name, authUser?.user_metadata?.last_name]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
 
-  return profileName || metadataName || t.student;
+  return profileName || t.student;
 }
 
 async function listAllUsers(admin) {
@@ -116,8 +112,8 @@ export default async function AdminUsersPage() {
       return {
         id: authUser.id,
         email: authUser.email ?? t.unknown,
-        name: getUserName(profile, authUser, t),
-        school: profile?.school ?? authUser.user_metadata?.school ?? t.torontoStudent,
+        name: getUserName(profile, t),
+        school: profile?.school ?? t.torontoStudent,
         role,
         createdAt: authUser.created_at,
         isBanned: Boolean(authUser.banned_until),

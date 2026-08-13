@@ -10,6 +10,8 @@ import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
+const LISTING_IMAGE_LIMIT = 10;
+
 function getPrimaryListingImageUrl(listingImages) {
   return (listingImages ?? [])
     .slice()
@@ -46,6 +48,8 @@ export default async function AdminListingApprovalReviewPage({ params }) {
     .select(
       "id, seller_id, slug, title, description, price, location, status, content_revision, created_at, submitted_for_review_at, moderation_feedback, moderation_reviewed_at, moderation_reviewed_by, listing_images ( image_url, position )"
     )
+    .order("position", { referencedTable: "listing_images", ascending: true })
+    .limit(LISTING_IMAGE_LIMIT, { referencedTable: "listing_images" })
     .eq("id", resolvedParams.listingId)
     .maybeSingle();
 

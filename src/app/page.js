@@ -6,49 +6,51 @@ import HomePageContent from "@/components/home-page-content";
 import { getListingBadgeKey } from "@/lib/listing-badges";
 
 const HOME_SECTION_LIMIT = 6;
+const LISTING_IMAGE_LIMIT = 10;
 
 export default async function Page() {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  const { data: listings } = await supabase
-    .from("listings")
-    .select(`
-      id,
-      slug,
-      title,
-      price,
-      previous_price,
-      category,
-      location,
-      status,
-      is_featured,
-      is_negotiable,
-      created_at,
-      listing_images (
-        image_url,
-        position
-      )
-    `)
-    .eq("status", "active")
-    .order("created_at", { ascending: false });
+  const listingSections = await Promise.all(
+    CATEGORIES.map(async (section) => {
+      const { data: listings, error } = await supabase
+        .from("listings")
+        .select(`
+          id,
+          slug,
+          title,
+          price,
+          previous_price,
+          category,
+          location,
+          status,
+          is_featured,
+          is_negotiable,
+          created_at,
+          listing_images (
+            image_url,
+            position
+          )
+        `)
+        .in("category", getCategoryValuesBySlug(section.slug))
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .order("position", { referencedTable: "listing_images", ascending: true })
+        .limit(LISTING_IMAGE_LIMIT, { referencedTable: "listing_images" })
+        .limit(HOME_SECTION_LIMIT);
 
-  const normalizedListings = (listings ?? []).map((listing) => ({
-    ...listing,
-    listing_images: (listing.listing_images ?? []).sort(
-      (a, b) => a.position - b.position
-    ),
-  }));
+      if (error) {
+        console.error(`Failed to load home section ${section.slug}:`, error.message);
+      }
 
-  const listingSections = CATEGORIES.map((section) => ({
-    ...section,
-    href: `/categories/${section.slug}`,
-    items: normalizedListings
-      .filter((listing) =>
-        getCategoryValuesBySlug(section.slug).includes(listing.category)
-      )
-      .slice(0, HOME_SECTION_LIMIT),
-  }));
+      return {
+        ...section,
+        href: `/categories/${section.slug}`,
+        items: listings ?? [],
+      };
+    }),
+  );
 
   const sectionsWithBadges = listingSections.map((section) => ({
     ...section,

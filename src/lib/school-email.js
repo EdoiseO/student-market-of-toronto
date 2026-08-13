@@ -9,7 +9,9 @@ const TORONTO_SCHOOL_EMAIL_DOMAIN_MAP = {
   "senecapolytechnic.ca": "Seneca Polytechnic",
   "myseneca.ca": "Seneca Polytechnic",
   "humber.ca": "Humber Polytechnic",
+  // Retained for legacy accounts; Humber's current student domain is plural.
   "student.humber.ca": "Humber Polytechnic",
+  "students.humber.ca": "Humber Polytechnic",
   "centennialcollege.ca": "Centennial College",
   "my.centennialcollege.ca": "Centennial College",
   "ocadu.ca": "OCAD University",

@@ -73,6 +73,12 @@ import {
 import { selectMessageAttachmentFiles } from "@/lib/message-attachment-selection.mjs";
 import { insertMessageEmoji } from "@/lib/message-emojis.mjs";
 import {
+  keepNewestMessageWindow,
+  mergeOlderMessageWindow,
+  MESSAGE_PAGE_REQUEST_LIMIT,
+  normalizeMessagePageRows,
+} from "@/lib/message-pagination.mjs";
+import {
   buildMessageMediaUploadPlan,
   cleanupExpiredMessageMediaUploads,
   releaseMessageMediaUploadReservations,
@@ -129,11 +135,7 @@ function upsertConversationMessage(currentMessages, incomingMessage) {
   );
 
   if (existingIndex === -1) {
-    return [...currentMessages, incomingMessage].sort(
-      (firstMessage, secondMessage) =>
-        new Date(firstMessage.created_at).getTime() -
-        new Date(secondMessage.created_at).getTime(),
-    );
+    return keepNewestMessageWindow([...currentMessages, incomingMessage]);
   }
 
   const existingMessage = currentMessages[existingIndex];
@@ -146,13 +148,14 @@ function upsertConversationMessage(currentMessages, incomingMessage) {
       : existingMessage.attachments ?? [],
     reactions: existingMessage.reactions ?? incomingMessage.reactions ?? [],
   };
-  return nextMessages;
+  return keepNewestMessageWindow(nextMessages);
 }
 
 export function MessagesThread({
   conversation,
   currentUserId,
   initialMessages,
+  initialHasOlderMessages = false,
   hasDeletedMessages = false,
   isHiddenConversation = false,
 }) {
@@ -160,6 +163,10 @@ export function MessagesThread({
   const supabase = React.useMemo(() => createClient(), []);
   const { t, language } = useLanguage();
   const [messages, setMessages] = React.useState(initialMessages ?? []);
+  const [hasOlderMessages, setHasOlderMessages] = React.useState(initialHasOlderMessages);
+  const [hasNewerMessages, setHasNewerMessages] = React.useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = React.useState(false);
+  const hasNewerMessagesRef = React.useRef(false);
   const [pendingReactionKeys, setPendingReactionKeys] = React.useState(() => new Set());
   const [draft, setDraft] = React.useState("");
   const [isSending, setIsSending] = React.useState(false);
@@ -183,6 +190,139 @@ export function MessagesThread({
   const [isDeletingConversation, setIsDeletingConversation] = React.useState(false);
   const [isBlockDialogOpen, setIsBlockDialogOpen] = React.useState(false);
   const [isUpdatingBlockState, setIsUpdatingBlockState] = React.useState(false);
+
+  async function hydrateMessageRows(messageRows) {
+    const messageIds = messageRows.map((message) => message.id);
+
+    if (messageIds.length === 0) {
+      return [];
+    }
+
+    const [attachmentsResult, reactionsResult] = await Promise.all([
+      supabase
+        .from("message_attachments")
+        .select("id, message_id, storage_path, file_name, mime_type, size_bytes, created_at")
+        .in("message_id", messageIds)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("message_reactions")
+        .select("message_id, conversation_id, user_id, emoji, created_at, removed_at")
+        .in("message_id", messageIds)
+        .is("removed_at", null)
+        .order("created_at", { ascending: true }),
+    ]);
+
+    if (attachmentsResult.error && !isMessageAttachmentSetupMissing(attachmentsResult.error)) {
+      throw attachmentsResult.error;
+    }
+
+    if (reactionsResult.error && !isMessageAttachmentSetupMissing(reactionsResult.error)) {
+      throw reactionsResult.error;
+    }
+
+    const attachmentRows = attachmentsResult.data ?? [];
+    let signedRows = [];
+
+    if (attachmentRows.length > 0) {
+      const signedUrlsResult = await supabase.storage
+        .from(MESSAGE_MEDIA_BUCKET)
+        .createSignedUrls(
+          attachmentRows.map((attachment) => attachment.storage_path),
+          60 * 60,
+        );
+
+      if (signedUrlsResult.error) {
+        console.error("Failed to sign message history media:", signedUrlsResult.error.message);
+      } else {
+        signedRows = signedUrlsResult.data ?? [];
+      }
+    }
+
+    const attachmentsByMessageId = attachmentRows.reduce((byMessageId, attachment, index) => {
+      byMessageId[attachment.message_id] ??= [];
+      byMessageId[attachment.message_id].push({
+        ...attachment,
+        signedUrl: signedRows[index]?.signedUrl ?? null,
+      });
+      return byMessageId;
+    }, {});
+    const reactionsByMessageId = (reactionsResult.data ?? []).reduce((byMessageId, reaction) => {
+      byMessageId[reaction.message_id] ??= [];
+      byMessageId[reaction.message_id].push(reaction);
+      return byMessageId;
+    }, {});
+
+    return messageRows.map((message) => ({
+      ...message,
+      attachments: attachmentsByMessageId[message.id] ?? [],
+      reactions: reactionsByMessageId[message.id] ?? [],
+    }));
+  }
+
+  async function fetchMessagePage(beforeMessage = null) {
+    const { data, error } = await supabase.rpc("get_conversation_message_page", {
+      p_conversation_id: conversation.id,
+      p_before_created_at: beforeMessage?.created_at ?? null,
+      p_before_message_id: beforeMessage?.id ?? null,
+      p_limit: MESSAGE_PAGE_REQUEST_LIMIT,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    const page = normalizeMessagePageRows(data ?? []);
+    return {
+      ...page,
+      messages: await hydrateMessageRows(page.messages),
+    };
+  }
+
+  async function handleLoadOlderMessages() {
+    if (isLoadingHistory || !hasOlderMessages || messages.length === 0) {
+      return;
+    }
+
+    setIsLoadingHistory(true);
+
+    try {
+      const page = await fetchMessagePage(messages[0]);
+      const nextWindow = mergeOlderMessageWindow(messages, page.messages);
+      setMessages(nextWindow.messages);
+      setHasOlderMessages(page.hasOlderMessages);
+
+      if (nextWindow.droppedNewerMessages) {
+        hasNewerMessagesRef.current = true;
+        setHasNewerMessages(true);
+      }
+    } catch (error) {
+      console.error("Failed to load older conversation messages:", error?.message ?? error);
+      toast.error(t.messageHistoryLoadError);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }
+
+  async function handleReturnToNewestMessages() {
+    if (isLoadingHistory || !hasNewerMessages) {
+      return;
+    }
+
+    setIsLoadingHistory(true);
+
+    try {
+      const page = await fetchMessagePage();
+      setMessages(page.messages);
+      setHasOlderMessages(page.hasOlderMessages);
+      hasNewerMessagesRef.current = false;
+      setHasNewerMessages(false);
+    } catch (error) {
+      console.error("Failed to load newest conversation messages:", error?.message ?? error);
+      toast.error(t.messageHistoryLoadError);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }
 
   async function handleUpdateBlockState() {
     if (isUpdatingBlockState) {
@@ -325,8 +465,11 @@ export function MessagesThread({
   const { isDragActive, dropzoneProps } = useFileDropzone(addPendingMediaFiles);
 
   React.useEffect(() => {
-    setMessages(initialMessages ?? []);
-  }, [conversation.id, initialMessages]);
+    setMessages(keepNewestMessageWindow(initialMessages ?? []));
+    setHasOlderMessages(initialHasOlderMessages);
+    setHasNewerMessages(false);
+    hasNewerMessagesRef.current = false;
+  }, [conversation.id, initialHasOlderMessages, initialMessages]);
 
   React.useEffect(() =>
     subscribeToMessageReactionUpdates({
@@ -348,6 +491,11 @@ export function MessagesThread({
       supabase,
       conversationId: conversation.id,
       onInsert: async (message) => {
+        if (hasNewerMessagesRef.current) {
+          setHasNewerMessages(true);
+          return;
+        }
+
         const { data: attachmentRows, error: attachmentsError } = await supabase
           .from("message_attachments")
           .select("id, message_id, storage_path, file_name, mime_type, size_bytes, created_at")
@@ -751,18 +899,22 @@ export function MessagesThread({
           }
         }
 
-        setMessages((currentMessages) =>
-          upsertConversationMessage(currentMessages, {
-            ...createdMessage,
-            attachments: attachmentPayload.map((attachment, index) => ({
-              id: `${createdMessage.id}-${index}`,
-              message_id: createdMessage.id,
-              ...attachment,
-              signedUrl: signedRows[index]?.signedUrl ?? null,
-            })),
-            reactions: [],
-          }),
-        );
+        if (hasNewerMessagesRef.current) {
+          setHasNewerMessages(true);
+        } else {
+          setMessages((currentMessages) =>
+            upsertConversationMessage(currentMessages, {
+              ...createdMessage,
+              attachments: attachmentPayload.map((attachment, index) => ({
+                id: `${createdMessage.id}-${index}`,
+                message_id: createdMessage.id,
+                ...attachment,
+                signedUrl: signedRows[index]?.signedUrl ?? null,
+              })),
+              reactions: [],
+            }),
+          );
+        }
       }
 
       clearPendingAttachments();
@@ -894,10 +1046,16 @@ export function MessagesThread({
   }
 
   async function refreshMessageReactions() {
+    const visibleMessageIds = messages.map((message) => message.id);
+
+    if (visibleMessageIds.length === 0) {
+      return;
+    }
+
     const { data, error } = await supabase
       .from("message_reactions")
       .select("message_id, conversation_id, user_id, emoji, created_at, removed_at")
-      .eq("conversation_id", conversation.id)
+      .in("message_id", visibleMessageIds)
       .is("removed_at", null)
       .order("created_at", { ascending: true });
 
@@ -1159,6 +1317,34 @@ export function MessagesThread({
       </div>
 
       <div className="min-h-0 max-w-full flex-1 touch-pan-y space-y-1 overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain bg-zinc-50/60 px-3 py-3 dark:bg-muted/15 md:px-5 md:py-4">
+        {hasOlderMessages ? (
+          <div className="mx-auto flex w-full max-w-4xl justify-center pb-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+              disabled={isLoadingHistory}
+              onClick={handleLoadOlderMessages}
+            >
+              {isLoadingHistory ? t.loadingOlderMessages : t.loadOlderMessages}
+            </Button>
+          </div>
+        ) : null}
+        {hasNewerMessages ? (
+          <div className="mx-auto flex w-full max-w-4xl justify-center pb-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="rounded-full"
+              disabled={isLoadingHistory}
+              onClick={handleReturnToNewestMessages}
+            >
+              {t.returnToNewestMessages}
+            </Button>
+          </div>
+        ) : null}
         {messages.length > 0 ? (
           messages.map((message, messageIndex) => {
             const isCurrentUser = message.sender_id === currentUserId;

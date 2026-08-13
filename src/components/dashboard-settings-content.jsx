@@ -72,9 +72,8 @@ export function DashboardSettingsContent({
   );
   const [isSavingNotificationPreferences, setIsSavingNotificationPreferences] =
     React.useState(false);
-  const [confirmationEmail, setConfirmationEmail] = React.useState("");
+  const [confirmationPassword, setConfirmationPassword] = React.useState("");
   const [isDeletingAccount, setIsDeletingAccount] = React.useState(false);
-  const emailMatches = confirmationEmail.trim().toLowerCase() === userEmail.trim().toLowerCase();
 
   React.useEffect(() => {
     setHideBioOnListingPage(initialHideBioOnListingPage);
@@ -236,7 +235,7 @@ export function DashboardSettingsContent({
   }
 
   async function handleDeleteAccount() {
-    if (!deleteAccountAvailable || isDeletingAccount || !emailMatches) {
+    if (!deleteAccountAvailable || isDeletingAccount || !confirmationPassword) {
       return;
     }
 
@@ -245,6 +244,8 @@ export function DashboardSettingsContent({
     try {
       const response = await fetch("/api/account/delete", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: confirmationPassword }),
       });
       const payload = await response.json().catch(() => ({}));
 
@@ -261,7 +262,7 @@ export function DashboardSettingsContent({
       toast.error(error.message || t.settingsDeleteAccountError);
     } finally {
       setIsDeletingAccount(false);
-      setConfirmationEmail("");
+      setConfirmationPassword("");
     }
   }
 
@@ -488,7 +489,7 @@ export function DashboardSettingsContent({
               <AlertDialog
                 onOpenChange={(open) => {
                   if (!open) {
-                    setConfirmationEmail("");
+                    setConfirmationPassword("");
                   }
                 }}
               >
@@ -529,15 +530,14 @@ export function DashboardSettingsContent({
                       {t.settingsDeleteAccountConfirmLabel}
                     </p>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm">
-                      {t.settingsDeleteAccountConfirmEmailHelp}
-                      <span className="break-all font-mono font-semibold text-foreground">{userEmail}</span>
-                      {t.settingsDeleteAccountConfirmEmailSuffix}
+                      {t.settingsDeleteAccountConfirmPasswordHelp}
                     </p>
                     <Input
-                      type="email"
-                      value={confirmationEmail}
-                      onChange={(event) => setConfirmationEmail(event.target.value)}
-                      placeholder={userEmail}
+                      type="password"
+                      autoComplete="current-password"
+                      value={confirmationPassword}
+                      onChange={(event) => setConfirmationPassword(event.target.value)}
+                      placeholder={t.settingsDeleteAccountConfirmPasswordPlaceholder}
                       className="mt-3"
                     />
                   </div>
@@ -548,7 +548,7 @@ export function DashboardSettingsContent({
                     </AlertDialogCancel>
                     <AlertDialogAction
                       onClick={handleDeleteAccount}
-                      disabled={isDeletingAccount || !emailMatches}
+                      disabled={isDeletingAccount || !confirmationPassword}
                       className="h-11 bg-destructive/10 text-destructive hover:bg-destructive/20"
                     >
                       {isDeletingAccount

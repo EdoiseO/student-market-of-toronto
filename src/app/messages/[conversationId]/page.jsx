@@ -6,13 +6,17 @@ import { notFound, redirect } from "next/navigation";
 import { MessagesThread } from "@/components/messages-thread";
 import { Button } from "@/components/ui/button";
 import {
-  filterConversationMessagesForUser,
   isConversationHiddenForUser,
   MESSAGE_CONVERSATION_SELECT,
+  MESSAGE_LISTING_IMAGE_LIMIT,
   isConversationUserStateDeletedAtColumnMissing,
   isConversationUserStateTableMissing,
   normalizeConversationRow,
 } from "@/lib/messages";
+import {
+  MESSAGE_PAGE_REQUEST_LIMIT,
+  normalizeMessagePageRows,
+} from "@/lib/message-pagination.mjs";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
@@ -34,6 +38,8 @@ export default async function ConversationPage({ params }) {
   const { data: conversationRow, error: conversationError } = await supabase
     .from("conversations")
     .select(MESSAGE_CONVERSATION_SELECT)
+    .order("position", { referencedTable: "listings.listing_images", ascending: true })
+    .limit(MESSAGE_LISTING_IMAGE_LIMIT, { referencedTable: "listings.listing_images" })
     .eq("id", resolvedParams.conversationId)
     .maybeSingle();
 
@@ -57,11 +63,12 @@ export default async function ConversationPage({ params }) {
         .maybeSingle()
     : Promise.resolve({ data: null, error: null });
   const messageRowsPromise = conversationRow
-    ? supabase
-        .from("messages")
-        .select("id, conversation_id, sender_id, body, created_at, read_at")
-        .eq("conversation_id", conversationRow.id)
-        .order("created_at", { ascending: true })
+    ? supabase.rpc("get_conversation_message_page", {
+        p_conversation_id: conversationRow.id,
+        p_before_created_at: null,
+        p_before_message_id: null,
+        p_limit: MESSAGE_PAGE_REQUEST_LIMIT,
+      })
     : Promise.resolve({ data: [], error: null });
   const [conversationStateResult, messagesResult] = await Promise.all([
     conversationStatePromise,
@@ -114,7 +121,10 @@ export default async function ConversationPage({ params }) {
     console.error("Failed to load conversation messages:", messagesError.message);
   }
 
-  const visibleMessageRows = filterConversationMessagesForUser(messageRows ?? [], deletedAt);
+  const {
+    messages: visibleMessageRows,
+    hasOlderMessages,
+  } = normalizeMessagePageRows(messageRows ?? []);
   const visibleMessageIds = visibleMessageRows.map((message) => message.id);
   let messageAttachments = [];
   let messageReactions = [];
@@ -129,7 +139,7 @@ export default async function ConversationPage({ params }) {
       supabase
         .from("message_reactions")
         .select("message_id, conversation_id, user_id, emoji, created_at, removed_at")
-        .eq("conversation_id", conversationRow.id)
+        .in("message_id", visibleMessageIds)
         .is("removed_at", null)
         .order("created_at", { ascending: true }),
     ]);
@@ -182,9 +192,17 @@ export default async function ConversationPage({ params }) {
     attachments: attachmentsByMessageId[message.id] ?? [],
     reactions: reactionsByMessageId[message.id] ?? [],
   }));
-  const unreadCount = visibleMessageRows.filter(
-    (message) => !message.read_at && message.sender_id !== user.id,
-  ).length;
+  const { data: unreadRows, error: unreadError } = conversationRow
+    ? await supabase.rpc("get_conversation_unread_counts", {
+        p_conversation_ids: [conversationRow.id],
+      })
+    : { data: [], error: null };
+
+  if (unreadError) {
+    console.error("Failed to load conversation unread count:", unreadError.message);
+  }
+
+  const unreadCount = Number(unreadRows?.[0]?.unread_count ?? 0);
 
   const conversation = conversationRow
     ? normalizeConversationRow(conversationRow, user.id, t, unreadCount)
@@ -228,6 +246,7 @@ export default async function ConversationPage({ params }) {
               conversation={conversation}
               currentUserId={user.id}
               initialMessages={messagesWithAttachments}
+              initialHasOlderMessages={hasOlderMessages}
               hasDeletedMessages={Boolean(deletedAt)}
               isHiddenConversation={isHiddenConversation}
             />

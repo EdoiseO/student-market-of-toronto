@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { isNameChangeRequired } from "@/lib/moderation";
 import {
-  REJECTED_PROFILE_NAME_FINGERPRINT_KEY,
+  getRejectedProfileNameFingerprints,
   matchesRejectedProfileName,
 } from "@/lib/name-sanction.mjs";
 import { createAdminClient } from "@/lib/supabase-admin";
@@ -74,32 +74,18 @@ export async function POST(request) {
       );
     }
 
-    const rejectedNameFingerprint =
-      latestUser.app_metadata?.[REJECTED_PROFILE_NAME_FINGERPRINT_KEY];
+    const rejectedNameFingerprints = getRejectedProfileNameFingerprints(
+      latestUser.app_metadata,
+    );
 
     if (
-      requiresNameChange &&
-      matchesRejectedProfileName(firstName, lastName, rejectedNameFingerprint)
+      matchesRejectedProfileName(firstName, lastName, rejectedNameFingerprints)
     ) {
       return NextResponse.json(
         { error: "Choose a different first or last name." },
         { status: 409 },
       );
     }
-
-    const nextAppMetadata = { ...(latestUser.app_metadata ?? {}) };
-
-    if (requiresNameChange) {
-      delete nextAppMetadata.force_name_change;
-      delete nextAppMetadata[REJECTED_PROFILE_NAME_FINGERPRINT_KEY];
-    }
-
-    const nextUserMetadata = {
-      ...(latestUser.user_metadata ?? {}),
-      first_name: firstName,
-      last_name: lastName,
-    };
-    delete nextUserMetadata.force_name_change;
 
     const { error: profileError } = await admin.from("profiles").upsert(
       {
@@ -114,13 +100,23 @@ export async function POST(request) {
       throw profileError;
     }
 
-    const { error: authUpdateError } = await admin.auth.admin.updateUserById(user.id, {
-      user_metadata: nextUserMetadata,
-      app_metadata: nextAppMetadata,
-    });
+    if (requiresNameChange) {
+      const nextAppMetadata = {
+        ...(latestUser.app_metadata ?? {}),
+        // Auth Admin metadata updates merge keys. Sending null explicitly clears
+        // the sanction while retaining the server-controlled fingerprint history.
+        force_name_change: null,
+      };
 
-    if (authUpdateError) {
-      throw authUpdateError;
+      const { error: authUpdateError } = await admin.auth.admin.updateUserById(user.id, {
+        app_metadata: nextAppMetadata,
+      });
+
+      if (authUpdateError) {
+        // The profile may now contain an acceptable replacement, but the trusted
+        // sanction remains set until this update succeeds, so retries fail closed.
+        throw authUpdateError;
+      }
     }
 
     return NextResponse.json({ success: true, requiresNameChange: false });

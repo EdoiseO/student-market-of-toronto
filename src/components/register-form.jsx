@@ -104,7 +104,6 @@ export function RegisterForm({ className, ...props }) {
         data: {
           first_name: form.firstName,
           last_name: form.lastName,
-          school,
         },
       },
     });

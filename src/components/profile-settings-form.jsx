@@ -71,7 +71,7 @@ export function ProfileSettingsForm({ initialProfile }) {
     let isActive = true;
 
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (isActive) {
+      if (isActive && user) {
         setRequiresNameChange(user?.app_metadata?.force_name_change === true);
       }
     });
@@ -285,7 +285,6 @@ export function ProfileSettingsForm({ initialProfile }) {
 
     const normalizedFirstName = currentNormalizedFirstName;
     const normalizedLastName = currentNormalizedLastName;
-    const normalizedSchool = normalizeProfileText(initialProfile.school ?? "");
     const normalizedBio = currentNormalizedBio;
 
     if (requiresNameChange && (!normalizedFirstName || !normalizedLastName)) {
@@ -319,9 +318,6 @@ export function ProfileSettingsForm({ initialProfile }) {
         .upsert(
           {
             id: initialProfile.id,
-            first_name: normalizedFirstName,
-            last_name: normalizedLastName,
-            school: normalizedSchool,
             bio: normalizedBio,
             avatar_preset_id: avatarPresetId,
             avatar_url: avatarUrl || null,

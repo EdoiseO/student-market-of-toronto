@@ -9,6 +9,14 @@ import { ProfileListingsSection } from "@/components/profile-listings-section";
 import { ProfileReportButton } from "@/components/profile-report-button";
 import { Badge } from "@/components/ui/badge";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -16,8 +24,16 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getListingBadgeKey } from "@/lib/listing-badges";
+import { getNearbyPageNumbers, parseCatalogPage } from "@/lib/catalog-pagination.mjs";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
+
+const PROFILE_LISTINGS_PER_PAGE = 24;
+const LISTING_IMAGE_LIMIT = 10;
+
+function buildProfilePageHref(profileId, pageNumber) {
+  return pageNumber === 1 ? `/profile/${profileId}` : `/profile/${profileId}?page=${pageNumber}`;
+}
 
 function formatDate(dateString, language) {
   return new Intl.DateTimeFormat(language === "fr" ? "fr-CA" : "en-CA", {
@@ -34,8 +50,9 @@ function formatShortDate(dateString, language) {
   }).format(new Date(dateString));
 }
 
-export default async function PublicProfilePage({ params }) {
+export default async function PublicProfilePage({ params, searchParams }) {
   const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
   const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
@@ -63,6 +80,22 @@ export default async function PublicProfilePage({ params }) {
     notFound();
   }
 
+  const countResult = await supabase
+    .from("listings")
+    .select("id", { count: "exact", head: true })
+    .eq("seller_id", profile.id)
+    .eq("status", "active");
+
+  if (countResult.error) {
+    console.error("Failed to count seller listings:", countResult.error.message);
+  }
+
+  const listingCount = countResult.count ?? 0;
+  const requestedPage = parseCatalogPage(resolvedSearchParams?.page);
+  const totalPages = Math.max(1, Math.ceil(listingCount / PROFILE_LISTINGS_PER_PAGE));
+  const safePage = Math.min(requestedPage, totalPages);
+  const pageStart = (safePage - 1) * PROFILE_LISTINGS_PER_PAGE;
+
   const { data: listingRows, error: listingsError } = await supabase
     .from("listings")
     .select(`
@@ -84,7 +117,11 @@ export default async function PublicProfilePage({ params }) {
     `)
     .eq("seller_id", profile.id)
     .eq("status", "active")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: true })
+    .order("position", { referencedTable: "listing_images", ascending: true })
+    .limit(LISTING_IMAGE_LIMIT, { referencedTable: "listing_images" })
+    .range(pageStart, pageStart + PROFILE_LISTINGS_PER_PAGE - 1);
 
   if (listingsError) {
     console.error("Failed to load seller listings:", listingsError.message);
@@ -141,7 +178,7 @@ export default async function PublicProfilePage({ params }) {
                       <span className="hidden sm:inline">{t.activeListingsTitle}</span>
                     </p>
                     <p className="text-sm font-semibold text-zinc-900 dark:text-foreground sm:mt-1 sm:text-base sm:font-normal">
-                      {sellerListings.length}
+                      {listingCount}
                     </p>
                   </div>
                 </div>
@@ -183,7 +220,43 @@ export default async function PublicProfilePage({ params }) {
 
         <section className="rounded-[1.5rem] bg-white p-3 shadow-sm ring-1 ring-zinc-200 dark:bg-card dark:ring-border sm:rounded-3xl sm:p-6 lg:p-7">
           {sellerListings.length > 0 ? (
-            <ProfileListingsSection listings={sellerListings} sellerSchool={profile.school || ""} />
+            <>
+              <ProfileListingsSection listings={sellerListings} sellerSchool={profile.school || ""} />
+              {totalPages > 1 ? (
+                <Pagination className="mt-5">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        href={buildProfilePageHref(profile.id, Math.max(safePage - 1, 1))}
+                        className={safePage === 1 ? "pointer-events-none opacity-50" : ""}
+                        aria-disabled={safePage === 1}
+                      />
+                    </PaginationItem>
+                    {getNearbyPageNumbers(safePage, totalPages, 2)
+                      .map((pageNumber) => (
+                        <PaginationItem key={pageNumber}>
+                          <PaginationLink
+                            href={buildProfilePageHref(profile.id, pageNumber)}
+                            isActive={pageNumber === safePage}
+                          >
+                            {pageNumber}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ))}
+                    <PaginationItem>
+                      <PaginationNext
+                        href={buildProfilePageHref(
+                          profile.id,
+                          Math.min(safePage + 1, totalPages),
+                        )}
+                        className={safePage === totalPages ? "pointer-events-none opacity-50" : ""}
+                        aria-disabled={safePage === totalPages}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              ) : null}
+            </>
           ) : (
             <Card className="rounded-3xl border-zinc-200 bg-zinc-50 py-0 shadow-none dark:bg-muted/40 dark:ring-border">
               <CardHeader className="px-6 py-6">
