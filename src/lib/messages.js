@@ -37,6 +37,8 @@ export const MESSAGE_CONVERSATION_SELECT = `
   )
 `;
 
+export const MESSAGE_LISTING_IMAGE_LIMIT = 10;
+
 export const MESSAGE_MEDIA_BUCKET = "message-media";
 export const MAX_MESSAGE_ATTACHMENTS = 3;
 export const MAX_MESSAGE_ATTACHMENT_BYTES = 10 * 1024 * 1024;

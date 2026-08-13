@@ -30,6 +30,10 @@ const storageCompletionMigrationUrl = new URL(
   "../supabase/migrations/20260812192359_fix_message_media_storage_completion.sql",
   import.meta.url,
 );
+const boundedHistoryMigrationUrl = new URL(
+  "../supabase/migrations/20260812233357_bound_message_history_and_guard_media_deletes.sql",
+  import.meta.url,
+);
 const accountDeleteRouteUrl = new URL("../src/app/api/account/delete/route.js", import.meta.url);
 
 test("message-media ownership accepts only exact conversation/user/object paths", () => {
@@ -126,6 +130,36 @@ test("message-media object completion cannot overwrite an existing or attached p
   assert.match(sql, /from public\.message_attachments attachment[\s\S]*attachment\.storage_path = new\.name/i);
   assert.match(sql, /before update on storage\.objects/i);
   assert.match(sql, /Message media objects cannot be updated/i);
+});
+
+test("message-media deletion serializes with attachment consumption and rechecks attachment state", async () => {
+  const sql = await readFile(boundedHistoryMigrationUrl, "utf8");
+  const guardStart = sql.indexOf("create or replace function private.guard_message_media_storage_delete");
+  const guardSql = sql.slice(guardStart);
+  const lockIndex = guardSql.indexOf("perform private.lock_message_media_user_quota(object_owner_id)");
+  const attachmentRecheckIndex = guardSql.indexOf("from public.message_attachments attachment");
+
+  assert.ok(guardStart >= 0);
+  assert.match(guardSql, /before delete on storage\.objects/i);
+  assert.match(guardSql, /storage\.allow_only_operation\('storage\.object\.delete'\)/i);
+  assert.match(guardSql, /storage\.allow_only_operation\('storage\.object\.delete_many'\)/i);
+  assert.ok(lockIndex >= 0);
+  assert.ok(attachmentRecheckIndex > lockIndex);
+  assert.match(guardSql, /attachment\.storage_path = old\.name/i);
+});
+
+test("service-role media deletion requires the durable account-retirement marker", async () => {
+  const sql = await readFile(boundedHistoryMigrationUrl, "utf8");
+  const guardSql = sql.slice(
+    sql.indexOf("create or replace function private.guard_message_media_storage_delete"),
+  );
+
+  assert.match(guardSql, /auth\.role\(\) = 'service_role' and authenticated_user_id is null/i);
+  assert.match(
+    guardSql,
+    /if not exists \([\s\S]*from private\.message_media_account_retirements retirement[\s\S]*retirement\.user_id = object_owner_id[\s\S]*Privileged message media deletion requires account retirement/i,
+  );
+  assert.doesNotMatch(guardSql, /auth\.role\(\) = 'service_role'[\s\S]*return old;[\s\S]*account_retirements/i);
 });
 
 test("account deletion strictly retires owned reservations before auth deletion", async () => {

@@ -14,6 +14,7 @@ export function CreateListingFab({ user }) {
     pathname !== "/login" &&
     pathname !== "/register" &&
     pathname !== "/listings/create" &&
+    !pathname.startsWith("/messages") &&
     !pathname.endsWith("/edit");
 
   if (!shouldShow) {

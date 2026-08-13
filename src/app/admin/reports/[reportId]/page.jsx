@@ -5,7 +5,11 @@ import { notFound, redirect } from "next/navigation";
 
 import { AdminReportReviewContent } from "@/components/admin-report-review-content";
 import { Button } from "@/components/ui/button";
-import { MESSAGE_CONVERSATION_SELECT, getConversationDisplayName } from "@/lib/messages";
+import {
+  MESSAGE_CONVERSATION_SELECT,
+  MESSAGE_LISTING_IMAGE_LIMIT,
+  getConversationDisplayName,
+} from "@/lib/messages";
 import {
   MODERATION_REPORT_NOTES_SELECT,
   MODERATION_REPORT_SELECT,
@@ -161,6 +165,8 @@ export default async function AdminReportReviewPage({ params }) {
     const { data: conversationRow, error: conversationError } = await dataClient
       .from("conversations")
       .select(MESSAGE_CONVERSATION_SELECT)
+      .order("position", { referencedTable: "listings.listing_images", ascending: true })
+      .limit(MESSAGE_LISTING_IMAGE_LIMIT, { referencedTable: "listings.listing_images" })
       .eq("id", reportRow.conversation_id)
       .maybeSingle();
 
@@ -226,6 +232,8 @@ export default async function AdminReportReviewPage({ params }) {
       .select(
         "id, seller_id, slug, title, description, price, location, status, listing_images ( image_url, position )"
       )
+      .order("position", { referencedTable: "listing_images", ascending: true })
+      .limit(MESSAGE_LISTING_IMAGE_LIMIT, { referencedTable: "listing_images" })
       .eq("id", reportRow.listing_id)
       .maybeSingle();
 

@@ -12,13 +12,14 @@ import {
   Megaphone,
   Paperclip,
   SendHorizontal,
-  SmilePlus,
   Trash2,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { ProfileAvatar } from "@/components/profile-avatar";
+import { MessageEmojiPicker } from "@/components/message-emoji-picker";
+import { MessageReactions } from "@/components/message-reactions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,8 +44,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ClientFormattedDateTime } from "@/components/client-formatted-date-time";
+import { MessageMediaGallery } from "@/components/message-media-gallery";
 import { ReportSheet } from "@/components/report-sheet";
 import { useLanguage } from "@/context/LanguageContext";
+import { useFileDropzone } from "@/hooks/use-file-dropzone";
 import { REMOTE_IMAGE_BLUR_DATA_URL } from "@/lib/image-config";
 import {
   getMessagingBlockReason,
@@ -67,12 +70,28 @@ import {
   MESSAGE_MEDIA_BUCKET,
   sanitizeMessageAttachmentFileName,
 } from "@/lib/messages";
+import { selectMessageAttachmentFiles } from "@/lib/message-attachment-selection.mjs";
+import { insertMessageEmoji } from "@/lib/message-emojis.mjs";
+import {
+  keepNewestMessageWindow,
+  mergeOlderMessageWindow,
+  MESSAGE_PAGE_REQUEST_LIMIT,
+  normalizeMessagePageRows,
+} from "@/lib/message-pagination.mjs";
 import {
   buildMessageMediaUploadPlan,
   cleanupExpiredMessageMediaUploads,
   releaseMessageMediaUploadReservations,
   reserveMessageMediaUploads,
 } from "@/lib/message-media-reservations.mjs";
+import {
+  addMessageReaction,
+  applyMessageReactionChange,
+  removeMessageReaction,
+  replaceMessageReactions,
+  subscribeToMessageReactionUpdates,
+} from "@/lib/message-reactions.mjs";
+import { subscribeToConversationMessageInserts } from "@/lib/message-realtime.mjs";
 import { createClient } from "@/utils/supabase/client";
 
 function formatPrice(price, language) {
@@ -95,53 +114,48 @@ function getAttachmentKind(mimeType) {
   return mimeType?.startsWith("video/") ? "video" : "image";
 }
 
-function MessageAttachment({ attachment, t }) {
-  if (!attachment.signedUrl) {
-    return (
-      <div className="flex aspect-[4/3] w-56 max-w-full items-center justify-center rounded-2xl bg-zinc-100 px-4 text-center text-xs text-zinc-500 dark:bg-muted dark:text-muted-foreground">
-        {t.attachmentUnavailable}
-      </div>
-    );
+function isGroupedWithPreviousMessage(message, previousMessage) {
+  if (!previousMessage || message.sender_id !== previousMessage.sender_id) {
+    return false;
   }
 
-  if (getAttachmentKind(attachment.mime_type) === "video") {
-    return (
-      <video
-        controls
-        playsInline
-        preload="metadata"
-        className="aspect-[4/3] w-64 max-w-full rounded-2xl bg-black object-contain"
-        aria-label={attachment.file_name}
-      >
-        <source src={attachment.signedUrl} type={attachment.mime_type} />
-      </video>
-    );
-  }
+  const currentTimestamp = new Date(message.created_at).getTime();
+  const previousTimestamp = new Date(previousMessage.created_at).getTime();
 
   return (
-    <a
-      href={attachment.signedUrl}
-      target="_blank"
-      rel="noreferrer"
-      className="relative block aspect-[4/3] w-64 max-w-full overflow-hidden rounded-2xl bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-muted"
-      aria-label={`${t.openAttachment}: ${attachment.file_name}`}
-    >
-      <Image
-        src={attachment.signedUrl}
-        alt={attachment.file_name}
-        fill
-        unoptimized
-        sizes="(max-width: 639px) 68vw, 288px"
-        className="object-contain"
-      />
-    </a>
+    Number.isFinite(currentTimestamp) &&
+    Number.isFinite(previousTimestamp) &&
+    currentTimestamp - previousTimestamp <= 5 * 60 * 1000
   );
+}
+
+function upsertConversationMessage(currentMessages, incomingMessage) {
+  const existingIndex = currentMessages.findIndex(
+    (message) => message.id === incomingMessage.id,
+  );
+
+  if (existingIndex === -1) {
+    return keepNewestMessageWindow([...currentMessages, incomingMessage]);
+  }
+
+  const existingMessage = currentMessages[existingIndex];
+  const nextMessages = [...currentMessages];
+  nextMessages[existingIndex] = {
+    ...existingMessage,
+    ...incomingMessage,
+    attachments: incomingMessage.attachments?.length
+      ? incomingMessage.attachments
+      : existingMessage.attachments ?? [],
+    reactions: existingMessage.reactions ?? incomingMessage.reactions ?? [],
+  };
+  return keepNewestMessageWindow(nextMessages);
 }
 
 export function MessagesThread({
   conversation,
   currentUserId,
   initialMessages,
+  initialHasOlderMessages = false,
   hasDeletedMessages = false,
   isHiddenConversation = false,
 }) {
@@ -149,10 +163,17 @@ export function MessagesThread({
   const supabase = React.useMemo(() => createClient(), []);
   const { t, language } = useLanguage();
   const [messages, setMessages] = React.useState(initialMessages ?? []);
+  const [hasOlderMessages, setHasOlderMessages] = React.useState(initialHasOlderMessages);
+  const [hasNewerMessages, setHasNewerMessages] = React.useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = React.useState(false);
+  const hasNewerMessagesRef = React.useRef(false);
+  const [pendingReactionKeys, setPendingReactionKeys] = React.useState(() => new Set());
   const [draft, setDraft] = React.useState("");
   const [isSending, setIsSending] = React.useState(false);
   const [pendingAttachments, setPendingAttachments] = React.useState([]);
   const pendingAttachmentsRef = React.useRef([]);
+  const composerRef = React.useRef(null);
+  const composerSelectionRef = React.useRef({ start: 0, end: 0 });
   const mediaInputRef = React.useRef(null);
   const [reportMessageTarget, setReportMessageTarget] = React.useState(null);
   const [blockState, setBlockState] = React.useState({
@@ -169,6 +190,139 @@ export function MessagesThread({
   const [isDeletingConversation, setIsDeletingConversation] = React.useState(false);
   const [isBlockDialogOpen, setIsBlockDialogOpen] = React.useState(false);
   const [isUpdatingBlockState, setIsUpdatingBlockState] = React.useState(false);
+
+  async function hydrateMessageRows(messageRows) {
+    const messageIds = messageRows.map((message) => message.id);
+
+    if (messageIds.length === 0) {
+      return [];
+    }
+
+    const [attachmentsResult, reactionsResult] = await Promise.all([
+      supabase
+        .from("message_attachments")
+        .select("id, message_id, storage_path, file_name, mime_type, size_bytes, created_at")
+        .in("message_id", messageIds)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("message_reactions")
+        .select("message_id, conversation_id, user_id, emoji, created_at, removed_at")
+        .in("message_id", messageIds)
+        .is("removed_at", null)
+        .order("created_at", { ascending: true }),
+    ]);
+
+    if (attachmentsResult.error && !isMessageAttachmentSetupMissing(attachmentsResult.error)) {
+      throw attachmentsResult.error;
+    }
+
+    if (reactionsResult.error && !isMessageAttachmentSetupMissing(reactionsResult.error)) {
+      throw reactionsResult.error;
+    }
+
+    const attachmentRows = attachmentsResult.data ?? [];
+    let signedRows = [];
+
+    if (attachmentRows.length > 0) {
+      const signedUrlsResult = await supabase.storage
+        .from(MESSAGE_MEDIA_BUCKET)
+        .createSignedUrls(
+          attachmentRows.map((attachment) => attachment.storage_path),
+          60 * 60,
+        );
+
+      if (signedUrlsResult.error) {
+        console.error("Failed to sign message history media:", signedUrlsResult.error.message);
+      } else {
+        signedRows = signedUrlsResult.data ?? [];
+      }
+    }
+
+    const attachmentsByMessageId = attachmentRows.reduce((byMessageId, attachment, index) => {
+      byMessageId[attachment.message_id] ??= [];
+      byMessageId[attachment.message_id].push({
+        ...attachment,
+        signedUrl: signedRows[index]?.signedUrl ?? null,
+      });
+      return byMessageId;
+    }, {});
+    const reactionsByMessageId = (reactionsResult.data ?? []).reduce((byMessageId, reaction) => {
+      byMessageId[reaction.message_id] ??= [];
+      byMessageId[reaction.message_id].push(reaction);
+      return byMessageId;
+    }, {});
+
+    return messageRows.map((message) => ({
+      ...message,
+      attachments: attachmentsByMessageId[message.id] ?? [],
+      reactions: reactionsByMessageId[message.id] ?? [],
+    }));
+  }
+
+  async function fetchMessagePage(beforeMessage = null) {
+    const { data, error } = await supabase.rpc("get_conversation_message_page", {
+      p_conversation_id: conversation.id,
+      p_before_created_at: beforeMessage?.created_at ?? null,
+      p_before_message_id: beforeMessage?.id ?? null,
+      p_limit: MESSAGE_PAGE_REQUEST_LIMIT,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    const page = normalizeMessagePageRows(data ?? []);
+    return {
+      ...page,
+      messages: await hydrateMessageRows(page.messages),
+    };
+  }
+
+  async function handleLoadOlderMessages() {
+    if (isLoadingHistory || !hasOlderMessages || messages.length === 0) {
+      return;
+    }
+
+    setIsLoadingHistory(true);
+
+    try {
+      const page = await fetchMessagePage(messages[0]);
+      const nextWindow = mergeOlderMessageWindow(messages, page.messages);
+      setMessages(nextWindow.messages);
+      setHasOlderMessages(page.hasOlderMessages);
+
+      if (nextWindow.droppedNewerMessages) {
+        hasNewerMessagesRef.current = true;
+        setHasNewerMessages(true);
+      }
+    } catch (error) {
+      console.error("Failed to load older conversation messages:", error?.message ?? error);
+      toast.error(t.messageHistoryLoadError);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }
+
+  async function handleReturnToNewestMessages() {
+    if (isLoadingHistory || !hasNewerMessages) {
+      return;
+    }
+
+    setIsLoadingHistory(true);
+
+    try {
+      const page = await fetchMessagePage();
+      setMessages(page.messages);
+      setHasOlderMessages(page.hasOlderMessages);
+      hasNewerMessagesRef.current = false;
+      setHasNewerMessages(false);
+    } catch (error) {
+      console.error("Failed to load newest conversation messages:", error?.message ?? error);
+      toast.error(t.messageHistoryLoadError);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }
 
   async function handleUpdateBlockState() {
     if (isUpdatingBlockState) {
@@ -306,10 +460,125 @@ export function MessagesThread({
     : getListingMessagingUnavailableText(conversation.listing.status, t);
   const blockReason = getMessagingBlockReason(blockState, t);
   const hasListingLink = Boolean(conversation.listing.slug);
+  const isMediaSelectionAvailable =
+    isMessagingAvailable && !blockReason && !isSending;
+  const { isDragActive, dropzoneProps } = useFileDropzone(addPendingMediaFiles);
 
   React.useEffect(() => {
-    setMessages(initialMessages ?? []);
-  }, [conversation.id, initialMessages]);
+    setMessages(keepNewestMessageWindow(initialMessages ?? []));
+    setHasOlderMessages(initialHasOlderMessages);
+    setHasNewerMessages(false);
+    hasNewerMessagesRef.current = false;
+  }, [conversation.id, initialHasOlderMessages, initialMessages]);
+
+  React.useEffect(() =>
+    subscribeToMessageReactionUpdates({
+      supabase,
+      conversationId: conversation.id,
+      onInsert: (reaction) => {
+        setMessages((currentMessages) => addMessageReaction(currentMessages, reaction));
+      },
+      onUpdate: (reaction) => {
+        setMessages((currentMessages) => applyMessageReactionChange(currentMessages, reaction));
+      },
+    }),
+  [conversation.id, supabase]);
+
+  React.useEffect(() => {
+    let isActive = true;
+
+    const unsubscribe = subscribeToConversationMessageInserts({
+      supabase,
+      conversationId: conversation.id,
+      onInsert: async (message) => {
+        if (hasNewerMessagesRef.current) {
+          setHasNewerMessages(true);
+          return;
+        }
+
+        const { data: attachmentRows, error: attachmentsError } = await supabase
+          .from("message_attachments")
+          .select("id, message_id, storage_path, file_name, mime_type, size_bytes, created_at")
+          .eq("message_id", message.id)
+          .order("created_at", { ascending: true });
+
+        if (!isActive) {
+          return;
+        }
+
+        let attachments = [];
+
+        if (attachmentsError) {
+          if (!isMessageAttachmentSetupMissing(attachmentsError)) {
+            console.error(
+              "Failed to load incoming message attachments:",
+              attachmentsError.message,
+            );
+          }
+        } else if (attachmentRows?.length) {
+          const { data: signedRows, error: signedUrlsError } = await supabase.storage
+            .from(MESSAGE_MEDIA_BUCKET)
+            .createSignedUrls(
+              attachmentRows.map((attachment) => attachment.storage_path),
+              60 * 60,
+            );
+
+          if (signedUrlsError) {
+            console.error(
+              "Failed to sign incoming message attachments:",
+              signedUrlsError.message,
+            );
+          }
+
+          attachments = attachmentRows.map((attachment, index) => ({
+            ...attachment,
+            signedUrl: signedRows?.[index]?.signedUrl ?? null,
+          }));
+        }
+
+        if (!isActive) {
+          return;
+        }
+
+        setMessages((currentMessages) =>
+          upsertConversationMessage(currentMessages, {
+            ...message,
+            attachments,
+            reactions: [],
+          }),
+        );
+
+        if (message.sender_id === currentUserId) {
+          return;
+        }
+
+        const { error: markReadError } = await supabase.rpc("mark_conversation_read", {
+          p_conversation_id: conversation.id,
+        });
+
+        if (markReadError) {
+          console.error("Failed to mark incoming message read:", markReadError.message);
+          return;
+        }
+
+        if (isActive) {
+          const readAt = new Date().toISOString();
+          setMessages((currentMessages) =>
+            currentMessages.map((currentMessage) =>
+              currentMessage.sender_id === currentUserId || currentMessage.read_at
+                ? currentMessage
+                : { ...currentMessage, read_at: readAt },
+            ),
+          );
+        }
+      },
+    });
+
+    return () => {
+      isActive = false;
+      unsubscribe();
+    };
+  }, [conversation.id, currentUserId, supabase]);
 
   React.useEffect(() => {
     pendingAttachmentsRef.current = pendingAttachments;
@@ -344,28 +613,20 @@ export function MessagesThread({
     });
   }
 
-  function handleMediaSelection(event) {
-    const selectedFiles = Array.from(event.target.files ?? []);
-    event.target.value = "";
-
-    if (selectedFiles.length === 0) {
+  function addPendingMediaFiles(selectedFiles) {
+    if (!isMediaSelectionAvailable) {
       return;
     }
 
-    const availableSlots = MAX_MESSAGE_ATTACHMENTS - pendingAttachments.length;
+    const selection = selectMessageAttachmentFiles({
+      files: selectedFiles,
+      currentAttachments: pendingAttachments,
+      allowedMimeTypes: MESSAGE_ATTACHMENT_MIME_TYPES,
+      maxBytes: MAX_MESSAGE_ATTACHMENT_BYTES,
+      maxCount: MAX_MESSAGE_ATTACHMENTS,
+    });
 
-    if (availableSlots <= 0) {
-      toast.error(
-        language === "fr"
-          ? `Vous pouvez joindre jusqu’à ${MAX_MESSAGE_ATTACHMENTS} fichiers.`
-          : `You can attach up to ${MAX_MESSAGE_ATTACHMENTS} files.`,
-      );
-      return;
-    }
-
-    const acceptedFiles = [];
-
-    if (selectedFiles.length > availableSlots) {
+    if (selection.limitExceeded) {
       toast.error(
         language === "fr"
           ? `Vous pouvez joindre jusqu’à ${MAX_MESSAGE_ATTACHMENTS} fichiers.`
@@ -373,38 +634,49 @@ export function MessagesThread({
       );
     }
 
-    for (const file of selectedFiles.slice(0, availableSlots)) {
-      if (!MESSAGE_ATTACHMENT_MIME_TYPES.has(file.type)) {
-        toast.error(
-          language === "fr"
-            ? `${file.name} n’est pas un format d’image ou de vidéo pris en charge.`
-            : `${file.name} is not a supported image or video format.`,
-        );
-        continue;
-      }
+    if (selection.duplicateFiles.length > 0) {
+      const duplicateName = selection.duplicateFiles[0]?.name ?? t.attachMedia;
+      toast.error(
+        t.duplicateMediaAttachment.replace("{name}", duplicateName),
+      );
+    }
 
-      if (file.size <= 0 || file.size > MAX_MESSAGE_ATTACHMENT_BYTES) {
-        toast.error(
-          language === "fr"
-            ? `${file.name} doit faire moins de 10 Mo.`
-            : `${file.name} must be smaller than 10 MB.`,
-        );
-        continue;
-      }
+    if (selection.unsupportedFiles.length > 0) {
+      const unsupportedFile = selection.unsupportedFiles[0];
+      toast.error(
+        language === "fr"
+          ? `${unsupportedFile.name} n’est pas un format d’image ou de vidéo pris en charge.`
+          : `${unsupportedFile.name} is not a supported image or video format.`,
+      );
+    }
 
-      acceptedFiles.push({
+    if (selection.invalidSizeFiles.length > 0) {
+      const invalidSizeFile = selection.invalidSizeFiles[0];
+      toast.error(
+        language === "fr"
+          ? `${invalidSizeFile.name} doit faire moins de 10 Mo.`
+          : `${invalidSizeFile.name} must be smaller than 10 MB.`,
+      );
+    }
+
+    if (selection.acceptedFiles.length > 0) {
+      const acceptedAttachments = selection.acceptedFiles.map((file) => ({
         id: crypto.randomUUID(),
         file,
         previewUrl: URL.createObjectURL(file),
-      });
-    }
+      }));
 
-    if (acceptedFiles.length > 0) {
       setPendingAttachments((currentAttachments) => [
         ...currentAttachments,
-        ...acceptedFiles,
+        ...acceptedAttachments,
       ]);
     }
+  }
+
+  function handleMediaSelection(event) {
+    const selectedFiles = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    addPendingMediaFiles(selectedFiles);
   }
 
   React.useEffect(() => {
@@ -442,7 +714,7 @@ export function MessagesThread({
         return;
       }
 
-      const { data, error } = await supabase.rpc("mark_conversation_read", {
+      const { error } = await supabase.rpc("mark_conversation_read", {
         p_conversation_id: conversation.id,
       });
 
@@ -466,9 +738,6 @@ export function MessagesThread({
         )
       );
 
-      if (Number(data ?? 0) > 0) {
-        router.refresh();
-      }
     }
 
     markConversationRead();
@@ -476,7 +745,7 @@ export function MessagesThread({
     return () => {
       isMounted = false;
     };
-  }, [conversation.hasUnreadMessages, conversation.id, currentUserId, router, supabase]);
+  }, [conversation.hasUnreadMessages, conversation.id, currentUserId, supabase]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -630,18 +899,22 @@ export function MessagesThread({
           }
         }
 
-        setMessages((currentMessages) => [
-          ...currentMessages,
-          {
-            ...createdMessage,
-            attachments: attachmentPayload.map((attachment, index) => ({
-              id: `${createdMessage.id}-${index}`,
-              message_id: createdMessage.id,
-              ...attachment,
-              signedUrl: signedRows[index]?.signedUrl ?? null,
-            })),
-          },
-        ]);
+        if (hasNewerMessagesRef.current) {
+          setHasNewerMessages(true);
+        } else {
+          setMessages((currentMessages) =>
+            upsertConversationMessage(currentMessages, {
+              ...createdMessage,
+              attachments: attachmentPayload.map((attachment, index) => ({
+                id: `${createdMessage.id}-${index}`,
+                message_id: createdMessage.id,
+                ...attachment,
+                signedUrl: signedRows[index]?.signedUrl ?? null,
+              })),
+              reactions: [],
+            }),
+          );
+        }
       }
 
       clearPendingAttachments();
@@ -703,7 +976,6 @@ export function MessagesThread({
     }
 
     setIsSending(false);
-    router.refresh();
   }
 
   function handleComposerKeyDown(event) {
@@ -720,19 +992,166 @@ export function MessagesThread({
     event.currentTarget.form?.requestSubmit();
   }
 
+  function rememberComposerSelection(event) {
+    composerSelectionRef.current = {
+      start: event.currentTarget.selectionStart ?? draft.length,
+      end: event.currentTarget.selectionEnd ?? draft.length,
+    };
+  }
+
+  function handleDraftChange(event) {
+    setDraft(event.target.value);
+    rememberComposerSelection(event);
+  }
+
+  function handleInsertComposerEmoji(emoji) {
+    const textarea = composerRef.current;
+    const selection = textarea
+      ? {
+          start: textarea.selectionStart ?? composerSelectionRef.current.start,
+          end: textarea.selectionEnd ?? composerSelectionRef.current.end,
+        }
+      : composerSelectionRef.current;
+    const result = insertMessageEmoji({
+      value: draft,
+      emoji,
+      selectionStart: selection.start,
+      selectionEnd: selection.end,
+    });
+
+    if (!result.inserted) {
+      return;
+    }
+
+    setDraft(result.value);
+    composerSelectionRef.current = {
+      start: result.selectionStart,
+      end: result.selectionEnd,
+    };
+
+    requestAnimationFrame(() => {
+      const latestTextarea = composerRef.current;
+
+      if (!latestTextarea) {
+        return;
+      }
+
+      latestTextarea.focus({ preventScroll: true });
+      latestTextarea.setSelectionRange(result.selectionStart, result.selectionEnd);
+    });
+  }
+
   async function handleReportMessage(message) {
     setReportMessageTarget(message);
   }
 
+  async function refreshMessageReactions() {
+    const visibleMessageIds = messages.map((message) => message.id);
+
+    if (visibleMessageIds.length === 0) {
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("message_reactions")
+      .select("message_id, conversation_id, user_id, emoji, created_at, removed_at")
+      .in("message_id", visibleMessageIds)
+      .is("removed_at", null)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("Failed to refresh message reactions:", error.message);
+      return;
+    }
+
+    setMessages((currentMessages) => replaceMessageReactions(currentMessages, data ?? []));
+  }
+
+  async function handleToggleReaction(message, emoji, reactedByCurrentUser) {
+    const pendingKey = `${message.id}:${emoji}`;
+
+    if (pendingReactionKeys.has(pendingKey)) {
+      return;
+    }
+
+    const optimisticReaction = {
+      message_id: message.id,
+      conversation_id: conversation.id,
+      user_id: currentUserId,
+      emoji,
+      created_at: new Date().toISOString(),
+      removed_at: reactedByCurrentUser ? new Date().toISOString() : null,
+    };
+
+    setPendingReactionKeys((currentKeys) => new Set(currentKeys).add(pendingKey));
+    setMessages((currentMessages) =>
+      reactedByCurrentUser
+        ? removeMessageReaction(currentMessages, optimisticReaction)
+        : addMessageReaction(currentMessages, optimisticReaction),
+    );
+
+    let operationError = null;
+
+    if (reactedByCurrentUser) {
+      const { data: removedReaction, error } = await supabase
+        .from("message_reactions")
+        .update({ removed_at: optimisticReaction.removed_at })
+        .eq("message_id", message.id)
+        .eq("user_id", currentUserId)
+        .eq("emoji", emoji)
+        .select("message_id")
+        .maybeSingle();
+      operationError = error;
+
+      if (!error && !removedReaction) {
+        await refreshMessageReactions();
+      }
+    } else {
+      const { data: restoredReaction, error: restoreError } = await supabase
+        .from("message_reactions")
+        .update({ removed_at: null })
+        .eq("message_id", message.id)
+        .eq("user_id", currentUserId)
+        .eq("emoji", emoji)
+        .not("removed_at", "is", null)
+        .select("message_id, conversation_id, user_id, emoji, created_at, removed_at")
+        .maybeSingle();
+
+      if (restoreError) {
+        operationError = restoreError;
+      } else if (!restoredReaction) {
+        const { error: insertError } = await supabase.from("message_reactions").insert({
+          message_id: message.id,
+          conversation_id: conversation.id,
+          user_id: currentUserId,
+          emoji,
+        });
+        operationError = insertError;
+      }
+    }
+
+    setPendingReactionKeys((currentKeys) => {
+      const nextKeys = new Set(currentKeys);
+      nextKeys.delete(pendingKey);
+      return nextKeys;
+    });
+
+    if (operationError) {
+      console.error("Failed to update message reaction:", operationError.message);
+      toast.error(t.reactionUpdateError);
+      await refreshMessageReactions();
+    }
+  }
+
   return (
-    <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-y border-zinc-200 bg-white/95 dark:border-border dark:bg-card md:rounded-[2rem] md:border md:shadow-sm">
-      <div className="shrink-0 border-b border-zinc-200 p-3 dark:border-border md:p-5">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <section className="@container/thread flex min-h-0 max-w-full flex-1 touch-pan-y flex-col overflow-hidden overscroll-x-none border-y border-zinc-200 bg-white/95 dark:border-border dark:bg-card md:rounded-[1.5rem] md:border md:shadow-sm">
+      <div className="shrink-0 border-b border-zinc-200 px-3 py-2.5 dark:border-border md:px-4 md:py-3">
+        <div className="flex flex-col gap-2.5 @2xl/thread:flex-row @2xl/thread:items-center @2xl/thread:justify-between">
           {isAnnouncementConversation ? (
-            <div className="block rounded-2xl border border-zinc-200/80 bg-zinc-50/80 p-2.5 dark:border-border dark:bg-muted/30 lg:w-full lg:max-w-md">
+            <div className="block rounded-xl border border-zinc-200/80 bg-zinc-50/80 p-2 dark:border-border dark:bg-muted/30 @2xl/thread:w-full @2xl/thread:max-w-sm">
               <div className="flex items-center gap-3">
-                <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-zinc-600 dark:bg-muted dark:text-muted-foreground md:size-14">
-                  <Megaphone className="size-6 md:size-7" />
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-600 dark:bg-muted dark:text-muted-foreground md:size-12">
+                  <Megaphone className="size-5 md:size-6" />
                 </div>
 
                 <div className="min-w-0 flex-1">
@@ -748,16 +1167,16 @@ export function MessagesThread({
           ) : hasListingLink ? (
             <Link
               href={`/listings/${conversation.listing.slug}`}
-              className="block rounded-2xl border border-zinc-200/80 bg-zinc-50/80 p-2.5 transition hover:bg-zinc-100/80 dark:border-border dark:bg-muted/30 dark:hover:bg-muted/50 lg:w-full lg:max-w-md"
+              className="block rounded-xl border border-zinc-200/80 bg-zinc-50/80 p-2 transition hover:bg-zinc-100/80 dark:border-border dark:bg-muted/30 dark:hover:bg-muted/50 @2xl/thread:w-full @2xl/thread:max-w-sm"
             >
               <div className="flex items-center gap-3">
-                <div className="relative size-12 shrink-0 overflow-hidden rounded-xl bg-zinc-100 dark:bg-muted md:size-14">
+                <div className="relative size-11 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-muted md:size-12">
                   {conversation.listing.imageUrl ? (
                     <Image
                       src={conversation.listing.imageUrl}
                       alt={conversation.listing.title}
                       fill
-                      sizes="(max-width: 767px) 48px, 56px"
+                      sizes="(max-width: 767px) 44px, 48px"
                       placeholder="blur"
                       blurDataURL={REMOTE_IMAGE_BLUR_DATA_URL}
                       className="object-cover"
@@ -781,9 +1200,9 @@ export function MessagesThread({
               </div>
             </Link>
           ) : (
-            <div className="block rounded-2xl border border-zinc-200/80 bg-zinc-50/80 p-2.5 dark:border-border dark:bg-muted/30 lg:w-full lg:max-w-md">
+            <div className="block rounded-xl border border-zinc-200/80 bg-zinc-50/80 p-2 dark:border-border dark:bg-muted/30 @2xl/thread:w-full @2xl/thread:max-w-sm">
               <div className="flex items-center gap-3">
-                <div className="size-12 shrink-0 overflow-hidden rounded-xl bg-zinc-100 dark:bg-muted md:size-14">
+                <div className="size-11 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-muted md:size-12">
                   <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
                 </div>
 
@@ -800,16 +1219,16 @@ export function MessagesThread({
           )}
 
           {conversation.otherParticipant.id ? (
-            <div className="flex items-center gap-2 lg:self-center">
+            <div className="flex min-w-0 items-center justify-between gap-2 @2xl/thread:self-center">
               <Link
                 href={`/profile/${conversation.otherParticipant.id}`}
-                className="flex min-w-0 items-center gap-2.5 rounded-xl transition hover:bg-zinc-50/80 dark:hover:bg-muted/40"
+                className="flex min-w-0 flex-1 items-center gap-2 rounded-xl transition hover:bg-zinc-50/80 dark:hover:bg-muted/40"
               >
                 <ProfileAvatar
                   name={conversation.otherParticipant.name}
                   avatarPresetId={conversation.otherParticipant.avatarPresetId}
                   avatarUrl={conversation.otherParticipant.avatarUrl}
-                  className="size-9 border border-zinc-200 dark:border-border"
+                  className="size-8 border border-zinc-200 dark:border-border md:size-9"
                 />
 
                 <div className="min-w-0">
@@ -870,7 +1289,7 @@ export function MessagesThread({
               </DropdownMenu>
             </div>
           ) : (
-            <div className="flex items-center gap-2.5 lg:self-center">
+            <div className="flex min-w-0 items-center gap-2 @2xl/thread:self-center">
               {conversation.isAnnouncement ? (
                 <div className="flex size-9 items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 text-zinc-700 dark:border-border dark:bg-muted dark:text-muted-foreground">
                   <Megaphone className="size-5" />
@@ -897,21 +1316,57 @@ export function MessagesThread({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-3.5 overflow-y-auto overscroll-contain bg-zinc-50/60 px-3.5 py-4 dark:bg-muted/15 md:space-y-4 md:px-6 md:py-5">
+      <div className="min-h-0 max-w-full flex-1 touch-pan-y space-y-1 overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain bg-zinc-50/60 px-3 py-3 dark:bg-muted/15 md:px-5 md:py-4">
+        {hasOlderMessages ? (
+          <div className="mx-auto flex w-full max-w-4xl justify-center pb-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+              disabled={isLoadingHistory}
+              onClick={handleLoadOlderMessages}
+            >
+              {isLoadingHistory ? t.loadingOlderMessages : t.loadOlderMessages}
+            </Button>
+          </div>
+        ) : null}
+        {hasNewerMessages ? (
+          <div className="mx-auto flex w-full max-w-4xl justify-center pb-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="rounded-full"
+              disabled={isLoadingHistory}
+              onClick={handleReturnToNewestMessages}
+            >
+              {t.returnToNewestMessages}
+            </Button>
+          </div>
+        ) : null}
         {messages.length > 0 ? (
-          messages.map((message) => {
+          messages.map((message, messageIndex) => {
             const isCurrentUser = message.sender_id === currentUserId;
             const participant = isCurrentUser
               ? conversation.currentParticipant
               : conversation.otherParticipant;
+            const isGrouped = isGroupedWithPreviousMessage(
+              message,
+              messages[messageIndex - 1],
+            );
 
             return (
               <div
                 key={message.id}
-                className={`group/message flex items-end gap-2 ${isCurrentUser ? "flex-row-reverse" : ""}`}
+                className={`group/message mx-auto flex w-full max-w-4xl items-end gap-1.5 ${
+                  isCurrentUser ? "flex-row-reverse" : ""
+                } ${isGrouped ? "pt-0.5" : messageIndex > 0 ? "pt-2.5" : ""}`}
               >
-                {conversation.isAnnouncement && !isCurrentUser ? (
-                  <div className="flex size-8 items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 text-zinc-600 dark:border-border dark:bg-muted dark:text-muted-foreground md:size-9">
+                {isGrouped ? (
+                  <span className="size-7 shrink-0 md:size-8" aria-hidden="true" />
+                ) : conversation.isAnnouncement && !isCurrentUser ? (
+                  <div className="flex size-7 items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 text-zinc-600 dark:border-border dark:bg-muted dark:text-muted-foreground md:size-8">
                     <Megaphone className="size-4.5" />
                   </div>
                 ) : (
@@ -919,50 +1374,27 @@ export function MessagesThread({
                     name={participant.name}
                     avatarPresetId={participant.avatarPresetId}
                     avatarUrl={participant.avatarUrl}
-                    className="size-8 border border-zinc-200 dark:border-border md:size-9"
+                    className="size-7 border border-zinc-200 dark:border-border md:size-8"
                   />
                 )}
 
                 <div
-                  className={`relative flex min-w-0 max-w-[78vw] flex-col gap-1 sm:max-w-[68%] ${
+                  className={`flex min-w-0 max-w-[calc(100%-5.25rem)] flex-col gap-0.5 sm:max-w-[min(70%,36rem)] ${
                     isCurrentUser ? "items-end" : "items-start"
                   }`}
                 >
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon-sm"
-                        aria-label={t.moreActions}
-                        className={`absolute top-1/2 z-10 size-11 -translate-y-1/2 rounded-full border-zinc-300 bg-white text-zinc-700 opacity-0 shadow-sm transition group-hover/message:opacity-100 group-focus-within/message:opacity-100 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted ${
-                          isCurrentUser ? "right-full mr-2" : "left-full ml-2"
-                        }`}
-                      >
-                        <EllipsisVertical className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      align={isCurrentUser ? "start" : "end"}
-                      className="w-44 rounded-2xl"
-                    >
-                      <DropdownMenuItem onClick={() => handleReportMessage(message)}>
-                        <Flag className="size-4" />
-                        <span>{t.reportMessage}</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
-                  <p className="px-1 text-[0.6875rem] leading-4 text-zinc-500 dark:text-muted-foreground md:text-xs">
-                    <span className="font-semibold text-zinc-900 dark:text-foreground">
-                      {isCurrentUser ? t.you : participant.name}
-                    </span>{" "}
-                    <ClientFormattedDateTime value={message.created_at} language={language} />
-                  </p>
+                  {!isGrouped ? (
+                    <p className="px-1 text-[0.6875rem] leading-4 text-zinc-500 dark:text-muted-foreground md:text-xs">
+                      <span className="font-semibold text-zinc-900 dark:text-foreground">
+                        {isCurrentUser ? t.you : participant.name}
+                      </span>{" "}
+                      <ClientFormattedDateTime value={message.created_at} language={language} />
+                    </p>
+                  ) : null}
 
                   <div
-                    className={`w-fit rounded-[1.25rem] text-left ${
-                      message.attachments?.length > 0 ? "p-1.5" : "px-3.5 py-2.5"
+                    className={`w-fit overflow-hidden rounded-[1.1rem] text-left ${
+                      message.attachments?.length > 0 ? "p-1" : "px-3 py-2"
                     } ${
                       isCurrentUser
                         ? "rounded-tr-sm border border-zinc-300/80 bg-zinc-200/90 text-zinc-950 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
@@ -970,33 +1402,68 @@ export function MessagesThread({
                     }`}
                   >
                     {message.attachments?.length > 0 ? (
-                      <div
-                        className={
-                          message.attachments.length > 1
-                            ? "grid grid-cols-2 gap-1.5 [&_a]:w-28 [&_video]:w-28 sm:[&_a]:w-36 sm:[&_video]:w-36"
-                            : ""
-                        }
-                      >
-                        {message.attachments.map((attachment) => (
-                          <MessageAttachment
-                            key={attachment.id}
-                            attachment={attachment}
-                            t={t}
-                          />
-                        ))}
-                      </div>
+                      <MessageMediaGallery attachments={message.attachments} />
                     ) : null}
                     {message.body ? (
                       <p
                         className={`whitespace-pre-wrap break-words text-[0.8125rem] leading-5 md:text-sm md:leading-6 ${
-                          message.attachments?.length > 0 ? "px-2 pb-1 pt-2" : ""
+                          message.attachments?.length > 0 ? "px-2 pb-1.5 pt-2" : ""
                         }`}
                       >
                         {message.body}
                       </p>
                     ) : null}
                   </div>
+
+                  <MessageReactions
+                    reactions={message.reactions ?? []}
+                    currentUserId={currentUserId}
+                    isCurrentUser={isCurrentUser}
+                    isPending={[...pendingReactionKeys].some((key) =>
+                      key.startsWith(`${message.id}:`),
+                    )}
+                    isAddingDisabled={
+                      isAnnouncementConversation || !isMessagingAvailable || Boolean(blockReason)
+                    }
+                    onToggle={(emoji, reactedByCurrentUser) =>
+                      handleToggleReaction(message, emoji, reactedByCurrentUser)
+                    }
+                    labels={{
+                      reactions: t.messageReactions,
+                      addReaction: t.addReaction,
+                      removeReaction: t.removeReaction,
+                      pickerLabel: t.reactionPickerLabel,
+                      reactionCount: (count) =>
+                        (count === 1
+                          ? t.reactionCountSingleLabel
+                          : t.reactionCountLabel
+                        ).replace("{count}", String(count)),
+                    }}
+                  />
                 </div>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon-sm"
+                      aria-label={t.moreActions}
+                      className="relative z-10 !size-8 !min-h-8 !min-w-8 -translate-y-1.5 self-center rounded-full border-zinc-300 bg-white text-zinc-700 opacity-100 shadow-sm transition-opacity after:absolute after:-inset-1.5 after:rounded-full after:content-[''] md:opacity-0 md:group-hover/message:opacity-100 md:group-focus-within/message:opacity-100 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted"
+                    >
+                      <EllipsisVertical className="size-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align={isCurrentUser ? "start" : "end"}
+                    className="w-44 rounded-2xl"
+                  >
+                    <DropdownMenuItem onClick={() => handleReportMessage(message)}>
+                      <Flag className="size-4" />
+                      <span>{t.reportMessage}</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             );
           })
@@ -1016,8 +1483,32 @@ export function MessagesThread({
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="sticky bottom-0 z-20 shrink-0 border-t border-zinc-200 bg-white/95 px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur-sm dark:border-border dark:bg-card/95 md:p-5">
-        <div className="rounded-[1.35rem] border border-zinc-200 bg-zinc-50/70 p-2.5 dark:border-border dark:bg-muted/20">
+      <form onSubmit={handleSubmit} className="sticky bottom-0 z-20 shrink-0 border-t border-zinc-200 bg-white/95 px-2.5 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-sm dark:border-border dark:bg-card/95 md:px-4 md:py-3">
+        <div
+          {...dropzoneProps}
+          className={`relative mx-auto max-w-4xl rounded-[1.1rem] border bg-zinc-50/70 p-1.5 transition-colors dark:bg-muted/20 ${
+            isDragActive && isMediaSelectionAvailable
+              ? "border-dashed border-primary ring-2 ring-primary/20"
+              : "border-zinc-200 dark:border-border"
+          }`}
+        >
+          {isDragActive && isMediaSelectionAvailable ? (
+            <div
+              role="status"
+              aria-live="polite"
+              className="pointer-events-none absolute inset-0 z-30 hidden items-center justify-center rounded-[1.1rem] border-2 border-dashed border-primary bg-background/95 p-4 text-center backdrop-blur-sm md:flex"
+            >
+              <div>
+                <Paperclip className="mx-auto size-6 text-primary" aria-hidden="true" />
+                <p className="mt-2 text-sm font-semibold text-foreground">
+                  {t.dropMessageMedia}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t.mediaAttachmentHelp}
+                </p>
+              </div>
+            </div>
+          ) : null}
           {blockReason ? (
             <p className="px-2 pb-3 text-sm text-muted-foreground">{blockReason}</p>
           ) : null}
@@ -1039,7 +1530,7 @@ export function MessagesThread({
               {pendingAttachments.map((attachment) => (
                 <div
                   key={attachment.id}
-                  className="relative size-20 shrink-0 overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 dark:border-border dark:bg-muted"
+                  className="relative size-16 shrink-0 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 dark:border-border dark:bg-muted md:size-18"
                 >
                   {getAttachmentKind(attachment.file.type) === "video" ? (
                     <video
@@ -1056,7 +1547,7 @@ export function MessagesThread({
                       alt={attachment.file.name}
                       fill
                       unoptimized
-                      sizes="80px"
+                      sizes="(max-width: 767px) 64px, 72px"
                       className="object-cover"
                     />
                   )}
@@ -1079,37 +1570,32 @@ export function MessagesThread({
             </div>
           ) : null}
           <Textarea
+            ref={composerRef}
             value={draft}
-            onChange={(event) => setDraft(event.target.value)}
+            onChange={handleDraftChange}
             onKeyDown={handleComposerKeyDown}
+            onKeyUp={rememberComposerSelection}
+            onSelect={rememberComposerSelection}
+            onBlur={rememberComposerSelection}
             placeholder={t.messageInputPlaceholder}
-            rows={2}
-            className="min-h-16 max-h-32 resize-none overflow-y-auto border-0 bg-transparent px-2 py-2 text-base leading-5 shadow-none [field-sizing:content] focus-visible:ring-0 md:min-h-14"
+            rows={1}
+            className="min-h-11 max-h-28 resize-none overflow-y-auto border-0 bg-transparent px-2 py-2.5 text-base leading-5 shadow-none [field-sizing:content] focus-visible:ring-0"
             maxLength={2000}
             disabled={!isMessagingAvailable || Boolean(blockReason) || isSending}
           />
 
-          <div className="mt-1.5 flex items-center justify-between gap-3 border-t border-zinc-200 px-1.5 pt-2 dark:border-border">
+          <div className="mt-0.5 flex items-center justify-between gap-3 border-t border-zinc-200 px-1 pt-1.5 dark:border-border">
             <div className="flex items-center gap-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span tabIndex={0}>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      className="size-11 rounded-full text-zinc-500 dark:text-muted-foreground"
-                      disabled
-                      aria-label={t.emojiPickerSoon}
-                    >
-                      <SmilePlus className="size-4" />
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={8}>
-                  {t.emojiPickerSoon}
-                </TooltipContent>
-              </Tooltip>
+              <MessageEmojiPicker
+                disabled={!isMessagingAvailable || Boolean(blockReason) || isSending}
+                onSelect={handleInsertComposerEmoji}
+                labels={{
+                  addEmoji: t.addMessageEmoji,
+                  insertEmoji: t.insertMessageEmoji,
+                  pickerLabel: t.messageEmojiPickerLabel,
+                  pickerHint: t.messageEmojiPickerHint,
+                }}
+              />
 
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -1136,7 +1622,7 @@ export function MessagesThread({
               </Tooltip>
 
               <p className="text-xs text-zinc-500 dark:text-muted-foreground">
-                {draft.trim().length}/2000
+                {draft.length}/2000
               </p>
             </div>
 

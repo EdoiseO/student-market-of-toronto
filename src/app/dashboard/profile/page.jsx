@@ -6,15 +6,6 @@ import { isNameChangeRequired } from "@/lib/moderation";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
-function normalizeMetadataText(value) {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  const normalizedValue = value.trim();
-  return normalizedValue.length > 0 ? normalizedValue : null;
-}
-
 export default async function DashboardProfilePage() {
   const cookieStore = await cookies();
   const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
@@ -41,11 +32,9 @@ export default async function DashboardProfilePage() {
 
   const profile = {
     id: user.id,
-    firstName:
-      existingProfile?.first_name ?? normalizeMetadataText(user.user_metadata?.first_name) ?? "",
-    lastName:
-      existingProfile?.last_name ?? normalizeMetadataText(user.user_metadata?.last_name) ?? "",
-    school: existingProfile?.school ?? normalizeMetadataText(user.user_metadata?.school) ?? "",
+    firstName: existingProfile?.first_name ?? "",
+    lastName: existingProfile?.last_name ?? "",
+    school: existingProfile?.school ?? "",
     email: user.email ?? "",
     avatarPresetId: existingProfile?.avatar_preset_id ?? null,
     avatarUrl: existingProfile?.avatar_url ?? "",

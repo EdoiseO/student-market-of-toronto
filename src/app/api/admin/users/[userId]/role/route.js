@@ -34,7 +34,7 @@ function isModeratorRoleNotificationUnsupported(error) {
   );
 }
 
-async function updateUserRole(admin, userId, nextRole) {
+async function getTargetUser(admin, userId) {
   const {
     data: { user },
     error: getUserError,
@@ -44,7 +44,11 @@ async function updateUserRole(admin, userId, nextRole) {
     throw getUserError ?? new Error("Target user not found.");
   }
 
-  const { error: updateError } = await admin.auth.admin.updateUserById(userId, {
+  return user;
+}
+
+async function updateUserRole(admin, user, nextRole) {
+  const { error: updateError } = await admin.auth.admin.updateUserById(user.id, {
     app_metadata: buildAppMetadata(user.app_metadata, nextRole),
   });
 
@@ -101,7 +105,14 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
     }
 
-    const accessUser = (await getLatestAuthUser(admin, user.id, "admin role management")) ?? user;
+    const accessUser = await getLatestAuthUser(admin, user.id, "admin role management");
+
+    if (!accessUser) {
+      return NextResponse.json(
+        { error: "Could not verify your current admin access." },
+        { status: 503 },
+      );
+    }
 
     if (getUserModerationRole(accessUser) !== "admin") {
       return NextResponse.json({ error: "Only admins can update moderation roles." }, { status: 403 });
@@ -114,14 +125,39 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: "Missing target user." }, { status: 400 });
     }
 
+    const targetUser = await getTargetUser(admin, targetUserId);
+    const targetRole = getUserModerationRole(targetUser);
+
     if (action === "make_moderator") {
-      await updateUserRole(admin, targetUserId, "moderator");
+      if (targetUserId === accessUser.id || targetRole === "admin") {
+        return NextResponse.json(
+          { error: "Admin roles can only be changed through an admin transfer." },
+          { status: 400 },
+        );
+      }
+
+      if (targetRole === "moderator") {
+        return NextResponse.json({ error: "This user is already a moderator." }, { status: 409 });
+      }
+
+      await updateUserRole(admin, targetUser, "moderator");
       const notificationSent = await createModeratorGrantedNotification(admin, targetUserId);
       return NextResponse.json({ success: true, nextRole: "moderator", notificationSent });
     }
 
     if (action === "remove_moderator") {
-      await updateUserRole(admin, targetUserId, null);
+      if (targetUserId === accessUser.id || targetRole === "admin") {
+        return NextResponse.json(
+          { error: "Admin roles can only be changed through an admin transfer." },
+          { status: 400 },
+        );
+      }
+
+      if (targetRole !== "moderator") {
+        return NextResponse.json({ error: "This user is not a moderator." }, { status: 409 });
+      }
+
+      await updateUserRole(admin, targetUser, null);
       return NextResponse.json({ success: true, nextRole: null });
     }
 
@@ -130,8 +166,31 @@ export async function POST(request, { params }) {
         return NextResponse.json({ error: "You already have the admin role." }, { status: 400 });
       }
 
-      await updateUserRole(admin, targetUserId, "admin");
-      await updateUserRole(admin, accessUser.id, "moderator");
+      if (targetRole === "admin") {
+        return NextResponse.json({ error: "This user is already an admin." }, { status: 409 });
+      }
+
+      await updateUserRole(admin, targetUser, "admin");
+
+      try {
+        await updateUserRole(admin, accessUser, "moderator");
+      } catch (transferError) {
+        const { error: rollbackError } = await admin.auth.admin.updateUserById(targetUser.id, {
+          app_metadata: targetUser.app_metadata ?? {},
+        });
+
+        if (rollbackError) {
+          console.error(
+            "Admin transfer rollback failed after demotion error:",
+            rollbackError.message,
+          );
+          throw new Error("Admin transfer could not be completed or safely rolled back.", {
+            cause: transferError,
+          });
+        }
+
+        throw transferError;
+      }
 
       return NextResponse.json({
         success: true,

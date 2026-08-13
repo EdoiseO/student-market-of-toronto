@@ -6,8 +6,11 @@ import {
   getUserModerationRole,
   REPORT_STATUS_VALUES,
 } from "@/lib/moderation";
+import { areOpenReportsBoundToOneSubject } from "@/lib/admin-moderation-integrity.mjs";
 import {
+  REJECTED_PROFILE_NAME_FINGERPRINT_HISTORY_KEY,
   REJECTED_PROFILE_NAME_FINGERPRINT_KEY,
+  appendRejectedProfileNameFingerprint,
   areOpenProfileReportsBoundToUser,
   getProfileNameFingerprint,
 } from "@/lib/name-sanction.mjs";
@@ -106,21 +109,48 @@ export async function POST(request) {
         return NextResponse.json({ error: "Unsupported report status." }, { status: 400 });
       }
 
+      const { data: reportRows, error: reportLookupError } = await admin
+        .from("reports")
+        .select(
+          "id, subject_type, subject_id, listing_id, message_id, reported_user_id, status",
+        )
+        .in("id", reportIds);
+
+      if (reportLookupError) {
+        throw reportLookupError;
+      }
+
+      if (!areOpenReportsBoundToOneSubject(reportRows, reportIds)) {
+        return NextResponse.json(
+          { error: "Every selected report must be open and belong to the same subject." },
+          { status: 409 },
+        );
+      }
+
       const reviewedAt = new Date().toISOString();
-      const { error } = await admin
+      const { data: updatedReports, error } = await admin
         .from("reports")
         .update({
           status: nextStatus,
           reviewed_by: user.id,
           reviewed_at: reviewedAt,
         })
-        .in("id", reportIds);
+        .in("id", reportIds)
+        .eq("status", REPORT_STATUS_VALUES.open)
+        .select("id");
 
       if (error) {
         throw error;
       }
 
-      return NextResponse.json({ success: true, updatedCount: reportIds.length });
+      if (updatedReports?.length !== reportIds.length) {
+        return NextResponse.json(
+          { error: "The selected reports changed before they could be updated." },
+          { status: 409 },
+        );
+      }
+
+      return NextResponse.json({ success: true, updatedCount: updatedReports.length });
     }
 
     if (action === "remove_listing") {
@@ -256,18 +286,14 @@ export async function POST(request) {
       }
 
       const reviewedAt = new Date().toISOString();
-      const rejectedNameFingerprint =
-        getProfileNameFingerprint(
-          targetProfile?.first_name ?? targetUser.user_metadata?.first_name,
-          targetProfile?.last_name ?? targetUser.user_metadata?.last_name,
-        ) ?? targetUser.app_metadata?.[REJECTED_PROFILE_NAME_FINGERPRINT_KEY] ?? null;
-      const nextUserMetadata = {
-        ...(targetUser.user_metadata ?? {}),
-        first_name: null,
-        last_name: null,
-      };
-      delete nextUserMetadata.force_name_change;
-
+      const rejectedNameFingerprint = getProfileNameFingerprint(
+        targetProfile?.first_name,
+        targetProfile?.last_name,
+      );
+      const rejectedNameFingerprints = appendRejectedProfileNameFingerprint(
+        targetUser.app_metadata,
+        rejectedNameFingerprint,
+      );
       const nextAppMetadata = {
         ...(targetUser.app_metadata ?? {}),
         force_name_change: true,
@@ -277,8 +303,12 @@ export async function POST(request) {
         nextAppMetadata[REJECTED_PROFILE_NAME_FINGERPRINT_KEY] = rejectedNameFingerprint;
       }
 
+      if (rejectedNameFingerprints.length > 0) {
+        nextAppMetadata[REJECTED_PROFILE_NAME_FINGERPRINT_HISTORY_KEY] =
+          rejectedNameFingerprints;
+      }
+
       const { error: authUpdateError } = await admin.auth.admin.updateUserById(targetUserId, {
-        user_metadata: nextUserMetadata,
         app_metadata: nextAppMetadata,
       });
 

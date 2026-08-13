@@ -50,7 +50,7 @@ export function AppLayoutShell({ children, user }) {
               <SidebarInset
                 className={
                   isMessagesConversationPage
-                    ? "min-h-0 overflow-hidden pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0"
+                    ? "min-h-0 min-w-0 max-w-full touch-pan-y overflow-hidden overscroll-x-none"
                     : "min-w-0 overflow-x-clip pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0"
                 }
               >
@@ -60,7 +60,7 @@ export function AppLayoutShell({ children, user }) {
                 </div>
               </SidebarInset>
             </div>
-            <MobileBottomNav user={user} />
+            {isMessagesConversationPage ? null : <MobileBottomNav user={user} />}
           </SidebarProvider>
         </div>
       ) : (

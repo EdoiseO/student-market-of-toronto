@@ -247,10 +247,6 @@ export function CreateListingForm() {
           condition,
           location: campus,
           status,
-          submitted_for_review_at:
-            status === LISTING_APPROVAL_STATUS_VALUES.pendingReview
-              ? new Date().toISOString()
-              : null,
           is_negotiable: isNegotiable,
         })
         .select("id, slug")
@@ -416,7 +412,7 @@ export function CreateListingForm() {
           </CardHeader>
 
           <CardContent className="p-4 sm:p-6 md:p-8">
-            <div className="grid gap-5 md:gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(288px,0.85fr)]">
+            <div className="grid gap-5 pb-24 md:gap-8 md:pb-0 xl:grid-cols-[minmax(0,1fr)_minmax(288px,0.85fr)]">
               <FieldGroup className="gap-4 md:gap-5">
                 <Field>
                   <FieldLabel>{t.title}</FieldLabel>

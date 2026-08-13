@@ -64,6 +64,16 @@ export default function DashboardSettingsLoading() {
           </div>
         </section>
 
+        <section className="rounded-2xl bg-card px-4 py-3 shadow-sm ring-1 ring-border md:hidden">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-3 w-full max-w-sm" />
+            </div>
+            <Skeleton className="h-12 w-full shrink-0 rounded-xl sm:w-36" />
+          </div>
+        </section>
+
         <section className="rounded-2xl border border-destructive/20 bg-card px-4 py-3 shadow-sm md:rounded-3xl md:px-6 md:py-5">
           <div className="flex items-center gap-3">
             <Skeleton className="size-9 shrink-0 rounded-xl" />

@@ -232,7 +232,7 @@ function PaginationControls({ currentPage, totalPages, onPrevious, onNext, t }) 
 
 function ReportQueueMobileList({ reportGroups, language, t }) {
   return (
-    <div className="space-y-3 md:hidden" role="list">
+    <div className="space-y-3 lg:hidden" role="list">
       {reportGroups.map((group) => {
         const displayedReasons = group.reasonLabels.slice(0, 2);
         const remainingReasonCount = Math.max(0, group.reasonLabels.length - displayedReasons.length);
@@ -336,7 +336,7 @@ function ReportQueueTable({ reportGroups, language, t }) {
   return (
     <>
       <ReportQueueMobileList reportGroups={reportGroups} language={language} t={t} />
-      <div className="hidden md:block">
+      <div className="hidden lg:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -448,7 +448,7 @@ function ReportQueueTable({ reportGroups, language, t }) {
 
 function ListingApprovalMobileList({ listings, language, t, dateLabel }) {
   return (
-    <div className="space-y-3 md:hidden" role="list">
+    <div className="space-y-3 lg:hidden" role="list">
       {listings.map((listing) => (
         <article
           key={listing.id}
@@ -516,7 +516,7 @@ function ListingApprovalTable({ listings, language, t, dateLabel, emptyText }) {
   return (
     <>
       <ListingApprovalMobileList listings={listings} language={language} t={t} dateLabel={dateLabel} />
-      <div className="hidden md:block">
+      <div className="hidden lg:block">
         <Table>
           <TableHeader>
             <TableRow>

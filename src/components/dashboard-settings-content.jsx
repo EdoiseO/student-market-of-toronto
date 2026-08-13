@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { SignOutButton } from "@/components/sign-out-button";
 import { Switch } from "@/components/ui/switch";
 import { useLanguage } from "@/context/LanguageContext";
 import {
@@ -71,9 +72,8 @@ export function DashboardSettingsContent({
   );
   const [isSavingNotificationPreferences, setIsSavingNotificationPreferences] =
     React.useState(false);
-  const [confirmationEmail, setConfirmationEmail] = React.useState("");
+  const [confirmationPassword, setConfirmationPassword] = React.useState("");
   const [isDeletingAccount, setIsDeletingAccount] = React.useState(false);
-  const emailMatches = confirmationEmail.trim().toLowerCase() === userEmail.trim().toLowerCase();
 
   React.useEffect(() => {
     setHideBioOnListingPage(initialHideBioOnListingPage);
@@ -235,7 +235,7 @@ export function DashboardSettingsContent({
   }
 
   async function handleDeleteAccount() {
-    if (!deleteAccountAvailable || isDeletingAccount || !emailMatches) {
+    if (!deleteAccountAvailable || isDeletingAccount || !confirmationPassword) {
       return;
     }
 
@@ -244,6 +244,8 @@ export function DashboardSettingsContent({
     try {
       const response = await fetch("/api/account/delete", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: confirmationPassword }),
       });
       const payload = await response.json().catch(() => ({}));
 
@@ -260,7 +262,7 @@ export function DashboardSettingsContent({
       toast.error(error.message || t.settingsDeleteAccountError);
     } finally {
       setIsDeletingAccount(false);
-      setConfirmationEmail("");
+      setConfirmationPassword("");
     }
   }
 
@@ -445,6 +447,30 @@ export function DashboardSettingsContent({
           </section>
         </Card>
 
+        <Card className="gap-0 rounded-2xl bg-card py-0 shadow-sm ring-border md:hidden">
+          <CardContent className="px-4 py-3">
+            <section
+              aria-labelledby="settings-mobile-account-title"
+              className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="min-w-0">
+                <CardTitle
+                  id="settings-mobile-account-title"
+                  className="text-base text-foreground"
+                >
+                  {t.account}
+                </CardTitle>
+                <CardDescription className="mt-0.5 text-xs leading-5">
+                  {t.signOutDescription}
+                </CardDescription>
+              </div>
+              <div className="w-full shrink-0 sm:w-36">
+                <SignOutButton />
+              </div>
+            </section>
+          </CardContent>
+        </Card>
+
         <Card className="gap-0 rounded-2xl border-destructive/30 bg-card py-0 shadow-sm ring-border md:rounded-3xl">
           <CardContent className="px-4 py-3 md:px-6 md:py-5">
             <div className="flex flex-wrap items-center gap-3">
@@ -463,7 +489,7 @@ export function DashboardSettingsContent({
               <AlertDialog
                 onOpenChange={(open) => {
                   if (!open) {
-                    setConfirmationEmail("");
+                    setConfirmationPassword("");
                   }
                 }}
               >
@@ -504,15 +530,14 @@ export function DashboardSettingsContent({
                       {t.settingsDeleteAccountConfirmLabel}
                     </p>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm">
-                      {t.settingsDeleteAccountConfirmEmailHelp}
-                      <span className="break-all font-mono font-semibold text-foreground">{userEmail}</span>
-                      {t.settingsDeleteAccountConfirmEmailSuffix}
+                      {t.settingsDeleteAccountConfirmPasswordHelp}
                     </p>
                     <Input
-                      type="email"
-                      value={confirmationEmail}
-                      onChange={(event) => setConfirmationEmail(event.target.value)}
-                      placeholder={userEmail}
+                      type="password"
+                      autoComplete="current-password"
+                      value={confirmationPassword}
+                      onChange={(event) => setConfirmationPassword(event.target.value)}
+                      placeholder={t.settingsDeleteAccountConfirmPasswordPlaceholder}
                       className="mt-3"
                     />
                   </div>
@@ -523,7 +548,7 @@ export function DashboardSettingsContent({
                     </AlertDialogCancel>
                     <AlertDialogAction
                       onClick={handleDeleteAccount}
-                      disabled={isDeletingAccount || !emailMatches}
+                      disabled={isDeletingAccount || !confirmationPassword}
                       className="h-11 bg-destructive/10 text-destructive hover:bg-destructive/20"
                     >
                       {isDeletingAccount

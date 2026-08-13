@@ -34,7 +34,7 @@ function AdminSummarySkeleton({ withIcon = true }) {
 
 function AdminMobileRowSkeleton() {
   return (
-    <div className="space-y-3 rounded-2xl border border-border bg-background p-4 md:hidden">
+    <div className="space-y-3 rounded-2xl border border-border bg-background p-4 lg:hidden">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1 space-y-2">
           <Skeleton className="h-4 w-2/3" />
@@ -52,7 +52,7 @@ function AdminMobileRowSkeleton() {
 
 function AdminDesktopTableSkeleton({ rows = 4, columns = 5 }) {
   return (
-    <div className="hidden overflow-hidden rounded-2xl border border-border md:block">
+    <div className="hidden overflow-hidden rounded-2xl border border-border lg:block">
       <div
         className="grid gap-4 border-b border-border bg-muted/25 px-4 py-3"
         style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}

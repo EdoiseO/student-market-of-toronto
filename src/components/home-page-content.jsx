@@ -12,12 +12,12 @@ export default function HomePageContent({ listingSections }) {
   return (
     <main className="min-h-screen min-w-0 overflow-x-clip bg-zinc-100 px-4 py-6 dark:bg-background md:p-8">
       <div className="mx-auto flex min-w-0 w-full max-w-[1440px] flex-col gap-6 md:gap-8">
-        <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200 dark:bg-card dark:ring-border md:p-8">
+        <section className="rounded-2xl bg-white px-4 py-4 shadow-sm ring-1 ring-zinc-200 dark:bg-card dark:ring-border md:rounded-3xl md:p-8">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-zinc-950 dark:text-foreground md:text-4xl">
+            <h1 className="max-w-3xl text-xl leading-tight font-bold tracking-tight text-zinc-950 dark:text-foreground sm:text-2xl md:text-4xl">
               {t.buySell}
             </h1>
-            <p className="mt-4 max-w-2xl text-base text-zinc-600 dark:text-muted-foreground">
+            <p className="mt-2 max-w-2xl text-sm leading-snug text-zinc-600 dark:text-muted-foreground md:mt-4 md:text-base md:leading-normal">
               {t.homeDescription}
             </p>
           </div>

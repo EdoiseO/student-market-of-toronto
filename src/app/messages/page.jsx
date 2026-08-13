@@ -8,16 +8,40 @@ import { Button } from "@/components/ui/button";
 import {
   isAnnouncementConversationRow,
   isConversationInboxVisibleForUser,
-  isConversationMessageVisibleForUser,
   MESSAGE_CONVERSATION_SELECT,
+  MESSAGE_LISTING_IMAGE_LIMIT,
   isConversationUserStateDeletedAtColumnMissing,
   isConversationUserStateTableMissing,
   normalizeConversationRow,
 } from "@/lib/messages";
+import { CONVERSATION_INBOX_LIMIT } from "@/lib/message-pagination.mjs";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
-export default async function MessagesPage() {
+function parseInboxCursor(searchParams) {
+  const updatedAt = searchParams?.before;
+  const conversationId = searchParams?.beforeId;
+  const parsedUpdatedAt = typeof updatedAt === "string" ? Date.parse(updatedAt) : Number.NaN;
+  const isUuid =
+    typeof conversationId === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(conversationId);
+
+  if (Number.isNaN(parsedUpdatedAt) || !isUuid) {
+    return null;
+  }
+
+  return {
+    // Keep PostgreSQL's full timestamp precision for a lossless keyset cursor.
+    // Date parsing above is validation only; serializing through Date would
+    // truncate microseconds and could skip rows sharing the same millisecond.
+    updatedAt,
+    conversationId,
+  };
+}
+
+export default async function MessagesPage({ searchParams }) {
+  const resolvedSearchParams = await searchParams;
+  const inboxCursor = parseInboxCursor(resolvedSearchParams);
   const cookieStore = await cookies();
   const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
   const t = translations[language] || translations.en;
@@ -31,30 +55,59 @@ export default async function MessagesPage() {
     redirect("/login");
   }
 
-  const { data: conversationRows, error: conversationsError } = await supabase
-    .from("conversations")
-    .select(MESSAGE_CONVERSATION_SELECT)
-    .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
-    .order("updated_at", { ascending: false });
+  const { data: inboxIdRows, error: inboxIdsError } = await supabase.rpc(
+    "get_message_inbox_conversation_ids",
+    {
+      p_before_updated_at: inboxCursor?.updatedAt ?? null,
+      p_before_conversation_id: inboxCursor?.conversationId ?? null,
+      p_limit: CONVERSATION_INBOX_LIMIT + 1,
+    },
+  );
+  const boundedInboxIdRows = (inboxIdRows ?? []).slice(0, CONVERSATION_INBOX_LIMIT);
+  const inboxConversationIds = boundedInboxIdRows.map((row) => row.conversation_id);
+  const hasOlderConversations = (inboxIdRows?.length ?? 0) > CONVERSATION_INBOX_LIMIT;
+  const oldestConversationCursor = boundedInboxIdRows.at(-1);
+  const { data: conversationRows, error: conversationsError } = inboxConversationIds.length
+    ? await supabase
+        .from("conversations")
+        .select(MESSAGE_CONVERSATION_SELECT)
+        .order("position", { referencedTable: "listings.listing_images", ascending: true })
+        .limit(MESSAGE_LISTING_IMAGE_LIMIT, { referencedTable: "listings.listing_images" })
+        .in("id", inboxConversationIds)
+        .limit(CONVERSATION_INBOX_LIMIT)
+    : { data: [], error: inboxIdsError };
 
   if (conversationsError) {
     console.error("Failed to load conversations:", conversationsError.message);
   }
 
-  const hasMessagingSetupError = Boolean(conversationsError);
+  const hasMessagingSetupError = Boolean(inboxIdsError || conversationsError);
+  const boundedConversationRows = conversationRows ?? [];
+  const boundedConversationIds = boundedConversationRows.map((conversation) => conversation.id);
+  const conversationStateResult = boundedConversationIds.length
+    ? await supabase
+        .from("conversation_user_state")
+        .select("conversation_id, hidden_at, deleted_at")
+        .eq("user_id", user.id)
+        .in("conversation_id", boundedConversationIds)
+    : { data: [], error: null };
 
   let conversationStateRows = [];
 
-  const { data: conversationStateRowsWithDelete, error: conversationStateError } = await supabase
-    .from("conversation_user_state")
-    .select("conversation_id, hidden_at, deleted_at")
-    .eq("user_id", user.id);
+  const {
+    data: conversationStateRowsWithDelete,
+    error: conversationStateError,
+  } = conversationStateResult;
 
   if (conversationStateError && isConversationUserStateDeletedAtColumnMissing(conversationStateError)) {
-    const { data: fallbackConversationStateRows, error: fallbackConversationStateError } = await supabase
-      .from("conversation_user_state")
-      .select("conversation_id, hidden_at")
-      .eq("user_id", user.id);
+    const { data: fallbackConversationStateRows, error: fallbackConversationStateError } =
+      boundedConversationIds.length
+        ? await supabase
+            .from("conversation_user_state")
+            .select("conversation_id, hidden_at")
+            .eq("user_id", user.id)
+            .in("conversation_id", boundedConversationIds)
+        : { data: [], error: null };
 
     if (
       fallbackConversationStateError &&
@@ -84,9 +137,7 @@ export default async function MessagesPage() {
     conversationStateRows.map((conversationState) => [conversationState.conversation_id, conversationState]),
   );
 
-  const allConversationRows = conversationRows ?? [];
-
-  const visibleConversationRows = allConversationRows.filter((conversation) => {
+  const visibleConversationRows = boundedConversationRows.filter((conversation) => {
     const conversationState = conversationStateById.get(conversation.id);
 
     return isConversationInboxVisibleForUser(
@@ -110,12 +161,9 @@ export default async function MessagesPage() {
   const conversationIds = sortedConversationRows.map((conversation) => conversation.id);
 
   const { data: unreadRows, error: unreadError } = conversationIds.length
-    ? await supabase
-        .from("messages")
-        .select("conversation_id, created_at")
-        .in("conversation_id", conversationIds)
-        .is("read_at", null)
-        .neq("sender_id", user.id)
+    ? await supabase.rpc("get_conversation_unread_counts", {
+        p_conversation_ids: conversationIds,
+      })
     : { data: [], error: null };
 
   if (unreadError) {
@@ -123,13 +171,7 @@ export default async function MessagesPage() {
   }
 
   const unreadCountByConversationId = (unreadRows ?? []).reduce((counts, row) => {
-    const conversationState = conversationStateById.get(row.conversation_id);
-
-    if (!isConversationMessageVisibleForUser(row, conversationState?.deleted_at)) {
-      return counts;
-    }
-
-    counts[row.conversation_id] = (counts[row.conversation_id] ?? 0) + 1;
+    counts[row.conversation_id] = Number(row.unread_count ?? 0);
     return counts;
   }, {});
 
@@ -169,15 +211,41 @@ export default async function MessagesPage() {
             </div>
           </section>
         ) : conversations.length > 0 ? (
-          <section aria-label={t.messages}>
-            {conversations.map((conversation) => (
-              <ConversationListItem
-                key={conversation.id}
-                conversation={conversation}
-                dateValue={conversation.lastMessageAt || conversation.updatedAt}
-              />
-            ))}
-          </section>
+          <>
+            <section aria-label={t.messages}>
+              {conversations.map((conversation) => (
+                <ConversationListItem
+                  key={conversation.id}
+                  conversation={conversation}
+                  dateValue={conversation.lastMessageAt || conversation.updatedAt}
+                />
+              ))}
+            </section>
+            {inboxCursor || hasOlderConversations ? (
+              <nav
+                aria-label={t.conversationPaginationLabel}
+                className="flex items-center justify-between gap-3 border-t border-border px-4 py-4 md:px-6"
+              >
+                {inboxCursor ? (
+                  <Button asChild variant="outline">
+                    <Link href="/messages">{t.newerConversations}</Link>
+                  </Button>
+                ) : <span />}
+                {hasOlderConversations && oldestConversationCursor ? (
+                  <Button asChild variant="outline">
+                    <Link
+                      href={`/messages?${new URLSearchParams({
+                        before: oldestConversationCursor.conversation_updated_at,
+                        beforeId: oldestConversationCursor.conversation_id,
+                      })}`}
+                    >
+                      {t.olderConversations}
+                    </Link>
+                  </Button>
+                ) : null}
+              </nav>
+            ) : null}
+          </>
         ) : (
           <section className="flex items-center justify-center px-6 py-16 text-center md:py-24">
             <div className="max-w-xl">

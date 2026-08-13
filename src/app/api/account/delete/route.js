@@ -7,7 +7,7 @@ import {
 } from "@/lib/message-media-reservations.mjs";
 import { extractOwnedProfileImageStoragePath } from "@/lib/profile-avatar";
 import { isOwnedStoragePath } from "@/lib/storage-path-ownership.mjs";
-import { createAdminClient } from "@/lib/supabase-admin";
+import { createAdminClient, verifyUserPassword } from "@/lib/supabase-admin";
 import { createClient } from "@/utils/supabase/server";
 
 function isSkippableCleanupError(error) {
@@ -179,7 +179,25 @@ async function retireOutstandingMessageMediaReservations(admin, userId) {
   }
 }
 
-export async function POST() {
+function hasExpectedOrigin(request) {
+  const origin = request.headers.get("origin");
+
+  if (!origin) {
+    return false;
+  }
+
+  try {
+    return new URL(origin).origin === request.nextUrl.origin;
+  } catch {
+    return false;
+  }
+}
+
+export async function POST(request) {
+  if (!hasExpectedOrigin(request)) {
+    return NextResponse.json({ error: "This request origin is not allowed." }, { status: 403 });
+  }
+
   const admin = createAdminClient();
 
   if (!admin) {
@@ -198,6 +216,38 @@ export async function POST() {
 
   if (authError || !user) {
     return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+  }
+
+  let password;
+
+  try {
+    const payload = await request.json();
+    password = typeof payload?.password === "string" ? payload.password : "";
+  } catch {
+    return NextResponse.json({ error: "Enter your current password." }, { status: 400 });
+  }
+
+  if (!user.email || password.length === 0 || password.length > 1024) {
+    return NextResponse.json({ error: "Enter your current password." }, { status: 400 });
+  }
+
+  let passwordVerified = false;
+
+  try {
+    passwordVerified = await verifyUserPassword({
+      userId: user.id,
+      email: user.email,
+      password,
+    });
+  } catch {
+    return NextResponse.json(
+      { error: "We could not verify your password right now." },
+      { status: 503 },
+    );
+  }
+
+  if (!passwordVerified) {
+    return NextResponse.json({ error: "Your current password is incorrect." }, { status: 403 });
   }
 
   try {

@@ -153,6 +153,10 @@ export function filterAndSortSearchListings(rows, filters) {
 export function buildSearchHref(basePath, currentParams, updates = {}) {
   const params = new URLSearchParams(currentParams);
 
+  if (!("page" in updates)) {
+    params.delete("page");
+  }
+
   Object.entries(updates).forEach(([key, value]) => {
     if (value === undefined || value === null || value === "") {
       params.delete(key);

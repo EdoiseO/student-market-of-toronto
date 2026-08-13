@@ -118,7 +118,6 @@ export function EditListingForm({ listing }) {
   const [error, setError] = React.useState("");
 
   const fileInputRef = React.useRef(null);
-  const originalPrice = Number(listing.price ?? 0);
   const newPhotoPreviews = useLocalPhotoPreviews(newPhotos);
 
   const appendNewPhotos = React.useCallback((selectedFiles) => {
@@ -174,15 +173,6 @@ export function EditListingForm({ listing }) {
   }
 
   async function cleanupNewUploads(uploadedPaths, insertedImageIds) {
-    if (uploadedPaths.length > 0) {
-      const { error: cleanupStorageError } = await supabase.storage
-        .from("listing-images")
-        .remove(uploadedPaths);
-      if (cleanupStorageError) {
-        console.error("Storage cleanup failed:", cleanupStorageError.message);
-      }
-    }
-
     if (insertedImageIds.length > 0) {
       const { error: cleanupRowsError } = await supabase
         .from("listing_images")
@@ -190,8 +180,45 @@ export function EditListingForm({ listing }) {
         .in("id", insertedImageIds);
       if (cleanupRowsError) {
         console.error("Row cleanup failed:", cleanupRowsError.message);
+        return false;
       }
     }
+
+    if (uploadedPaths.length > 0) {
+      const { error: cleanupStorageError } = await supabase.storage
+        .from("listing-images")
+        .remove(uploadedPaths);
+      if (cleanupStorageError) {
+        console.error("Storage cleanup failed:", cleanupStorageError.message);
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  async function restoreRemovedPhotoRows() {
+    if (removedPhotos.length === 0) {
+      return true;
+    }
+
+    const { error: restoreError } = await supabase
+      .from("listing_images")
+      .insert(
+        removedPhotos.map((photo) => ({
+          listing_id: listing.id,
+          image_url: photo.image_url,
+          storage_path: photo.storage_path,
+          position: photo.position,
+        })),
+      );
+
+    if (restoreError) {
+      console.error("Photo metadata restore failed:", restoreError.message);
+      return false;
+    }
+
+    return true;
   }
 
   async function handleSave() {
@@ -228,8 +255,6 @@ export function EditListingForm({ listing }) {
       return;
     }
 
-    const nextPreviousPrice =
-      numericPrice !== originalPrice ? originalPrice : listing.previous_price ?? null;
     const hasMeaningfulFieldChanges =
       normalizedTitle !== (listing.title ?? "").trim() ||
       normalizedCategory !== normalizeCategoryValue(listing.category) ||
@@ -249,7 +274,6 @@ export function EditListingForm({ listing }) {
       title: normalizedTitle,
       category: normalizedCategory,
       price: numericPrice,
-      previous_price: nextPreviousPrice,
       description: normalizedDescription,
       location: normalizedCampus || null,
       condition: normalizedCondition,
@@ -269,8 +293,11 @@ export function EditListingForm({ listing }) {
     }
 
     const uploadedPaths = [];
+    const uploadedImages = [];
     const insertedImageIds = [];
 
+    // Upload replacements first while the old metadata and blobs remain fully
+    // recoverable. Database rows are swapped only after every upload succeeds.
     for (let index = 0; index < newPhotos.length; index += 1) {
       const file = newPhotos[index];
       const safeName = file.name
@@ -297,20 +324,45 @@ export function EditListingForm({ listing }) {
         data: { publicUrl },
       } = supabase.storage.from("listing-images").getPublicUrl(filePath);
 
+      uploadedImages.push({ filePath, publicUrl, position: photos.length + index });
+    }
+
+    // Release removed metadata slots before inserting replacements. Old blobs
+    // remain in Storage until all replacement rows and ordering updates succeed.
+    if (removedPhotos.length > 0) {
+      const { error: removeRowsError } = await supabase
+        .from("listing_images")
+        .delete()
+        .in("id", removedPhotos.map((photo) => photo.id));
+
+      if (removeRowsError) {
+        await cleanupNewUploads(uploadedPaths, insertedImageIds);
+        setError(removeRowsError.message);
+        setLoading(false);
+        return;
+      }
+    }
+
+    for (const uploadedImage of uploadedImages) {
       const { data: insertedImage, error: imageInsertError } = await supabase
         .from("listing_images")
         .insert({
           listing_id: listing.id,
-          image_url: publicUrl,
-          storage_path: filePath,
-          position: photos.length + index,
+          image_url: uploadedImage.publicUrl,
+          storage_path: uploadedImage.filePath,
+          position: uploadedImage.position,
         })
         .select("id")
         .single();
 
       if (imageInsertError) {
         await cleanupNewUploads(uploadedPaths, insertedImageIds);
-        setError(imageInsertError.message);
+        const restored = await restoreRemovedPhotoRows();
+        setError(
+          restored
+            ? imageInsertError.message
+            : `${imageInsertError.message} Photo recovery also failed; refresh before retrying.`,
+        );
         setLoading(false);
         return;
       }
@@ -333,40 +385,29 @@ export function EditListingForm({ listing }) {
 
       if (failedPositionUpdate?.error) {
         await cleanupNewUploads(uploadedPaths, insertedImageIds);
-        setError(failedPositionUpdate.error.message);
+        const restored = await restoreRemovedPhotoRows();
+        setError(
+          restored
+            ? failedPositionUpdate.error.message
+            : `${failedPositionUpdate.error.message} Photo recovery also failed; refresh before retrying.`,
+        );
         setLoading(false);
         return;
       }
     }
 
-    if (removedPhotos.length > 0) {
-      const removedPhotoIds = removedPhotos.map((photo) => photo.id);
-      const storagePaths = removedPhotos
-        .map((photo) => photo.storage_path)
-        .filter(Boolean);
+    const removedStoragePaths = removedPhotos
+      .map((photo) => photo.storage_path)
+      .filter(Boolean);
+    if (removedStoragePaths.length > 0) {
+      const { error: removeStorageError } = await supabase.storage
+        .from("listing-images")
+        .remove(removedStoragePaths);
 
-      const { error: removeRowsError } = await supabase
-        .from("listing_images")
-        .delete()
-        .in("id", removedPhotoIds);
-
-      if (removeRowsError) {
-        setError(removeRowsError.message);
-        setLoading(false);
-        return;
-      }
-
-      if (storagePaths.length > 0) {
-        const { error: removeStorageError } = await supabase.storage
-          .from("listing-images")
-          .remove(storagePaths);
-
-        if (removeStorageError) {
-          console.error("Storage cleanup failed:", removeStorageError.message);
-          setError(removeStorageError.message);
-          setLoading(false);
-          return;
-        }
+      if (removeStorageError) {
+        // The listing state is already correct and no active row points at the
+        // old blob. Keep the successful edit and surface the orphan for logs.
+        console.error("Storage cleanup failed:", removeStorageError.message);
       }
     }
 
@@ -401,7 +442,7 @@ export function EditListingForm({ listing }) {
               </div>
             ) : null}
 
-            <div className="grid gap-5 md:gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(288px,0.85fr)]">
+            <div className="grid gap-5 pb-24 md:gap-8 md:pb-0 xl:grid-cols-[minmax(0,1fr)_minmax(288px,0.85fr)]">
               <FieldGroup className="gap-4 md:gap-5">
                 <Field>
                   <FieldLabel>{t.title}</FieldLabel>

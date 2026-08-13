@@ -2,6 +2,9 @@ import { createHash } from "node:crypto";
 
 export const REJECTED_PROFILE_NAME_FINGERPRINT_KEY =
   "force_name_change_rejected_name_fingerprint";
+export const REJECTED_PROFILE_NAME_FINGERPRINT_HISTORY_KEY =
+  "force_name_change_rejected_name_fingerprints";
+const MAX_REJECTED_PROFILE_NAME_FINGERPRINTS = 20;
 
 function normalizeProfileNamePart(value) {
   if (typeof value !== "string") {
@@ -29,12 +32,39 @@ export function getProfileNameFingerprint(firstName, lastName) {
   return createHash("sha256").update(JSON.stringify(normalizedName)).digest("hex");
 }
 
-export function matchesRejectedProfileName(firstName, lastName, rejectedFingerprint) {
-  if (typeof rejectedFingerprint !== "string" || !rejectedFingerprint) {
-    return false;
+export function getRejectedProfileNameFingerprints(appMetadata) {
+  const history = Array.isArray(
+    appMetadata?.[REJECTED_PROFILE_NAME_FINGERPRINT_HISTORY_KEY],
+  )
+    ? appMetadata[REJECTED_PROFILE_NAME_FINGERPRINT_HISTORY_KEY]
+    : [];
+  const legacyFingerprint = appMetadata?.[REJECTED_PROFILE_NAME_FINGERPRINT_KEY];
+
+  return [legacyFingerprint, ...history]
+    .filter((fingerprint) => typeof fingerprint === "string" && fingerprint.length > 0)
+    .filter((fingerprint, index, fingerprints) => fingerprints.indexOf(fingerprint) === index)
+    .slice(-MAX_REJECTED_PROFILE_NAME_FINGERPRINTS);
+}
+
+export function appendRejectedProfileNameFingerprint(appMetadata, fingerprint) {
+  const history = getRejectedProfileNameFingerprints(appMetadata);
+
+  if (typeof fingerprint === "string" && fingerprint.length > 0) {
+    history.push(fingerprint);
   }
 
-  return getProfileNameFingerprint(firstName, lastName) === rejectedFingerprint;
+  return history
+    .filter((candidate, index, fingerprints) => fingerprints.indexOf(candidate) === index)
+    .slice(-MAX_REJECTED_PROFILE_NAME_FINGERPRINTS);
+}
+
+export function matchesRejectedProfileName(firstName, lastName, rejectedFingerprints) {
+  const fingerprints = Array.isArray(rejectedFingerprints)
+    ? rejectedFingerprints
+    : [rejectedFingerprints];
+  const nextFingerprint = getProfileNameFingerprint(firstName, lastName);
+
+  return Boolean(nextFingerprint) && fingerprints.includes(nextFingerprint);
 }
 
 export function areOpenProfileReportsBoundToUser(reportRows, reportIds, targetUserId) {
