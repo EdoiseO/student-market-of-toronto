@@ -23,9 +23,13 @@ const expectedSchoolDomains = [
 ];
 
 test("Auth creation hook enforces the exact normalized Toronto school allowlist", async () => {
-  const [hookSql, clientAllowlist] = await Promise.all([
+  const [hookSql, retiredHookAclSql, clientAllowlist] = await Promise.all([
     readFile(
       repoFile("supabase/migrations/20260812233338_enforce_toronto_school_signup_hook.sql"),
+      "utf8",
+    ),
+    readFile(
+      repoFile("supabase/migrations/20260813010920_lock_down_retired_school_hook.sql"),
       "utf8",
     ),
     readFile(repoFile("src/lib/school-email.js"), "utf8"),
@@ -54,6 +58,14 @@ test("Auth creation hook enforces the exact normalized Toronto school allowlist"
     /grant execute on function public\.before_user_created_enforce_toronto_school\(jsonb\)\s+to supabase_auth_admin/i,
   );
   assert.doesNotMatch(hookSql, /grant execute[\s\S]*to (?:anon|authenticated|service_role)/i);
+  assert.match(
+    retiredHookAclSql,
+    /revoke all on function public\.before_user_created_validate_school_email\(jsonb\)\s+from public, anon, authenticated, service_role/i,
+  );
+  assert.match(
+    retiredHookAclSql,
+    /grant execute on function public\.before_user_created_validate_school_email\(jsonb\)\s+to supabase_auth_admin/i,
+  );
 });
 
 test("profile identity is email-derived and writable only through trusted server paths", async () => {
