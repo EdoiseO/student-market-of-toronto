@@ -1393,26 +1393,59 @@ export function MessagesThread({
                   ) : null}
 
                   <div
-                    className={`w-fit overflow-hidden rounded-[1.1rem] text-left ${
-                      message.attachments?.length > 0 ? "p-1" : "px-3 py-2"
-                    } ${
-                      isCurrentUser
-                        ? "rounded-tr-sm border border-zinc-300/80 bg-zinc-200/90 text-zinc-950 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
-                        : "rounded-tl-sm border border-zinc-200 bg-white/90 text-zinc-900 dark:border-border dark:bg-card dark:text-foreground"
+                    className={`flex items-center gap-1.5 ${
+                      isCurrentUser ? "flex-row-reverse self-end" : "self-start"
                     }`}
                   >
-                    {message.attachments?.length > 0 ? (
-                      <MessageMediaGallery attachments={message.attachments} />
-                    ) : null}
-                    {message.body ? (
-                      <p
-                        className={`whitespace-pre-wrap break-words text-[0.8125rem] leading-5 md:text-sm md:leading-6 ${
-                          message.attachments?.length > 0 ? "px-2 pb-1.5 pt-2" : ""
-                        }`}
+                    <div
+                      className={`overflow-hidden rounded-[1.1rem] text-left ${
+                        message.attachments?.length === 1
+                          ? "w-[min(13rem,60vw)] p-0 sm:w-56 md:w-64"
+                          : message.attachments?.length > 1
+                            ? "w-[min(14rem,64vw)] p-0 sm:w-64 md:w-72"
+                            : "w-fit px-3 py-2"
+                      } ${
+                        isCurrentUser
+                          ? "rounded-tr-sm border border-zinc-300/80 bg-zinc-200/90 text-zinc-950 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                          : "rounded-tl-sm border border-zinc-200 bg-white/90 text-zinc-900 dark:border-border dark:bg-card dark:text-foreground"
+                      }`}
+                    >
+                      {message.attachments?.length > 0 ? (
+                        <MessageMediaGallery attachments={message.attachments} />
+                      ) : null}
+                      {message.body ? (
+                        <p
+                          className={`whitespace-pre-wrap break-words text-[0.8125rem] leading-5 md:text-sm md:leading-6 ${
+                            message.attachments?.length > 0 ? "px-3 pb-2 pt-2" : ""
+                          }`}
+                        >
+                          {message.body}
+                        </p>
+                      ) : null}
+                    </div>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon-sm"
+                          aria-label={t.moreActions}
+                          className="relative z-10 !size-8 !min-h-8 !min-w-8 shrink-0 rounded-full border-zinc-300 bg-white text-zinc-700 opacity-100 shadow-sm transition-opacity after:absolute after:-inset-1.5 after:rounded-full after:content-[''] md:opacity-0 md:group-hover/message:opacity-100 md:group-focus-within/message:opacity-100 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted"
+                        >
+                          <EllipsisVertical className="size-3.5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        align={isCurrentUser ? "start" : "end"}
+                        className="w-44 rounded-2xl"
                       >
-                        {message.body}
-                      </p>
-                    ) : null}
+                        <DropdownMenuItem onClick={() => handleReportMessage(message)}>
+                          <Flag className="size-4" />
+                          <span>{t.reportMessage}</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
 
                   <MessageReactions
@@ -1442,28 +1475,6 @@ export function MessagesThread({
                   />
                 </div>
 
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon-sm"
-                      aria-label={t.moreActions}
-                      className="relative z-10 !size-8 !min-h-8 !min-w-8 -translate-y-1.5 self-center rounded-full border-zinc-300 bg-white text-zinc-700 opacity-100 shadow-sm transition-opacity after:absolute after:-inset-1.5 after:rounded-full after:content-[''] md:opacity-0 md:group-hover/message:opacity-100 md:group-focus-within/message:opacity-100 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted"
-                    >
-                      <EllipsisVertical className="size-3.5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align={isCurrentUser ? "start" : "end"}
-                    className="w-44 rounded-2xl"
-                  >
-                    <DropdownMenuItem onClick={() => handleReportMessage(message)}>
-                      <Flag className="size-4" />
-                      <span>{t.reportMessage}</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </div>
             );
           })

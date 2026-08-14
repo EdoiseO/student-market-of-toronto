@@ -35,12 +35,14 @@ export function MessageReactions({
 
   return (
     <div
-      className="relative z-10 -mr-0.5 -mt-1.5 flex min-h-7 max-w-full flex-wrap items-center justify-end gap-0.5 self-end px-0.5"
+      className={`relative z-10 -mt-1.5 flex min-h-7 w-max max-w-[calc(100vw-6rem)] flex-nowrap items-center gap-0.5 ${
+        isCurrentUser ? "self-end justify-end" : "self-start justify-start"
+      }`}
       role="group"
       aria-label={labels.reactions}
     >
       {groups.length > 0 ? (
-        <div className="inline-flex min-h-6 items-center gap-px rounded-full border border-zinc-200 bg-white/95 px-1 py-0 shadow-[0_1px_2px_rgba(0,0,0,0.06)] dark:border-zinc-700 dark:bg-zinc-900/95">
+        <div className="inline-flex min-h-6 shrink-0 items-center gap-px rounded-full border border-zinc-200 bg-white/95 px-1 py-0 shadow-[0_1px_2px_rgba(0,0,0,0.06)] dark:border-zinc-700 dark:bg-zinc-900/95">
           {groups.map((group) => {
             const canToggle = group.reactedByCurrentUser || !isAddingDisabled;
             const actionLabel = group.reactedByCurrentUser
