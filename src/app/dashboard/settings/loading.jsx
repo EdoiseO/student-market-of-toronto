@@ -21,6 +21,17 @@ export default function DashboardSettingsLoading() {
           <Skeleton className="mt-2 h-3 w-3/4 md:mt-3 md:h-4" />
         </section>
 
+        <section className="rounded-2xl bg-card px-4 py-3 shadow-sm ring-1 ring-border md:rounded-3xl md:px-6 md:py-4">
+          <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+            <Skeleton className="size-9 shrink-0 rounded-xl" />
+            <div className="min-w-0 space-y-1.5">
+              <Skeleton className="h-4 w-32 max-w-full" />
+              <Skeleton className="h-3 w-full max-w-sm" />
+            </div>
+            <Skeleton className="size-4 shrink-0 rounded" />
+          </div>
+        </section>
+
         <section className="overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border md:rounded-3xl">
           <div className="flex flex-col gap-3 border-b border-border px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:px-6 lg:py-5">
             <div className="space-y-1.5">

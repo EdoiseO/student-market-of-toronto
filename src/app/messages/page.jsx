@@ -3,8 +3,12 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { ConversationListItem } from "@/components/conversation-list-item";
+import { ConversationList } from "@/components/conversation-list";
 import { Button } from "@/components/ui/button";
+import {
+  CONVERSATION_MODERATION_STATE_SELECT,
+  normalizeConversationModerationState,
+} from "@/lib/conversation-moderation.mjs";
 import {
   isAnnouncementConversationRow,
   isConversationInboxVisibleForUser,
@@ -160,14 +164,29 @@ export default async function MessagesPage({ searchParams }) {
 
   const conversationIds = sortedConversationRows.map((conversation) => conversation.id);
 
-  const { data: unreadRows, error: unreadError } = conversationIds.length
-    ? await supabase.rpc("get_conversation_unread_counts", {
-        p_conversation_ids: conversationIds,
-      })
-    : { data: [], error: null };
+  const [unreadResult, moderationStateResult] = conversationIds.length
+    ? await Promise.all([
+        supabase.rpc("get_conversation_unread_counts", {
+          p_conversation_ids: conversationIds,
+        }),
+        supabase
+          .from("conversation_effective_moderation_state")
+          .select(CONVERSATION_MODERATION_STATE_SELECT)
+          .in("conversation_id", conversationIds),
+      ])
+    : [
+        { data: [], error: null },
+        { data: [], error: null },
+      ];
+  const { data: unreadRows, error: unreadError } = unreadResult;
+  const { data: moderationStateRows, error: moderationStateError } = moderationStateResult;
 
   if (unreadError) {
     console.error("Failed to load unread message counts:", unreadError.message);
+  }
+
+  if (moderationStateError) {
+    console.error("Failed to load conversation moderation states:", moderationStateError.message);
   }
 
   const unreadCountByConversationId = (unreadRows ?? []).reduce((counts, row) => {
@@ -175,14 +194,22 @@ export default async function MessagesPage({ searchParams }) {
     return counts;
   }, {});
 
-  const conversations = sortedConversationRows.map((conversation) =>
-    normalizeConversationRow(
+  const moderationStateByConversationId = new Map(
+    (moderationStateRows ?? []).map((moderationState) => [
+      moderationState.conversation_id,
+      normalizeConversationModerationState(moderationState),
+    ]),
+  );
+
+  const conversations = sortedConversationRows.map((conversation) => ({
+    ...normalizeConversationRow(
       conversation,
       user.id,
       t,
       unreadCountByConversationId[conversation.id] ?? 0,
-    )
-  );
+    ),
+    moderationState: moderationStateByConversationId.get(conversation.id) ?? null,
+  }));
 
   return (
     <main className="min-h-screen min-w-0 overflow-x-clip bg-card md:bg-zinc-100 md:p-6 md:dark:bg-background lg:p-7">
@@ -212,15 +239,11 @@ export default async function MessagesPage({ searchParams }) {
           </section>
         ) : conversations.length > 0 ? (
           <>
-            <section aria-label={t.messages}>
-              {conversations.map((conversation) => (
-                <ConversationListItem
-                  key={conversation.id}
-                  conversation={conversation}
-                  dateValue={conversation.lastMessageAt || conversation.updatedAt}
-                />
-              ))}
-            </section>
+            <ConversationList
+              conversations={conversations}
+              currentUserId={user.id}
+              label={t.messages}
+            />
             {inboxCursor || hasOlderConversations ? (
               <nav
                 aria-label={t.conversationPaginationLabel}

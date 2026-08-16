@@ -62,10 +62,17 @@ test("notification subscribers use unique topics and register callbacks before s
   assert.deepEqual(
     channels.map((channel) => channel.bindings.map((binding) => binding.filter.table)),
     [
-      ["notifications", "notification_preferences"],
-      ["notifications", "notification_preferences"],
+      ["notification_realtime_signals", "notification_realtime_signals"],
+      ["notification_realtime_signals", "notification_realtime_signals"],
     ],
   );
+  assert.ok(channels.every((channel) => (
+    channel.bindings[0].filter.event === "INSERT"
+    && channel.bindings[1].filter.event === "UPDATE"
+    && channel.bindings.every((binding) => (
+      binding.filter.filter === "recipient_user_id=eq.user-1"
+    ))
+  )));
   assert.ok(channels.every((channel) => channel.subscribed));
 
   removeFirstSubscription();

@@ -21,6 +21,7 @@ export function MessageReactions({
   isCurrentUser,
   isPending,
   isAddingDisabled,
+  isInteractionDisabled = false,
   onToggle,
   labels,
 }) {
@@ -44,7 +45,9 @@ export function MessageReactions({
       {groups.length > 0 ? (
         <div className="inline-flex min-h-6 shrink-0 items-center gap-px rounded-full border border-zinc-200 bg-white/95 px-1 py-0 shadow-[0_1px_2px_rgba(0,0,0,0.06)] dark:border-zinc-700 dark:bg-zinc-900/95">
           {groups.map((group) => {
-            const canToggle = group.reactedByCurrentUser || !isAddingDisabled;
+            const canToggle =
+              !isInteractionDisabled &&
+              (group.reactedByCurrentUser || !isAddingDisabled);
             const actionLabel = group.reactedByCurrentUser
               ? labels.removeReaction
               : labels.addReaction;

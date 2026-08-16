@@ -1,4 +1,4 @@
-import { ArrowLeft, ShieldCheck, Users } from "lucide-react";
+import { ArrowLeft, ShieldAlert, ShieldCheck, Users } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -11,7 +11,11 @@ import {
 } from "@/lib/moderation";
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { translations } from "@/lib/translations";
-import { getBanDisplayUntil, isAuthUserBanned } from "@/lib/user-status";
+import {
+  getBanDisplayUntil,
+  isAuthUserBanned,
+  isUserBanned,
+} from "@/lib/user-status";
 import { createClient } from "@/utils/supabase/server";
 
 function getUserName(profile, t) {
@@ -92,23 +96,74 @@ export default async function AdminUsersPage() {
 
   const authUsers = await listAllUsers(admin);
   const profileIds = authUsers.map((authUser) => authUser.id);
-  const { data: profiles, error: profilesError } = profileIds.length
-    ? await (admin ?? supabase)
-        .from("profiles")
-        .select("id, first_name, last_name, school")
-        .in("id", profileIds)
-    : { data: [], error: null };
+  const [profilesResult, statusResult] = profileIds.length
+    ? await Promise.all([
+        (admin ?? supabase)
+          .from("profiles")
+          .select("id, first_name, last_name, school")
+          .in("id", profileIds),
+        admin
+          .from("user_status")
+          .select("user_id, is_banned, banned_until, ban_reason, updated_at")
+          .in("user_id", profileIds),
+      ])
+    : [
+        { data: [], error: null },
+        { data: [], error: null },
+      ];
+  const { data: profiles, error: profilesError } = profilesResult;
+  const { data: statusRows, error: statusError } = statusResult;
 
   if (profilesError) {
     console.error("Failed to load admin user profiles:", profilesError.message);
   }
 
+  if (statusError) {
+    console.error("Failed to load application ban status:", statusError.message);
+  }
+
+  if (statusError || !Array.isArray(statusRows)) {
+    return (
+      <main className="min-h-screen bg-zinc-100 p-5 dark:bg-background md:p-6 lg:p-7">
+        <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-6">
+          <div className="rounded-[2rem] border border-amber-300/60 bg-white p-6 shadow-sm dark:border-amber-500/30 dark:bg-card md:p-8">
+            <div className="flex items-start gap-3">
+              <ShieldAlert className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-300" />
+              <div className="min-w-0">
+                <h1 className="text-lg font-semibold text-zinc-950 dark:text-foreground">
+                  {t.adminUsersStatusUnavailableTitle}
+                </h1>
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-zinc-600 dark:text-muted-foreground">
+                  {t.adminUsersStatusUnavailableDescription}
+                </p>
+                <Button asChild variant="outline" className="mt-4 rounded-xl">
+                  <Link href="/admin/users">{t.standingRefresh}</Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   const profilesById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+  const statusByUserId = new Map(
+    (statusRows ?? []).map((status) => [status.user_id, status]),
+  );
 
   const users = authUsers
     .map((authUser) => {
       const profile = profilesById.get(authUser.id);
+      const applicationStatus = statusByUserId.get(authUser.id);
       const role = getUserModerationRole(authUser);
+      const applicationBanActive = isUserBanned(applicationStatus);
+      const legacyAuthBanActive = !applicationStatus && isAuthUserBanned(authUser);
+      const bannedUntil = applicationBanActive
+        ? applicationStatus?.banned_until ?? null
+        : legacyAuthBanActive
+          ? authUser.banned_until
+          : null;
 
       return {
         id: authUser.id,
@@ -117,8 +172,8 @@ export default async function AdminUsersPage() {
         school: profile?.school ?? t.torontoStudent,
         role,
         createdAt: authUser.created_at,
-        isBanned: isAuthUserBanned(authUser),
-        bannedUntil: getBanDisplayUntil(authUser.banned_until),
+        isBanned: applicationBanActive || legacyAuthBanActive,
+        bannedUntil: getBanDisplayUntil(bannedUntil),
         requiresNameChange: isNameChangeRequired(authUser),
         profileExists: Boolean(profile),
       };

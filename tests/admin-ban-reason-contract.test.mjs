@@ -62,20 +62,16 @@ test("admin ban route validates and persists only the clean user-facing reason",
     /canPerformModerationAction\(getUserModerationRole\(accessUser\), requiredPermission\)/,
   );
   assert.match(source, /validateBanReason\(\{ reasonCode, userMessage \}\)/);
-  assert.match(source, /"begin_auth_ban_operation"/);
-  assert.match(source, /"complete_auth_ban_operation"/);
-  assert.match(source, /"abort_auth_ban_operation"/);
-  assert.match(source, /reason_code: sanction\.reasonCode/);
-  assert.match(source, /user_message: sanction\.userMessage/);
-  assert.match(source, /revocation_reason: sanction\.revocationReason/);
+  assert.match(source, /"set_application_moderation_ban"/);
+  assert.match(source, /p_reason_code: input\.reasonCode/);
+  assert.match(source, /p_user_message: input\.userMessage/);
+  assert.match(source, /p_revocation_reason: input\.revocationReason/);
   assert.doesNotMatch(source, /from\("user_status"\)\.upsert/);
-  assert.match(source, /previousBanDuration = getRestorableBanDuration/);
-  assert.match(source, /Auth ban rollback failed; durable operation requires reconciliation/);
-  assert.match(source, /operation\.result_banned_until/);
   assert.match(source, /UUID_PATTERN\.test\(operationId\)/);
-  assert.match(source, /operation\.operation_status !== "pending"/);
-  assert.match(source, /Auth ban state changed before compensation/);
-  assert.match(source, /\.\.\.validatedReason/);
+  assert.doesNotMatch(source, /updateUserById[\s\S]*ban_duration/);
+  assert.match(source, /duration: banDuration/);
+  assert.match(source, /reasonCode: validatedReason\.reasonCode/);
+  assert.match(source, /userMessage: validatedReason\.userMessage/);
   assert.match(source, /\{ error: "Could not update the ban state right now\." \}/);
   assert.doesNotMatch(source, /\{ error: error\?\.message/);
 });

@@ -5,21 +5,11 @@ function createNotificationChannelTopic(channelName) {
   return `${channelName ?? "notification-updates"}-${notificationSubscriptionSequence}`;
 }
 
-function isNotificationPreferencePayload(payload, notificationPreferenceTypes) {
-  if (!notificationPreferenceTypes?.length) {
-    return true;
-  }
-
-  const nextType = payload.new?.notification_type ?? payload.old?.notification_type;
-  return !nextType || notificationPreferenceTypes.includes(nextType);
-}
-
 export function subscribeToNotificationUpdates({
   supabase,
   userId,
   channelName,
   onChange,
-  notificationPreferenceTypes,
 }) {
   if (!supabase || !userId || !onChange) {
     return () => {};
@@ -33,26 +23,22 @@ export function subscribeToNotificationUpdates({
     .on(
       "postgres_changes",
       {
-        event: "*",
+        event: "INSERT",
         schema: "public",
-        table: "notifications",
-        filter: `user_id=eq.${userId}`,
+        table: "notification_realtime_signals",
+        filter: `recipient_user_id=eq.${userId}`,
       },
       onChange,
     )
     .on(
       "postgres_changes",
       {
-        event: "*",
+        event: "UPDATE",
         schema: "public",
-        table: "notification_preferences",
-        filter: `user_id=eq.${userId}`,
+        table: "notification_realtime_signals",
+        filter: `recipient_user_id=eq.${userId}`,
       },
-      (payload) => {
-        if (isNotificationPreferencePayload(payload, notificationPreferenceTypes)) {
-          onChange(payload);
-        }
-      },
+      onChange,
     )
     .subscribe();
 

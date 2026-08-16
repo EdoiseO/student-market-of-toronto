@@ -315,6 +315,126 @@ export const translations = {
     accountBannedReasonLabel: "Reason",
     accountBannedReasonFallback:
       "No additional details are available for this account restriction.",
+    accountStanding: "Account standing",
+    accountStandingDescription:
+      "Review warnings, strikes, restrictions, and appeal updates.",
+    standingGood: "Good standing",
+    standingGoodDescription:
+      "There are no active moderation actions on your account.",
+    standingActionNeeded: "Action needed",
+    standingActionNeededDescription:
+      "Review the active notices below and complete any required steps.",
+    standingRestricted: "Restricted",
+    standingRestrictedDescription:
+      "Some account features are limited. Review the details and available next steps.",
+    standingBanned: "Banned",
+    standingBannedDescription:
+      "Marketplace access is restricted. Review the reason, duration, and review options below.",
+    standingActionRequired: "Action required",
+    standingSummary: "Account standing summary",
+    standingActiveNotices: "Active notices",
+    standingStrikePoints: "Strike points",
+    standingNeedsAcknowledgement: "To acknowledge",
+    standingReviewsPending: "Reviews pending",
+    standingActiveTitle: "Active notices",
+    standingActiveDescription:
+      "Important moderation actions currently affecting your account appear here.",
+    standingActivePagination: "Active moderation notice pages",
+    standingActivePageDescription: "Showing {from}–{to} of {count} active notices.",
+    standingNoActiveTitle: "No active notices",
+    standingNoActiveDescription:
+      "Your permanent history remains available below for your records.",
+    standingHistoryTitle: "Permanent history",
+    standingHistoryDescription:
+      "Warnings, strikes, restrictions, acknowledgements, and review outcomes remain visible here.",
+    standingHistoryEmpty: "No moderation history is available for this account.",
+    standingHistoryPagination: "Account standing history pages",
+    standingPageOf: "{page} of {pages}",
+    standingWarning: "Warning",
+    standingStrike: "Strike",
+    standingBan: "Ban",
+    standingSeverityLow: "Low",
+    standingSeverityMedium: "Medium",
+    standingSeverityHigh: "High",
+    standingSeverityCritical: "Critical",
+    standingLifecycleActive: "Active",
+    standingLifecycleAcknowledged: "Acknowledged",
+    standingLifecycleExpired: "Expired",
+    standingLifecycleRevoked: "Revoked",
+    standingLifecycleOverturned: "Overturned",
+    standingPolicy: "Policy reason",
+    standingEffectiveDate: "Effective",
+    standingExpiry: "Expires",
+    standingPermanent: "No expiry",
+    standingPoints: "Strike points",
+    standingPointsShort: "points",
+    standingRestrictions: "Feature restrictions",
+    standingAcknowledgement: "Acknowledgement",
+    standingAcknowledgedOn: "Acknowledged",
+    standingAwaitingAcknowledgement: "Waiting for acknowledgement",
+    standingReviewRequestedOn: "Review requested",
+    standingRevocationOutcome: "Revocation outcome",
+    standingConfigured: "Configured",
+    standingAcknowledge: "Acknowledge",
+    standingAcknowledging: "Acknowledging...",
+    standingAcknowledgeSuccess: "Notice acknowledged.",
+    standingAcknowledgeError:
+      "We could not acknowledge this notice. Please try again.",
+    standingRequestReview: "Request review",
+    standingRequestingReview: "Requesting review...",
+    standingReviewSuccess: "Review requested.",
+    standingReviewError:
+      "We could not request a review. Please try again.",
+    standingReviewPending: "Review pending",
+    standingReviewUpheld: "Decision upheld",
+    standingReviewModified: "Decision modified",
+    standingReviewOverturned: "Decision overturned",
+    standingReviewOutcome: "Review outcome",
+    standingLoadErrorTitle: "Account standing could not load",
+    standingLoadErrorDescription:
+      "Your moderation details are temporarily unavailable. Reload to try again.",
+    standingRefresh: "Reload",
+    standingYes: "Yes",
+    standingNo: "No",
+    moderationStandingBannerTitle: "Action required on your account",
+    moderationStandingBannerDescription:
+      "Review and acknowledge the latest important moderation notice.",
+    moderationStandingBannerAction: "View account standing",
+    notificationModerationWarningTitle: "Account warning",
+    notificationModerationWarningDescription:
+      "Review this warning and any required next steps in Account standing.",
+    notificationModerationStrikeTitle: "Strike added to your account",
+    notificationModerationStrikeDescription:
+      "Review the strike, restrictions, and review options in Account standing.",
+    notificationModerationBanTitle: "Account restriction issued",
+    notificationModerationBanDescription:
+      "Review the restriction details and available review options in Account standing.",
+    notificationModerationReviewTitle: "Account review updated",
+    notificationModerationReviewDescription:
+      "A decision or status update is available in Account standing.",
+    notificationConversationClosedTitle: "Conversation closed",
+    notificationConversationClosedDescription:
+      "This conversation is read-only until it is reopened.",
+    notificationConversationReopenedTitle: "Conversation reopened",
+    notificationConversationReopenedDescription:
+      "You can send messages in this conversation again.",
+    conversationClosedBadge: "Closed",
+    conversationClosedTitle: "This conversation is closed",
+    conversationClosedReadOnly:
+      "You can still review messages and shared media, but new messages and reactions are unavailable.",
+    conversationClosedReasonLabel: "Reason",
+    conversationClosedAtLabel: "Closed",
+    conversationClosedUntilLabel: "Reopens",
+    conversationClosedIndefinitely: "Until further notice",
+    conversationClosedSupportLink: "Get support",
+    conversationClosedComposerLabel: "Conversation closed",
+    conversationClosedComposerDescription:
+      "Messaging and new reactions will be available if this conversation is reopened.",
+    conversationReopenedLiveStatus:
+      "This conversation has reopened. Messaging is available again.",
+    conversationModerationRefreshError:
+      "We couldn’t refresh the conversation status. Try reloading the page.",
+    conversationClosedReasonFallback: "Closed by the moderation team.",
     signOut: "Sign out",
     deleteConversation: "Delete conversation",
     deleteConversationTitle: "Delete this conversation?",
@@ -500,6 +620,9 @@ export const translations = {
     adminBannedUsersDescription: "Accounts currently marked as banned in auth.",
     adminUsersSetupDescription:
       "Add the Supabase service-role key on the server first, then return here to load the full admin user directory.",
+    adminUsersStatusUnavailableTitle: "User restriction status could not load",
+    adminUsersStatusUnavailableDescription:
+      "User management is temporarily unavailable because account restriction status could not be verified. Reload to try again.",
     adminSearchUsersPlaceholder: "Search users, email, school, or role",
     adminNoUsersMatchFilters: "No users match the current filters.",
     adminUserRoleStandard: "Student",
@@ -1240,6 +1363,127 @@ export const translations = {
     accountBannedReasonLabel: "Raison",
     accountBannedReasonFallback:
       "Aucun détail supplémentaire n'est disponible pour cette restriction de compte.",
+    accountStanding: "État du compte",
+    accountStandingDescription:
+      "Consultez les avertissements, les sanctions, les restrictions et les mises à jour des contestations.",
+    standingGood: "Compte en règle",
+    standingGoodDescription:
+      "Aucune mesure de modération active ne s’applique à votre compte.",
+    standingActionNeeded: "Action requise",
+    standingActionNeededDescription:
+      "Consultez les avis actifs ci-dessous et effectuez les étapes requises.",
+    standingRestricted: "Restreint",
+    standingRestrictedDescription:
+      "Certaines fonctions du compte sont limitées. Consultez les détails et les prochaines étapes possibles.",
+    standingBanned: "Banni",
+    standingBannedDescription:
+      "L’accès au marché est restreint. Consultez le motif, la durée et les options de contestation ci-dessous.",
+    standingActionRequired: "Action requise",
+    standingSummary: "Résumé de l’état du compte",
+    standingActiveNotices: "Avis actifs",
+    standingStrikePoints: "Points de sanction",
+    standingNeedsAcknowledgement: "À confirmer",
+    standingReviewsPending: "Examens en attente",
+    standingActiveTitle: "Avis actifs",
+    standingActiveDescription:
+      "Les mesures de modération importantes qui touchent actuellement votre compte apparaissent ici.",
+    standingActivePagination: "Pages des avis de modération actifs",
+    standingActivePageDescription:
+      "Affichage des avis actifs {from} à {to} sur {count}.",
+    standingNoActiveTitle: "Aucun avis actif",
+    standingNoActiveDescription:
+      "Votre historique permanent reste accessible ci-dessous pour vos dossiers.",
+    standingHistoryTitle: "Historique permanent",
+    standingHistoryDescription:
+      "Les avertissements, les sanctions, les restrictions, les confirmations et les décisions d’examen restent visibles ici.",
+    standingHistoryEmpty: "Aucun historique de modération n’est disponible pour ce compte.",
+    standingHistoryPagination: "Pages de l’historique de l’état du compte",
+    standingPageOf: "{page} sur {pages}",
+    standingWarning: "Avertissement",
+    standingStrike: "Sanction",
+    standingBan: "Bannissement",
+    standingSeverityLow: "Faible",
+    standingSeverityMedium: "Moyenne",
+    standingSeverityHigh: "Élevée",
+    standingSeverityCritical: "Critique",
+    standingLifecycleActive: "Actif",
+    standingLifecycleAcknowledged: "Confirmé",
+    standingLifecycleExpired: "Expiré",
+    standingLifecycleRevoked: "Révoqué",
+    standingLifecycleOverturned: "Annulé",
+    standingPolicy: "Motif réglementaire",
+    standingEffectiveDate: "En vigueur",
+    standingExpiry: "Expiration",
+    standingPermanent: "Sans expiration",
+    standingPoints: "Points de sanction",
+    standingPointsShort: "points",
+    standingRestrictions: "Restrictions de fonctionnalités",
+    standingAcknowledgement: "Confirmation",
+    standingAcknowledgedOn: "Confirmé le",
+    standingAwaitingAcknowledgement: "En attente de confirmation",
+    standingReviewRequestedOn: "Examen demandé",
+    standingRevocationOutcome: "Résultat de la révocation",
+    standingConfigured: "Configuré",
+    standingAcknowledge: "Confirmer",
+    standingAcknowledging: "Confirmation...",
+    standingAcknowledgeSuccess: "Avis confirmé.",
+    standingAcknowledgeError:
+      "Impossible de confirmer cet avis. Veuillez réessayer.",
+    standingRequestReview: "Demander un examen",
+    standingRequestingReview: "Demande en cours...",
+    standingReviewSuccess: "Examen demandé.",
+    standingReviewError:
+      "Impossible de demander un examen. Veuillez réessayer.",
+    standingReviewPending: "Examen en attente",
+    standingReviewUpheld: "Décision maintenue",
+    standingReviewModified: "Décision modifiée",
+    standingReviewOverturned: "Décision annulée",
+    standingReviewOutcome: "Décision de l’examen",
+    standingLoadErrorTitle: "Impossible de charger l’état du compte",
+    standingLoadErrorDescription:
+      "Vos renseignements de modération sont temporairement indisponibles. Rechargez la page pour réessayer.",
+    standingRefresh: "Recharger",
+    standingYes: "Oui",
+    standingNo: "Non",
+    moderationStandingBannerTitle: "Une action est requise pour votre compte",
+    moderationStandingBannerDescription:
+      "Consultez et confirmez le dernier avis important de modération.",
+    moderationStandingBannerAction: "Voir l’état du compte",
+    notificationModerationWarningTitle: "Avertissement du compte",
+    notificationModerationWarningDescription:
+      "Consultez cet avertissement et les prochaines étapes requises dans l’état du compte.",
+    notificationModerationStrikeTitle: "Sanction ajoutée à votre compte",
+    notificationModerationStrikeDescription:
+      "Consultez la sanction, les restrictions et les options de contestation dans l’état du compte.",
+    notificationModerationBanTitle: "Restriction du compte appliquée",
+    notificationModerationBanDescription:
+      "Consultez les détails de la restriction et les options de contestation dans l’état du compte.",
+    notificationModerationReviewTitle: "Mise à jour de l’examen du compte",
+    notificationModerationReviewDescription:
+      "Une décision ou une mise à jour est disponible dans l’état du compte.",
+    notificationConversationClosedTitle: "Conversation fermée",
+    notificationConversationClosedDescription:
+      "Cette conversation est en lecture seule jusqu’à sa réouverture.",
+    notificationConversationReopenedTitle: "Conversation rouverte",
+    notificationConversationReopenedDescription:
+      "Vous pouvez de nouveau envoyer des messages dans cette conversation.",
+    conversationClosedBadge: "Fermée",
+    conversationClosedTitle: "Cette conversation est fermée",
+    conversationClosedReadOnly:
+      "Vous pouvez toujours consulter les messages et les médias partagés, mais les nouveaux messages et les réactions ne sont pas disponibles.",
+    conversationClosedReasonLabel: "Motif",
+    conversationClosedAtLabel: "Fermée le",
+    conversationClosedUntilLabel: "Réouverture",
+    conversationClosedIndefinitely: "Jusqu’à nouvel ordre",
+    conversationClosedSupportLink: "Obtenir de l’aide",
+    conversationClosedComposerLabel: "Conversation fermée",
+    conversationClosedComposerDescription:
+      "La messagerie et les nouvelles réactions seront disponibles si cette conversation est rouverte.",
+    conversationReopenedLiveStatus:
+      "Cette conversation est de nouveau ouverte. La messagerie est à nouveau disponible.",
+    conversationModerationRefreshError:
+      "Impossible d’actualiser l’état de la conversation. Essayez de recharger la page.",
+    conversationClosedReasonFallback: "Fermée par l’équipe de modération.",
     signOut: "Se déconnecter",
     deleteConversation: "Supprimer la conversation",
     deleteConversationTitle: "Supprimer cette conversation ?",
@@ -1442,6 +1686,10 @@ export const translations = {
       "Comptes actuellement marqués comme bannis dans l'authentification.",
     adminUsersSetupDescription:
       "Ajoutez d'abord la clé Supabase de rôle de service côté serveur, puis revenez ici pour charger l'annuaire complet des utilisateurs admin.",
+    adminUsersStatusUnavailableTitle:
+      "Impossible de charger l’état des restrictions",
+    adminUsersStatusUnavailableDescription:
+      "La gestion des utilisateurs est temporairement indisponible, car l’état des restrictions du compte n’a pas pu être vérifié. Rechargez la page pour réessayer.",
     adminSearchUsersPlaceholder:
       "Rechercher des utilisateurs, courriels, établissements ou rôles",
     adminNoUsersMatchFilters:

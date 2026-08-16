@@ -9,6 +9,8 @@ import {
   Eye,
   EyeOff,
   Flag,
+  LifeBuoy,
+  LockKeyhole,
   Megaphone,
   Paperclip,
   SendHorizontal,
@@ -48,6 +50,13 @@ import { MessageMediaGallery } from "@/components/message-media-gallery";
 import { ReportSheet } from "@/components/report-sheet";
 import { useLanguage } from "@/context/LanguageContext";
 import { useFileDropzone } from "@/hooks/use-file-dropzone";
+import {
+  CONVERSATION_MODERATION_STATE_SELECT,
+  getConversationClosureExpiryDelay,
+  isConversationClosedWriteError,
+  isConversationEffectivelyClosed,
+  normalizeConversationModerationState,
+} from "@/lib/conversation-moderation.mjs";
 import { REMOTE_IMAGE_BLUR_DATA_URL } from "@/lib/image-config";
 import {
   getMessagingBlockReason,
@@ -92,6 +101,7 @@ import {
   subscribeToMessageReactionUpdates,
 } from "@/lib/message-reactions.mjs";
 import { subscribeToConversationMessageInserts } from "@/lib/message-realtime.mjs";
+import { subscribeToNotificationUpdates } from "@/lib/notification-realtime.mjs";
 import { createClient } from "@/utils/supabase/client";
 
 function formatPrice(price, language) {
@@ -156,6 +166,7 @@ export function MessagesThread({
   currentUserId,
   initialMessages,
   initialHasOlderMessages = false,
+  initialModerationState = null,
   hasDeletedMessages = false,
   isHiddenConversation = false,
 }) {
@@ -181,7 +192,12 @@ export function MessagesThread({
     blockedCurrentUser: false,
     available: true,
   });
+  const [moderationState, setModerationState] = React.useState(initialModerationState);
+  const moderationStateRef = React.useRef(initialModerationState);
+  const [moderationLiveStatus, setModerationLiveStatus] = React.useState("");
   const isAnnouncementConversation = Boolean(conversation.isAnnouncement);
+  const isConversationClosed =
+    !isAnnouncementConversation && isConversationEffectivelyClosed(moderationState);
   const isMessagingAvailable =
     !isAnnouncementConversation && isListingMessagingAvailable(conversation.listing.status);
   const [isHideDialogOpen, setIsHideDialogOpen] = React.useState(false);
@@ -461,7 +477,7 @@ export function MessagesThread({
   const blockReason = getMessagingBlockReason(blockState, t);
   const hasListingLink = Boolean(conversation.listing.slug);
   const isMediaSelectionAvailable =
-    isMessagingAvailable && !blockReason && !isSending;
+    isMessagingAvailable && !isConversationClosed && !blockReason && !isSending;
   const { isDragActive, dropzoneProps } = useFileDropzone(addPendingMediaFiles);
 
   React.useEffect(() => {
@@ -470,6 +486,78 @@ export function MessagesThread({
     setHasNewerMessages(false);
     hasNewerMessagesRef.current = false;
   }, [conversation.id, initialHasOlderMessages, initialMessages]);
+
+  React.useEffect(() => {
+    moderationStateRef.current = initialModerationState;
+    setModerationState(initialModerationState);
+    setModerationLiveStatus("");
+  }, [conversation.id, initialModerationState]);
+
+  const commitModerationState = React.useCallback((nextModerationState, announce = true) => {
+    const wasClosed = moderationStateRef.current?.effectiveStatus === "closed";
+    const isNowClosed = isConversationEffectivelyClosed(nextModerationState);
+
+    moderationStateRef.current = nextModerationState;
+    setModerationState(nextModerationState);
+
+    if (announce && wasClosed && !isNowClosed) {
+      setModerationLiveStatus(t.conversationReopenedLiveStatus);
+    } else if (isNowClosed) {
+      setModerationLiveStatus("");
+    }
+  }, [t.conversationReopenedLiveStatus]);
+
+  const refreshConversationModerationState = React.useCallback(async () => {
+    const { data, error } = await supabase
+      .from("conversation_effective_moderation_state")
+      .select(CONVERSATION_MODERATION_STATE_SELECT)
+      .eq("conversation_id", conversation.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Failed to refresh conversation moderation state:", error.message);
+      toast.error(t.conversationModerationRefreshError);
+      return null;
+    }
+
+    const nextModerationState = normalizeConversationModerationState(data);
+    commitModerationState(nextModerationState);
+    return nextModerationState;
+  }, [commitModerationState, conversation.id, supabase, t.conversationModerationRefreshError]);
+
+  React.useEffect(() => {
+    if (isAnnouncementConversation) {
+      return undefined;
+    }
+
+    return subscribeToNotificationUpdates({
+      supabase,
+      userId: currentUserId,
+      channelName: `conversation-moderation-thread-${conversation.id}`,
+      onChange: () => refreshConversationModerationState(),
+    });
+  }, [conversation.id, currentUserId, isAnnouncementConversation, refreshConversationModerationState, supabase]);
+
+  React.useEffect(() => {
+    const expiryDelay = getConversationClosureExpiryDelay(moderationState);
+
+    if (expiryDelay === null) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      if (getConversationClosureExpiryDelay(moderationState) === 0) {
+        commitModerationState(
+          moderationState ? { ...moderationState, effectiveStatus: "open" } : null,
+        );
+        return;
+      }
+
+      setModerationState((currentState) => currentState ? { ...currentState } : currentState);
+    }, Math.min(expiryDelay + 50, 2_147_000_000));
+
+    return () => window.clearTimeout(timeoutId);
+  }, [commitModerationState, moderationState]);
 
   React.useEffect(() =>
     subscribeToMessageReactionUpdates({
@@ -750,7 +838,14 @@ export function MessagesThread({
   async function handleSubmit(event) {
     event.preventDefault();
 
-    if (isSending || (!draft.trim() && pendingAttachments.length === 0)) {
+    if (
+      isSending ||
+      isConversationClosed ||
+      (!draft.trim() && pendingAttachments.length === 0)
+    ) {
+      if (isConversationClosed) {
+        toast.error(t.conversationClosedComposerLabel);
+      }
       return;
     }
 
@@ -944,7 +1039,10 @@ export function MessagesThread({
         }
       }
 
-      if (isListingMessagingUnavailableError(error)) {
+      if (isConversationClosedWriteError(error)) {
+        await refreshConversationModerationState();
+        toast.error(t.conversationClosedComposerLabel);
+      } else if (isListingMessagingUnavailableError(error)) {
         toast.error(
           getListingMessagingUnavailableText(
             getListingMessagingUnavailableStatusFromError(error),
@@ -985,7 +1083,11 @@ export function MessagesThread({
 
     event.preventDefault();
 
-    if ((!draft.trim() && pendingAttachments.length === 0) || isSending) {
+    if (
+      (!draft.trim() && pendingAttachments.length === 0) ||
+      isSending ||
+      isConversationClosed
+    ) {
       return;
     }
 
@@ -1068,6 +1170,11 @@ export function MessagesThread({
   }
 
   async function handleToggleReaction(message, emoji, reactedByCurrentUser) {
+    if (isConversationClosed) {
+      toast.error(t.conversationClosedComposerLabel);
+      return;
+    }
+
     const pendingKey = `${message.id}:${emoji}`;
 
     if (pendingReactionKeys.has(pendingKey)) {
@@ -1138,7 +1245,12 @@ export function MessagesThread({
 
     if (operationError) {
       console.error("Failed to update message reaction:", operationError.message);
-      toast.error(t.reactionUpdateError);
+      if (isConversationClosedWriteError(operationError)) {
+        await refreshConversationModerationState();
+        toast.error(t.conversationClosedComposerLabel);
+      } else {
+        toast.error(t.reactionUpdateError);
+      }
       await refreshMessageReactions();
     }
   }
@@ -1316,6 +1428,74 @@ export function MessagesThread({
         </div>
       </div>
 
+      {isConversationClosed ? (
+        <aside
+          role="status"
+          aria-labelledby={`conversation-closed-title-${conversation.id}`}
+          className="shrink-0 border-b border-amber-200/80 bg-amber-50/80 px-3 py-2.5 text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/25 dark:text-amber-100 md:px-5"
+        >
+          <div className="mx-auto flex w-full max-w-4xl min-w-0 gap-2.5">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/70 dark:text-amber-100">
+              <LockKeyhole className="size-4" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2
+                id={`conversation-closed-title-${conversation.id}`}
+                className="text-sm font-semibold leading-5"
+              >
+                {t.conversationClosedTitle}
+              </h2>
+              <p className="mt-0.5 text-xs leading-5 text-amber-900/80 dark:text-amber-100/75">
+                {t.conversationClosedReadOnly}
+              </p>
+              <dl className="mt-1.5 grid min-w-0 grid-cols-1 gap-x-4 gap-y-1 text-xs leading-5 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
+                <div className="min-w-0 sm:col-span-2 lg:col-span-1">
+                  <dt className="inline font-semibold">{t.conversationClosedReasonLabel}: </dt>
+                  <dd className="inline break-words">
+                    {moderationState?.userMessage || t.conversationClosedReasonFallback}
+                  </dd>
+                </div>
+                {moderationState?.changedAt ? (
+                  <div className="min-w-0">
+                    <dt className="inline font-semibold">{t.conversationClosedAtLabel}: </dt>
+                    <dd className="inline">
+                      <ClientFormattedDateTime
+                        value={moderationState.changedAt}
+                        language={language}
+                      />
+                    </dd>
+                  </div>
+                ) : null}
+                <div className="min-w-0">
+                  <dt className="inline font-semibold">{t.conversationClosedUntilLabel}: </dt>
+                  <dd className="inline">
+                    {moderationState?.closedUntil ? (
+                      <ClientFormattedDateTime
+                        value={moderationState.closedUntil}
+                        language={language}
+                      />
+                    ) : (
+                      t.conversationClosedIndefinitely
+                    )}
+                  </dd>
+                </div>
+              </dl>
+              <a
+                href="mailto:support@studentmarketoftoronto.ca"
+                className="mt-1.5 inline-flex min-h-8 items-center gap-1.5 rounded-lg text-xs font-semibold underline decoration-amber-700/50 underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-amber-700/50 dark:decoration-amber-300/50"
+              >
+                <LifeBuoy className="size-3.5" aria-hidden="true" />
+                {t.conversationClosedSupportLink}
+              </a>
+            </div>
+          </div>
+        </aside>
+      ) : null}
+
+      <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {moderationLiveStatus}
+      </p>
+
       <div className="min-h-0 max-w-full flex-1 touch-pan-y space-y-1 overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain bg-zinc-50/60 px-3 py-3 dark:bg-muted/15 md:px-5 md:py-4">
         {hasOlderMessages ? (
           <div className="mx-auto flex w-full max-w-4xl justify-center pb-2">
@@ -1456,8 +1636,12 @@ export function MessagesThread({
                       key.startsWith(`${message.id}:`),
                     )}
                     isAddingDisabled={
-                      isAnnouncementConversation || !isMessagingAvailable || Boolean(blockReason)
+                      isAnnouncementConversation ||
+                      isConversationClosed ||
+                      !isMessagingAvailable ||
+                      Boolean(blockReason)
                     }
+                    isInteractionDisabled={isConversationClosed}
                     onToggle={(emoji, reactedByCurrentUser) =>
                       handleToggleReaction(message, emoji, reactedByCurrentUser)
                     }
@@ -1494,6 +1678,24 @@ export function MessagesThread({
         )}
       </div>
 
+      {isConversationClosed ? (
+        <div className="sticky bottom-0 z-20 shrink-0 border-t border-zinc-200 bg-white/95 px-2.5 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-sm dark:border-border dark:bg-card/95 md:px-4 md:py-3">
+          <div
+            role="note"
+            className="mx-auto flex min-w-0 max-w-4xl items-start gap-2.5 rounded-[1.1rem] border border-zinc-200 bg-zinc-50/80 px-3 py-2.5 dark:border-border dark:bg-muted/25"
+          >
+            <LockKeyhole className="mt-0.5 size-4 shrink-0 text-zinc-500 dark:text-muted-foreground" aria-hidden="true" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold leading-5 text-zinc-950 dark:text-foreground">
+                {t.conversationClosedComposerLabel}
+              </p>
+              <p className="text-xs leading-5 text-zinc-500 dark:text-muted-foreground">
+                {t.conversationClosedComposerDescription}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
       <form onSubmit={handleSubmit} className="sticky bottom-0 z-20 shrink-0 border-t border-zinc-200 bg-white/95 px-2.5 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-sm dark:border-border dark:bg-card/95 md:px-4 md:py-3">
         <div
           {...dropzoneProps}
@@ -1654,6 +1856,7 @@ export function MessagesThread({
           </div>
         </div>
       </form>
+      )}
 
       <ReportSheet
         open={Boolean(reportMessageTarget)}

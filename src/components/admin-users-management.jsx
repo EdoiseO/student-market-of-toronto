@@ -162,7 +162,7 @@ function UserRoleActions({ user, currentUserId, currentUserRole, onRoleUpdated, 
         >
           {t.removeMod}
         </Button>
-      ) : user.role !== "admin" ? (
+      ) : user.role !== "admin" && !user.isBanned ? (
         <Button
           type="button"
           variant="outline"
@@ -175,7 +175,7 @@ function UserRoleActions({ user, currentUserId, currentUserRole, onRoleUpdated, 
         </Button>
       ) : null}
 
-      {user.id !== currentUserId && user.role !== "admin" ? (
+      {user.id !== currentUserId && user.role !== "admin" && !user.isBanned ? (
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button

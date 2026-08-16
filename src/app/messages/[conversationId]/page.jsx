@@ -6,6 +6,10 @@ import { notFound, redirect } from "next/navigation";
 import { MessagesThread } from "@/components/messages-thread";
 import { Button } from "@/components/ui/button";
 import {
+  CONVERSATION_MODERATION_STATE_SELECT,
+  normalizeConversationModerationState,
+} from "@/lib/conversation-moderation.mjs";
+import {
   isConversationHiddenForUser,
   MESSAGE_CONVERSATION_SELECT,
   MESSAGE_LISTING_IMAGE_LIMIT,
@@ -70,15 +74,24 @@ export default async function ConversationPage({ params }) {
         p_limit: MESSAGE_PAGE_REQUEST_LIMIT,
       })
     : Promise.resolve({ data: [], error: null });
-  const [conversationStateResult, messagesResult] = await Promise.all([
+  const moderationStatePromise = conversationRow
+    ? supabase
+        .from("conversation_effective_moderation_state")
+        .select(CONVERSATION_MODERATION_STATE_SELECT)
+        .eq("conversation_id", conversationRow.id)
+        .maybeSingle()
+    : Promise.resolve({ data: null, error: null });
+  const [conversationStateResult, messagesResult, moderationStateResult] = await Promise.all([
     conversationStatePromise,
     messageRowsPromise,
+    moderationStatePromise,
   ]);
   const {
     data: conversationStateRowWithDelete,
     error: conversationStateError,
   } = conversationStateResult;
   const { data: messageRows, error: messagesError } = messagesResult;
+  const { data: moderationStateRow, error: moderationStateError } = moderationStateResult;
 
   if (conversationStateError && isConversationUserStateDeletedAtColumnMissing(conversationStateError)) {
     const { data: fallbackConversationStateRow, error: fallbackConversationStateError } =
@@ -119,6 +132,10 @@ export default async function ConversationPage({ params }) {
 
   if (messagesError) {
     console.error("Failed to load conversation messages:", messagesError.message);
+  }
+
+  if (moderationStateError) {
+    console.error("Failed to load conversation moderation state:", moderationStateError.message);
   }
 
   const {
@@ -247,6 +264,7 @@ export default async function ConversationPage({ params }) {
               currentUserId={user.id}
               initialMessages={messagesWithAttachments}
               initialHasOlderMessages={hasOlderMessages}
+              initialModerationState={normalizeConversationModerationState(moderationStateRow)}
               hasDeletedMessages={Boolean(deletedAt)}
               isHiddenConversation={isHiddenConversation}
             />

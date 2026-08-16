@@ -116,7 +116,14 @@ test("privileged admin routes fail closed and announcements use durable delivery
 
   assert.match(roleRoute, /targetRole === "admin"/);
   assert.match(roleRoute, /Admin transfer rollback failed/);
-  assert.match(banRoute, /Auth ban rollback failed/);
+  assert.match(roleRoute, /getUserStatusRow\(admin, targetUserId\)/);
+  assert.match(roleRoute, /isUserBanned\(targetStatusResult\.data\)/);
+  assert.match(banRoute, /set_application_moderation_ban/);
+  assert.match(
+    banRoute,
+    /action === "ban" && getUserModerationRole\(targetUser\) === "admin"/,
+  );
+  assert.doesNotMatch(banRoute, /ban_duration|updateUserById/);
   assert.match(announcementRoute, /failureCount = Number\(latestAnnouncement\.failed_count/);
   assert.match(announcementRoute, /queued: !deliveryFinished/);
   assert.match(announcementRoute, /enqueueAnnouncementAudience/);
@@ -126,4 +133,5 @@ test("privileged admin routes fail closed and announcements use durable delivery
   assert.doesNotMatch(announcementRoute, /create_announcement_draft|transition_announcement/);
   assert.doesNotMatch(announcementRoute, /\.from\("(?:conversations|messages|notifications)"\)\.insert/);
   assert.match(usersPage, /getUserModerationRole\(accessUser\) !== "admin"/);
+  assert.match(usersPage, /statusError \|\| !Array\.isArray\(statusRows\)/);
 });

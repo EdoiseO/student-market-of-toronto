@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Ellipsis, Eye, EyeOff, Megaphone, Trash2 } from "lucide-react";
+import { Ellipsis, Eye, EyeOff, LockKeyhole, Megaphone, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { ClientFormattedDateTime } from "@/components/client-formatted-date-time";
@@ -27,6 +27,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useLanguage } from "@/context/LanguageContext";
+import { isConversationEffectivelyClosed } from "@/lib/conversation-moderation.mjs";
 import {
   isConversationUserStateDeletedAtColumnMissing,
   isConversationUserStateTableMissing,
@@ -119,6 +120,9 @@ export function ConversationListItem({ conversation, dateValue, showHidden = fal
     ? t.announcements
     : conversation.otherParticipant.name;
   const preview = conversation.lastMessagePreview || t.conversationNoMessagesYet;
+  const isConversationClosed =
+    !conversation.isAnnouncement &&
+    isConversationEffectivelyClosed(conversation.moderationState);
 
   return (
     <div
@@ -168,19 +172,30 @@ export function ConversationListItem({ conversation, dateValue, showHidden = fal
             </div>
           </div>
 
-          <p
-            className={`mt-1 truncate text-sm ${
-              conversation.unreadCount > 0 ? "text-foreground" : "text-muted-foreground"
-            }`}
-          >
-            {!conversation.isAnnouncement ? (
-              <>
-                <span className="font-medium">{conversation.listing.title}</span>
-                <span aria-hidden="true"> · </span>
-              </>
+          <div className="mt-1 flex min-w-0 items-center gap-1.5">
+            {isConversationClosed ? (
+              <Badge
+                variant="secondary"
+                className="h-5 shrink-0 gap-1 rounded-full px-1.5 text-[0.625rem] font-semibold uppercase tracking-wide"
+              >
+                <LockKeyhole className="size-3" aria-hidden="true" />
+                {t.conversationClosedBadge}
+              </Badge>
             ) : null}
-            {preview}
-          </p>
+            <p
+              className={`min-w-0 truncate text-sm ${
+                conversation.unreadCount > 0 ? "text-foreground" : "text-muted-foreground"
+              }`}
+            >
+              {!conversation.isAnnouncement ? (
+                <>
+                  <span className="font-medium">{conversation.listing.title}</span>
+                  <span aria-hidden="true"> · </span>
+                </>
+              ) : null}
+              {preview}
+            </p>
+          </div>
         </div>
       </Link>
 

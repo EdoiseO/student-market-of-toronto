@@ -7,6 +7,7 @@ import {
   matchesRejectedProfileName,
 } from "@/lib/name-sanction.mjs";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { getUserStatusRow, isUserBanned } from "@/lib/user-status";
 import { createClient } from "@/utils/supabase/server";
 
 const MAX_PROFILE_NAME_LENGTH = 100;
@@ -38,6 +39,22 @@ export async function POST(request) {
 
   if (authError || !user) {
     return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+  }
+
+  const userStatusResult = await getUserStatusRow(supabase, user.id);
+
+  if (userStatusResult.available !== true || userStatusResult.error) {
+    return NextResponse.json(
+      { error: "Could not verify your account standing." },
+      { status: 503 },
+    );
+  }
+
+  if (isUserBanned(userStatusResult.data)) {
+    return NextResponse.json(
+      { error: "Account changes are unavailable while this account is restricted." },
+      { status: 403 },
+    );
   }
 
   try {

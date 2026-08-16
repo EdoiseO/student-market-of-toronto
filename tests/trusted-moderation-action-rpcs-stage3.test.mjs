@@ -85,18 +85,16 @@ test("admin routes use explicit action permissions and trusted RPC attribution",
     ),
   ]);
 
-  assert.match(banRoute, /rpc\(\s*"begin_auth_ban_operation"/);
-  assert.match(banRoute, /"complete_auth_ban_operation"/);
-  assert.match(banRoute, /"abort_auth_ban_operation"/);
+  assert.match(banRoute, /rpc\(\s*"set_application_moderation_ban"/);
   assert.match(banRoute, /UUID_PATTERN\.test\(operationId\)/);
   assert.match(banRoute, /requestId = operationId/);
   assert.match(usersClient, /banOperationRef/);
   assert.match(usersClient, /operationId: crypto\.randomUUID\(\)/);
   assert.match(usersClient, /operationId: banOperationRef\.current\.operationId/);
   assert.match(banRoute, /body\.revocationReason/);
-  assert.match(banRoute, /revocation_reason: sanction\.revocationReason/);
+  assert.match(banRoute, /p_revocation_reason: input\.revocationReason/);
   assert.doesNotMatch(banRoute, /from\("user_status"\)\.upsert/);
-  assert.match(banRoute, /durable operation requires reconciliation/);
+  assert.doesNotMatch(banRoute, /updateUserById[\s\S]*ban_duration/);
   assert.match(reportsRoute, /MODERATION_ACTIONS\.decideReports/);
   assert.match(reportsRoute, /MODERATION_ACTIONS\.decideListings/);
   assert.match(reportsRoute, /MODERATION_ACTIONS\.triageReports/);

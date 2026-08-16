@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { getUserModerationRole } from "@/lib/moderation";
 import { MODERATOR_ROLE_GRANTED_NOTIFICATION_TYPE } from "@/lib/notifications";
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
+import { getUserStatusRow, isUserBanned } from "@/lib/user-status";
 import { createClient } from "@/utils/supabase/server";
 
 function buildAppMetadata(currentAppMetadata, nextRole) {
@@ -114,6 +115,22 @@ export async function POST(request, { params }) {
       );
     }
 
+    const actorStatusResult = await getUserStatusRow(supabase, accessUser.id);
+
+    if (actorStatusResult.available !== true || actorStatusResult.error) {
+      return NextResponse.json(
+        { error: "Could not verify your current account standing." },
+        { status: 503 },
+      );
+    }
+
+    if (isUserBanned(actorStatusResult.data)) {
+      return NextResponse.json(
+        { error: "Restricted accounts cannot manage moderation roles." },
+        { status: 403 },
+      );
+    }
+
     if (getUserModerationRole(accessUser) !== "admin") {
       return NextResponse.json({ error: "Only admins can update moderation roles." }, { status: 403 });
     }
@@ -123,6 +140,22 @@ export async function POST(request, { params }) {
 
     if (!targetUserId) {
       return NextResponse.json({ error: "Missing target user." }, { status: 400 });
+    }
+
+    const targetStatusResult = await getUserStatusRow(admin, targetUserId);
+
+    if (targetStatusResult.available !== true || targetStatusResult.error) {
+      return NextResponse.json(
+        { error: "Could not verify the target account standing." },
+        { status: 503 },
+      );
+    }
+
+    if (isUserBanned(targetStatusResult.data) && action !== "remove_moderator") {
+      return NextResponse.json(
+        { error: "Unban this account before granting or transferring moderation access." },
+        { status: 409 },
+      );
     }
 
     const targetUser = await getTargetUser(admin, targetUserId);

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { CreateListingFab } from "@/components/create-listing-fab";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
+import { ModerationStandingBanner } from "@/components/moderation-standing-banner";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -54,6 +55,9 @@ export function AppLayoutShell({ children, user }) {
                     : "min-w-0 overflow-x-clip pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0"
                 }
               >
+                {isMessagesConversationPage ? null : (
+                  <ModerationStandingBanner user={user} />
+                )}
                 {children}
                 <div className="hidden md:block">
                   <CreateListingFab user={user} />
