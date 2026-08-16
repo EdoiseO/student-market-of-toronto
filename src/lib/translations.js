@@ -312,6 +312,9 @@ export const translations = {
       "This account is currently banned. If the ban is temporary, access will be restored automatically after it expires.",
     accountBannedUntilLabel: "Banned until",
     accountBannedPermanent: "Permanent ban",
+    accountBannedReasonLabel: "Reason",
+    accountBannedReasonFallback:
+      "No additional details are available for this account restriction.",
     signOut: "Sign out",
     deleteConversation: "Delete conversation",
     deleteConversationTitle: "Delete this conversation?",
@@ -515,7 +518,27 @@ export const translations = {
     adminUserRoleActionError: "We could not update this user role right now.",
     adminBanUserTitle: "Ban this user?",
     adminBanUserDescription:
-      "Choose a temporary or long-term ban duration. The user will lose access to their account until the ban expires or is removed.",
+      "Choose a duration and provide a clear reason the user can understand. The user will lose access until the ban expires or is removed.",
+    adminBanReasonLabel: "Policy reason",
+    adminBanReasonDescription:
+      "Select the category that best explains why account access is being restricted.",
+    adminBanReasonPlaceholder: "Choose a reason",
+    adminBanReasonSpam: "Spam or repeated unwanted activity",
+    adminBanReasonScam: "Scam, fraud, or impersonation",
+    adminBanReasonMisleading: "Misleading content or conduct",
+    adminBanReasonProhibited: "Prohibited item or activity",
+    adminBanReasonHarassment: "Harassment, threats, or abuse",
+    adminBanReasonInappropriate: "Inappropriate content or conduct",
+    adminBanReasonOther: "Other policy violation",
+    adminBanMessageLabel: "Message to the user",
+    adminBanMessageDescription:
+      "Required (10-1000 characters). Explain what happened and what the user should do next. This message will be shown on their restricted-account screen.",
+    adminBanMessagePlaceholder:
+      "Explain the policy issue and any next steps in clear, respectful language...",
+    adminBanReasonValidationError:
+      "Choose a reason and add a clear message before banning this user.",
+    adminBanDurationLabel: "Ban duration",
+    adminBanDurationPlaceholder: "Choose a duration",
     adminBanDuration24Hours: "Ban for 24 hours",
     adminBanDuration7Days: "Ban for 7 days",
     adminBanDuration30Days: "Ban for 30 days",
@@ -557,7 +580,8 @@ export const translations = {
     makeMod: "Make Mod",
     removeMod: "Remove Mod",
     newAnnouncement: "New Announcement",
-    newAnnouncementPlaceholder: "Write a message to show all students on the homepage...",
+    newAnnouncementPlaceholder: "Write a message to send to students...",
+    announcementMessageLabel: "Announcement message",
     announcementDialogDescription:
       "This message will be delivered to every user's inbox as a direct message from you.",
     announcementSending: "Sending...",
@@ -566,6 +590,8 @@ export const translations = {
     announcementPartialFailure:
       "Some recipients did not receive the announcement. Failed: {count}",
     announcementError: "Failed to send announcement. Please try again.",
+    announcementMessageValidationError:
+      "Write an announcement between 1 and 2000 characters before sending.",
     sendAnnouncement: "Send Announcement",
     pastAnnouncements: "Past Announcements",
     inactive: "Inactive",
@@ -1210,6 +1236,9 @@ export const translations = {
       "Ce compte est actuellement banni. Si le bannissement est temporaire, l'accès sera rétabli automatiquement à son expiration.",
     accountBannedUntilLabel: "Banni jusqu'au",
     accountBannedPermanent: "Bannissement permanent",
+    accountBannedReasonLabel: "Raison",
+    accountBannedReasonFallback:
+      "Aucun détail supplémentaire n'est disponible pour cette restriction de compte.",
     signOut: "Se déconnecter",
     deleteConversation: "Supprimer la conversation",
     deleteConversationTitle: "Supprimer cette conversation ?",
@@ -1433,7 +1462,27 @@ export const translations = {
       "Nous n'avons pas pu mettre à jour le rôle de cet utilisateur pour le moment.",
     adminBanUserTitle: "Bannir cet utilisateur ?",
     adminBanUserDescription:
-      "Choisissez une durée de bannissement temporaire ou prolongée. L'utilisateur perdra l'accès à son compte jusqu'à l'expiration ou la levée du bannissement.",
+      "Choisissez une durée et fournissez une raison claire que l'utilisateur peut comprendre. L'accès sera bloqué jusqu'à l'expiration ou la levée du bannissement.",
+    adminBanReasonLabel: "Raison liée à la politique",
+    adminBanReasonDescription:
+      "Sélectionnez la catégorie qui explique le mieux pourquoi l'accès au compte est restreint.",
+    adminBanReasonPlaceholder: "Choisir une raison",
+    adminBanReasonSpam: "Pourriel ou activité indésirable répétée",
+    adminBanReasonScam: "Arnaque, fraude ou usurpation d'identité",
+    adminBanReasonMisleading: "Contenu ou comportement trompeur",
+    adminBanReasonProhibited: "Article ou activité interdite",
+    adminBanReasonHarassment: "Harcèlement, menaces ou abus",
+    adminBanReasonInappropriate: "Contenu ou comportement inapproprié",
+    adminBanReasonOther: "Autre violation de la politique",
+    adminBanMessageLabel: "Message à l'utilisateur",
+    adminBanMessageDescription:
+      "Obligatoire (10 à 1 000 caractères). Expliquez ce qui s'est passé et les prochaines étapes. Ce message sera affiché sur l'écran de compte restreint.",
+    adminBanMessagePlaceholder:
+      "Expliquez clairement et respectueusement le problème de politique et les prochaines étapes...",
+    adminBanReasonValidationError:
+      "Choisissez une raison et ajoutez un message clair avant de bannir cet utilisateur.",
+    adminBanDurationLabel: "Durée du bannissement",
+    adminBanDurationPlaceholder: "Choisir une durée",
     adminBanDuration24Hours: "Bannir pendant 24 heures",
     adminBanDuration7Days: "Bannir pendant 7 jours",
     adminBanDuration30Days: "Bannir pendant 30 jours",
@@ -1477,7 +1526,8 @@ export const translations = {
     removeMod: "Retirer le rôle de modérateur",
     newAnnouncement: "Nouveau communiqué",
     newAnnouncementPlaceholder:
-      "Rédigez un message à afficher à tous les étudiants sur la page d'accueil...",
+      "Rédigez un message à envoyer aux étudiants...",
+    announcementMessageLabel: "Message du communiqué",
     announcementDialogDescription:
       "Ce message sera envoyé dans la boîte de réception de chaque utilisateur sous forme de message direct de votre part.",
     announcementSending: "Envoi en cours...",
@@ -1487,6 +1537,8 @@ export const translations = {
     announcementPartialFailure:
       "Certains destinataires n'ont pas reçu le communiqué. Échecs : {count}",
     announcementError: "Échec de l'envoi du communiqué. Veuillez réessayer.",
+    announcementMessageValidationError:
+      "Rédigez un communiqué de 1 à 2 000 caractères avant de l'envoyer.",
     sendAnnouncement: "Envoyer le communiqué",
     pastAnnouncements: "Anciens communiqués",
     inactive: "Inactif",

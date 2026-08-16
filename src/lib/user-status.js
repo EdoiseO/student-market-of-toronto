@@ -15,7 +15,45 @@ function getTimestamp(value) {
   return Number.isNaN(timestamp) ? null : timestamp;
 }
 
-export function isUserBanned(statusRow) {
+function getComparisonTimestamp(value) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  return getTimestamp(value);
+}
+
+// Supabase represents this app's "permanent" ban as a 100-year duration.
+// Treat anything at least 99 years away as permanent in user-facing copy.
+const PERMANENT_BAN_DISPLAY_THRESHOLD_MS = 99 * 365 * 24 * 60 * 60 * 1000;
+
+export function getBanDisplayUntil(bannedUntil, now = Date.now()) {
+  const bannedUntilTimestamp = getTimestamp(bannedUntil);
+  const nowTimestamp = getComparisonTimestamp(now);
+
+  if (
+    bannedUntilTimestamp === null ||
+    nowTimestamp === null ||
+    bannedUntilTimestamp - nowTimestamp >= PERMANENT_BAN_DISPLAY_THRESHOLD_MS
+  ) {
+    return null;
+  }
+
+  return bannedUntil;
+}
+
+export function isAuthUserBanned(authUser, now = Date.now()) {
+  const bannedUntilTimestamp = getTimestamp(authUser?.banned_until);
+  const nowTimestamp = getComparisonTimestamp(now);
+
+  return (
+    bannedUntilTimestamp !== null &&
+    nowTimestamp !== null &&
+    bannedUntilTimestamp > nowTimestamp
+  );
+}
+
+export function isUserBanned(statusRow, now = Date.now()) {
   if (!statusRow?.is_banned) {
     return false;
   }
@@ -26,7 +64,8 @@ export function isUserBanned(statusRow) {
     return true;
   }
 
-  return bannedUntilTimestamp > Date.now();
+  const nowTimestamp = getComparisonTimestamp(now);
+  return nowTimestamp !== null && bannedUntilTimestamp > nowTimestamp;
 }
 
 export async function getUserStatusRow(supabase, userId) {

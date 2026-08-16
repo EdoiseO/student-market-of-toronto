@@ -5,16 +5,23 @@ import { Megaphone } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  SheetTrigger,
 } from "@/components/ui/sheet";
 import { useLanguage } from "@/context/LanguageContext";
+import {
+  ANNOUNCEMENT_MESSAGE_MAX_LENGTH,
+  validateAnnouncementMessage,
+} from "@/lib/moderation-policy.mjs";
 
 export function AdminAnnouncementSheet() {
   const { t } = useLanguage();
@@ -25,7 +32,12 @@ export function AdminAnnouncementSheet() {
   async function handleSend(event) {
     event.preventDefault();
 
-    if (!message.trim() || isSending) {
+    const validatedMessage = validateAnnouncementMessage(message);
+
+    if (!validatedMessage.ok || isSending) {
+      if (!isSending) {
+        toast.error(t.announcementMessageValidationError ?? t.announcementError);
+      }
       return;
     }
 
@@ -35,7 +47,7 @@ export function AdminAnnouncementSheet() {
       const response = await fetch("/api/admin/announcements", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: message.trim() }),
+        body: JSON.stringify({ message: validatedMessage.message }),
       });
 
       const data = await response.json();
@@ -77,22 +89,22 @@ export function AdminAnnouncementSheet() {
   }
 
   return (
-    <>
-      <Button
-        type="button"
-        variant="outline"
-        className="rounded-xl"
-        onClick={() => setIsOpen(true)}
-      >
-        <Megaphone className="size-4" />
-        <span>{t.newAnnouncement}</span>
-      </Button>
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+      <SheetTrigger asChild>
+        <Button type="button" variant="outline" className="rounded-xl">
+          <Megaphone className="size-4" />
+          <span>{t.newAnnouncement}</span>
+        </Button>
+      </SheetTrigger>
 
-      <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-xl">
+        <SheetContent
+          side="right"
+          className="sm:max-w-none"
+          style={{ width: "100%", maxWidth: "36rem" }}
+        >
           <form className="flex h-full flex-col" onSubmit={handleSend}>
             <div className="flex flex-1 flex-col gap-6 px-6 py-6">
-              <SheetHeader className="gap-2 p-0 text-left">
+              <SheetHeader className="gap-2 p-0 pr-10 text-left">
                 <SheetTitle>{t.newAnnouncement}</SheetTitle>
                 <SheetDescription>
                   {t.announcementDialogDescription}
@@ -100,31 +112,40 @@ export function AdminAnnouncementSheet() {
               </SheetHeader>
 
               <div className="flex-1">
+                <Label htmlFor="announcement-message" className="mb-2 block">
+                  {t.announcementMessageLabel}
+                </Label>
                 <Textarea
+                  id="announcement-message"
                   value={message}
-                  onChange={(event) => setMessage(event.target.value)}
+                  onChange={(event) => {
+                    const nextMessage = Array.from(event.target.value)
+                      .slice(0, ANNOUNCEMENT_MESSAGE_MAX_LENGTH)
+                      .join("");
+                    setMessage(nextMessage);
+                  }}
                   placeholder={t.newAnnouncementPlaceholder}
                   rows={6}
-                  maxLength={2000}
                   disabled={isSending}
                   className="h-40 min-h-32 max-h-[min(40svh,20rem)] rounded-xl"
                 />
                 <p className="mt-2 text-right text-xs text-muted-foreground">
-                  {message.length} / 2000
+                  {Array.from(message).length} / {ANNOUNCEMENT_MESSAGE_MAX_LENGTH}
                 </p>
               </div>
             </div>
 
             <SheetFooter className="border-t px-6 py-4 sm:flex-row sm:justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                className="rounded-xl"
-                onClick={() => setIsOpen(false)}
-                disabled={isSending}
-              >
-                {t.cancel}
-              </Button>
+              <SheetClose asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-xl"
+                  disabled={isSending}
+                >
+                  {t.cancel}
+                </Button>
+              </SheetClose>
               <Button
                 type="submit"
                 className="rounded-xl"
@@ -136,7 +157,6 @@ export function AdminAnnouncementSheet() {
             </SheetFooter>
           </form>
         </SheetContent>
-      </Sheet>
-    </>
+    </Sheet>
   );
 }

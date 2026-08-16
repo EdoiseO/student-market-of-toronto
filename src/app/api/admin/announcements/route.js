@@ -3,6 +3,11 @@ import { cookies } from "next/headers";
 
 import { getUserModerationRole } from "@/lib/moderation";
 import {
+  MODERATION_ACTIONS,
+  canPerformModerationAction,
+  validateAnnouncementMessage,
+} from "@/lib/moderation-policy.mjs";
+import {
   MESSAGE_NOTIFICATION_TYPE,
   LEGACY_MESSAGE_NOTIFICATION_TYPE,
 } from "@/lib/notifications";
@@ -118,21 +123,31 @@ export async function POST(request) {
       );
     }
 
-    if (getUserModerationRole(moderationUser) !== "admin") {
+    if (
+      !canPerformModerationAction(
+        getUserModerationRole(moderationUser),
+        MODERATION_ACTIONS.manageAnnouncements,
+      )
+    ) {
       return NextResponse.json({ error: "Admin role required." }, { status: 403 });
     }
 
-    const body = await request.json();
-    const trimmedMessage =
-      typeof body?.message === "string" ? body.message.trim() : "";
+    const body = await request.json().catch(() => null);
 
-    if (!trimmedMessage) {
-      return NextResponse.json({ error: "Message is required." }, { status: 400 });
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
     }
 
-    if (trimmedMessage.length > 3000) {
-      return NextResponse.json({ error: "Message is too long." }, { status: 400 });
+    const validatedMessage = validateAnnouncementMessage(body?.message);
+
+    if (!validatedMessage.ok) {
+      return NextResponse.json(
+        { error: "Message must be between 1 and 2000 characters." },
+        { status: 400 },
+      );
     }
+
+    const trimmedMessage = validatedMessage.message;
 
     const recipientIds = await listAnnouncementRecipientIds(admin, moderationUser.id);
 
@@ -183,9 +198,10 @@ export async function POST(request) {
     }
 
     const now = new Date().toISOString();
+    const announcementCharacters = Array.from(trimmedMessage);
     const preview =
-      trimmedMessage.length > 100
-        ? trimmedMessage.slice(0, 100) + "\u2026"
+      announcementCharacters.length > 100
+        ? announcementCharacters.slice(0, 100).join("") + "\u2026"
         : trimmedMessage;
 
     const { data: insertedMessages, error: messagesError } = await admin
@@ -251,7 +267,7 @@ export async function POST(request) {
   } catch (error) {
     console.error("Failed to send announcement:", error?.message ?? error);
     return NextResponse.json(
-      { error: error?.message ?? "Could not send the announcement right now." },
+      { error: "Could not send the announcement right now." },
       { status: 500 },
     );
   }

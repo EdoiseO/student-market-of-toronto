@@ -3,16 +3,17 @@ import { cookies } from "next/headers";
 
 import { getUserModerationRole } from "@/lib/moderation";
 import { getRestorableBanDuration } from "@/lib/admin-moderation-integrity.mjs";
+import {
+  BAN_REASON_MESSAGE_MAX_LENGTH,
+  BAN_REASON_MESSAGE_MIN_LENGTH,
+  MODERATION_ACTIONS,
+  canPerformModerationAction,
+  getSupabaseBanDuration,
+  validateBanReason,
+} from "@/lib/moderation-policy.mjs";
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { isUserStatusTableMissing } from "@/lib/user-status";
 import { createClient } from "@/utils/supabase/server";
-
-const BAN_DURATIONS = {
-  "24h": "24h",
-  "7d": "168h",
-  "30d": "720h",
-  permanent: "876000h",
-};
 
 async function getTargetUser(admin, userId) {
   const {
@@ -27,13 +28,13 @@ async function getTargetUser(admin, userId) {
   return user;
 }
 
-async function syncAppBanState(admin, userId, isBanned, bannedUntil) {
+async function syncAppBanState(admin, userId, isBanned, bannedUntil, banReason = null) {
   const { error } = await admin.from("user_status").upsert(
     {
       user_id: userId,
       is_banned: isBanned,
       banned_until: bannedUntil,
-      ban_reason: null,
+      ban_reason: isBanned ? banReason : null,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "user_id" },
@@ -53,6 +54,7 @@ async function updateBanStateWithCompensation(
   targetUser,
   nextBanDuration,
   nextIsBanned,
+  banReason = null,
 ) {
   const previousBanDuration = getRestorableBanDuration(targetUser.banned_until);
   const {
@@ -72,6 +74,7 @@ async function updateBanStateWithCompensation(
       targetUser.id,
       nextIsBanned,
       nextIsBanned ? updatedUser?.banned_until ?? null : null,
+      banReason,
     );
   } catch (syncError) {
     const { error: rollbackError } = await admin.auth.admin.updateUserById(targetUser.id, {
@@ -123,11 +126,28 @@ export async function POST(request, { params }) {
       );
     }
 
-    if (getUserModerationRole(accessUser) !== "admin") {
+    const body = await request.json().catch(() => null);
+
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+    }
+
+    const { action, duration, reasonCode, userMessage } = body;
+    const requiredPermission =
+      action === "ban"
+        ? MODERATION_ACTIONS.banUser
+        : action === "unban"
+          ? MODERATION_ACTIONS.unbanUser
+          : null;
+
+    if (!requiredPermission) {
+      return NextResponse.json({ error: "Unsupported ban action." }, { status: 400 });
+    }
+
+    if (!canPerformModerationAction(getUserModerationRole(accessUser), requiredPermission)) {
       return NextResponse.json({ error: "Only admins can manage bans." }, { status: 403 });
     }
 
-    const { action, duration } = await request.json();
     const targetUserId = resolvedParams.userId;
 
     if (!targetUserId) {
@@ -163,10 +183,21 @@ export async function POST(request, { params }) {
     }
 
     if (action === "ban") {
-      const banDuration = BAN_DURATIONS[duration];
+      const banDuration = getSupabaseBanDuration(duration);
 
       if (!banDuration) {
         return NextResponse.json({ error: "Unsupported ban duration." }, { status: 400 });
+      }
+
+      const validatedReason = validateBanReason({ reasonCode, userMessage });
+
+      if (!validatedReason.ok) {
+        const error =
+          validatedReason.error === "reason_code"
+            ? "Choose a supported ban reason."
+            : `Explain the ban reason in ${BAN_REASON_MESSAGE_MIN_LENGTH}-${BAN_REASON_MESSAGE_MAX_LENGTH} characters.`;
+
+        return NextResponse.json({ error }, { status: 400 });
       }
 
       const updatedUser = await updateBanStateWithCompensation(
@@ -174,20 +205,20 @@ export async function POST(request, { params }) {
         targetUser,
         banDuration,
         true,
+        validatedReason.userMessage,
       );
 
       return NextResponse.json({
         success: true,
         isBanned: true,
         bannedUntil: updatedUser?.banned_until ?? null,
+        reasonCode: validatedReason.reasonCode,
       });
     }
-
-    return NextResponse.json({ error: "Unsupported ban action." }, { status: 400 });
   } catch (error) {
     console.error("Failed to update ban state:", error?.message ?? error);
     return NextResponse.json(
-      { error: error?.message ?? "Could not update the ban state right now." },
+      { error: "Could not update the ban state right now." },
       { status: 500 },
     );
   }

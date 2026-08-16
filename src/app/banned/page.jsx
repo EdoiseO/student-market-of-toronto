@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getUserStatusRow, isUserBanned } from "@/lib/user-status";
+import { getBanDisplayUntil, getUserStatusRow, isUserBanned } from "@/lib/user-status";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
@@ -36,7 +36,8 @@ export default async function BannedPage() {
     redirect("/");
   }
 
-  const bannedUntil = userStatusResult.data?.banned_until ?? null;
+  const bannedUntil = getBanDisplayUntil(userStatusResult.data?.banned_until);
+  const banReason = userStatusResult.data?.ban_reason?.trim() || null;
 
   return (
     <main className="min-h-screen bg-zinc-100 px-5 py-8 dark:bg-background md:px-6 md:py-10 lg:px-7">
@@ -55,6 +56,15 @@ export default async function BannedPage() {
           </CardHeader>
 
           <CardContent className="space-y-6 px-6 py-6 text-center">
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-4 text-left dark:border-border dark:bg-muted/40">
+              <p className="text-sm font-medium text-zinc-600 dark:text-muted-foreground">
+                {t.accountBannedReasonLabel}
+              </p>
+              <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-zinc-950 dark:text-foreground">
+                {banReason || t.accountBannedReasonFallback}
+              </p>
+            </div>
+
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-4 dark:border-border dark:bg-muted/40">
               <p className="text-sm font-medium text-zinc-600 dark:text-muted-foreground">
                 {t.accountBannedUntilLabel}
@@ -70,7 +80,11 @@ export default async function BannedPage() {
 
             <div className="flex flex-wrap items-center justify-center gap-3">
               <BannedAccountActions />
-              <Button asChild variant="outline" className="rounded-xl">
+              <Button
+                asChild
+                variant="outline"
+                className="h-auto min-h-11 max-w-full whitespace-normal break-all rounded-xl px-3 py-2 text-center"
+              >
                 <a href="mailto:support@studentmarketoftoronto.ca">support@studentmarketoftoronto.ca</a>
               </Button>
             </div>

@@ -11,6 +11,7 @@ import {
 } from "@/lib/moderation";
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { translations } from "@/lib/translations";
+import { getBanDisplayUntil, isAuthUserBanned } from "@/lib/user-status";
 import { createClient } from "@/utils/supabase/server";
 
 function getUserName(profile, t) {
@@ -116,8 +117,8 @@ export default async function AdminUsersPage() {
         school: profile?.school ?? t.torontoStudent,
         role,
         createdAt: authUser.created_at,
-        isBanned: Boolean(authUser.banned_until),
-        bannedUntil: authUser.banned_until ?? null,
+        isBanned: isAuthUserBanned(authUser),
+        bannedUntil: getBanDisplayUntil(authUser.banned_until),
         requiresNameChange: isNameChangeRequired(authUser),
         profileExists: Boolean(profile),
       };
