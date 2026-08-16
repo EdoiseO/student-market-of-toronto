@@ -69,6 +69,7 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
   const listingModerationReviewedAt = listing.moderationReviewedAt;
   const [feedback, setFeedback] = React.useState(() => getListingFeedbackResetValue(listing));
   const [isProcessing, setIsProcessing] = React.useState(false);
+  const decisionOperationRef = React.useRef(null);
 
   const isPendingReview = isPendingListingApproval(listing);
 
@@ -92,6 +93,19 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
   async function handleModerationDecision(action, nextFeedback = null) {
     setIsProcessing(true);
 
+    const operationPayloadKey = JSON.stringify({
+      action,
+      feedback: nextFeedback,
+      expectedContentRevision: listing.contentRevision,
+      expectedSubmittedForReviewAt: listing.submittedForReviewAt,
+    });
+    if (decisionOperationRef.current?.payloadKey !== operationPayloadKey) {
+      decisionOperationRef.current = {
+        payloadKey: operationPayloadKey,
+        operationId: crypto.randomUUID(),
+      };
+    }
+
     const { error: refreshSessionError } = await supabase.auth.refreshSession();
 
     if (refreshSessionError) {
@@ -104,6 +118,7 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        operationId: decisionOperationRef.current.operationId,
         action,
         feedback: nextFeedback,
         expectedContentRevision: listing.contentRevision,
@@ -121,6 +136,7 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
       return false;
     }
 
+    decisionOperationRef.current = null;
     return true;
   }
 

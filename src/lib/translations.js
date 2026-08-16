@@ -586,6 +586,7 @@ export const translations = {
       "This message will be delivered to every user's inbox as a direct message from you.",
     announcementSending: "Sending...",
     announcementSentCount: "Announcement sent to {count} users",
+    announcementQueued: "Announcement queued for delivery.",
     announcementNoRecipients: "There are no other users to receive this announcement yet.",
     announcementPartialFailure:
       "Some recipients did not receive the announcement. Failed: {count}",
@@ -1532,6 +1533,7 @@ export const translations = {
       "Ce message sera envoyé dans la boîte de réception de chaque utilisateur sous forme de message direct de votre part.",
     announcementSending: "Envoi en cours...",
     announcementSentCount: "Communiqué envoyé à {count} utilisateurs",
+    announcementQueued: "Communiqué placé dans la file d’envoi.",
     announcementNoRecipients:
       "Il n'y a pas encore d'autres utilisateurs pour recevoir ce communiqué.",
     announcementPartialFailure:

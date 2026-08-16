@@ -1,96 +1,44 @@
-import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 
+import {
+  enqueueAnnouncementAudience,
+  finalizeAnnouncementIfTerminal,
+  runAnnouncementDeliveryWorker,
+} from "@/lib/announcement-delivery-worker.mjs";
 import { getUserModerationRole } from "@/lib/moderation";
 import {
   MODERATION_ACTIONS,
   canPerformModerationAction,
   validateAnnouncementMessage,
 } from "@/lib/moderation-policy.mjs";
-import {
-  MESSAGE_NOTIFICATION_TYPE,
-  LEGACY_MESSAGE_NOTIFICATION_TYPE,
-} from "@/lib/notifications";
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { createClient } from "@/utils/supabase/server";
 
-function isMessageNotificationUnsupported(error) {
-  const message = [error?.message, error?.details, error?.hint]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-
-  return (
-    error?.code === "23514" ||
-    error?.code === "22P02" ||
-    (message.includes("notifications") && message.includes("type"))
-  );
+function firstRow(data) {
+  return Array.isArray(data) ? (data[0] ?? null) : (data ?? null);
 }
 
-async function listAnnouncementRecipientIds(admin, senderId) {
-  const pageSize = 500;
-  const recipientIds = [];
-
-  for (let start = 0; ; start += pageSize) {
-    const end = start + pageSize - 1;
-    const { data: profileRows, error } = await admin
-      .from("profiles")
-      .select("id")
-      .neq("id", senderId)
-      .order("id", { ascending: true })
-      .range(start, end);
-
-    if (error) {
-      throw error;
-    }
-
-    const pageRecipientIds = (profileRows ?? []).map((profile) => profile.id).filter(Boolean);
-
-    recipientIds.push(...pageRecipientIds);
-
-    if (pageRecipientIds.length < pageSize) {
-      break;
-    }
-  }
-
-  return recipientIds;
-}
-
-async function insertAnnouncementNotification(admin, userId, conversationId, messageId) {
-  const payload = {
-    user_id: userId,
-    type: MESSAGE_NOTIFICATION_TYPE,
-    conversation_id: conversationId,
-    message_id: messageId ?? null,
-  };
-
-  const { error } = await admin.from("notifications").insert(payload);
-
-  if (error) {
-    if (isMessageNotificationUnsupported(error)) {
-      const { error: legacyError } = await admin.from("notifications").insert({
-        ...payload,
-        type: LEGACY_MESSAGE_NOTIFICATION_TYPE,
-      });
-
-      if (legacyError) {
-        throw legacyError;
-      }
-
-      return;
-    }
-
-    throw error;
-  }
-}
-
-async function requireQuerySuccess(query) {
-  const { error } = await query;
+async function requireRpc(admin, name, args) {
+  const { data, error } = await admin.rpc(name, args);
 
   if (error) {
     throw error;
   }
+
+  return firstRow(data);
 }
+
+function buildAnnouncementTitle(message) {
+  const compactMessage = message.replace(/\s+/g, " ").trim();
+  const characters = Array.from(compactMessage);
+
+  return characters.length > 80
+    ? `${characters.slice(0, 79).join("")}\u2026`
+    : compactMessage;
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export async function POST(request) {
   try {
@@ -105,7 +53,6 @@ export async function POST(request) {
 
     const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
-
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -138,7 +85,7 @@ export async function POST(request) {
       return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
     }
 
-    const validatedMessage = validateAnnouncementMessage(body?.message);
+    const validatedMessage = validateAnnouncementMessage(body.message);
 
     if (!validatedMessage.ok) {
       return NextResponse.json(
@@ -147,122 +94,80 @@ export async function POST(request) {
       );
     }
 
-    const trimmedMessage = validatedMessage.message;
+    const operationId = typeof body.operationId === "string"
+      ? body.operationId.trim()
+      : "";
 
-    const recipientIds = await listAnnouncementRecipientIds(admin, moderationUser.id);
-
-    if (recipientIds.length === 0) {
-      return NextResponse.json({ sentCount: 0, totalRecipients: 0, noRecipients: true });
-    }
-
-    const { data: existingConversations, error: existingConversationsError } = await admin
-      .from("conversations")
-      .select("id, buyer_id")
-      .eq("seller_id", moderationUser.id)
-      .is("listing_id", null)
-      .in("buyer_id", recipientIds);
-
-    if (existingConversationsError) {
-      throw existingConversationsError;
-    }
-
-    const existingByBuyerId = new Map(
-      (existingConversations ?? []).map((c) => [c.buyer_id, c]),
-    );
-
-    const newRecipientIds = recipientIds.filter((id) => !existingByBuyerId.has(id));
-
-    let allConversations = [...(existingConversations ?? [])];
-
-    if (newRecipientIds.length > 0) {
-      const { data: newConversations, error: newConversationsError } = await admin
-        .from("conversations")
-        .insert(
-          newRecipientIds.map((buyerId) => ({
-            seller_id: moderationUser.id,
-            buyer_id: buyerId,
-            listing_id: null,
-          })),
-        )
-        .select("id, buyer_id");
-
-      if (newConversationsError) {
-        throw newConversationsError;
-      }
-
-      allConversations = [...allConversations, ...(newConversations ?? [])];
-    }
-
-    if (allConversations.length === 0) {
-      return NextResponse.json({ sentCount: 0, totalRecipients: recipientIds.length, noRecipients: true });
-    }
-
-    const now = new Date().toISOString();
-    const announcementCharacters = Array.from(trimmedMessage);
-    const preview =
-      announcementCharacters.length > 100
-        ? announcementCharacters.slice(0, 100).join("") + "\u2026"
-        : trimmedMessage;
-
-    const { data: insertedMessages, error: messagesError } = await admin
-      .from("messages")
-      .insert(
-        allConversations.map((c) => ({
-          conversation_id: c.id,
-          sender_id: moderationUser.id,
-          body: trimmedMessage,
-          created_at: now,
-        })),
-      )
-      .select("id, conversation_id");
-
-    if (messagesError) {
-      throw messagesError;
-    }
-
-    const messageByConversationId = new Map(
-      (insertedMessages ?? []).map((m) => [m.conversation_id, m]),
-    );
-
-    const sentCount = insertedMessages?.length ?? 0;
-
-    const deliveryResults = await Promise.allSettled(
-      allConversations.map(async (c) => {
-        const msg = messageByConversationId.get(c.id);
-
-        await Promise.all([
-          requireQuerySuccess(
-            admin
-              .from("conversations")
-              .update({ last_message_at: now, last_message_preview: preview, updated_at: now })
-              .eq("id", c.id),
-          ),
-          insertAnnouncementNotification(admin, c.buyer_id, c.id, msg?.id ?? null),
-          requireQuerySuccess(
-            admin
-              .from("conversation_user_state")
-              .upsert(
-                { conversation_id: c.id, user_id: moderationUser.id, hidden_at: now },
-                { onConflict: "conversation_id,user_id" },
-              ),
-          ),
-        ]);
-      }),
-    );
-
-    const failedDeliveries = deliveryResults.filter((result) => result.status === "rejected");
-
-    if (failedDeliveries.length > 0) {
-      console.error(
-        "Announcement post-processing failed for recipients:",
-        failedDeliveries.map((result) => result.reason?.message ?? "Unknown error"),
+    if (!UUID_PATTERN.test(operationId)) {
+      return NextResponse.json(
+        { error: "A valid announcement operation ID is required." },
+        { status: 400 },
       );
     }
 
+    const sending = await requireRpc(admin, "create_and_start_announcement", {
+      p_operation_id: operationId,
+      p_title: buildAnnouncementTitle(validatedMessage.message),
+      p_body: validatedMessage.message,
+      p_category: "general",
+      p_priority: "normal",
+      p_audience_type: "all",
+      p_audience_filter: {},
+      p_delivery_policy: "always_on",
+      // No provider worker is tracked in this repository. Email remains
+      // disabled until that separately authenticated dependency is deployed.
+      p_email_enabled: false,
+      p_actor_id: moderationUser.id,
+    });
+
+    if (!sending?.id || !["sending", "sent", "partially_failed"].includes(sending.status)) {
+      throw new Error("announcement_create_start_result_invalid");
+    }
+
+    let enqueueResult = { exhausted: true, enqueuedCount: 0 };
+    let workerResult = { claimedCount: 0, deliveredCount: 0, failedCount: 0 };
+
+    if (sending.status === "sending") {
+      enqueueResult = await enqueueAnnouncementAudience({
+        admin,
+        announcementId: sending.id,
+        maxBatches: 1,
+      });
+      workerResult = await runAnnouncementDeliveryWorker({
+        admin,
+        maxDeliveries: 10,
+        maxLeaseReaps: 10,
+      });
+      await finalizeAnnouncementIfTerminal({ admin, announcementId: sending.id });
+    }
+    const { data: latestAnnouncement, error: latestAnnouncementError } = await admin
+      .from("announcements")
+      .select("id, version, status, recipient_count, delivered_count, failed_count")
+      .eq("id", sending.id)
+      .single();
+
+    if (latestAnnouncementError || !latestAnnouncement) {
+      throw latestAnnouncementError ?? new Error("announcement_status_result_invalid");
+    }
+
+    const totalRecipients = Number(latestAnnouncement.recipient_count ?? 0);
+    const sentCount = Number(latestAnnouncement.delivered_count ?? 0);
+    const failureCount = Number(latestAnnouncement.failed_count ?? 0);
+    const deliveryFinished = ["sent", "partially_failed"].includes(latestAnnouncement.status);
+
     return NextResponse.json({
+      announcementId: latestAnnouncement.id,
+      operationId,
       sentCount,
-      totalRecipients: recipientIds.length,
-      failureCount: failedDeliveries.length,
+      totalRecipients,
+      failureCount,
+      noRecipients: enqueueResult.exhausted && totalRecipients === 0,
+      queued: !deliveryFinished,
+      worker: {
+        claimedCount: workerResult.claimedCount,
+        deliveredCount: workerResult.deliveredCount,
+        failedCount: workerResult.failedCount,
+      },
     });
   } catch (error) {
     console.error("Failed to send announcement:", error?.message ?? error);

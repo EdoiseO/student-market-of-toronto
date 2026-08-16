@@ -1,5 +1,6 @@
 export const MESSAGE_NOTIFICATION_TYPE = "messages";
 export const LEGACY_MESSAGE_NOTIFICATION_TYPE = "message";
+export const ANNOUNCEMENT_NOTIFICATION_TYPE = "announcement";
 export const SOLD_NOTIFICATION_TYPE = "sold";
 export const FAVOURITE_NOTIFICATION_TYPE = "favourite";
 
@@ -14,6 +15,7 @@ export const MODERATOR_ROLE_GRANTED_NOTIFICATION_TYPE = "moderator_role_granted"
 export const MESSAGE_NOTIFICATION_ROW_TYPES = [
   LEGACY_MESSAGE_NOTIFICATION_TYPE,
   MESSAGE_NOTIFICATION_TYPE,
+  ANNOUNCEMENT_NOTIFICATION_TYPE,
 ];
 
 export const FAVOURITE_NOTIFICATION_ROW_TYPES = [
@@ -28,7 +30,10 @@ export const LISTING_UPDATE_NOTIFICATION_ROW_TYPES = [
   LISTING_REJECTED_NOTIFICATION_TYPE,
 ];
 
-export const ALWAYS_ON_NOTIFICATION_ROW_TYPES = [MODERATOR_ROLE_GRANTED_NOTIFICATION_TYPE];
+export const ALWAYS_ON_NOTIFICATION_ROW_TYPES = [
+  ANNOUNCEMENT_NOTIFICATION_TYPE,
+  MODERATOR_ROLE_GRANTED_NOTIFICATION_TYPE,
+];
 
 export const NOTIFICATION_PREFERENCE_TYPES = [
   SOLD_NOTIFICATION_TYPE,
@@ -255,7 +260,10 @@ function getListingNotificationDescription(notification, t, language) {
 }
 
 function isSystemNotificationType(type) {
-  return ALWAYS_ON_NOTIFICATION_ROW_TYPES.includes(type);
+  return (
+    type !== ANNOUNCEMENT_NOTIFICATION_TYPE &&
+    ALWAYS_ON_NOTIFICATION_ROW_TYPES.includes(type)
+  );
 }
 
 function getSystemNotificationHref(metadata) {

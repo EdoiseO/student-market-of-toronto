@@ -28,6 +28,7 @@ export function AdminAnnouncementSheet() {
   const [isOpen, setIsOpen] = React.useState(false);
   const [message, setMessage] = React.useState("");
   const [isSending, setIsSending] = React.useState(false);
+  const operationIdRef = React.useRef(null);
 
   async function handleSend(event) {
     event.preventDefault();
@@ -44,10 +45,14 @@ export function AdminAnnouncementSheet() {
     setIsSending(true);
 
     try {
+      operationIdRef.current ??= crypto.randomUUID();
       const response = await fetch("/api/admin/announcements", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: validatedMessage.message }),
+        body: JSON.stringify({
+          message: validatedMessage.message,
+          operationId: operationIdRef.current,
+        }),
       });
 
       const data = await response.json();
@@ -62,14 +67,16 @@ export function AdminAnnouncementSheet() {
         return;
       }
 
-      const sentText = (t.announcementSentCount ?? "Announcement sent to {count} users").replace(
-        "{count}",
-        data.sentCount ?? 0,
-      );
+      const sentText = data?.queued
+        ? (t.announcementQueued ?? "Announcement queued for delivery.")
+        : (t.announcementSentCount ?? "Announcement sent to {count} users").replace(
+            "{count}",
+            data.sentCount ?? 0,
+          );
 
       toast.success(sentText);
 
-      if ((data.failureCount ?? 0) > 0) {
+      if (!data?.queued && (data.failureCount ?? 0) > 0) {
         const partialFailureText = (
           t.announcementPartialFailure ??
           "Some recipients did not receive the announcement. Failed: {count}"
@@ -79,6 +86,7 @@ export function AdminAnnouncementSheet() {
       }
 
       setMessage("");
+      operationIdRef.current = null;
       setIsOpen(false);
     } catch (err) {
       console.error("Failed to send announcement:", err.message);
@@ -122,6 +130,7 @@ export function AdminAnnouncementSheet() {
                     const nextMessage = Array.from(event.target.value)
                       .slice(0, ANNOUNCEMENT_MESSAGE_MAX_LENGTH)
                       .join("");
+                    operationIdRef.current = null;
                     setMessage(nextMessage);
                   }}
                   placeholder={t.newAnnouncementPlaceholder}

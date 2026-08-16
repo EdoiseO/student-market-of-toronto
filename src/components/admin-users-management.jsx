@@ -218,6 +218,7 @@ function UserBanActions({ user, currentUserId, currentUserRole, onBanUpdated, mo
   const [pendingBanDuration, setPendingBanDuration] = React.useState("");
   const [pendingBanReasonCode, setPendingBanReasonCode] = React.useState("");
   const [pendingBanMessage, setPendingBanMessage] = React.useState("");
+  const banOperationRef = React.useRef(null);
 
   if (currentUserRole !== "admin") {
     return null;
@@ -245,6 +246,7 @@ function UserBanActions({ user, currentUserId, currentUserRole, onBanUpdated, mo
   const isBanReasonComplete = banReasonValidation.ok;
 
   function resetBanDialog() {
+    banOperationRef.current = null;
     setPendingBanDuration("");
     setPendingBanReasonCode("");
     setPendingBanMessage("");
@@ -263,12 +265,27 @@ function UserBanActions({ user, currentUserId, currentUserRole, onBanUpdated, mo
     setIsSubmitting(true);
 
     try {
+      const operationPayloadKey = JSON.stringify({
+        action,
+        duration,
+        reasonCode: action === "ban" ? pendingBanReasonCode : null,
+        userMessage: action === "ban" ? normalizedBanMessage : null,
+      });
+
+      if (banOperationRef.current?.payloadKey !== operationPayloadKey) {
+        banOperationRef.current = {
+          payloadKey: operationPayloadKey,
+          operationId: crypto.randomUUID(),
+        };
+      }
+
       const response = await fetch(`/api/admin/users/${user.id}/ban`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          operationId: banOperationRef.current.operationId,
           action,
           duration,
           ...(action === "ban"
@@ -286,6 +303,7 @@ function UserBanActions({ user, currentUserId, currentUserRole, onBanUpdated, mo
       }
 
       onBanUpdated?.(user.id, payload);
+      banOperationRef.current = null;
       toast.success(action === "unban" ? t.userUnbanned : t.userBanned);
       setIsDialogOpen(false);
       resetBanDialog();

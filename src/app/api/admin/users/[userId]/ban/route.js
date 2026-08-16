@@ -12,8 +12,18 @@ import {
   validateBanReason,
 } from "@/lib/moderation-policy.mjs";
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
-import { isUserStatusTableMissing } from "@/lib/user-status";
 import { createClient } from "@/utils/supabase/server";
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function normalizeRevocationReason(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value.replace(/\r\n?/g, "\n").trim();
+}
 
 async function getTargetUser(admin, userId) {
   const {
@@ -28,62 +38,142 @@ async function getTargetUser(admin, userId) {
   return user;
 }
 
-async function syncAppBanState(admin, userId, isBanned, bannedUntil, banReason = null) {
-  const { error } = await admin.from("user_status").upsert(
-    {
-      user_id: userId,
-      is_banned: isBanned,
-      banned_until: bannedUntil,
-      ban_reason: isBanned ? banReason : null,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id" },
-  );
-
-  if (error) {
-    if (isUserStatusTableMissing(error)) {
-      throw new Error("Ban state table is not configured in Supabase yet.", { cause: error });
-    }
-
-    throw error;
-  }
-}
-
 async function updateBanStateWithCompensation(
   admin,
+  moderationClient,
   targetUser,
   nextBanDuration,
   nextIsBanned,
-  banReason = null,
+  sanction,
 ) {
-  const previousBanDuration = getRestorableBanDuration(targetUser.banned_until);
-  const {
-    data: { user: updatedUser },
-    error: authUpdateError,
-  } = await admin.auth.admin.updateUserById(targetUser.id, {
-    ban_duration: nextBanDuration,
-  });
+  const { data: operationRows, error: beginError } = await moderationClient.rpc(
+    "begin_auth_ban_operation",
+    {
+      p_subject_user_id: targetUser.id,
+      p_action: nextIsBanned ? "ban" : "unban",
+      p_ban_duration: nextBanDuration,
+      p_payload: nextIsBanned
+        ? {
+            severity: "critical",
+            reason_code: sanction.reasonCode,
+            user_message: sanction.userMessage,
+          }
+        : { revocation_reason: sanction.revocationReason },
+      p_request_id: sanction.requestId,
+    },
+  );
 
-  if (authUpdateError) {
-    throw authUpdateError;
+  if (beginError) {
+    throw beginError;
   }
 
-  try {
-    await syncAppBanState(
-      admin,
-      targetUser.id,
-      nextIsBanned,
-      nextIsBanned ? updatedUser?.banned_until ?? null : null,
-      banReason,
-    );
-  } catch (syncError) {
-    const { error: rollbackError } = await admin.auth.admin.updateUserById(targetUser.id, {
-      ban_duration: previousBanDuration,
-    });
+  const operation = Array.isArray(operationRows) ? operationRows[0] : operationRows;
 
-    if (rollbackError) {
-      console.error("Auth ban rollback failed after app-state sync error:", rollbackError.message);
-      throw new Error("Ban state could not be synchronized or safely rolled back.", {
+  if (!operation?.operation_id) {
+    throw new Error("Moderation Auth operation could not be started.");
+  }
+
+  if (operation.operation_status === "completed") {
+    return {
+      user: null,
+      bannedUntil: operation.result_banned_until ?? null,
+    };
+  }
+
+  if (operation.operation_status !== "pending") {
+    throw new Error("Ban state requires administrator reconciliation.");
+  }
+
+  const previousBanDuration = getRestorableBanDuration(
+    operation.previous_banned_until,
+  );
+  let authMutationApplied = false;
+  let updatedUser = null;
+
+  try {
+    const { data, error: authUpdateError } = await admin.auth.admin.updateUserById(
+      targetUser.id,
+      { ban_duration: nextBanDuration },
+    );
+
+    if (authUpdateError) {
+      throw authUpdateError;
+    }
+
+    updatedUser = data.user;
+    authMutationApplied = true;
+
+    const { error: durableStateError } = await moderationClient.rpc(
+      "complete_auth_ban_operation",
+      {
+        p_operation_id: operation.operation_id,
+        p_expected_banned_until: updatedUser?.banned_until ?? null,
+      },
+    );
+
+    if (durableStateError) {
+      throw durableStateError;
+    }
+  } catch (syncError) {
+    if (authMutationApplied) {
+      const { error: replayError } = await moderationClient.rpc(
+        "complete_auth_ban_operation",
+        {
+          p_operation_id: operation.operation_id,
+          p_expected_banned_until: updatedUser?.banned_until ?? null,
+        },
+      );
+
+      if (!replayError) {
+        return {
+          user: updatedUser,
+          bannedUntil: updatedUser?.banned_until ?? null,
+        };
+      }
+    }
+
+    if (authMutationApplied) {
+      const latestUser = await getTargetUser(admin, targetUser.id);
+
+      if (
+        (latestUser?.banned_until ?? null) !==
+        (updatedUser?.banned_until ?? null)
+      ) {
+        console.error(
+          "Auth ban state changed before compensation; reconciliation required.",
+        );
+        throw new Error("Ban state requires administrator reconciliation.", {
+          cause: syncError,
+        });
+      }
+
+      const { error: rollbackError } = await admin.auth.admin.updateUserById(
+        targetUser.id,
+        { ban_duration: previousBanDuration },
+      );
+
+      if (rollbackError) {
+        console.error(
+          "Auth ban rollback failed; durable operation requires reconciliation:",
+          rollbackError.message,
+        );
+        throw new Error("Ban state requires administrator reconciliation.", {
+          cause: syncError,
+        });
+      }
+    }
+
+    const { data: safelyAborted, error: abortError } = await moderationClient.rpc(
+      "abort_auth_ban_operation",
+      { p_operation_id: operation.operation_id },
+    );
+
+    if (abortError || safelyAborted !== true) {
+      console.error(
+        "Auth ban operation could not verify rollback:",
+        abortError?.message ?? "live Auth state changed",
+      );
+      throw new Error("Ban state requires administrator reconciliation.", {
         cause: syncError,
       });
     }
@@ -91,7 +181,10 @@ async function updateBanStateWithCompensation(
     throw syncError;
   }
 
-  return updatedUser;
+  return {
+    user: updatedUser,
+    bannedUntil: updatedUser?.banned_until ?? null,
+  };
 }
 
 export async function POST(request, { params }) {
@@ -133,6 +226,15 @@ export async function POST(request, { params }) {
     }
 
     const { action, duration, reasonCode, userMessage } = body;
+    const operationId =
+      typeof body.operationId === "string" ? body.operationId.trim() : "";
+
+    if (!UUID_PATTERN.test(operationId)) {
+      return NextResponse.json(
+        { error: "A valid moderation operation id is required." },
+        { status: 400 },
+      );
+    }
     const requiredPermission =
       action === "ban"
         ? MODERATION_ACTIONS.banUser
@@ -168,17 +270,39 @@ export async function POST(request, { params }) {
     }
 
     if (action === "unban") {
-      const updatedUser = await updateBanStateWithCompensation(
+      const revocationReason = normalizeRevocationReason(body.revocationReason);
+      const requestId = operationId;
+
+      if (
+        revocationReason &&
+        (Array.from(revocationReason).length < 10 ||
+          Array.from(revocationReason).length > 1000)
+      ) {
+        return NextResponse.json(
+          { error: "Explain the unban reason in 10-1000 characters." },
+          { status: 400 },
+        );
+      }
+
+      const operationResult = await updateBanStateWithCompensation(
         admin,
+        supabase,
         targetUser,
         "none",
         false,
+        {
+          revocationReason: revocationReason || "Ban revoked by an administrator.",
+          requestId,
+        },
       );
 
       return NextResponse.json({
         success: true,
-        isBanned: false,
-        bannedUntil: updatedUser?.banned_until ?? null,
+        isBanned: Boolean(
+          operationResult.bannedUntil &&
+            new Date(operationResult.bannedUntil).getTime() > Date.now(),
+        ),
+        bannedUntil: operationResult.bannedUntil,
       });
     }
 
@@ -200,18 +324,25 @@ export async function POST(request, { params }) {
         return NextResponse.json({ error }, { status: 400 });
       }
 
-      const updatedUser = await updateBanStateWithCompensation(
+      const operationResult = await updateBanStateWithCompensation(
         admin,
+        supabase,
         targetUser,
         banDuration,
         true,
-        validatedReason.userMessage,
+        {
+          ...validatedReason,
+          requestId: operationId,
+        },
       );
 
       return NextResponse.json({
         success: true,
-        isBanned: true,
-        bannedUntil: updatedUser?.banned_until ?? null,
+        isBanned: Boolean(
+          operationResult.bannedUntil &&
+            new Date(operationResult.bannedUntil).getTime() > Date.now(),
+        ),
+        bannedUntil: operationResult.bannedUntil,
         reasonCode: validatedReason.reasonCode,
       });
     }

@@ -102,7 +102,7 @@ test("reconciliation migration retires the legacy workflow and restores the revi
   );
 });
 
-test("privileged admin routes fail closed and report announcement side-effect failures", async () => {
+test("privileged admin routes fail closed and announcements use durable delivery state", async () => {
   const [roleRoute, banRoute, announcementRoute, usersPage] = await Promise.all([
     readFile(new URL("../src/app/api/admin/users/[userId]/role/route.js", import.meta.url), "utf8"),
     readFile(new URL("../src/app/api/admin/users/[userId]/ban/route.js", import.meta.url), "utf8"),
@@ -117,6 +117,13 @@ test("privileged admin routes fail closed and report announcement side-effect fa
   assert.match(roleRoute, /targetRole === "admin"/);
   assert.match(roleRoute, /Admin transfer rollback failed/);
   assert.match(banRoute, /Auth ban rollback failed/);
-  assert.match(announcementRoute, /failureCount: failedDeliveries\.length/);
+  assert.match(announcementRoute, /failureCount = Number\(latestAnnouncement\.failed_count/);
+  assert.match(announcementRoute, /queued: !deliveryFinished/);
+  assert.match(announcementRoute, /enqueueAnnouncementAudience/);
+  assert.match(announcementRoute, /runAnnouncementDeliveryWorker/);
+  assert.match(announcementRoute, /create_and_start_announcement/);
+  assert.match(announcementRoute, /operationId/);
+  assert.doesNotMatch(announcementRoute, /create_announcement_draft|transition_announcement/);
+  assert.doesNotMatch(announcementRoute, /\.from\("(?:conversations|messages|notifications)"\)\.insert/);
   assert.match(usersPage, /getUserModerationRole\(accessUser\) !== "admin"/);
 });

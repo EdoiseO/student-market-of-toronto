@@ -55,11 +55,19 @@ Then add your Supabase values to `.env.local`:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
+CRON_SECRET=
 ```
 
 These values come from your Supabase project settings.
 
 `SUPABASE_SERVICE_ROLE_KEY` is required for server-side destructive account actions such as full account deletion from `/dashboard/settings`.
+
+`CRON_SECRET` protects the bounded announcement delivery worker at
+`/api/internal/announcements/worker`. Before enabling announcements in
+production, invoke that endpoint at least every five minutes with
+`Authorization: Bearer <CRON_SECRET>`. Vercel Pro can schedule it with Vercel
+Cron; Vercel Hobby requires a Supabase or other external scheduler. Do not put
+the secret in a public or `NEXT_PUBLIC_` variable.
 
 ## Install Dependencies
 

@@ -132,6 +132,9 @@ export function AdminReportReviewContent({
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [isSavingNotes, setIsSavingNotes] = React.useState(false);
   const [moderatorNotes, setModeratorNotes] = React.useState(report.moderatorNotes ?? "");
+  const reportStatusOperationRef = React.useRef(null);
+  const removeListingOperationRef = React.useRef(null);
+  const forceNameOperationRef = React.useRef(null);
 
   React.useEffect(() => {
     setModeratorNotes(report.moderatorNotes ?? "");
@@ -187,12 +190,25 @@ export function AdminReportReviewContent({
       return { error: true };
     }
 
+    const operationPayloadKey = JSON.stringify({
+      action: "update_status",
+      reportIds: [...actionableReportIds].sort(),
+      status: nextStatus,
+    });
+    if (reportStatusOperationRef.current?.payloadKey !== operationPayloadKey) {
+      reportStatusOperationRef.current = {
+        payloadKey: operationPayloadKey,
+        operationId: crypto.randomUUID(),
+      };
+    }
+
     const response = await fetch("/api/admin/reports/actions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        operationId: reportStatusOperationRef.current.operationId,
         action: "update_status",
         reportIds: actionableReportIds,
         status: nextStatus,
@@ -207,6 +223,7 @@ export function AdminReportReviewContent({
       return { error: true };
     }
 
+    reportStatusOperationRef.current = null;
     return { error: false, updatedCount: payload?.updatedCount ?? actionableReportIds.length };
   }
 
@@ -246,12 +263,25 @@ export function AdminReportReviewContent({
 
     setIsProcessing(true);
 
+    const operationPayloadKey = JSON.stringify({
+      listingId: listingTarget.id,
+      reportIds: [...actionableReportIds].sort(),
+    });
+
+    if (removeListingOperationRef.current?.payloadKey !== operationPayloadKey) {
+      removeListingOperationRef.current = {
+        payloadKey: operationPayloadKey,
+        operationId: crypto.randomUUID(),
+      };
+    }
+
     const response = await fetch("/api/admin/reports/actions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        operationId: removeListingOperationRef.current.operationId,
         action: "remove_listing",
         listingId: listingTarget.id,
         reportIds: actionableReportIds,
@@ -269,6 +299,7 @@ export function AdminReportReviewContent({
 
     const result = { error: false, updatedCount: payload?.updatedCount ?? actionableReportIds.length };
 
+    removeListingOperationRef.current = null;
     setIsProcessing(false);
 
     toast.success(
@@ -293,12 +324,25 @@ export function AdminReportReviewContent({
 
     setIsProcessing(true);
 
+    const operationPayloadKey = JSON.stringify({
+      userId: profileTarget.id,
+      reportIds: [...actionableReportIds].sort(),
+    });
+
+    if (forceNameOperationRef.current?.payloadKey !== operationPayloadKey) {
+      forceNameOperationRef.current = {
+        payloadKey: operationPayloadKey,
+        operationId: crypto.randomUUID(),
+      };
+    }
+
     const response = await fetch("/api/admin/reports/actions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        operationId: forceNameOperationRef.current.operationId,
         action: "force_name_change",
         userId: profileTarget.id,
         reportIds: actionableReportIds,
@@ -315,6 +359,7 @@ export function AdminReportReviewContent({
       return;
     }
 
+    forceNameOperationRef.current = null;
     toast.success(t.adminForceNameChangeSuccess);
     router.push("/admin");
     router.refresh();
