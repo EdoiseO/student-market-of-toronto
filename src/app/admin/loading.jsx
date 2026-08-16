@@ -1,11 +1,3 @@
-import { AdminDashboardSkeleton } from "@/components/skeletons/admin-dashboard-skeleton";
-
 export default function AdminLoading() {
-  return (
-    <main aria-busy="true" aria-label="Loading moderation dashboard" className="min-h-screen bg-zinc-100 p-5 dark:bg-background md:p-6 lg:p-7">
-      <div className="mx-auto w-full max-w-[1360px] @container/main">
-        <AdminDashboardSkeleton />
-      </div>
-    </main>
-  );
+  return <main className="min-h-screen bg-zinc-100 p-3 dark:bg-background sm:p-5 md:p-6" aria-busy="true" aria-label="Loading admin overview"><div className="mx-auto w-full max-w-[1360px] animate-pulse space-y-5"><div className="h-36 rounded-3xl border border-border bg-card" /><div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">{Array.from({ length: 6 }, (_, index) => <div key={index} className="h-24 rounded-2xl border border-border bg-card" />)}</div><div className="grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,.75fr)]"><div className="h-80 rounded-3xl border border-border bg-card" /><div className="h-80 rounded-3xl border border-border bg-card" /></div></div></main>;
 }

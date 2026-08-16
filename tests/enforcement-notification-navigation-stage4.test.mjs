@@ -4,6 +4,7 @@ import test from "node:test";
 
 import {
   CONVERSATION_CLOSED_NOTIFICATION_TYPE,
+  CONVERSATION_REOPENED_NOTIFICATION_TYPE,
   ENFORCEMENT_NOTIFICATION_ROW_TYPES,
   MODERATION_WARNING_NOTIFICATION_TYPE,
   getEnabledNotificationRowTypes,
@@ -119,6 +120,29 @@ test("enforcement notification types are always-on and use safe destinations", (
 
   assert.equal(conversation.href, "/messages/conversation-1");
   assert.equal(conversation.title, "Conversation closed");
+  assert.equal(conversation.description, "Read only.");
+
+  const reopened = normalizeNotificationRow(
+    {
+      id: "notice-3",
+      type: CONVERSATION_REOPENED_NOTIFICATION_TYPE,
+      read_at: null,
+      dismissed_at: null,
+      created_at: "2026-08-16T15:02:00.000Z",
+      conversation_id: "conversation-1",
+      metadata: {
+        action: "reopen",
+        user_message: "  The conversation may resume after moderator review.  ",
+        internal_note: "must never be rendered",
+      },
+    },
+    "user-1",
+    t,
+  );
+
+  assert.equal(reopened.href, "/messages/conversation-1");
+  assert.equal(reopened.description, "The conversation may resume after moderator review.");
+  assert.doesNotMatch(JSON.stringify(reopened), /internal_note|must never be rendered/);
 });
 
 test("database contract emits safe durable sanction notices and soft lifecycle state", () => {

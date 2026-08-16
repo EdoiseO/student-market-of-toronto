@@ -32,8 +32,9 @@ test("client command idempotency is durable and the route uses one atomic RPC", 
   assert.match(migration, /announcement_operation_id_conflict/);
   assert.match(migration, /function public\.create_and_start_announcement/);
   assert.match(route, /create_and_start_announcement/);
-  assert.doesNotMatch(route, /create_announcement_draft|transition_announcement/);
-  assert.match(route, /UUID_PATTERN\.test\(operationId\)/);
+  assert.match(route, /create_announcement_draft_idempotent/);
+  assert.match(route, /execute_announcement_lifecycle_command/);
+  assert.match(route, /isAnnouncementOperationId\(operationId\)/);
   assert.match(composer, /operationIdRef/);
   assert.match(composer, /crypto\.randomUUID\(\)/);
   assert.match(composer, /operationId:\s*operationIdRef\.current/);

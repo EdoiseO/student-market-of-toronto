@@ -11,9 +11,17 @@ const migrationPaths = [
   "../supabase/migrations/20260816081757_enforce_closed_conversation_writes.sql",
   "../supabase/migrations/20260816081918_atomic_announcement_delivery_cutover.sql",
   "../supabase/migrations/20260816090221_harden_announcement_worker_lifecycle.sql",
+  "../supabase/migrations/20260816181148_admin_announcement_operations_stage5.sql",
 ];
 const migrations = await Promise.all(
   migrationPaths.map((path) => readFile(new URL(path, import.meta.url), "utf8")),
+);
+const lifecycleHardeningMigration = await readFile(
+  new URL(
+    "../supabase/migrations/20260816190243_harden_announcement_lifecycle_idempotency_and_fairness.sql",
+    import.meta.url,
+  ),
+  "utf8",
 );
 const postgresBin = [
   process.env.POSTGRES_BIN,
@@ -141,6 +149,7 @@ test(
         ),
         "1",
       );
+
       assert.equal(
         recipient(`select mark_conversation_read('${outputConversationId}');`),
         "1",
@@ -304,9 +313,249 @@ test(
         "unattempted campaigns must be selected on the next pass instead of being starved",
       );
 
+      const draftOperationId = "34343434-3434-4434-8434-343434343434";
+      const durableDraftId = service(
+        `select id from create_announcement_draft_idempotent('${draftOperationId}','Durable draft','A saved Stage 5 announcement draft.','general','normal','all','{}','always_on',false,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');`,
+      );
+      assert.equal(
+        service(
+          `select id from create_announcement_draft_idempotent('${draftOperationId}','Durable draft','A saved Stage 5 announcement draft.','general','normal','all','{}','always_on',false,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');`,
+        ),
+        durableDraftId,
+        "an exact saved-draft retry must return the canonical announcement",
+      );
+      assert.match(
+        service(
+          `select id from create_announcement_draft_idempotent('${draftOperationId}','Changed draft','A saved Stage 5 announcement draft.','general','normal','all','{}','always_on',false,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');`,
+          true,
+        ),
+        /announcement_operation_id_conflict/i,
+      );
+
+      const scheduledId = service(
+        "select id from create_announcement_draft_idempotent('45454545-4545-4454-8454-454545454545','Scheduled notice','This scheduled notice remains deliverable after admin demotion.','general','urgent','all','{}','always_on',false,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');",
+      );
+      service(
+        `select id from transition_announcement('${scheduledId}',1,'schedule','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',now()+interval '1 millisecond','stage5-schedule');`,
+      );
+
+      const failedCampaignId = service(
+        "select id from create_and_start_announcement('56565656-5656-4565-8565-565656565656','Retry notice','This campaign proves terminal failures retry without duplicating delivery.','general','normal','all','{}','always_on',false,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');",
+      );
+      service(`select enqueued_count from enqueue_announcement_audience_batch('${failedCampaignId}',100,1);`);
+      const failedDeliveryId = service("select delivery_id from claim_announcement_delivery(60);");
+      const failedLease = service(`select lease_token from announcement_delivery_outbox where delivery_id='${failedDeliveryId}';`);
+      service(`select delivery_id from finish_announcement_delivery('${failedDeliveryId}','${failedLease}',false,null,null,null,'provider_failed',null);`);
+      assert.equal(
+        service(`select status from finalize_announcement_worker('${failedCampaignId}');`),
+        "partially_failed",
+      );
+      assert.equal(
+        service(`select status from retry_failed_announcement('${failedCampaignId}',3,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','stage5-retry');`),
+        "sending",
+      );
+      assert.equal(
+        service(`select delivery.status || ':' || outbox.queue_status || ':' || outbox.attempt_count from announcement_deliveries delivery join announcement_delivery_outbox outbox on outbox.delivery_id=delivery.id where delivery.announcement_id='${failedCampaignId}';`),
+        "failed:pending:0",
+        "retry resets only the dead outbox pair and preserves the durable delivery identity",
+      );
+
+      sql(lifecycleHardeningMigration);
+
+      const updateOperationId = "67676767-6767-4676-8676-676767676767";
+      const updatePayload = `jsonb_build_object(
+        'title','Durable draft updated',
+        'body','A replay-safe Stage 5 announcement draft update.',
+        'category','general',
+        'priority','normal',
+        'audience_type','all',
+        'audience_filter','{}'::jsonb,
+        'delivery_policy','always_on',
+        'email_enabled',false
+      )`;
+      assert.equal(
+        service(
+          `select (announcement->>'version') || ':' || replayed
+           from execute_announcement_lifecycle_command(
+             '${updateOperationId}','${durableDraftId}',1,'update_draft',
+             'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',${updatePayload}
+           );`,
+        ),
+        "2:false",
+      );
+      assert.equal(
+        service(
+          `select (announcement->>'version') || ':' || replayed
+           from execute_announcement_lifecycle_command(
+             '${updateOperationId}','${durableDraftId}',1,'update_draft',
+             'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',${updatePayload}
+           );`,
+        ),
+        "2:true",
+        "an ambiguous response retry returns the exact stored result snapshot",
+      );
+      assert.match(
+        service(
+          `select announcement
+           from execute_announcement_lifecycle_command(
+             '${updateOperationId}','${durableDraftId}',1,'cancel',
+             'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','{}'::jsonb
+           );`,
+          true,
+        ),
+        /announcement_operation_id_conflict/i,
+      );
+      assert.match(
+        service(
+          `select id from update_announcement_draft(
+             '${durableDraftId}',2,'Bypass','A bypass attempt must fail.',
+             'general','normal','all','{}','always_on',false,
+             'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','bypass'
+           );`,
+          true,
+        ),
+        /permission denied/i,
+      );
+      assert.equal(
+        service(
+          `select count(*) from announcement_lifecycle_commands
+           where operation_id='${updateOperationId}'
+             and audit_event_id=(result_snapshot->>'moderation_audit_event_id')::uuid;`,
+        ),
+        "1",
+      );
+
+      const lifecycleDraftId = service(
+        "select id from create_announcement_draft_idempotent('92929292-9292-4929-8929-929292929292','Lifecycle replay notice','Every lifecycle operation must replay its exact successful result.','general','normal','all','{}','always_on',false,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');",
+      );
+      const scheduledReplayAt = service("select (now()+interval '10 minutes')::text;");
+      const scheduledReplayPayload = `jsonb_build_object('scheduled_for','${scheduledReplayAt}')`;
+      const scheduledCommand = "93939393-9393-4939-8939-939393939393";
+      assert.equal(
+        service(
+          `select (announcement->>'version') || ':' || replayed
+           from execute_announcement_lifecycle_command(
+             '${scheduledCommand}','${lifecycleDraftId}',1,'schedule',
+             'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',${scheduledReplayPayload}
+           );`,
+        ),
+        "2:false",
+      );
+      assert.equal(
+        service(
+          `select (announcement->>'version') || ':' || replayed
+           from execute_announcement_lifecycle_command(
+             '${scheduledCommand}','${lifecycleDraftId}',1,'schedule',
+             'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',${scheduledReplayPayload}
+           );`,
+        ),
+        "2:true",
+      );
+      for (const [action, expectedVersion, operationIdValue, expectedResultVersion] of [
+        ["unschedule", 2, "94949494-9494-4949-8949-949494949494", 3],
+        ["send", 3, "95959595-9595-4959-8959-959595959595", 4],
+        ["cancel", 4, "96969696-9696-4969-8969-969696969696", 5],
+      ]) {
+        const statement = `select (announcement->>'version') || ':' || replayed
+          from execute_announcement_lifecycle_command(
+            '${operationIdValue}','${lifecycleDraftId}',${expectedVersion},'${action}',
+            'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','{}'::jsonb
+          );`;
+        assert.equal(service(statement), `${expectedResultVersion}:false`);
+        assert.equal(service(statement), `${expectedResultVersion}:true`);
+      }
+
+      const retryDeliveryId = service("select delivery_id from claim_announcement_delivery(60);");
+      const retryLeaseToken = service(
+        `select lease_token from announcement_delivery_outbox where delivery_id='${retryDeliveryId}';`,
+      );
+      service(
+        `select delivery_id from finish_announcement_delivery(
+          '${retryDeliveryId}','${retryLeaseToken}',false,null,null,null,
+          'provider_failed_again',null
+        );`,
+      );
+      const retryVersion = service(
+        `select version from finalize_announcement_worker('${failedCampaignId}');`,
+      );
+      const retryCommand = "97979797-9797-4979-8979-979797979797";
+      const retryStatement = `select (announcement->>'version') || ':' || replayed
+        from execute_announcement_lifecycle_command(
+          '${retryCommand}','${failedCampaignId}',${retryVersion},'retry',
+          'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','{}'::jsonb
+        );`;
+      assert.equal(service(retryStatement), `${Number(retryVersion) + 1}:false`);
+      assert.equal(service(retryStatement), `${Number(retryVersion) + 1}:true`);
+
+      const oldestLowId = service(
+        "select id from create_announcement_draft_idempotent('78787878-7878-4787-8787-787878787878','Oldest low notice','The oldest due campaign must not be starved.','general','low','all','{}','always_on',false,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');",
+      );
+      service(
+        `select announcement->>'status'
+         from execute_announcement_lifecycle_command(
+           '89898989-8989-4898-8989-898989898989','${oldestLowId}',1,'schedule',
+           'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+           jsonb_build_object('scheduled_for',(now()+interval '100 milliseconds')::text)
+         );`,
+      );
+      service(`
+        do $fairness$
+        declare index_value integer; campaign_id uuid;
+        begin
+          for index_value in 1..21 loop
+            select id into campaign_id
+            from create_announcement_draft_idempotent(
+              gen_random_uuid(),
+              'New urgent notice ' || index_value,
+              'New urgent work must not starve an older low-priority campaign.',
+              'general','urgent','all','{}','always_on',false,
+              'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+            );
+            perform execute_announcement_lifecycle_command(
+              gen_random_uuid(),campaign_id,1,'schedule',
+              'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+              jsonb_build_object('scheduled_for',(now()+interval '200 milliseconds')::text)
+            );
+          end loop;
+        end
+        $fairness$;
+      `);
+      sql("select pg_sleep(0.3);");
+      assert.equal(service("select count(*) from activate_due_scheduled_announcements(10);"), "10");
+      assert.equal(
+        service(`select status from announcements where id='${oldestLowId}';`),
+        "sending",
+        "oldest due low-priority campaign must activate in the first bounded pass",
+      );
+      assert.equal(service("select count(*) from activate_due_scheduled_announcements(10);"), "10");
+      assert.equal(service("select count(*) from activate_due_scheduled_announcements(10);"), "3");
+      assert.equal(
+        service("select count(*) from announcements where status='scheduled' and scheduled_for<=now();"),
+        "0",
+        "multiple bounded passes must drain more than one activation limit",
+      );
+
+      const demotionScheduledId = service(
+        "select id from create_announcement_draft_idempotent('90909090-9090-4909-8909-909090909090','Delayed worker notice','The independent worker may activate this after the initiating admin is demoted.','general','normal','all','{}','always_on',false,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');",
+      );
+      service(
+        `select announcement->>'status'
+         from execute_announcement_lifecycle_command(
+           '91919191-9191-4919-8919-919191919191','${demotionScheduledId}',1,'schedule',
+           'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+           jsonb_build_object('scheduled_for',(now()+interval '100 milliseconds')::text)
+         );`,
+      );
       sql(
         "update auth.users set raw_app_meta_data='{}', banned_until=now()+interval '1 day' where id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';",
       );
+      sql("select pg_sleep(0.2);");
+      assert.equal(
+        service("select count(*) from activate_due_scheduled_announcements(10);"),
+        "1",
+        "the worker activates due schedules after the initiating admin is demoted and banned",
+      );
+      assert.equal(service(`select status from announcements where id='${demotionScheduledId}';`), "sending");
       assert.match(
         service(
           `select id from create_and_start_announcement('${operationId}','Idempotent notice','One durable campaign for one client command.','general','high','all','{}','always_on',false,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');`,

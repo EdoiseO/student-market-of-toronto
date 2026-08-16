@@ -4,6 +4,7 @@ export const ANNOUNCEMENT_WORKER_MAX_DELIVERIES = 100;
 export const ANNOUNCEMENT_WORKER_MAX_LEASE_REAPS = 100;
 export const ANNOUNCEMENT_WORKER_LEASE_SECONDS = 60;
 export const ANNOUNCEMENT_WORKER_MAX_ANNOUNCEMENTS = 5;
+export const ANNOUNCEMENT_WORKER_MAX_SCHEDULED_ACTIVATIONS = 10;
 
 function firstRow(data) {
   return Array.isArray(data) ? (data[0] ?? null) : (data ?? null);
@@ -79,6 +80,28 @@ async function claimAnnouncementWorkerBatch(admin, limit) {
   });
 
   return (data ?? []).map(({ announcement_id: id }) => id).filter(Boolean);
+}
+
+export async function activateDueScheduledAnnouncements({
+  admin,
+  limit = ANNOUNCEMENT_WORKER_MAX_SCHEDULED_ACTIVATIONS,
+}) {
+  const boundedLimit = clampInteger(
+    limit,
+    ANNOUNCEMENT_WORKER_MAX_SCHEDULED_ACTIVATIONS,
+    1,
+    20,
+  );
+  const data = await callRpc(admin, "activate_due_scheduled_announcements", {
+    p_limit: boundedLimit,
+  });
+
+  return {
+    activatedCount: Array.isArray(data) ? data.length : data ? 1 : 0,
+    announcementIds: (Array.isArray(data) ? data : data ? [data] : [])
+      .map(({ id }) => id)
+      .filter(Boolean),
+  };
 }
 
 export async function finalizeAnnouncementIfTerminal({ admin, announcementId }) {
@@ -225,6 +248,7 @@ export async function runAnnouncementWorkerPass({
   maxDeliveries = ANNOUNCEMENT_WORKER_MAX_DELIVERIES,
   maxLeaseReaps = ANNOUNCEMENT_WORKER_MAX_LEASE_REAPS,
   leaseSeconds = ANNOUNCEMENT_WORKER_LEASE_SECONDS,
+  maxScheduledActivations = ANNOUNCEMENT_WORKER_MAX_SCHEDULED_ACTIVATIONS,
 }) {
   const boundedMaxAnnouncements = clampInteger(
     maxAnnouncements,
@@ -232,6 +256,10 @@ export async function runAnnouncementWorkerPass({
     1,
     20,
   );
+  const activation = await activateDueScheduledAnnouncements({
+    admin,
+    limit: maxScheduledActivations,
+  });
   const initialAnnouncementIds = await claimAnnouncementWorkerBatch(
     admin,
     boundedMaxAnnouncements,
@@ -278,6 +306,7 @@ export async function runAnnouncementWorkerPass({
   }
 
   return {
+    scheduledActivatedCount: activation.activatedCount,
     announcementsScanned: initialAnnouncementIds.length,
     enqueuedCount,
     finalizedCount,

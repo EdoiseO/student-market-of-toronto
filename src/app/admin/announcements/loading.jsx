@@ -1,0 +1,3 @@
+export default function AdminAnnouncementsLoading() {
+  return <main className="min-h-screen bg-zinc-100 p-3 dark:bg-background sm:p-5 md:p-6" aria-busy="true" aria-label="Loading announcements"><div className="mx-auto w-full max-w-[1360px] animate-pulse space-y-5"><div className="h-32 rounded-3xl border border-border bg-card" /><div className="grid gap-5 lg:grid-cols-[minmax(300px,.72fr)_minmax(0,1.28fr)]"><div className="h-[36rem] rounded-3xl border border-border bg-card" /><div className="space-y-3">{Array.from({ length: 4 }, (_, index) => <div key={index} className="h-40 rounded-3xl border border-border bg-card" />)}</div></div></div></main>;
+}

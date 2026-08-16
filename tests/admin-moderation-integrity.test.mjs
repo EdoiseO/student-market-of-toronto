@@ -124,14 +124,19 @@ test("privileged admin routes fail closed and announcements use durable delivery
     /action === "ban" && getUserModerationRole\(targetUser\) === "admin"/,
   );
   assert.doesNotMatch(banRoute, /ban_duration|updateUserById/);
-  assert.match(announcementRoute, /failureCount = Number\(latestAnnouncement\.failed_count/);
-  assert.match(announcementRoute, /queued: !deliveryFinished/);
+  assert.match(announcementRoute, /failureCount: latest\.failedCount/);
+  assert.match(announcementRoute, /queued: latest\.status === "sending"/);
   assert.match(announcementRoute, /enqueueAnnouncementAudience/);
   assert.match(announcementRoute, /runAnnouncementDeliveryWorker/);
   assert.match(announcementRoute, /create_and_start_announcement/);
+  assert.match(announcementRoute, /create_announcement_draft_idempotent/);
+  assert.match(announcementRoute, /execute_announcement_lifecycle_command/);
+  assert.doesNotMatch(announcementRoute, /requireRpc\(admin, "transition_announcement"/);
+  assert.doesNotMatch(announcementRoute, /requireRpc\(admin, "retry_failed_announcement"/);
   assert.match(announcementRoute, /operationId/);
-  assert.doesNotMatch(announcementRoute, /create_announcement_draft|transition_announcement/);
   assert.doesNotMatch(announcementRoute, /\.from\("(?:conversations|messages|notifications)"\)\.insert/);
   assert.match(usersPage, /getUserModerationRole\(accessUser\) !== "admin"/);
-  assert.match(usersPage, /statusError \|\| !Array\.isArray\(statusRows\)/);
+  assert.match(usersPage, /list_admin_user_directory/);
+  assert.match(usersPage, /if \(!directory\)/);
+  assert.match(usersPage, /adminUsersStatusUnavailableTitle/);
 });

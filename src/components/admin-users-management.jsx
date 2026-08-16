@@ -71,19 +71,6 @@ function getStatusLabel(user, t) {
   return t.adminUserStatusActive;
 }
 
-function getSearchText(user, t) {
-  return [
-    user.name,
-    user.email,
-    user.school,
-    getRoleLabel(user.role, t),
-    getStatusLabel(user, t),
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-}
-
 function SummaryCard({ title, value, description }) {
   return (
     <Card className="rounded-3xl bg-card py-0 shadow-sm ring-border">
@@ -318,14 +305,14 @@ function UserBanActions({ user, currentUserId, currentUserRole, onBanUpdated, mo
   if (user.isBanned) {
     return (
       <Button
-        type="button"
+        asChild
         variant="outline"
         size="sm"
         className={cn("rounded-xl", mobile && "min-w-32 flex-1 px-3")}
-        onClick={() => submitBanAction("unban")}
-        disabled={isSubmitting}
       >
-        {t.unban}
+        <Link href={`/admin/users/${user.id}`}>
+          {t.unban}
+        </Link>
       </Button>
     );
   }
@@ -479,6 +466,7 @@ function UserBanActions({ user, currentUserId, currentUserRole, onBanUpdated, mo
 
 function hasMobileUserActions(user, currentUserId, currentUserRole) {
   return (
+    Boolean(user.id) ||
     user.profileExists ||
     (currentUserRole === "admin" && user.id !== currentUserId && user.role !== "admin")
   );
@@ -550,6 +538,11 @@ function UserMobileList({
               role="group"
               aria-label={t.actions}
             >
+              <Button asChild variant="outline" size="sm" className="min-w-32 flex-1 rounded-xl px-3">
+                <Link href={`/admin/users/${user.id}`}>
+                  {t.adminEnforcementOpenUser ?? t.actions}
+                </Link>
+              </Button>
               {user.profileExists ? (
                 <Button asChild variant="outline" size="sm" className="min-w-32 flex-1 rounded-xl px-3">
                   <Link href={`/profile/${user.id}`}>{t.viewProfile}</Link>
@@ -577,12 +570,10 @@ function UserMobileList({
   );
 }
 
-export function AdminUsersManagement({ users, currentUserId, currentUserRole }) {
+export function AdminUsersManagement({ users, currentUserId, currentUserRole, pagination = null }) {
   const { t, language } = useLanguage();
   const [userRows, setUserRows] = React.useState(users);
   const [currentViewerRole, setCurrentViewerRole] = React.useState(currentUserRole);
-  const [searchQuery, setSearchQuery] = React.useState("");
-  const [roleFilter, setRoleFilter] = React.useState("all");
 
   React.useEffect(() => {
     setUserRows(users);
@@ -591,28 +582,6 @@ export function AdminUsersManagement({ users, currentUserId, currentUserRole }) 
   React.useEffect(() => {
     setCurrentViewerRole(currentUserRole);
   }, [currentUserRole]);
-
-  const filteredUsers = React.useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
-
-    return userRows.filter((user) => {
-      if (roleFilter !== "all") {
-        if (roleFilter === "standard" && user.role) {
-          return false;
-        }
-
-        if (roleFilter !== "standard" && user.role !== roleFilter) {
-          return false;
-        }
-      }
-
-      if (!normalizedQuery) {
-        return true;
-      }
-
-      return getSearchText(user, t).includes(normalizedQuery);
-    });
-  }, [roleFilter, searchQuery, t, userRows]);
 
   const roleFilterOptions = [
     { value: "all", label: t.all },
@@ -669,59 +638,48 @@ export function AdminUsersManagement({ users, currentUserId, currentUserRole }) 
       <div className="grid gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-3">
         <SummaryCard
           title={t.students}
-          value={userRows.length}
+          value={pagination?.total ?? userRows.length}
           description={t.adminUsersSummaryDescription}
         />
         <SummaryCard
           title={t.adminModerationTeamTitle}
           value={moderationUsersCount}
-          description={t.adminModerationTeamDescription}
+          description={t.adminUsersCurrentPageSummary}
         />
         <SummaryCard
           title={t.banned}
           value={bannedCount}
-          description={t.adminBannedUsersDescription}
+          description={t.adminUsersCurrentPageSummary}
         />
       </div>
 
       <Card className="rounded-3xl bg-card py-0 shadow-sm ring-border">
         <CardContent className="space-y-6 px-6 py-6">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap gap-2">
-              {roleFilterOptions.map((option) => {
-                const isActive = roleFilter === option.value;
-
-                return (
-                  <Button
-                    key={option.value}
-                    type="button"
-                    variant={isActive ? "default" : "outline"}
-                    size="sm"
-                    className={cn("rounded-full px-3", !isActive && "bg-background")}
-                    onClick={() => setRoleFilter(option.value)}
-                  >
-                    {option.label}
-                  </Button>
-                );
-              })}
-            </div>
-
+          <form action="/admin/users" method="get" className="space-y-2">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <div className="relative w-full lg:max-w-sm">
               <Search className="pointer-events-none absolute top-0 bottom-0 left-3 my-auto size-4 text-muted-foreground" />
               <Input
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
+                name="q"
+                defaultValue={pagination?.query ?? ""}
                 placeholder={t.adminSearchUsersPlaceholder}
                 className="rounded-full bg-background pl-9"
                 aria-label={t.adminSearchUsersPlaceholder}
+                maxLength={100}
               />
             </div>
-          </div>
+              <NativeSelect name="role" defaultValue={pagination?.role ?? "all"} aria-label={t.role} className="w-full lg:w-52">
+                {roleFilterOptions.map((option) => <NativeSelectOption key={option.value} value={option.value}>{option.label}</NativeSelectOption>)}
+              </NativeSelect>
+              <Button type="submit" className="rounded-xl">{t.applyFilters}</Button>
+            </div>
+            <p className="text-xs text-muted-foreground">{t.adminUsersSearchScope}</p>
+          </form>
 
-          {filteredUsers.length > 0 ? (
+          {userRows.length > 0 ? (
             <>
               <UserMobileList
-                users={filteredUsers}
+                users={userRows}
                 currentUserId={currentUserId}
                 currentUserRole={currentViewerRole}
                 language={language}
@@ -742,7 +700,7 @@ export function AdminUsersManagement({ users, currentUserId, currentUserRole }) 
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredUsers.map((user) => (
+                    {userRows.map((user) => (
                       <TableRow key={user.id}>
                         <TableCell>
                           <p className="font-medium text-foreground">{user.name}</p>
@@ -776,6 +734,11 @@ export function AdminUsersManagement({ users, currentUserId, currentUserRole }) 
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex flex-wrap justify-end gap-2">
+                            <Button asChild variant="outline" size="sm" className="rounded-xl">
+                              <Link href={`/admin/users/${user.id}`}>
+                                {t.adminEnforcementOpenUser ?? t.actions}
+                              </Link>
+                            </Button>
                             {user.profileExists ? (
                               <Button asChild variant="outline" size="sm" className="rounded-xl">
                                 <Link href={`/profile/${user.id}`}>{t.viewProfile}</Link>
@@ -806,6 +769,16 @@ export function AdminUsersManagement({ users, currentUserId, currentUserRole }) 
               {t.adminNoUsersMatchFilters}
             </div>
           )}
+
+          {pagination?.totalPages > 1 ? (
+            <nav aria-label={t.adminUsersPaginationLabel} className="flex items-center justify-between gap-3 border-t border-border pt-4">
+              {pagination.page <= 1 ? <Button type="button" variant="outline" size="sm" className="rounded-xl" disabled>{t.previousPage}</Button> : <Button asChild variant="outline" size="sm" className="rounded-xl"><Link href={pagination.previousHref}>{t.previousPage}</Link></Button>}
+              <p className="text-sm text-muted-foreground">
+                {t.pageLabel} {pagination.page} / {pagination.totalPages}
+              </p>
+              {pagination.page >= pagination.totalPages ? <Button type="button" variant="outline" size="sm" className="rounded-xl" disabled>{t.nextPage}</Button> : <Button asChild variant="outline" size="sm" className="rounded-xl"><Link href={pagination.nextHref}>{t.nextPage}</Link></Button>}
+            </nav>
+          ) : null}
         </CardContent>
       </Card>
     </div>

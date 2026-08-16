@@ -315,6 +315,22 @@ function getEnforcementNotificationHref(notification) {
   return "/dashboard/standing";
 }
 
+function getParticipantSafeConversationMessage(notification) {
+  const userMessage = getNotificationMetadata(notification).user_message;
+
+  if (typeof userMessage !== "string") {
+    return null;
+  }
+
+  const normalizedMessage = userMessage.trim();
+
+  if (normalizedMessage.length === 0) {
+    return null;
+  }
+
+  return normalizedMessage.slice(0, 1000);
+}
+
 function getEnforcementNotificationContent(notification, t) {
   if (notification.type === MODERATION_WARNING_NOTIFICATION_TYPE) {
     return {
@@ -347,13 +363,17 @@ function getEnforcementNotificationContent(notification, t) {
   if (notification.type === CONVERSATION_CLOSED_NOTIFICATION_TYPE) {
     return {
       title: t.notificationConversationClosedTitle,
-      description: t.notificationConversationClosedDescription,
+      description:
+        getParticipantSafeConversationMessage(notification) ??
+        t.notificationConversationClosedDescription,
     };
   }
 
   return {
     title: t.notificationConversationReopenedTitle,
-    description: t.notificationConversationReopenedDescription,
+    description:
+      getParticipantSafeConversationMessage(notification) ??
+      t.notificationConversationReopenedDescription,
   };
 }
 

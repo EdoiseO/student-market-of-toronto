@@ -7,12 +7,12 @@ import { AdminUsersManagement } from "@/components/admin-users-management";
 import { Button } from "@/components/ui/button";
 import {
   getUserModerationRole,
-  isNameChangeRequired,
 } from "@/lib/moderation";
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { translations } from "@/lib/translations";
 import {
   getBanDisplayUntil,
+  getUserStatusRow,
   isAuthUserBanned,
   isUserBanned,
 } from "@/lib/user-status";
@@ -24,31 +24,33 @@ function getUserName(profile, t) {
   return profileName || t.student;
 }
 
-async function listAllUsers(admin) {
-  const users = [];
-  const perPage = 200;
-
-  for (let page = 1; page <= 20; page += 1) {
-    const {
-      data: { users: pageUsers },
-      error,
-    } = await admin.auth.admin.listUsers({ page, perPage });
-
-    if (error) {
-      throw error;
-    }
-
-    users.push(...(pageUsers ?? []));
-
-    if (!pageUsers || pageUsers.length < perPage) {
-      break;
-    }
-  }
-
-  return users;
+function getDirectoryHref({ page, query, role }) {
+  const params = new URLSearchParams();
+  if (query) params.set("q", query);
+  if (role !== "all") params.set("role", role);
+  if (page > 1) params.set("page", String(page));
+  const suffix = params.toString();
+  return suffix ? `/admin/users?${suffix}` : "/admin/users";
 }
 
-export default async function AdminUsersPage() {
+async function listUsersPage(admin, { page, query, role, perPage = 50 }) {
+  const { data, error } = await admin.rpc("list_admin_user_directory", {
+    p_query: query,
+    p_role: role,
+    p_page: page,
+    p_page_size: perPage,
+  });
+  if (error) throw error;
+  const total = Number(data?.total ?? 0);
+  return {
+    users: Array.isArray(data?.users) ? data.users : [],
+    total,
+    lastPage: Math.max(1, Math.ceil(total / perPage)),
+    perPage,
+  };
+}
+
+export default async function AdminUsersPage({ searchParams }) {
   const cookieStore = await cookies();
   const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
   const t = translations[language] || translations.en;
@@ -94,35 +96,24 @@ export default async function AdminUsersPage() {
     redirect("/");
   }
 
-  const authUsers = await listAllUsers(admin);
-  const profileIds = authUsers.map((authUser) => authUser.id);
-  const [profilesResult, statusResult] = profileIds.length
-    ? await Promise.all([
-        (admin ?? supabase)
-          .from("profiles")
-          .select("id, first_name, last_name, school")
-          .in("id", profileIds),
-        admin
-          .from("user_status")
-          .select("user_id, is_banned, banned_until, ban_reason, updated_at")
-          .in("user_id", profileIds),
-      ])
-    : [
-        { data: [], error: null },
-        { data: [], error: null },
-      ];
-  const { data: profiles, error: profilesError } = profilesResult;
-  const { data: statusRows, error: statusError } = statusResult;
+  const actorStatus = await getUserStatusRow(admin, user.id);
+  if (actorStatus.error || actorStatus.available === false) redirect("/");
+  if (isUserBanned(actorStatus.data)) redirect("/banned");
 
-  if (profilesError) {
-    console.error("Failed to load admin user profiles:", profilesError.message);
+  const params = await searchParams;
+  const requestedPage = Math.min(10000, Math.max(1, Number.parseInt(params?.page, 10) || 1));
+  const query = (params?.q ?? "").replace(/\s+/g, " ").trim().slice(0, 100);
+  const role = ["all", "standard", "admin", "moderator", "staff"].includes(params?.role)
+    ? params.role
+    : "all";
+  let directory;
+  try {
+    directory = await listUsersPage(admin, { page: requestedPage, query, role });
+  } catch (directoryError) {
+    console.error("Failed to load bounded admin user directory:", directoryError?.code ?? "unknown_error");
   }
 
-  if (statusError) {
-    console.error("Failed to load application ban status:", statusError.message);
-  }
-
-  if (statusError || !Array.isArray(statusRows)) {
+  if (!directory) {
     return (
       <main className="min-h-screen bg-zinc-100 p-5 dark:bg-background md:p-6 lg:p-7">
         <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-6">
@@ -147,35 +138,37 @@ export default async function AdminUsersPage() {
     );
   }
 
-  const profilesById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
-  const statusByUserId = new Map(
-    (statusRows ?? []).map((status) => [status.user_id, status]),
-  );
+  if (requestedPage > directory.lastPage) {
+    const normalized = new URLSearchParams();
+    if (query) normalized.set("q", query);
+    if (role !== "all") normalized.set("role", role);
+    normalized.set("page", String(directory.lastPage));
+    redirect(`/admin/users?${normalized}`);
+  }
 
-  const users = authUsers
-    .map((authUser) => {
-      const profile = profilesById.get(authUser.id);
-      const applicationStatus = statusByUserId.get(authUser.id);
-      const role = getUserModerationRole(authUser);
-      const applicationBanActive = isUserBanned(applicationStatus);
-      const legacyAuthBanActive = !applicationStatus && isAuthUserBanned(authUser);
+  const users = directory.users
+    .map((directoryUser) => {
+      const applicationBanActive = isUserBanned(directoryUser);
+      const legacyAuthBanActive = !applicationBanActive && isAuthUserBanned({
+        banned_until: directoryUser.auth_banned_until,
+      });
       const bannedUntil = applicationBanActive
-        ? applicationStatus?.banned_until ?? null
+        ? directoryUser.banned_until ?? null
         : legacyAuthBanActive
-          ? authUser.banned_until
+          ? directoryUser.auth_banned_until
           : null;
 
       return {
-        id: authUser.id,
-        email: authUser.email ?? t.unknown,
-        name: getUserName(profile, t),
-        school: profile?.school ?? t.torontoStudent,
-        role,
-        createdAt: authUser.created_at,
+        id: directoryUser.id,
+        email: directoryUser.email ?? t.unknown,
+        name: getUserName(directoryUser, t),
+        school: directoryUser.school ?? t.torontoStudent,
+        role: directoryUser.moderation_role,
+        createdAt: directoryUser.created_at,
         isBanned: applicationBanActive || legacyAuthBanActive,
         bannedUntil: getBanDisplayUntil(bannedUntil),
-        requiresNameChange: isNameChangeRequired(authUser),
-        profileExists: Boolean(profile),
+        requiresNameChange: directoryUser.force_name_change === true,
+        profileExists: directoryUser.profile_exists === true,
       };
     })
     .sort((firstUser, secondUser) => {
@@ -215,6 +208,15 @@ export default async function AdminUsersPage() {
               users={users}
               currentUserId={user.id}
               currentUserRole={getUserModerationRole(accessUser)}
+              pagination={{
+                page: requestedPage,
+                totalPages: directory.lastPage,
+                total: directory.total,
+                query,
+                role,
+                previousHref: getDirectoryHref({ page: requestedPage - 1, query, role }),
+                nextHref: getDirectoryHref({ page: requestedPage + 1, query, role }),
+              }}
             />
           </div>
         </div>

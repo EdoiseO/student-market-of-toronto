@@ -146,10 +146,10 @@ test("service-backed identity and role writes explicitly verify application stan
     assert.match(source, /status: 403/);
   }
 
-  assert.match(adminUsersPage, /from\("user_status"\)/);
-  assert.match(adminUsersPage, /isUserBanned\(applicationStatus\)/);
+  assert.match(adminUsersPage, /rpc\("list_admin_user_directory"/);
+  assert.match(adminUsersPage, /isUserBanned\(directoryUser\)/);
   assert.match(adminUsersPage, /legacyAuthBanActive/);
-  assert.match(adminUsersPage, /statusError \|\| !Array\.isArray\(statusRows\)/);
+  assert.match(adminUsersPage, /if \(!directory\)/);
   assert.match(adminUsersPage, /adminUsersStatusUnavailableTitle/);
   assert.match(adminUsersPage, /adminUsersStatusUnavailableDescription/);
   assert.match(roleRoute, /getUserStatusRow\(admin, targetUserId\)/);

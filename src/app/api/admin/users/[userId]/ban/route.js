@@ -64,6 +64,24 @@ async function setApplicationBan(moderationClient, input) {
   return result;
 }
 
+async function getBanAuditResult(admin, sanctionId, actorId) {
+  const { data, error } = await admin
+    .from("moderation_audit_events")
+    .select("id, event_type, occurred_at")
+    .eq("sanction_id", sanctionId)
+    .eq("actor_user_id_snapshot", actorId)
+    .order("occurred_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Could not load the application-ban audit result:", error.code ?? "unknown_error");
+  }
+
+  return data ?? null;
+}
+
 export async function POST(request, { params }) {
   try {
     const resolvedParams = await params;
@@ -134,7 +152,7 @@ export async function POST(request, { params }) {
     }
 
     if (targetUserId === accessUser.id) {
-      return NextResponse.json({ error: "You cannot ban your own account." }, { status: 400 });
+      return NextResponse.json({ error: "You cannot change your own ban state." }, { status: 400 });
     }
 
     const targetUser = await getTargetUser(admin, targetUserId);
@@ -151,9 +169,8 @@ export async function POST(request, { params }) {
       const requestId = operationId;
 
       if (
-        revocationReason &&
-        (Array.from(revocationReason).length < 10 ||
-          Array.from(revocationReason).length > 1000)
+        Array.from(revocationReason).length < 10 ||
+        Array.from(revocationReason).length > 1000
       ) {
         return NextResponse.json(
           { error: "Explain the unban reason in 10-1000 characters." },
@@ -164,14 +181,25 @@ export async function POST(request, { params }) {
       const operationResult = await setApplicationBan(supabase, {
         subjectUserId: targetUser.id,
         action: "unban",
-        revocationReason: revocationReason || "Ban revoked by an administrator.",
+        revocationReason,
         requestId,
       });
+      const audit = await getBanAuditResult(
+        admin,
+        operationResult.sanction_id,
+        accessUser.id,
+      );
 
       return NextResponse.json({
         success: true,
         isBanned: operationResult.is_banned,
         bannedUntil: operationResult.banned_until ?? null,
+        sanctionId: operationResult.sanction_id,
+        replayed: operationResult.replayed === true,
+        auditEventId: audit?.id ?? null,
+        auditEventType: audit?.event_type ?? null,
+        auditOccurredAt: audit?.occurred_at ?? null,
+        notificationQueued: true,
       });
     }
 
@@ -201,12 +229,23 @@ export async function POST(request, { params }) {
         userMessage: validatedReason.userMessage,
         requestId: operationId,
       });
+      const audit = await getBanAuditResult(
+        admin,
+        operationResult.sanction_id,
+        accessUser.id,
+      );
 
       return NextResponse.json({
         success: true,
         isBanned: operationResult.is_banned,
         bannedUntil: operationResult.banned_until ?? null,
         reasonCode: validatedReason.reasonCode,
+        sanctionId: operationResult.sanction_id,
+        replayed: operationResult.replayed === true,
+        auditEventId: audit?.id ?? null,
+        auditEventType: audit?.event_type ?? null,
+        auditOccurredAt: audit?.occurred_at ?? null,
+        notificationQueued: true,
       });
     }
   } catch (error) {
