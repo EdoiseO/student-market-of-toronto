@@ -1,98 +1,25 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
-import { getUserModerationRole, isModerationRole } from "@/lib/moderation";
+import { getUserModerationRole } from "@/lib/moderation";
 import {
-  LISTING_APPROVED_NOTIFICATION_TYPE,
-  LISTING_REJECTED_NOTIFICATION_TYPE,
-} from "@/lib/notifications";
+  MODERATION_ACTIONS,
+  canPerformModerationAction,
+} from "@/lib/moderation-policy.mjs";
 import {
   isListingReviewRevisionConflict,
   parseListingContentRevision,
   parseListingSubmissionTimestamp,
 } from "@/lib/listing-integrity.mjs";
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
+import {
+  countUnicodeCodePoints,
+  normalizeWriteText,
+} from "@/lib/write-field-contracts.mjs";
 import { createClient } from "@/utils/supabase/server";
 
-function isListingModerationHistoryMissing(error) {
-  const message = [error?.message, error?.details, error?.hint]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-
-  return (
-    error?.code === "42P01" ||
-    error?.code === "PGRST205" ||
-    message.includes("listing_moderation_history")
-  );
-}
-
-function isListingDecisionNotificationUnsupported(error) {
-  const message = [error?.message, error?.details, error?.hint]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-
-  return (
-    error?.code === "23514" ||
-    error?.code === "22P02" ||
-    message.includes("listing_approved") ||
-    message.includes("listing_rejected") ||
-    (message.includes("notifications") && message.includes("type"))
-  );
-}
-
-async function insertModerationHistory(admin, listingId, action, feedback, decidedBy, decidedAt) {
-  const { error } = await admin.from("listing_moderation_history").insert({
-    listing_id: listingId,
-    action,
-    feedback,
-    decided_by: decidedBy,
-    decided_at: decidedAt,
-  });
-
-  if (error && !isListingModerationHistoryMissing(error)) {
-    throw error;
-  }
-}
-
-async function insertListingDecisionNotification(admin, listing, action, feedback) {
-  if (!listing?.seller_id) {
-    return false;
-  }
-
-  const type = action === "approved"
-    ? LISTING_APPROVED_NOTIFICATION_TYPE
-    : LISTING_REJECTED_NOTIFICATION_TYPE;
-
-  const metadata = {
-    listing_title: listing.title,
-    listing_slug: listing.slug,
-    href: "/dashboard",
-  };
-
-  if (action === "rejected" && feedback) {
-    metadata.feedback = feedback;
-  }
-
-  const { error } = await admin.from("notifications").insert({
-    user_id: listing.seller_id,
-    type,
-    listing_id: listing.id,
-    metadata,
-  });
-
-  if (error) {
-    if (isListingDecisionNotificationUnsupported(error)) {
-      console.error("Listing decision notification type is not enabled yet:", error.message);
-      return false;
-    }
-
-    throw error;
-  }
-
-  return true;
-}
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export async function POST(request, { params }) {
   try {
@@ -126,13 +53,19 @@ export async function POST(request, { params }) {
       );
     }
 
-    if (!isModerationRole(getUserModerationRole(moderationUser))) {
-      return NextResponse.json({ error: "Moderator role required" }, { status: 403 });
+    if (
+      !canPerformModerationAction(
+        getUserModerationRole(moderationUser),
+        MODERATION_ACTIONS.decideListings,
+      )
+    ) {
+      return NextResponse.json({ error: "Listing decision permission required." }, { status: 403 });
     }
 
     const {
       action,
       feedback,
+      operationId,
       expectedContentRevision,
       expectedSubmittedForReviewAt,
     } = await request.json();
@@ -142,11 +75,18 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: "Missing listing id." }, { status: 400 });
     }
 
+    if (typeof operationId !== "string" || !UUID_PATTERN.test(operationId.trim())) {
+      return NextResponse.json(
+        { error: "A valid moderation operation id is required." },
+        { status: 400 },
+      );
+    }
+
     if (action !== "approved" && action !== "rejected") {
       return NextResponse.json({ error: "Unsupported moderation action." }, { status: 400 });
     }
 
-    const sellerFeedback = typeof feedback === "string" ? feedback.trim() : "";
+    const sellerFeedback = normalizeWriteText(feedback);
     const reviewedContentRevision = parseListingContentRevision(expectedContentRevision);
     const reviewedSubmissionTimestamp = parseListingSubmissionTimestamp(
       expectedSubmittedForReviewAt,
@@ -159,22 +99,25 @@ export async function POST(request, { params }) {
       );
     }
 
-    if (action === "rejected" && (!sellerFeedback || sellerFeedback.length > 3000)) {
+    if (
+      countUnicodeCodePoints(sellerFeedback) > 3000 ||
+      (action === "rejected" && !sellerFeedback)
+    ) {
       return NextResponse.json(
         { error: "Seller feedback is required when rejecting a listing." },
         { status: 400 },
       );
     }
 
-    const { data: decisionResult, error: decisionError } = await admin.rpc(
-      "decide_listing_moderation",
+    const { data: decisionResult, error: decisionError } = await supabase.rpc(
+      "decide_listing_moderation_with_rationale",
       {
         p_listing_id: listingId,
         p_expected_content_revision: reviewedContentRevision,
         p_expected_submitted_for_review_at: reviewedSubmissionTimestamp,
         p_action: action,
-        p_feedback: action === "rejected" ? sellerFeedback : null,
-        p_moderator_id: moderationUser.id,
+        p_feedback: sellerFeedback || null,
+        p_request_id: operationId.trim(),
       },
     );
 
@@ -201,7 +144,6 @@ export async function POST(request, { params }) {
       throw new Error("listing_decision_failed");
     }
 
-    const decidedAt = updatedListing.moderation_reviewed_at;
     const nextStatus = action === "approved" ? "active" : "rejected";
 
     if (updatedListing.status !== nextStatus) {
@@ -210,41 +152,18 @@ export async function POST(request, { params }) {
       );
     }
 
-    try {
-      await insertModerationHistory(
-        admin,
-        listingId,
-        action,
-        action === "rejected" ? sellerFeedback : null,
-        moderationUser.id,
-        decidedAt,
-      );
-    } catch (error) {
-      throw new Error(`listing_history_failed: ${error.message}`);
-    }
-
-    let notificationSent = false;
-
-    try {
-      notificationSent = await insertListingDecisionNotification(
-        admin,
-        updatedListing,
-        action,
-        action === "rejected" ? sellerFeedback : null,
-      );
-    } catch (error) {
-      throw new Error(`listing_notification_failed: ${error.message}`);
-    }
-
     return NextResponse.json({
       success: true,
       nextStatus,
-      notificationSent,
+      // The trusted RPC inserts this notification in the same transaction as
+      // the listing decision. A successful response therefore means the
+      // durable output exists, including on exact operation replay.
+      notificationSent: true,
     });
   } catch (error) {
     console.error("Failed to moderate listing decision:", error?.message ?? error);
     return NextResponse.json(
-      { error: error?.message ?? "Could not update this listing approval right now." },
+      { error: "Could not update this listing approval right now." },
       { status: 500 },
     );
   }

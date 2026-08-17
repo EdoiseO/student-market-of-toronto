@@ -1,8 +1,8 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-export function ProfileSettingsSkeleton() {
+export function ProfileSettingsSkeleton({ label = "Loading profile settings" }) {
   return (
-    <div aria-hidden="true" className="flex flex-col gap-3 md:gap-8">
+    <div aria-busy="true" aria-label={label} className="flex flex-col gap-3 md:gap-8">
       <section className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border md:rounded-3xl md:p-8">
         <Skeleton className="h-7 w-40 md:h-10 md:w-52" />
         <Skeleton className="mt-2 h-3 w-full max-w-3xl md:mt-3 md:h-4" />
@@ -36,7 +36,8 @@ export function ProfileSettingsSkeleton() {
             <Skeleton className="mt-2 h-3 w-full max-w-xl md:mt-3 md:h-4" />
           </div>
           <div className="space-y-3 px-4 py-3 md:space-y-6 md:px-6 md:py-8">
-            <div className="grid grid-cols-2 gap-3 md:max-w-[70%] md:gap-4">
+            <Skeleton className="h-3 w-28" />
+            <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 md:max-w-[70%] md:gap-4">
               {Array.from({ length: 2 }, (_, index) => (
                 <div key={index} className="space-y-2">
                   <Skeleton className="h-4 w-24" />

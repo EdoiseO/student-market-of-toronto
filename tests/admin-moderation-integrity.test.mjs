@@ -102,7 +102,7 @@ test("reconciliation migration retires the legacy workflow and restores the revi
   );
 });
 
-test("privileged admin routes fail closed and report announcement side-effect failures", async () => {
+test("privileged admin routes fail closed and announcements use durable delivery state", async () => {
   const [roleRoute, banRoute, announcementRoute, usersPage] = await Promise.all([
     readFile(new URL("../src/app/api/admin/users/[userId]/role/route.js", import.meta.url), "utf8"),
     readFile(new URL("../src/app/api/admin/users/[userId]/ban/route.js", import.meta.url), "utf8"),
@@ -116,7 +116,27 @@ test("privileged admin routes fail closed and report announcement side-effect fa
 
   assert.match(roleRoute, /targetRole === "admin"/);
   assert.match(roleRoute, /Admin transfer rollback failed/);
-  assert.match(banRoute, /Auth ban rollback failed/);
-  assert.match(announcementRoute, /failureCount: failedDeliveries\.length/);
+  assert.match(roleRoute, /getUserStatusRow\(admin, targetUserId\)/);
+  assert.match(roleRoute, /isUserBanned\(targetStatusResult\.data\)/);
+  assert.match(banRoute, /set_application_moderation_ban/);
+  assert.match(
+    banRoute,
+    /action === "ban" && getUserModerationRole\(targetUser\) === "admin"/,
+  );
+  assert.doesNotMatch(banRoute, /ban_duration|updateUserById/);
+  assert.match(announcementRoute, /failureCount: latest\.failedCount/);
+  assert.match(announcementRoute, /queued: latest\.status === "sending"/);
+  assert.match(announcementRoute, /enqueueAnnouncementAudience/);
+  assert.match(announcementRoute, /runAnnouncementDeliveryWorker/);
+  assert.match(announcementRoute, /create_and_start_announcement/);
+  assert.match(announcementRoute, /create_announcement_draft_idempotent/);
+  assert.match(announcementRoute, /execute_announcement_lifecycle_command/);
+  assert.doesNotMatch(announcementRoute, /requireRpc\(admin, "transition_announcement"/);
+  assert.doesNotMatch(announcementRoute, /requireRpc\(admin, "retry_failed_announcement"/);
+  assert.match(announcementRoute, /operationId/);
+  assert.doesNotMatch(announcementRoute, /\.from\("(?:conversations|messages|notifications)"\)\.insert/);
   assert.match(usersPage, /getUserModerationRole\(accessUser\) !== "admin"/);
+  assert.match(usersPage, /list_admin_user_directory/);
+  assert.match(usersPage, /if \(!directory\)/);
+  assert.match(usersPage, /adminUsersStatusUnavailableTitle/);
 });

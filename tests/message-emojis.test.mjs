@@ -44,7 +44,7 @@ test("replaces the active textarea selection", () => {
   assert.equal(result.selectionEnd, 10);
 });
 
-test("rejects insertion when the resulting message exceeds the character limit", () => {
+test("counts emoji as one code point at the message character limit", () => {
   const result = insertMessageEmoji({
     value: "1234",
     emoji: "😀",
@@ -53,8 +53,17 @@ test("rejects insertion when the resulting message exceeds the character limit",
     maxLength: 5,
   });
 
-  assert.equal(result.inserted, false);
-  assert.equal(result.value, "1234");
+  assert.equal(result.inserted, true);
+  assert.equal(result.value, "1234😀");
+
+  const overLimit = insertMessageEmoji({
+    value: "😀".repeat(5),
+    emoji: "😀",
+    selectionStart: 10,
+    selectionEnd: 10,
+    maxLength: 5,
+  });
+  assert.equal(overLimit.inserted, false);
 });
 
 test("clamps stale selection positions to the current message", () => {

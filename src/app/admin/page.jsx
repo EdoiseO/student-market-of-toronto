@@ -1,53 +1,50 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AlertTriangle, Ban, CircleAlert, Clock3, FileWarning, Gavel, MessageSquareOff, ShieldAlert } from "lucide-react";
 
-import { AdminAnnouncementSheet } from "@/components/admin-announcement-sheet";
-import { AdminModerationDashboard } from "@/components/admin-moderation-dashboard";
+import { ClientFormattedDateTime } from "@/components/client-formatted-date-time";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  MODERATION_REPORT_SELECT,
-  REPORT_SUBJECT_TYPES,
-  getModerationDisplayName,
-  getUserModerationRole,
-  isModerationRole,
-  isReportsTableMissing,
-} from "@/lib/moderation";
-import {
-  LISTING_APPROVAL_STATUS_VALUES,
-  isPendingListingApproval,
-  isListingApprovalSetupMissing,
-} from "@/lib/listing-approval";
+import { getUserModerationRole } from "@/lib/moderation";
+import { MODERATION_ACTIONS, canPerformModerationAction } from "@/lib/moderation-policy.mjs";
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { translations } from "@/lib/translations";
+import { getUserStatusRow, isUserBanned } from "@/lib/user-status";
 import { createClient } from "@/utils/supabase/server";
 
-function buildIdList(values) {
-  return [...new Set(values.filter(Boolean))];
+const ATTENTION_LIMIT = 4;
+const TIMELINE_LIMIT = 10;
+
+async function countQuery(query, label) {
+  const { count, error } = await query;
+  if (error) {
+    console.error(`Failed to load ${label}:`, error.message);
+    return { value: null, available: false };
+  }
+  return { value: count ?? 0, available: true };
 }
 
-function buildProfileMap(rows) {
-  return new Map((rows ?? []).map((row) => [row.id, row]));
+async function rowsQuery(query, label) {
+  const { data, error } = await query;
+  if (error) {
+    console.error(`Failed to load ${label}:`, error.message);
+    return [];
+  }
+  return data ?? [];
 }
 
-function buildListingMap(rows) {
-  return new Map((rows ?? []).map((row) => [row.id, row]));
+function MetricCard({ icon: Icon, label, metric, href }) {
+  return (
+    <Link href={href} className="group min-w-0 rounded-2xl border border-border bg-card p-4 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</span>
+        <Icon className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
+      </div>
+      <p className="mt-2 text-2xl font-semibold tabular-nums text-foreground">{metric.available ? metric.value : "—"}</p>
+    </Link>
+  );
 }
-
-function buildMessageMap(rows) {
-  return new Map((rows ?? []).map((row) => [row.id, row]));
-}
-
-const ADMIN_REPORTS_FETCH_LIMIT = 500;
-const ADMIN_PENDING_LISTING_APPROVALS_FETCH_LIMIT = 250;
-const ADMIN_RECENT_LISTING_DECISIONS_FETCH_LIMIT = 250;
 
 export default async function AdminPage() {
   const cookieStore = await cookies();
@@ -55,301 +52,82 @@ export default async function AdminPage() {
   const t = translations[language] || translations.en;
   const supabase = createClient(cookieStore);
   const admin = createAdminClient();
-  const dataClient = admin ?? supabase;
+  const { data: { user } } = await supabase.auth.getUser();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  if (!admin) redirect("/");
 
-  if (!user) {
-    redirect("/login");
-  }
+  const accessUser = await getLatestAuthUser(admin, user.id, "admin overview access");
+  const role = getUserModerationRole(accessUser);
+  if (!accessUser || !canPerformModerationAction(role, MODERATION_ACTIONS.viewDashboard)) redirect("/");
+  const actorStatus = await getUserStatusRow(admin, user.id);
+  if (actorStatus.error || actorStatus.available === false) redirect("/");
+  if (isUserBanned(actorStatus.data)) redirect("/banned");
 
-  const accessUser = admin
-    ? await getLatestAuthUser(admin, user.id, "admin dashboard access")
-    : user;
-  const userRole = getUserModerationRole(accessUser);
+  const canReadReports = canPerformModerationAction(role, MODERATION_ACTIONS.readReports);
+  const canReadListings = canPerformModerationAction(role, MODERATION_ACTIONS.readListings);
+  const canReadUsers = canPerformModerationAction(role, MODERATION_ACTIONS.readUsers);
+  const canReadConversations = canPerformModerationAction(role, MODERATION_ACTIONS.readConversations);
+  const canReadAudit = canPerformModerationAction(role, MODERATION_ACTIONS.readAuditLog);
+  const now = new Date().toISOString();
+  const unavailable = { value: null, available: false };
 
-  if (!accessUser || !isModerationRole(userRole)) {
-    redirect("/");
-  }
-
-  const { data: reportRows, error: reportsError } = await dataClient
-    .from("reports")
-    .select(MODERATION_REPORT_SELECT)
-    .order("created_at", { ascending: false })
-    .limit(ADMIN_REPORTS_FETCH_LIMIT);
-
-  if (reportsError && !isReportsTableMissing(reportsError)) {
-    console.error("Failed to load moderation reports:", reportsError.message);
-  }
-
-  const reportsAvailable = !isReportsTableMissing(reportsError);
-
-  const profileIds = buildIdList([
-    ...(reportRows ?? []).map((report) => report.reporter_user_id),
-    ...(reportRows ?? []).map((report) => report.reported_user_id),
-    ...(reportRows ?? []).map((report) => report.reviewed_by),
-    ...(reportRows ?? [])
-      .filter((report) => report.subject_type === REPORT_SUBJECT_TYPES.profile)
-      .map((report) => report.subject_id),
-  ]);
-  const listingIds = buildIdList((reportRows ?? []).map((report) => report.listing_id));
-  const messageIds = buildIdList((reportRows ?? []).map((report) => report.message_id));
-
-  const [profilesResult, listingsResult, messagesResult] = reportsAvailable
-    ? await Promise.all([
-        profileIds.length > 0
-          ? dataClient
-              .from("profiles")
-              .select("id, first_name, last_name")
-              .in("id", profileIds)
-          : Promise.resolve({ data: [], error: null }),
-        listingIds.length > 0
-          ? dataClient
-              .from("listings")
-              .select("id, title, slug, status")
-              .in("id", listingIds)
-          : Promise.resolve({ data: [], error: null }),
-        messageIds.length > 0
-          ? dataClient
-              .from("messages")
-              .select("id, body, sender_id, created_at")
-              .in("id", messageIds)
-          : Promise.resolve({ data: [], error: null }),
-      ])
-    : [
-        { data: [], error: null },
-        { data: [], error: null },
-        { data: [], error: null },
-      ];
-
-  if (profilesResult.error) {
-    console.error("Failed to load moderation profiles:", profilesResult.error.message);
-  }
-
-  if (listingsResult.error) {
-    console.error("Failed to load moderation listings:", listingsResult.error.message);
-  }
-
-  if (messagesResult.error) {
-    console.error("Failed to load moderation messages:", messagesResult.error.message);
-  }
-
-  const profilesById = buildProfileMap(profilesResult.data ?? []);
-  const listingsById = buildListingMap(listingsResult.data ?? []);
-  const messagesById = buildMessageMap(messagesResult.data ?? []);
-
-  const reports = (reportRows ?? []).map((report) => ({
-    id: report.id,
-    subjectType: report.subject_type,
-    conversationId: report.conversation_id,
-    reason: report.reason,
-    details: report.details,
-    status: report.status,
-    createdAt: report.created_at,
-    reviewedAt: report.reviewed_at,
-    reporter: {
-      id: report.reporter_user_id,
-      name: getModerationDisplayName(profilesById.get(report.reporter_user_id), t),
-    },
-    reportedUser: {
-      id: report.reported_user_id,
-      name: getModerationDisplayName(profilesById.get(report.reported_user_id), t),
-    },
-    reviewedBy: report.reviewed_by
-      ? {
-          id: report.reviewed_by,
-          name: getModerationDisplayName(profilesById.get(report.reviewed_by), t),
-        }
-      : null,
-    profile:
-      report.subject_type === REPORT_SUBJECT_TYPES.profile
-        ? {
-            id: report.subject_id,
-            name: getModerationDisplayName(profilesById.get(report.subject_id), t),
-          }
-        : null,
-    listing: report.listing_id
-      ? listingsById.get(report.listing_id)
-        ? {
-            id: report.listing_id,
-            title: listingsById.get(report.listing_id).title,
-            slug: listingsById.get(report.listing_id).slug,
-            status: listingsById.get(report.listing_id).status,
-          }
-        : null
-      : null,
-    message: report.message_id
-      ? messagesById.get(report.message_id)
-        ? {
-            id: report.message_id,
-            body: messagesById.get(report.message_id).body,
-            createdAt: messagesById.get(report.message_id).created_at,
-          }
-        : null
-      : null,
-  }));
-
-  let listingApprovalAvailable = true;
-  let pendingListingRows = [];
-  let recentListingDecisionRows = [];
-
-  const [pendingListingResult, recentListingDecisionResult] = await Promise.all([
-    dataClient
-      .from("listings")
-      .select(
-        `
-          id,
-          seller_id,
-          slug,
-          title,
-          status,
-          location,
-          submitted_for_review_at,
-          moderation_feedback,
-          moderation_reviewed_at,
-          moderation_reviewed_by
-        `,
-      )
-      .eq("status", LISTING_APPROVAL_STATUS_VALUES.pendingReview)
-      .not("submitted_for_review_at", "is", null)
-      .order("submitted_for_review_at", { ascending: false })
-      .limit(ADMIN_PENDING_LISTING_APPROVALS_FETCH_LIMIT),
-    dataClient
-      .from("listings")
-      .select(
-        `
-          id,
-          seller_id,
-          slug,
-          title,
-          status,
-          location,
-          submitted_for_review_at,
-          moderation_feedback,
-          moderation_reviewed_at,
-          moderation_reviewed_by
-        `,
-      )
-      .in("status", ["active", LISTING_APPROVAL_STATUS_VALUES.rejected])
-      .not("moderation_reviewed_at", "is", null)
-      .order("moderation_reviewed_at", { ascending: false })
-      .limit(ADMIN_RECENT_LISTING_DECISIONS_FETCH_LIMIT),
+  const [openReports, pendingListings, activeStrikes, unacknowledgedWarnings, closedChats, activeRestrictions] = await Promise.all([
+    canReadReports ? countQuery(admin.from("reports").select("id", { count: "exact", head: true }).eq("status", "open"), "open report count") : unavailable,
+    canReadListings ? countQuery(admin.from("listings").select("id", { count: "exact", head: true }).eq("status", "inactive").not("submitted_for_review_at", "is", null), "pending listing count") : unavailable,
+    canReadUsers ? countQuery(admin.from("moderation_sanctions").select("id", { count: "exact", head: true }).eq("sanction_type", "strike").is("revoked_at", null).or(`expires_at.is.null,expires_at.gt.${now}`), "active strike count") : unavailable,
+    canReadUsers ? countQuery(admin.from("moderation_sanctions").select("id", { count: "exact", head: true }).eq("sanction_type", "warning").eq("acknowledgement_required", true).is("acknowledged_at", null).is("revoked_at", null).or(`expires_at.is.null,expires_at.gt.${now}`), "unacknowledged warning count") : unavailable,
+    canReadConversations ? countQuery(admin.from("conversation_effective_moderation_state").select("conversation_id", { count: "exact", head: true }).eq("effective_status", "closed"), "closed conversation count") : unavailable,
+    canReadUsers ? countQuery(admin.from("moderation_sanctions").select("id", { count: "exact", head: true }).is("revoked_at", null).neq("restrictions", "{}").or(`expires_at.is.null,expires_at.gt.${now}`), "active restriction count") : unavailable,
   ]);
 
-  if (pendingListingResult.error || recentListingDecisionResult.error) {
-    const listingApprovalError = pendingListingResult.error ?? recentListingDecisionResult.error;
-
-    if (isListingApprovalSetupMissing(listingApprovalError)) {
-      listingApprovalAvailable = false;
-    } else if (listingApprovalError) {
-      console.error("Failed to load listing approval queue:", listingApprovalError.message);
-    }
-  } else {
-    pendingListingRows = pendingListingResult.data ?? [];
-    recentListingDecisionRows = recentListingDecisionResult.data ?? [];
-  }
-
-  const listingApprovalProfileIds = buildIdList([
-    ...pendingListingRows.map((listing) => listing.seller_id),
-    ...pendingListingRows.map((listing) => listing.moderation_reviewed_by),
-    ...recentListingDecisionRows.map((listing) => listing.seller_id),
-    ...recentListingDecisionRows.map((listing) => listing.moderation_reviewed_by),
+  const [reportRows, listingRows, reviewRows, conversationRows, auditRows] = await Promise.all([
+    canReadReports ? rowsQuery(admin.from("reports").select("id, subject_type, reason, created_at").eq("status", "open").order("created_at", { ascending: false }).limit(ATTENTION_LIMIT), "report attention queue") : [],
+    canReadListings ? rowsQuery(admin.from("listings").select("id, title, submitted_for_review_at").eq("status", "inactive").not("submitted_for_review_at", "is", null).order("submitted_for_review_at", { ascending: true, nullsFirst: false }).limit(ATTENTION_LIMIT), "listing attention queue") : [],
+    canReadUsers ? rowsQuery(admin.from("moderation_sanctions").select("id, subject_user_id_snapshot, sanction_type, review_requested_at").eq("review_status", "pending").order("review_requested_at", { ascending: true }).limit(ATTENTION_LIMIT), "review attention queue") : [],
+    canReadConversations ? rowsQuery(admin.from("conversation_effective_moderation_state").select("conversation_id, closed_until, changed_at").eq("effective_status", "closed").order("changed_at", { ascending: false }).limit(ATTENTION_LIMIT), "conversation attention queue") : [],
+    canReadAudit ? rowsQuery(admin.from("moderation_audit_events").select("id, event_type, summary, occurred_at").order("occurred_at", { ascending: false }).order("id", { ascending: false }).limit(TIMELINE_LIMIT), "moderation audit timeline") : [],
   ]);
 
-  const { data: listingApprovalProfiles, error: listingApprovalProfilesError } =
-    listingApprovalAvailable && listingApprovalProfileIds.length > 0
-      ? await dataClient
-          .from("profiles")
-          .select("id, first_name, last_name")
-          .in("id", listingApprovalProfileIds)
-      : { data: [], error: null };
+  const attention = [
+    ...reportRows.map((row) => ({ id: `report:${row.id}`, title: row.reason, description: row.subject_type, href: `/admin/reports/${row.id}`, createdAt: row.created_at, kind: t.adminAttentionReport })),
+    ...listingRows.map((row) => ({ id: `listing:${row.id}`, title: row.title ?? t.listing, description: t.adminAttentionListing, href: `/admin/listings/${row.id}`, createdAt: row.submitted_for_review_at, kind: t.adminAttentionListing })),
+    ...reviewRows.map((row) => ({ id: `review:${row.id}`, title: `${row.sanction_type} · ${row.subject_user_id_snapshot}`, description: t.adminAttentionAppeal, href: `/admin/users/${row.subject_user_id_snapshot}`, createdAt: row.review_requested_at, kind: t.adminAttentionAppeal })),
+    ...conversationRows.map((row) => ({ id: `conversation:${row.conversation_id}`, title: t.adminAttentionClosedChat, description: row.closed_until ? t.adminAttentionTemporaryClose : t.adminAttentionIndefiniteClose, href: `/admin/conversations/${row.conversation_id}`, createdAt: row.changed_at, kind: t.adminAttentionClosedChat })),
+  ].sort((a, b) => new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime()).slice(0, 12);
 
-  if (listingApprovalProfilesError) {
-    console.error(
-      "Failed to load listing approval profiles:",
-      listingApprovalProfilesError.message,
-    );
-  }
-
-  const listingApprovalProfilesById = buildProfileMap(listingApprovalProfiles ?? []);
-
-  function normalizeApprovalListing(listing) {
-    const isPendingReview = isPendingListingApproval({
-      status: listing.status,
-      submitted_for_review_at: listing.submitted_for_review_at,
-      moderation_reviewed_at: listing.moderation_reviewed_at,
-    });
-
-    return {
-      id: listing.id,
-      slug: listing.slug,
-      title: listing.title ?? t.listing,
-      status: listing.status,
-      queueAt:
-        isPendingReview
-          ? listing.submitted_for_review_at ?? listing.moderation_reviewed_at
-          : listing.moderation_reviewed_at ?? listing.submitted_for_review_at,
-      moderationFeedback: listing.moderation_feedback ?? null,
-      submittedForReviewAt: listing.submitted_for_review_at ?? null,
-      moderationReviewedAt: listing.moderation_reviewed_at ?? null,
-      isPendingReview,
-      seller: {
-        id: listing.seller_id,
-        name: getModerationDisplayName(listingApprovalProfilesById.get(listing.seller_id), t),
-      },
-      reviewedBy: listing.moderation_reviewed_by
-        ? {
-            id: listing.moderation_reviewed_by,
-            name: getModerationDisplayName(
-              listingApprovalProfilesById.get(listing.moderation_reviewed_by),
-              t,
-            ),
-          }
-        : null,
-    };
-  }
-
-  const pendingListingApprovals = pendingListingRows.map(normalizeApprovalListing);
-  const recentListingDecisions = recentListingDecisionRows.map(normalizeApprovalListing);
+  const metrics = [
+    canReadReports && { icon: FileWarning, label: t.adminMetricOpenReports, metric: openReports, href: "/admin/reports" },
+    canReadListings && { icon: Clock3, label: t.adminMetricPendingListings, metric: pendingListings, href: "/admin/listings" },
+    canReadUsers && { icon: Gavel, label: t.adminMetricActiveStrikes, metric: activeStrikes, href: "/admin/enforcement?type=strike&status=active" },
+    canReadUsers && { icon: CircleAlert, label: t.adminMetricUnackWarnings, metric: unacknowledgedWarnings, href: "/admin/enforcement?type=warning&status=active" },
+    canReadConversations && { icon: MessageSquareOff, label: t.adminMetricClosedChats, metric: closedChats, href: "/admin/conversations?status=closed" },
+    canReadUsers && { icon: Ban, label: t.adminMetricActiveRestrictions, metric: activeRestrictions, href: "/admin/enforcement?status=active" },
+  ].filter(Boolean);
 
   return (
-    <main className="min-h-screen bg-zinc-100 p-5 dark:bg-background md:p-6 lg:p-7">
-      <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 @container/main">
-        <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-          <CardHeader className="border-b border-zinc-200 px-5 py-5 dark:border-border md:px-6 lg:px-7">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <CardTitle className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-foreground md:text-3xl lg:text-4xl">
-                  {t.adminDashboard}
-                </CardTitle>
-                <CardDescription className="mt-2 max-w-3xl text-base text-zinc-600 dark:text-muted-foreground">
-                  {t.adminReportsDescription}
-                </CardDescription>
-              </div>
+    <main className="min-h-screen bg-zinc-100 p-3 dark:bg-background sm:p-5 md:p-6">
+      <div className="mx-auto w-full max-w-[1360px] space-y-5">
+        <header className="rounded-3xl border border-border bg-card p-5 shadow-sm sm:p-6">
+          <Badge variant="secondary" className="rounded-full">{t.adminOverview}</Badge>
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="min-w-0"><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t.adminDashboard}</h1><p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{t.adminOverviewDescription}</p></div>
+            {role === "admin" ? <Button asChild className="w-full rounded-xl sm:w-auto"><Link href="/admin/announcements">{t.adminCreateAnnouncement}</Link></Button> : null}
+          </div>
+        </header>
 
-              {userRole === "admin" && (
-                <div className="flex flex-wrap gap-2">
-                  <AdminAnnouncementSheet />
-                  <Button asChild variant="outline" className="rounded-xl">
-                    <Link href="/admin/users">{t.adminUsers}</Link>
-                  </Button>
-                </div>
-              )}
+        <section aria-labelledby="admin-metrics-title"><h2 id="admin-metrics-title" className="sr-only">{t.adminMetricsTitle}</h2><div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">{metrics.map((metric) => <MetricCard key={metric.label} {...metric} />)}</div></section>
+
+        <div className={canReadAudit ? "grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,.75fr)]" : "grid gap-5"}>
+          <section className="min-w-0 rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-5" aria-labelledby="attention-title">
+            <div className="flex items-center gap-2"><AlertTriangle className="size-5" /><h2 id="attention-title" className="text-lg font-semibold">{t.adminNeedsAttention}</h2></div><p className="mt-1 text-sm text-muted-foreground">{t.adminNeedsAttentionDescription}</p>
+            <div className="mt-4 space-y-2">
+              {attention.length ? attention.map((item) => <Link key={item.id} href={item.href} className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-border p-3 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><div className="min-w-0"><p className="truncate text-sm font-medium">{item.title}</p><p className="truncate text-xs text-muted-foreground">{item.description}</p></div><div className="shrink-0 text-right"><Badge variant="outline" className="max-w-28 truncate">{item.kind}</Badge><ClientFormattedDateTime value={item.createdAt} language={language} className="mt-1 block text-[11px] text-muted-foreground" /></div></Link>) : <div className="rounded-2xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">{t.adminNeedsAttentionEmpty}</div>}
             </div>
-          </CardHeader>
+          </section>
 
-          <CardContent className="space-y-6 p-5 md:p-8 md:pt-6">
-            <AdminModerationDashboard
-              initialReports={reports}
-              reportsAvailable={reportsAvailable}
-              pendingListingApprovals={pendingListingApprovals}
-              recentListingDecisions={recentListingDecisions}
-              listingApprovalAvailable={listingApprovalAvailable}
-            />
-          </CardContent>
-        </Card>
+          {canReadAudit ? <section className="min-w-0 rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-5" aria-labelledby="timeline-title"><div className="flex items-center justify-between gap-2"><div className="flex items-center gap-2"><ShieldAlert className="size-5" /><h2 id="timeline-title" className="text-lg font-semibold">{t.adminRecentEnforcement}</h2></div><Button asChild variant="ghost" size="sm"><Link href="/admin/audit">{t.viewAll}</Link></Button></div><div className="mt-4 space-y-3">{auditRows.length ? auditRows.map((event) => <div key={event.id} className="border-l-2 border-border pl-3"><p className="text-sm font-medium">{event.summary}</p><p className="mt-0.5 text-xs text-muted-foreground">{event.event_type} · <ClientFormattedDateTime value={event.occurred_at} language={language} /></p></div>) : <p className="text-sm text-muted-foreground">{t.adminRecentEnforcementEmpty}</p>}</div></section> : null}
+        </div>
       </div>
     </main>
   );

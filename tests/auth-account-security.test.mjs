@@ -112,12 +112,11 @@ test("profile identity is email-derived and writable only through trusted server
   }
   assert.doesNotMatch(layout, /sync profile from auth metadata/i);
   assert.doesNotMatch(profileForm, /school:\s*normalizedSchool/);
-  assert.match(nameRoute, /admin\.from\("profiles"\)\.upsert/);
+  assert.match(nameRoute, /getProfileNameFingerprint\(/);
+  assert.match(nameRoute, /admin\.rpc\(\s*["']save_profile_identity_from_server["']/);
+  assert.doesNotMatch(nameRoute, /admin\.from\("profiles"\)\.(?:upsert|update|insert)/);
+  assert.doesNotMatch(nameRoute, /auth\.admin\.updateUserById/);
   assert.doesNotMatch(nameRoute, /user_metadata:/);
-  assert.match(nameRoute, /force_name_change:\s*null/);
-  assert.doesNotMatch(nameRoute, /delete nextAppMetadata\.force_name_change/);
-  assert.doesNotMatch(nameRoute, /delete nextAppMetadata\[REJECTED_PROFILE_NAME_FINGERPRINT_KEY\]/);
-  assert.match(nameRoute, /getRejectedProfileNameFingerprints\(/);
   assert.doesNotMatch(reportActions, /user_metadata:/);
   assert.match(reportActions, /appendRejectedProfileNameFingerprint\(/);
 });

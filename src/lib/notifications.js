@@ -1,5 +1,6 @@
 export const MESSAGE_NOTIFICATION_TYPE = "messages";
 export const LEGACY_MESSAGE_NOTIFICATION_TYPE = "message";
+export const ANNOUNCEMENT_NOTIFICATION_TYPE = "announcement";
 export const SOLD_NOTIFICATION_TYPE = "sold";
 export const FAVOURITE_NOTIFICATION_TYPE = "favourite";
 
@@ -9,11 +10,20 @@ export const FAVOURITE_PRICE_CHANGE_NOTIFICATION_TYPE = "favourite_price_change"
 export const LISTING_SOLD_NOTIFICATION_TYPE = "listing_sold";
 export const LISTING_APPROVED_NOTIFICATION_TYPE = "listing_approved";
 export const LISTING_REJECTED_NOTIFICATION_TYPE = "listing_rejected";
+export const LISTING_REMOVED_NOTIFICATION_TYPE = "listing_removed";
 export const MODERATOR_ROLE_GRANTED_NOTIFICATION_TYPE = "moderator_role_granted";
+export const MODERATION_WARNING_NOTIFICATION_TYPE = "moderation_warning";
+export const MODERATION_STRIKE_NOTIFICATION_TYPE = "moderation_strike";
+export const MODERATION_BAN_NOTIFICATION_TYPE = "moderation_ban";
+export const MODERATION_REVIEW_UPDATE_NOTIFICATION_TYPE = "moderation_review_update";
+export const CONVERSATION_CLOSED_NOTIFICATION_TYPE = "conversation_closed";
+export const CONVERSATION_REOPENED_NOTIFICATION_TYPE = "conversation_reopened";
+export const PROFILE_NAME_CHANGE_REQUIRED_NOTIFICATION_TYPE = "profile_name_change_required";
 
 export const MESSAGE_NOTIFICATION_ROW_TYPES = [
   LEGACY_MESSAGE_NOTIFICATION_TYPE,
   MESSAGE_NOTIFICATION_TYPE,
+  ANNOUNCEMENT_NOTIFICATION_TYPE,
 ];
 
 export const FAVOURITE_NOTIFICATION_ROW_TYPES = [
@@ -28,7 +38,22 @@ export const LISTING_UPDATE_NOTIFICATION_ROW_TYPES = [
   LISTING_REJECTED_NOTIFICATION_TYPE,
 ];
 
-export const ALWAYS_ON_NOTIFICATION_ROW_TYPES = [MODERATOR_ROLE_GRANTED_NOTIFICATION_TYPE];
+export const ENFORCEMENT_NOTIFICATION_ROW_TYPES = [
+  MODERATION_WARNING_NOTIFICATION_TYPE,
+  MODERATION_STRIKE_NOTIFICATION_TYPE,
+  MODERATION_BAN_NOTIFICATION_TYPE,
+  MODERATION_REVIEW_UPDATE_NOTIFICATION_TYPE,
+  CONVERSATION_CLOSED_NOTIFICATION_TYPE,
+  CONVERSATION_REOPENED_NOTIFICATION_TYPE,
+  LISTING_REMOVED_NOTIFICATION_TYPE,
+  PROFILE_NAME_CHANGE_REQUIRED_NOTIFICATION_TYPE,
+];
+
+export const ALWAYS_ON_NOTIFICATION_ROW_TYPES = [
+  ANNOUNCEMENT_NOTIFICATION_TYPE,
+  MODERATOR_ROLE_GRANTED_NOTIFICATION_TYPE,
+  ...ENFORCEMENT_NOTIFICATION_ROW_TYPES,
+];
 
 export const NOTIFICATION_PREFERENCE_TYPES = [
   SOLD_NOTIFICATION_TYPE,
@@ -47,6 +72,7 @@ export const NOTIFICATION_SELECT = `
   user_id,
   type,
   read_at,
+  dismissed_at,
   created_at,
   conversation_id,
   message_id,
@@ -107,6 +133,10 @@ export function normalizeMessageNotificationPreferences(preferencesRow) {
 
 export function isMessageNotificationType(type) {
   return MESSAGE_NOTIFICATION_ROW_TYPES.includes(type);
+}
+
+export function isEnforcementNotificationType(type) {
+  return ENFORCEMENT_NOTIFICATION_ROW_TYPES.includes(type);
 }
 
 export function getEnabledNotificationRowTypes(notificationPreferences = {}) {
@@ -255,7 +285,10 @@ function getListingNotificationDescription(notification, t, language) {
 }
 
 function isSystemNotificationType(type) {
-  return ALWAYS_ON_NOTIFICATION_ROW_TYPES.includes(type);
+  return (
+    type !== ANNOUNCEMENT_NOTIFICATION_TYPE &&
+    ALWAYS_ON_NOTIFICATION_ROW_TYPES.includes(type)
+  );
 }
 
 function getSystemNotificationHref(metadata) {
@@ -272,6 +305,113 @@ function getSystemNotificationDescription(notification, t) {
   }
 
   return t.notifications;
+}
+
+function getEnforcementNotificationHref(notification) {
+  if (notification.type === LISTING_REMOVED_NOTIFICATION_TYPE) {
+    return "/dashboard";
+  }
+
+  if (notification.type === PROFILE_NAME_CHANGE_REQUIRED_NOTIFICATION_TYPE) {
+    return "/dashboard/settings";
+  }
+
+  if (
+    (notification.type === CONVERSATION_CLOSED_NOTIFICATION_TYPE ||
+      notification.type === CONVERSATION_REOPENED_NOTIFICATION_TYPE) &&
+    notification.conversation_id
+  ) {
+    return `/messages/${notification.conversation_id}`;
+  }
+
+  return "/dashboard/standing";
+}
+
+function getParticipantSafeConversationMessage(notification) {
+  const userMessage = getNotificationMetadata(notification).user_message;
+
+  if (typeof userMessage !== "string") {
+    return null;
+  }
+
+  const normalizedMessage = userMessage.trim();
+
+  if (normalizedMessage.length === 0) {
+    return null;
+  }
+
+  return Array.from(normalizedMessage).slice(0, 1000).join("");
+}
+
+function getEnforcementNotificationContent(notification, t) {
+  if (notification.type === MODERATION_WARNING_NOTIFICATION_TYPE) {
+    return {
+      title: t.notificationModerationWarningTitle,
+      description: t.notificationModerationWarningDescription,
+    };
+  }
+
+  if (notification.type === MODERATION_STRIKE_NOTIFICATION_TYPE) {
+    return {
+      title: t.notificationModerationStrikeTitle,
+      description: t.notificationModerationStrikeDescription,
+    };
+  }
+
+  if (notification.type === MODERATION_BAN_NOTIFICATION_TYPE) {
+    return {
+      title: t.notificationModerationBanTitle,
+      description: t.notificationModerationBanDescription,
+    };
+  }
+
+  if (notification.type === MODERATION_REVIEW_UPDATE_NOTIFICATION_TYPE) {
+    return {
+      title: t.notificationModerationReviewTitle,
+      description: t.notificationModerationReviewDescription,
+    };
+  }
+
+  if (notification.type === CONVERSATION_CLOSED_NOTIFICATION_TYPE) {
+    return {
+      title: t.notificationConversationClosedTitle,
+      description:
+        getParticipantSafeConversationMessage(notification) ??
+        t.notificationConversationClosedDescription,
+    };
+  }
+
+  if (notification.type === LISTING_REMOVED_NOTIFICATION_TYPE) {
+    const feedback = getNotificationMetadata(notification).feedback;
+    const safeFeedback = typeof feedback === "string"
+      ? Array.from(feedback.trim()).slice(0, 3000).join("")
+      : "";
+
+    return {
+      title: t.notificationListingRemovedTitle,
+      description: safeFeedback
+        ? t.notificationListingRemovedWithFeedback.replace("{feedback}", safeFeedback)
+        : t.notificationListingRemovedDescription,
+    };
+  }
+
+  if (notification.type === PROFILE_NAME_CHANGE_REQUIRED_NOTIFICATION_TYPE) {
+    const userMessage = getParticipantSafeConversationMessage(notification);
+
+    return {
+      title: t.notificationProfileNameChangeRequiredTitle,
+      description: userMessage
+        ? t.notificationProfileNameChangeRequiredWithMessage.replace("{message}", userMessage)
+        : t.notificationProfileNameChangeRequiredDescription,
+    };
+  }
+
+  return {
+    title: t.notificationConversationReopenedTitle,
+    description:
+      getParticipantSafeConversationMessage(notification) ??
+      t.notificationConversationReopenedDescription,
+  };
 }
 
 function isListingNotificationType(type) {
@@ -300,6 +440,7 @@ function getMessageNotificationBase(notification, currentUserId, t) {
     id: notification.id,
     type: notification.type,
     readAt: notification.read_at,
+    dismissedAt: notification.dismissed_at,
     createdAt: notification.created_at,
     conversationId: notification.conversation_id,
     href: conversation?.id ? `/messages/${conversation.id}` : "/messages",
@@ -316,6 +457,22 @@ function getMessageNotificationBase(notification, currentUserId, t) {
 }
 
 function getNotificationBase(notification, currentUserId, t, language = "en") {
+  if (isEnforcementNotificationType(notification?.type)) {
+    const content = getEnforcementNotificationContent(notification, t);
+
+    return {
+      id: notification.id,
+      type: notification.type,
+      readAt: notification.read_at,
+      dismissedAt: notification.dismissed_at,
+      createdAt: notification.created_at,
+      conversationId: null,
+      href: getEnforcementNotificationHref(notification),
+      title: content.title,
+      description: content.description,
+    };
+  }
+
   if (isSystemNotificationType(notification?.type)) {
     const metadata = getNotificationMetadata(notification);
 
@@ -323,6 +480,7 @@ function getNotificationBase(notification, currentUserId, t, language = "en") {
       id: notification.id,
       type: notification.type,
       readAt: notification.read_at,
+      dismissedAt: notification.dismissed_at,
       createdAt: notification.created_at,
       conversationId: null,
       href: getSystemNotificationHref(metadata),
@@ -341,6 +499,7 @@ function getNotificationBase(notification, currentUserId, t, language = "en") {
       id: notification.id,
       type: notification.type,
       readAt: notification.read_at,
+      dismissedAt: notification.dismissed_at,
       createdAt: notification.created_at,
       conversationId: null,
       href: getListingNotificationHref(notification, metadata),
@@ -371,6 +530,7 @@ export function normalizeNotificationRow(notification, currentUserId, t, languag
     id: notificationBase.id,
     type: notificationBase.type,
     readAt: notificationBase.readAt,
+    dismissedAt: notificationBase.dismissedAt,
     createdAt: notificationBase.createdAt,
     href: notificationBase.href,
     title: notificationBase.title,
@@ -386,6 +546,7 @@ export function normalizeGroupedNotificationRow(notification, currentUserId, t, 
     type: notificationBase.type,
     conversationId: notificationBase.conversationId,
     readAt: notificationBase.readAt,
+    dismissedAt: notificationBase.dismissedAt,
     createdAt: notificationBase.createdAt,
     href: notificationBase.href,
     title: notificationBase.title,

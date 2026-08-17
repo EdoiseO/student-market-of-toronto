@@ -18,6 +18,7 @@ import {
   buildNotificationPreferencesMap,
   getEnabledNotificationRowTypes,
   groupNotificationsByConversation,
+  isEnforcementNotificationType,
   isNotificationPreferencesTableMissing,
   isMessageNotificationType,
   normalizeGroupedNotificationRow,
@@ -41,9 +42,8 @@ export function NotificationsButton({ user, enabled = true }) {
   );
   const headerActionButtonClassName = "rounded-lg px-2 text-xs";
 
-  const hasAnyInAppNotificationsEnabled = Object.values(notificationPreferences).some(
-    (preferences) => preferences.inApp,
-  );
+  const hasAnyInAppNotificationsEnabled =
+    getEnabledNotificationRowTypes(notificationPreferences).length > 0;
 
   const fetchNotifications = React.useCallback(async () => {
     if (!enabled || !user?.id) {
@@ -88,6 +88,7 @@ export function NotificationsButton({ user, enabled = true }) {
         .select(NOTIFICATION_WITH_MESSAGE_SELECT)
         .eq("user_id", user.id)
         .in("type", enabledNotificationRowTypes)
+        .is("dismissed_at", null)
         .is("read_at", null)
         .order("created_at", { ascending: false })
         .limit(24),
@@ -96,6 +97,7 @@ export function NotificationsButton({ user, enabled = true }) {
         .select("id", { count: "exact", head: true })
         .eq("user_id", user.id)
         .in("type", enabledNotificationRowTypes)
+        .is("dismissed_at", null)
         .is("read_at", null),
     ]);
 
@@ -163,6 +165,30 @@ export function NotificationsButton({ user, enabled = true }) {
 
     setDismissingNotificationKey(notification.groupKey);
 
+    if (isEnforcementNotificationType(notification.type)) {
+      const lifecycleTimestamp = new Date().toISOString();
+      const { error } = await supabase
+        .from("notifications")
+        .update({
+          read_at: lifecycleTimestamp,
+          dismissed_at: lifecycleTimestamp,
+        })
+        .eq("user_id", user.id)
+        .eq("id", notification.id)
+        .is("dismissed_at", null);
+
+      setDismissingNotificationKey(null);
+
+      if (error) {
+        console.error("Failed to dismiss enforcement notification:", error.message);
+        toast.error(t.notificationDismissError);
+        return false;
+      }
+
+      removeNotificationFromState(notification);
+      return true;
+    }
+
     let query = supabase.from("notifications").delete();
 
     query = notification.conversationId && isMessageNotificationType(notification.type)
@@ -193,7 +219,22 @@ export function NotificationsButton({ user, enabled = true }) {
       return;
     }
 
-    await deleteNotificationGroup(notification);
+    if (isEnforcementNotificationType(notification.type)) {
+      const { error } = await supabase
+        .from("notifications")
+        .update({ read_at: new Date().toISOString() })
+        .eq("user_id", user.id)
+        .eq("id", notification.id)
+        .is("read_at", null);
+
+      if (error) {
+        console.error("Failed to mark enforcement notification read:", error.message);
+      } else {
+        removeNotificationFromState(notification);
+      }
+    } else {
+      await deleteNotificationGroup(notification);
+    }
     setIsOpen(false);
     router.push(notification.href);
   }

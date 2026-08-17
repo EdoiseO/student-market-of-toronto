@@ -193,6 +193,80 @@ export const translations = {
     alreadyHaveAccount: "Already have an account?",
     passwordsDoNotMatch: "Passwords do not match.",
     accountCreatedSuccess: "Account created! Check your email to verify.",
+    requiredFieldLabel: "Required",
+    requiredFieldsLegend: "* Required fields",
+    formReviewFieldErrors: "Review the highlighted fields and try again.",
+    profileFirstNameRequired: "Enter your first name.",
+    profileLastNameRequired: "Enter your last name.",
+    profileNameLengthError: "Keep each name between 1 and 100 characters.",
+    profileBioLengthError: "Keep your description at 1,000 characters or fewer.",
+    profileBioCharacterCount: "{count}/1,000 characters",
+    registrationPasswordRequired: "Enter a password.",
+    registrationConfirmPasswordRequired: "Confirm your password.",
+    loadingAccountForm: "Loading account form",
+    loadingProfileSettings: "Loading profile settings",
+    listingDraftMinimumHint:
+      "A draft only needs a title. Complete every required field and add at least one photo before submitting.",
+    listingValidationSummaryTitle: "Complete the highlighted listing details",
+    listingTitleRequired: "Enter a title between 1 and 120 characters.",
+    listingCategoryRequired: "Choose a category.",
+    listingPriceRequired: "Enter a price from $0 to $1,000,000 CAD.",
+    listingDescriptionRequired: "Enter a description between 1 and 5,000 characters.",
+    listingConditionRequired: "Choose the item’s condition.",
+    listingCampusRequired: "Choose a meetup campus.",
+    listingPhotoRequired: "Add at least one photo. Listings can include up to 10.",
+    listingShowFewerPhotoPreviews: "Show fewer photo previews",
+    listingAdditionalPhotosSelected: "{count} additional photos selected",
+    listingShowLess: "Show less",
+    listingMorePhotos: "+{count} more",
+    listingSavedAsDraftAfterEdit:
+      "Changes saved as a draft. Submit the listing for review when it is complete.",
+    listingNoChangesToSave: "There are no changes to save.",
+    listingRejectedNoChangesToSave:
+      "Make at least one requested change before saving this listing as a draft.",
+    listingChangedRefresh: "This listing changed in another session. Refresh and try again.",
+    listingRequiredFieldsUnavailable:
+      "The listing could not be saved. Review the required fields and try again.",
+    reportOtherDetailsRequired: "Add 10–600 characters of detail when you choose Other.",
+    reportDetailsCharacterCount: "{count}/600 characters",
+    adminReportDecisionDetailsTitle: "Decision details",
+    adminReportDecisionSummaryLabel: "Outcome note for moderators",
+    adminReportDecisionSummaryDescription:
+      "Required when closing or marking reports addressed. Explain the outcome in 10–1,000 characters.",
+    adminReportDecisionSummaryPlaceholder:
+      "Record why these reports are being resolved or dismissed…",
+    adminReportDecisionSummaryValidation:
+      "Enter a private decision summary between 10 and 1,000 characters.",
+    adminRemoveListingFeedbackLabel: "Message to the seller",
+    adminRemoveListingFeedbackDescription:
+      "Required. Explain the removal and next steps in 10–3,000 characters.",
+    adminRemoveListingFeedbackPlaceholder: "Explain why the listing was removed…",
+    adminRemoveListingFeedbackValidation:
+      "Enter a seller message between 10 and 3,000 characters.",
+    adminRemoveListingPrivateSummaryLabel: "Internal removal note (optional)",
+    adminRemoveListingPrivateSummaryDescription:
+      "Additional context for authorized moderation staff only. Maximum 1,000 characters.",
+    adminForceNamePolicyReasonLabel: "Policy reason",
+    adminForceNamePolicyReasonDescription:
+      "Required. Record the policy basis in 10–1,000 characters.",
+    adminForceNameUserMessageLabel: "Message to the user",
+    adminForceNameUserMessageDescription:
+      "Required. Explain what must change in 10–1,000 characters.",
+    adminForceNamePrivateNoteLabel: "Private moderator note (optional)",
+    adminForceNamePrivateNoteDescription:
+      "Visible only to authorized moderation staff. Maximum 4,000 characters.",
+    adminDecisionPrivateFieldsNotice:
+      "Complete the fields for the action you plan to take. Private moderation text is never included in user notifications.",
+    adminDecisionActionSaveHint:
+      "There is no separate Save button here. Choosing an action saves the fields required for that action.",
+    notificationProfileNameChangeRequiredTitle: "Update your profile name",
+    notificationProfileNameChangeRequiredDescription:
+      "A moderator requires you to update your profile name before continuing.",
+    notificationProfileNameChangeRequiredWithMessage: "{message}",
+    notificationListingRemovedTitle: "Listing removed",
+    notificationListingRemovedDescription:
+      "A moderator removed this listing after reviewing user reports.",
+    notificationListingRemovedWithFeedback: "{feedback}",
     createListingDesc:
       "Add the main item details first. Photos, campus, condition, and tag preview are included here so the page reflects how the listing will look later in the marketplace. Submitted listings now go through moderator review before they go live.",
     createListingRestrictionsTitle: "Marketplace restrictions",
@@ -312,6 +386,129 @@ export const translations = {
       "This account is currently banned. If the ban is temporary, access will be restored automatically after it expires.",
     accountBannedUntilLabel: "Banned until",
     accountBannedPermanent: "Permanent ban",
+    accountBannedReasonLabel: "Reason",
+    accountBannedReasonFallback:
+      "No additional details are available for this account restriction.",
+    accountStanding: "Account standing",
+    accountStandingDescription:
+      "Review warnings, strikes, restrictions, and appeal updates.",
+    standingGood: "Good standing",
+    standingGoodDescription:
+      "There are no active moderation actions on your account.",
+    standingActionNeeded: "Action needed",
+    standingActionNeededDescription:
+      "Review the active notices below and complete any required steps.",
+    standingRestricted: "Restricted",
+    standingRestrictedDescription:
+      "Some account features are limited. Review the details and available next steps.",
+    standingBanned: "Banned",
+    standingBannedDescription:
+      "Marketplace access is restricted. Review the reason, duration, and review options below.",
+    standingActionRequired: "Action required",
+    standingSummary: "Account standing summary",
+    standingActiveNotices: "Active notices",
+    standingStrikePoints: "Strike points",
+    standingNeedsAcknowledgement: "To acknowledge",
+    standingReviewsPending: "Reviews pending",
+    standingActiveTitle: "Active notices",
+    standingActiveDescription:
+      "Important moderation actions currently affecting your account appear here.",
+    standingActivePagination: "Active moderation notice pages",
+    standingActivePageDescription: "Showing {from}–{to} of {count} active notices.",
+    standingNoActiveTitle: "No active notices",
+    standingNoActiveDescription:
+      "Your permanent history remains available below for your records.",
+    standingHistoryTitle: "Permanent history",
+    standingHistoryDescription:
+      "Warnings, strikes, restrictions, acknowledgements, and review outcomes remain visible here.",
+    standingHistoryEmpty: "No moderation history is available for this account.",
+    standingHistoryPagination: "Account standing history pages",
+    standingPageOf: "{page} of {pages}",
+    standingWarning: "Warning",
+    standingStrike: "Strike",
+    standingBan: "Ban",
+    standingSeverityLow: "Low",
+    standingSeverityMedium: "Medium",
+    standingSeverityHigh: "High",
+    standingSeverityCritical: "Critical",
+    standingLifecycleActive: "Active",
+    standingLifecycleAcknowledged: "Acknowledged",
+    standingLifecycleExpired: "Expired",
+    standingLifecycleRevoked: "Revoked",
+    standingLifecycleOverturned: "Overturned",
+    standingPolicy: "Policy reason",
+    standingEffectiveDate: "Effective",
+    standingExpiry: "Expires",
+    standingPermanent: "No expiry",
+    standingPoints: "Strike points",
+    standingPointsShort: "points",
+    standingRestrictions: "Feature restrictions",
+    standingAcknowledgement: "Acknowledgement",
+    standingAcknowledgedOn: "Acknowledged",
+    standingAwaitingAcknowledgement: "Waiting for acknowledgement",
+    standingReviewRequestedOn: "Review requested",
+    standingRevocationOutcome: "Revocation outcome",
+    standingConfigured: "Configured",
+    standingAcknowledge: "Acknowledge",
+    standingAcknowledging: "Acknowledging...",
+    standingAcknowledgeSuccess: "Notice acknowledged.",
+    standingAcknowledgeError:
+      "We could not acknowledge this notice. Please try again.",
+    standingRequestReview: "Request review",
+    standingRequestingReview: "Requesting review...",
+    standingReviewSuccess: "Review requested.",
+    standingReviewError:
+      "We could not request a review. Please try again.",
+    standingReviewPending: "Review pending",
+    standingReviewUpheld: "Decision upheld",
+    standingReviewModified: "Decision modified",
+    standingReviewOverturned: "Decision overturned",
+    standingReviewOutcome: "Review outcome",
+    standingLoadErrorTitle: "Account standing could not load",
+    standingLoadErrorDescription:
+      "Your moderation details are temporarily unavailable. Reload to try again.",
+    standingRefresh: "Reload",
+    standingYes: "Yes",
+    standingNo: "No",
+    moderationStandingBannerTitle: "Action required on your account",
+    moderationStandingBannerDescription:
+      "Review and acknowledge the latest important moderation notice.",
+    moderationStandingBannerAction: "View account standing",
+    notificationModerationWarningTitle: "Account warning",
+    notificationModerationWarningDescription:
+      "Review this warning and any required next steps in Account standing.",
+    notificationModerationStrikeTitle: "Strike added to your account",
+    notificationModerationStrikeDescription:
+      "Review the strike, restrictions, and review options in Account standing.",
+    notificationModerationBanTitle: "Account restriction issued",
+    notificationModerationBanDescription:
+      "Review the restriction details and available review options in Account standing.",
+    notificationModerationReviewTitle: "Account review updated",
+    notificationModerationReviewDescription:
+      "A decision or status update is available in Account standing.",
+    notificationConversationClosedTitle: "Conversation closed",
+    notificationConversationClosedDescription:
+      "This conversation is read-only until it is reopened.",
+    notificationConversationReopenedTitle: "Conversation reopened",
+    notificationConversationReopenedDescription:
+      "You can send messages in this conversation again.",
+    conversationClosedBadge: "Closed",
+    conversationClosedTitle: "This conversation is closed",
+    conversationClosedReadOnly:
+      "You can still review messages and shared media, but new messages and reactions are unavailable.",
+    conversationClosedReasonLabel: "Reason",
+    conversationClosedAtLabel: "Closed",
+    conversationClosedUntilLabel: "Reopens",
+    conversationClosedIndefinitely: "Until further notice",
+    conversationClosedSupportLink: "Get support",
+    conversationClosedComposerLabel: "Conversation closed",
+    conversationClosedComposerDescription:
+      "Messaging and new reactions will be available if this conversation is reopened.",
+    conversationReopenedLiveStatus:
+      "This conversation has reopened. Messaging is available again.",
+    conversationModerationRefreshError:
+      "We couldn’t refresh the conversation status. Try reloading the page.",
+    conversationClosedReasonFallback: "Closed by the moderation team.",
     signOut: "Sign out",
     deleteConversation: "Delete conversation",
     deleteConversationTitle: "Delete this conversation?",
@@ -357,6 +554,8 @@ export const translations = {
     reportDetailsLabel: "Details",
     reportDetailsDescription:
       "Optional: add a short explanation with any context that would help review the report.",
+    reportOtherDetailsDescription:
+      "Required for Other: add 10–600 characters of context for the moderation team.",
     reportDetailsPlaceholder:
       "Add any extra context, screenshots described in words, or details about what happened...",
     reportSubmit: "Submit report",
@@ -409,6 +608,8 @@ export const translations = {
       "Your conversation will appear in Messages after you send the first message.",
     sendFirstMessage: "Send first message",
     messageInputPlaceholder: "Write a message...",
+    messageBodyTooLong: "Keep messages at 2,000 characters or fewer.",
+    messageBodyCharacterCount: "{count}/2,000 characters",
     addMessageEmoji: "Add an emoji",
     insertMessageEmoji: "Insert",
     messageEmojiPickerLabel: "Choose an emoji",
@@ -484,6 +685,264 @@ export const translations = {
     ofLabel: "of",
     adminDashboard: "Admin Dashboard",
     adminOverview: "Overview",
+    adminNavigationLabel: "Admin sections",
+    adminNavOverview: "Overview",
+    adminNavReports: "Reports",
+    adminNavListings: "Listings",
+    adminNavEnforcement: "Enforcement",
+    adminNavUsers: "Users",
+    adminNavConversations: "Conversations",
+    adminNavAnnouncements: "Announcements",
+    adminNavAudit: "Audit log",
+    adminMobileEntry: "Admin",
+    adminOverviewDescription:
+      "See what needs attention, review live marketplace restrictions, and open each moderation workspace.",
+    adminCreateAnnouncement: "Create announcement",
+    adminMetricsTitle: "Moderation metrics",
+    adminMetricOpenReports: "Open reports",
+    adminMetricPendingListings: "Pending listings",
+    adminMetricActiveStrikes: "Active strikes",
+    adminMetricUnackWarnings: "Unacknowledged warnings",
+    adminMetricClosedChats: "Closed chats",
+    adminMetricActiveRestrictions: "Active restrictions",
+    adminNeedsAttention: "Needs attention",
+    adminNeedsAttentionDescription:
+      "The oldest unresolved items across the moderation workspaces.",
+    adminNeedsAttentionEmpty: "Nothing needs immediate attention.",
+    adminAttentionReport: "Report",
+    adminAttentionListing: "Listing review",
+    adminAttentionAppeal: "Appeal",
+    adminAttentionClosedChat: "Closed chat",
+    adminAttentionTemporaryClose: "Temporary conversation restriction",
+    adminAttentionIndefiniteClose: "Conversation restricted until reopened",
+    adminRecentEnforcement: "Recent enforcement",
+    adminRecentEnforcementEmpty: "No enforcement events are available yet.",
+    viewAll: "View all",
+    loading: "Loading…",
+    retry: "Retry",
+    adminReportsRegistryDescription:
+      "Review a bounded, newest-first registry of marketplace reports.",
+    adminListingsRegistryDescription:
+      "Review listings currently waiting for a moderation decision.",
+    adminRegistryLoadError: "This moderation registry could not be loaded.",
+    adminFilterStatus: "Report status",
+    adminFilterSubject: "Report subject",
+    adminFilterReason: "Report reason",
+    adminListingQueueFilter: "Listing queue",
+    adminListingQueuePending: "Pending review",
+    adminListingQueueApproved: "Approved",
+    adminListingQueueRejected: "Rejected",
+    adminAuditTitle: "Immutable audit log",
+    adminAuditDescription:
+      "Review the newest append-only moderation and announcement lifecycle events.",
+    adminAuditEmpty: "No audit events are available yet.",
+    adminUsersPaginationLabel: "User directory pages",
+    adminAnnouncementsTitle: "Announcement operations",
+    adminAnnouncementsDescription:
+      "Draft, schedule, send, cancel, monitor, and safely retry durable marketplace announcements.",
+    adminAnnouncementWorkerConfigured: "Worker ready",
+    adminAnnouncementWorkerNeedsScheduler: "Scheduler not activated",
+    adminAnnouncementRunWorker: "Run delivery pass",
+    adminAnnouncementWorkerDescription:
+      "Manual delivery is available, but automatic continuation requires the protected worker endpoint to be scheduled during deployment.",
+    adminAnnouncementStatus_draft: "Draft",
+    adminAnnouncementStatus_scheduled: "Scheduled",
+    adminAnnouncementStatus_sending: "Sending",
+    adminAnnouncementStatus_sent: "Sent",
+    adminAnnouncementStatus_partially_failed: "Partially failed",
+    adminAnnouncementStatus_cancelled: "Cancelled",
+    adminAnnouncementRecipients: "Recipients",
+    adminAnnouncementDelivered: "Delivered",
+    adminAnnouncementFailed: "Failed",
+    adminAnnouncementSkipped: "Skipped",
+    adminAnnouncementRead: "Read",
+    adminAnnouncementDismissed: "Dismissed",
+    adminAnnouncementProgress: "{count}% terminal",
+    adminAnnouncementScheduledFor: "Scheduled for",
+    adminAnnouncementSendNow: "Send now",
+    adminAnnouncementUnschedule: "Return to draft",
+    adminAnnouncementRetry: "Retry failed",
+    adminAnnouncementScheduleTime: "Schedule time",
+    adminAnnouncementSchedule: "Schedule",
+    adminAnnouncementEditDraft: "Edit draft",
+    adminAnnouncementCreateDraft: "New announcement",
+    adminAnnouncementPriority: "Priority",
+    adminAnnouncementAudience: "Audience",
+    adminAnnouncementAudienceValues: "Audience values",
+    adminAnnouncementChooseAudience: "Choose an audience",
+    adminAnnouncementAudienceValuesPlaceholder:
+      "Enter comma-separated schools or user IDs",
+    adminAnnouncementAudienceHint:
+      "Use exact school names or user UUIDs. Selected audiences are limited to 500 accounts.",
+    adminAnnouncementDeliveryPolicy: "Delivery policy",
+    adminAnnouncementEmailUnavailable:
+      "In-app delivery is active. Email stays off until a tracked provider worker is deployed.",
+    adminAnnouncementHistory: "Campaign history",
+    adminAnnouncementTotal: "{count} announcements",
+    adminAnnouncementSearchPlaceholder: "Search announcement titles",
+    adminAnnouncementStatusFilter: "Announcement status",
+    adminAnnouncementActionError: "The announcement action could not be completed.",
+    adminAnnouncementActionSuccess: "Announcement updated.",
+    adminAnnouncementsEmpty: "No announcements match these filters.",
+    adminAnnouncementPagination: "Announcement pages",
+    adminAnnouncementsLoadError: "Announcements could not be loaded.",
+    adminEnforcementTitle: "Enforcement",
+    adminEnforcementDescription:
+      "Review account standing, sanctions, and pending appeals across the marketplace.",
+    adminEnforcementSearchPlaceholder: "Search by user ID, name, or policy reason",
+    adminEnforcementStatusFilter: "Status",
+    adminEnforcementTypeFilter: "Sanction type",
+    adminEnforcementSeverityFilter: "Severity",
+    adminEnforcementAllStatuses: "All statuses",
+    adminEnforcementActive: "Active",
+    adminEnforcementPendingReview: "Pending review",
+    adminEnforcementHistory: "History",
+    adminEnforcementAllTypes: "All types",
+    adminEnforcementAllSeverities: "All severities",
+    adminEnforcementResults: "Enforcement records",
+    adminEnforcementEmpty: "No enforcement records match these filters.",
+    adminEnforcementIssuedBy: "Issued by",
+    adminEnforcementEffect: "Effect",
+    adminEnforcementOpenUser: "Open user",
+    adminUserDetailDescription:
+      "Review this account’s standing, marketplace activity, and moderation history.",
+    adminUserCurrentStanding: "Current standing",
+    adminUserAccountActive: "Account active",
+    adminUserAccountBanned: "Account restricted",
+    adminUserLastSignIn: "Last sign-in",
+    adminUserEmailConfirmed: "Email confirmed",
+    adminUserReportsSummary: "Reports",
+    adminUserListingsSummary: "Listings",
+    adminUserConversationsSummary: "Conversations",
+    adminUserSanctionsSummary: "Sanctions",
+    adminUserSanctionHistory: "Moderation history",
+    adminUserNoSanctions: "No moderation history is available for this account.",
+    adminIssueSanction: "Issue action",
+    adminIssueSanctionDescription:
+      "Choose a warning or strike and explain the action clearly to the user.",
+    adminIssueWarning: "Issue warning",
+    adminIssueStrike: "Issue strike",
+    adminSanctionSeverity: "Severity",
+    adminSanctionStrikePoints: "Strike points",
+    adminSanctionUserMessage: "Message to the user",
+    adminSanctionUserMessageDescription:
+      "Explain the policy issue and the required next step in 10–1000 characters.",
+    adminSanctionActionSuccess: "The moderation action was recorded and the user was notified.",
+    adminSanctionActionError: "The moderation action could not be completed.",
+    adminRevokeSanction: "Revoke",
+    adminRevokeSanctionTitle: "Revoke this action?",
+    adminRevokeSanctionDescription:
+      "The action will be removed without erasing its immutable history.",
+    adminRevocationReason: "Revocation reason",
+    adminRevocationReasonDescription: "Explain the correction in 10–1000 characters.",
+    adminReviewUphold: "Uphold",
+    adminReviewOverturn: "Overturn",
+    adminReviewOutcomeMessage: "Review outcome for the user",
+    adminReviewOutcomeDescription: "Explain the review decision in 10–2000 characters.",
+    adminLiftBanTitle: "Restore account access?",
+    adminLiftBanDescription:
+      "This removes the active account restriction without deleting its immutable history.",
+    adminLiftBanReason: "Reason for restoring access",
+    adminLiftBanReasonPlaceholder: "Explain why access is being restored",
+    adminLiftBanReasonValidation: "Enter a reason between 10 and 1000 characters.",
+    adminLiftBanBefore: "Before",
+    adminLiftBanCurrent: "Current",
+    adminLiftBanAfter: "After",
+    adminLiftBanEffect:
+      "Marketplace access is restored immediately. The original restriction and this decision remain in the audit history.",
+    adminLiftBanConfirm: "Restore access",
+    adminLiftBanSuccess: "Account access was restored and the user was notified.",
+    adminLiftBanReplay: "This completed action was safely replayed.",
+    adminLiftBanAuditRecord: "Audit record",
+    adminLiftBanOperation: "Operation",
+    adminConversationsTitle: "Conversation moderation",
+    adminConversationsDescription:
+      "Review reported conversations, inspect bounded message evidence, and manage close or reopen actions.",
+    adminConversationsWindowHint:
+      "Search and filters cover the 2,000 most recently active listing conversations.",
+    adminConversationsTotalLabel: "Conversations",
+    adminConversationsFilterLabel: "Conversation status filters",
+    adminConversationsFilterAll: "All",
+    adminConversationsFilterOpen: "Open",
+    adminConversationsFilterClosed: "Closed",
+    adminConversationsFilterReopened: "Reopened",
+    adminConversationsFilterReported: "Reported",
+    adminConversationsSearchLabel: "Search conversations",
+    adminConversationsSearchPlaceholder:
+      "Search participants, school, listing, or conversation ID",
+    adminConversationsSearchAction: "Search",
+    adminConversationsLoadErrorTitle: "Conversation registry could not load",
+    adminConversationsLoadErrorDescription:
+      "Moderation access or conversation data could not be verified. Reload to try again.",
+    adminConversationsEmptyTitle: "No conversations found",
+    adminConversationsEmptyDescription:
+      "No conversations match these filters and search terms.",
+    adminConversationsOpenStatus: "Open",
+    adminConversationsClosedStatus: "Closed",
+    adminConversationsReopenedStatus: "Reopened",
+    adminConversationsNoMessagePreview: "No message preview available.",
+    adminConversationsReviewAction: "Review conversation",
+    adminConversationsLastActivity: "Last activity",
+    adminConversationsPaginationLabel: "Conversation registry pages",
+    adminConversationsPageSummary: "Page {page} of {count}",
+    adminConversationsBackAction: "Back to conversations",
+    adminConversationLoadErrorTitle: "Conversation review could not load",
+    adminConversationLoadErrorDescription:
+      "The conversation context could not be verified. Return to the registry and try again.",
+    adminConversationReviewBadge: "Moderation review",
+    adminConversationCloseAction: "Close conversation",
+    adminConversationReopenAction: "Reopen conversation",
+    adminConversationViewListing: "View listing",
+    adminConversationBuyerLabel: "Buyer",
+    adminConversationSellerLabel: "Seller",
+    adminConversationStateVersionLabel: "State version",
+    adminConversationTranscriptTitle: "Conversation evidence",
+    adminConversationTranscriptDescription:
+      "A bounded, newest-first transcript with attachment, reaction, and report context.",
+    adminConversationOlderMessages: "Load older evidence",
+    adminConversationTranscriptEmpty: "No messages are available in this conversation.",
+    adminConversationCurrentRestrictionTitle: "Current conversation restriction",
+    adminConversationLinkedReportsTitle: "Linked reports",
+    adminConversationLinkedReportsDescription:
+      "Open reports can be linked to a close or reopen action and optionally resolved.",
+    adminConversationLinkedReportsEmpty: "No reports are linked to this conversation.",
+    adminConversationNoReportDetails: "No additional report details.",
+    adminConversationHistoryTitle: "Moderation history",
+    adminConversationHistoryEmpty: "No close or reopen actions yet.",
+    adminConversationHistoryClosed: "Conversation closed",
+    adminConversationHistoryReopened: "Conversation reopened",
+    adminConversationCloseTitle: "Close this conversation",
+    adminConversationCloseDescription:
+      "Participants will keep read-only access to message history and shared media.",
+    adminConversationReopenTitle: "Reopen this conversation",
+    adminConversationReopenDescription:
+      "Participants will be able to send messages and reactions again.",
+    adminConversationReasonLabel: "Moderation reason",
+    adminConversationDurationLabel: "Closure duration",
+    adminConversationDuration24h: "24 hours",
+    adminConversationDuration7d: "7 days",
+    adminConversationDuration30d: "30 days",
+    adminConversationDurationPermanent: "Until manually reopened",
+    adminConversationModeratorDurationHint:
+      "Moderators can close conversations temporarily for up to 30 days.",
+    adminConversationUserMessageLabel: "Message to participants",
+    adminConversationUserMessagePlaceholder:
+      "Explain what happened and what participants should do next…",
+    adminConversationUserMessageHint:
+      "Both participants receive a notification and can read this message.",
+    adminConversationInternalNoteLabel: "Private moderator note (optional)",
+    adminConversationInternalNotePlaceholder:
+      "Record internal context that participants must not see…",
+    adminConversationLinkedReportLabel: "Linked open report (optional)",
+    adminConversationNoLinkedReport: "No linked report",
+    adminConversationResolveReportLabel: "Resolve the linked report",
+    adminConversationResolveReportDescription:
+      "Off by default. When enabled, the report is resolved atomically with this action.",
+    adminConversationParticipantNotificationHint:
+      "Both participants will be notified without exposing moderator identity or private notes.",
+    adminConversationClosedSuccess: "Conversation closed and participants notified.",
+    adminConversationReopenedSuccess: "Conversation reopened and participants notified.",
+    adminConversationActionError: "We couldn’t update this conversation right now.",
     adminReports: "Reports",
     adminListings: "Listings",
     adminUsers: "User Management",
@@ -497,7 +956,13 @@ export const translations = {
     adminBannedUsersDescription: "Accounts currently marked as banned in auth.",
     adminUsersSetupDescription:
       "Add the Supabase service-role key on the server first, then return here to load the full admin user directory.",
+    adminUsersStatusUnavailableTitle: "User restriction status could not load",
+    adminUsersStatusUnavailableDescription:
+      "User management is temporarily unavailable because account restriction status could not be verified. Reload to try again.",
     adminSearchUsersPlaceholder: "Search users, email, school, or role",
+    adminUsersSearchScope:
+      "Search covers the 5,000 newest accounts and returns at most 50 matches per page.",
+    adminUsersCurrentPageSummary: "Count on this page of the filtered directory.",
     adminNoUsersMatchFilters: "No users match the current filters.",
     adminUserRoleStandard: "Student",
     adminUserRoleAdmin: "Admin",
@@ -515,7 +980,27 @@ export const translations = {
     adminUserRoleActionError: "We could not update this user role right now.",
     adminBanUserTitle: "Ban this user?",
     adminBanUserDescription:
-      "Choose a temporary or long-term ban duration. The user will lose access to their account until the ban expires or is removed.",
+      "Choose a duration and provide a clear reason the user can understand. The user will lose access until the ban expires or is removed.",
+    adminBanReasonLabel: "Policy reason",
+    adminBanReasonDescription:
+      "Select the category that best explains why account access is being restricted.",
+    adminBanReasonPlaceholder: "Choose a reason",
+    adminBanReasonSpam: "Spam or repeated unwanted activity",
+    adminBanReasonScam: "Scam, fraud, or impersonation",
+    adminBanReasonMisleading: "Misleading content or conduct",
+    adminBanReasonProhibited: "Prohibited item or activity",
+    adminBanReasonHarassment: "Harassment, threats, or abuse",
+    adminBanReasonInappropriate: "Inappropriate content or conduct",
+    adminBanReasonOther: "Other policy violation",
+    adminBanMessageLabel: "Message to the user",
+    adminBanMessageDescription:
+      "Required (10-1000 characters). Explain what happened and what the user should do next. This message will be shown on their restricted-account screen.",
+    adminBanMessagePlaceholder:
+      "Explain the policy issue and any next steps in clear, respectful language...",
+    adminBanReasonValidationError:
+      "Choose a reason and add a clear message before banning this user.",
+    adminBanDurationLabel: "Ban duration",
+    adminBanDurationPlaceholder: "Choose a duration",
     adminBanDuration24Hours: "Ban for 24 hours",
     adminBanDuration7Days: "Ban for 7 days",
     adminBanDuration30Days: "Ban for 30 days",
@@ -557,15 +1042,19 @@ export const translations = {
     makeMod: "Make Mod",
     removeMod: "Remove Mod",
     newAnnouncement: "New Announcement",
-    newAnnouncementPlaceholder: "Write a message to show all students on the homepage...",
+    newAnnouncementPlaceholder: "Write a message to send to students...",
+    announcementMessageLabel: "Announcement message",
     announcementDialogDescription:
       "This message will be delivered to every user's inbox as a direct message from you.",
     announcementSending: "Sending...",
     announcementSentCount: "Announcement sent to {count} users",
+    announcementQueued: "Announcement queued for delivery.",
     announcementNoRecipients: "There are no other users to receive this announcement yet.",
     announcementPartialFailure:
       "Some recipients did not receive the announcement. Failed: {count}",
     announcementError: "Failed to send announcement. Please try again.",
+    announcementMessageValidationError:
+      "Write an announcement between 1 and 2000 characters before sending.",
     sendAnnouncement: "Send Announcement",
     pastAnnouncements: "Past Announcements",
     inactive: "Inactive",
@@ -655,6 +1144,9 @@ export const translations = {
     adminListingFeedbackTitle: "Seller feedback",
     adminListingFeedbackDescription:
       "If you reject this listing, explain what needs to change before the seller resubmits it.",
+    adminListingFeedbackRequiredMarker: "Required for rejection",
+    adminListingFeedbackTooLong:
+      "Keep seller feedback at 3,000 characters or fewer.",
     adminListingFeedbackPlaceholder:
       "Example: remove prohibited wording, add clearer photos, rewrite misleading price/details, or fix the category before resubmitting...",
     adminListingDecisionLockedDescription:
@@ -678,7 +1170,9 @@ export const translations = {
       "Add seller-facing feedback before rejecting this listing.",
     adminProfileReviewDescription:
       "Inspect the reported profile details and the related reports before deciding on the moderation outcome.",
+    backToAdminOverview: "Back to overview",
     backToAdminReports: "Back to reports",
+    backToAdminListings: "Back to listings",
     adminParticipantsTitle: "Conversation participants",
     adminReportedProfileTitle: "Reported profile",
     adminProfileNoListings: "This profile has no active listings right now.",
@@ -689,19 +1183,25 @@ export const translations = {
     adminCurrentReport: "Current",
     adminModeratorNotesTitle: "Moderator notes",
     adminModeratorNotesDescription:
-      "Private review notes for this specific report. Use them to capture context, rationale, or follow-up details.",
+      "Private, append-only updates for this specific report. Notes cannot be edited or deleted after they are added.",
     adminModeratorNotesSetupDescription:
-      "Moderator notes need a small reports-table update before they can be saved here.",
+      "The moderator-note timeline is unavailable because this environment is missing its database migration.",
     adminModeratorNotesSetupHint:
-      "Apply the moderator notes SQL in Supabase to enable private report notes and note audit fields.",
+      "The interface is ready, but the secure append and history functions are not installed in this database yet.",
+    adminModeratorNotesComposerLabel: "Add a private note",
+    adminModeratorNotesComposerDescription:
+      "Share context or a follow-up update with the moderation team. Add a correction as a new note.",
     adminModeratorNotesPlaceholder:
-      "Add private review notes, decision context, or follow-up reminders for this report...",
-    adminModeratorNotesSaved: "Moderator notes saved.",
-    adminModeratorNotesSaveError: "We could not save moderator notes right now.",
+      "Add context, rationale, or a follow-up reminder for this report...",
+    adminModeratorNotesSaved: "Moderator note added.",
+    adminModeratorNotesSaveError: "We could not add the moderator note right now.",
     adminModeratorNotesUpdatedByPrefix: "Last updated by",
     adminModeratorNotesUnsavedHint: "You have unsaved note changes.",
-    adminModeratorNotesEmpty: "No moderator notes yet.",
-    saveNotes: "Save notes",
+    adminModeratorNotesHistoryTitle: "Note history",
+    adminModeratorNotesCountLabel: "shown",
+    adminModeratorNotesLoadOlder: "Load older notes",
+    adminModeratorNotesEmpty: "No moderator notes have been added yet.",
+    saveNotes: "Add note",
     adminCloseReportNoAction: "Close with no action",
     adminMarkReportAddressed: "Mark as addressed",
     adminCloseAllOpenNoAction: "Close all open reports with no action",
@@ -1084,6 +1584,92 @@ export const translations = {
     passwordsDoNotMatch: "Les mots de passe ne correspondent pas.",
     accountCreatedSuccess:
       "Compte créé ! Vérifiez votre e-mail pour le confirmer.",
+    requiredFieldLabel: "Obligatoire",
+    requiredFieldsLegend: "* Champs obligatoires",
+    formReviewFieldErrors:
+      "Vérifiez les champs en surbrillance et réessayez.",
+    profileFirstNameRequired: "Saisissez votre prénom.",
+    profileLastNameRequired: "Saisissez votre nom de famille.",
+    profileNameLengthError:
+      "Limitez chaque nom à une longueur de 1 à 100 caractères.",
+    profileBioLengthError:
+      "Limitez votre description à 1 000 caractères ou moins.",
+    profileBioCharacterCount: "{count}/1 000 caractères",
+    registrationPasswordRequired: "Saisissez un mot de passe.",
+    registrationConfirmPasswordRequired: "Confirmez votre mot de passe.",
+    loadingAccountForm: "Chargement du formulaire de compte",
+    loadingProfileSettings: "Chargement des paramètres du profil",
+    listingDraftMinimumHint:
+      "Un brouillon nécessite seulement un titre. Remplissez tous les champs obligatoires et ajoutez au moins une photo avant de le soumettre.",
+    listingValidationSummaryTitle:
+      "Complétez les détails de l’annonce en surbrillance",
+    listingTitleRequired: "Saisissez un titre de 1 à 120 caractères.",
+    listingCategoryRequired: "Choisissez une catégorie.",
+    listingPriceRequired: "Saisissez un prix de 0 $ à 1 000 000 $ CA.",
+    listingDescriptionRequired:
+      "Saisissez une description de 1 à 5 000 caractères.",
+    listingConditionRequired: "Choisissez l’état de l’article.",
+    listingCampusRequired: "Choisissez un campus de rencontre.",
+    listingPhotoRequired:
+      "Ajoutez au moins une photo. Une annonce peut en contenir jusqu’à 10.",
+    listingShowFewerPhotoPreviews: "Afficher moins d’aperçus de photos",
+    listingAdditionalPhotosSelected: "{count} photos supplémentaires sélectionnées",
+    listingShowLess: "Afficher moins",
+    listingMorePhotos: "+{count} de plus",
+    listingSavedAsDraftAfterEdit:
+      "Les modifications ont été enregistrées comme brouillon. Soumettez l’annonce à l’examen lorsqu’elle est complète.",
+    listingNoChangesToSave: "Il n’y a aucune modification à enregistrer.",
+    listingRejectedNoChangesToSave:
+      "Apportez au moins une modification demandée avant d’enregistrer cette annonce comme brouillon.",
+    listingChangedRefresh:
+      "Cette annonce a été modifiée dans une autre session. Actualisez la page et réessayez.",
+    listingRequiredFieldsUnavailable:
+      "Impossible d’enregistrer l’annonce. Vérifiez les champs obligatoires et réessayez.",
+    reportOtherDetailsRequired:
+      "Ajoutez de 10 à 600 caractères de détails lorsque vous choisissez Autre.",
+    reportDetailsCharacterCount: "{count}/600 caractères",
+    adminReportDecisionDetailsTitle: "Détails de la décision",
+    adminReportDecisionSummaryLabel: "Note de résultat pour la modération",
+    adminReportDecisionSummaryDescription:
+      "Obligatoire pour fermer ou marquer les signalements comme traités. Expliquez le résultat en 10 à 1 000 caractères.",
+    adminReportDecisionSummaryPlaceholder:
+      "Indiquez pourquoi ces signalements sont résolus ou rejetés…",
+    adminReportDecisionSummaryValidation:
+      "Saisissez un résumé privé de 10 à 1 000 caractères.",
+    adminRemoveListingFeedbackLabel: "Message au vendeur",
+    adminRemoveListingFeedbackDescription:
+      "Obligatoire. Expliquez le retrait et les prochaines étapes en 10 à 3 000 caractères.",
+    adminRemoveListingFeedbackPlaceholder:
+      "Expliquez pourquoi l’annonce a été retirée…",
+    adminRemoveListingFeedbackValidation:
+      "Saisissez un message au vendeur de 10 à 3 000 caractères.",
+    adminRemoveListingPrivateSummaryLabel:
+      "Note interne sur le retrait (facultative)",
+    adminRemoveListingPrivateSummaryDescription:
+      "Contexte supplémentaire réservé au personnel de modération autorisé. Maximum de 1 000 caractères.",
+    adminForceNamePolicyReasonLabel: "Motif de politique",
+    adminForceNamePolicyReasonDescription:
+      "Obligatoire. Consignez le fondement de politique en 10 à 1 000 caractères.",
+    adminForceNameUserMessageLabel: "Message à l’utilisateur",
+    adminForceNameUserMessageDescription:
+      "Obligatoire. Expliquez ce qui doit changer en 10 à 1 000 caractères.",
+    adminForceNamePrivateNoteLabel:
+      "Note privée de modération (facultative)",
+    adminForceNamePrivateNoteDescription:
+      "Visible uniquement par le personnel de modération autorisé. Maximum de 4 000 caractères.",
+    adminDecisionPrivateFieldsNotice:
+      "Remplissez les champs correspondant à l’action prévue. Le texte privé de modération n’est jamais inclus dans les notifications aux utilisateurs.",
+    adminDecisionActionSaveHint:
+      "Il n’y a pas de bouton Enregistrer distinct ici. Le choix d’une action enregistre les champs requis pour cette action.",
+    notificationProfileNameChangeRequiredTitle:
+      "Mettez à jour votre nom de profil",
+    notificationProfileNameChangeRequiredDescription:
+      "Un modérateur vous demande de mettre à jour votre nom de profil avant de continuer.",
+    notificationProfileNameChangeRequiredWithMessage: "{message}",
+    notificationListingRemovedTitle: "Annonce retirée",
+    notificationListingRemovedDescription:
+      "Un modérateur a retiré cette annonce après examen des signalements.",
+    notificationListingRemovedWithFeedback: "{feedback}",
     createListingDesc:
       "Commencez par ajouter les informations principales sur l'article. Les photos, le campus, l'état et l'aperçu des étiquettes sont inclus ici pour vous montrer à quoi l'annonce ressemblera sur la plateforme. Les annonces soumises passent maintenant par une révision de modération avant d'être mises en ligne.",
     createListingRestrictionsTitle: "Restrictions du marché",
@@ -1210,6 +1796,130 @@ export const translations = {
       "Ce compte est actuellement banni. Si le bannissement est temporaire, l'accès sera rétabli automatiquement à son expiration.",
     accountBannedUntilLabel: "Banni jusqu'au",
     accountBannedPermanent: "Bannissement permanent",
+    accountBannedReasonLabel: "Raison",
+    accountBannedReasonFallback:
+      "Aucun détail supplémentaire n'est disponible pour cette restriction de compte.",
+    accountStanding: "État du compte",
+    accountStandingDescription:
+      "Consultez les avertissements, les sanctions, les restrictions et les mises à jour des contestations.",
+    standingGood: "Compte en règle",
+    standingGoodDescription:
+      "Aucune mesure de modération active ne s’applique à votre compte.",
+    standingActionNeeded: "Action requise",
+    standingActionNeededDescription:
+      "Consultez les avis actifs ci-dessous et effectuez les étapes requises.",
+    standingRestricted: "Restreint",
+    standingRestrictedDescription:
+      "Certaines fonctions du compte sont limitées. Consultez les détails et les prochaines étapes possibles.",
+    standingBanned: "Banni",
+    standingBannedDescription:
+      "L’accès au marché est restreint. Consultez le motif, la durée et les options de contestation ci-dessous.",
+    standingActionRequired: "Action requise",
+    standingSummary: "Résumé de l’état du compte",
+    standingActiveNotices: "Avis actifs",
+    standingStrikePoints: "Points de sanction",
+    standingNeedsAcknowledgement: "À confirmer",
+    standingReviewsPending: "Examens en attente",
+    standingActiveTitle: "Avis actifs",
+    standingActiveDescription:
+      "Les mesures de modération importantes qui touchent actuellement votre compte apparaissent ici.",
+    standingActivePagination: "Pages des avis de modération actifs",
+    standingActivePageDescription:
+      "Affichage des avis actifs {from} à {to} sur {count}.",
+    standingNoActiveTitle: "Aucun avis actif",
+    standingNoActiveDescription:
+      "Votre historique permanent reste accessible ci-dessous pour vos dossiers.",
+    standingHistoryTitle: "Historique permanent",
+    standingHistoryDescription:
+      "Les avertissements, les sanctions, les restrictions, les confirmations et les décisions d’examen restent visibles ici.",
+    standingHistoryEmpty: "Aucun historique de modération n’est disponible pour ce compte.",
+    standingHistoryPagination: "Pages de l’historique de l’état du compte",
+    standingPageOf: "{page} sur {pages}",
+    standingWarning: "Avertissement",
+    standingStrike: "Sanction",
+    standingBan: "Bannissement",
+    standingSeverityLow: "Faible",
+    standingSeverityMedium: "Moyenne",
+    standingSeverityHigh: "Élevée",
+    standingSeverityCritical: "Critique",
+    standingLifecycleActive: "Actif",
+    standingLifecycleAcknowledged: "Confirmé",
+    standingLifecycleExpired: "Expiré",
+    standingLifecycleRevoked: "Révoqué",
+    standingLifecycleOverturned: "Annulé",
+    standingPolicy: "Motif réglementaire",
+    standingEffectiveDate: "En vigueur",
+    standingExpiry: "Expiration",
+    standingPermanent: "Sans expiration",
+    standingPoints: "Points de sanction",
+    standingPointsShort: "points",
+    standingRestrictions: "Restrictions de fonctionnalités",
+    standingAcknowledgement: "Confirmation",
+    standingAcknowledgedOn: "Confirmé le",
+    standingAwaitingAcknowledgement: "En attente de confirmation",
+    standingReviewRequestedOn: "Examen demandé",
+    standingRevocationOutcome: "Résultat de la révocation",
+    standingConfigured: "Configuré",
+    standingAcknowledge: "Confirmer",
+    standingAcknowledging: "Confirmation...",
+    standingAcknowledgeSuccess: "Avis confirmé.",
+    standingAcknowledgeError:
+      "Impossible de confirmer cet avis. Veuillez réessayer.",
+    standingRequestReview: "Demander un examen",
+    standingRequestingReview: "Demande en cours...",
+    standingReviewSuccess: "Examen demandé.",
+    standingReviewError:
+      "Impossible de demander un examen. Veuillez réessayer.",
+    standingReviewPending: "Examen en attente",
+    standingReviewUpheld: "Décision maintenue",
+    standingReviewModified: "Décision modifiée",
+    standingReviewOverturned: "Décision annulée",
+    standingReviewOutcome: "Décision de l’examen",
+    standingLoadErrorTitle: "Impossible de charger l’état du compte",
+    standingLoadErrorDescription:
+      "Vos renseignements de modération sont temporairement indisponibles. Rechargez la page pour réessayer.",
+    standingRefresh: "Recharger",
+    standingYes: "Oui",
+    standingNo: "Non",
+    moderationStandingBannerTitle: "Une action est requise pour votre compte",
+    moderationStandingBannerDescription:
+      "Consultez et confirmez le dernier avis important de modération.",
+    moderationStandingBannerAction: "Voir l’état du compte",
+    notificationModerationWarningTitle: "Avertissement du compte",
+    notificationModerationWarningDescription:
+      "Consultez cet avertissement et les prochaines étapes requises dans l’état du compte.",
+    notificationModerationStrikeTitle: "Sanction ajoutée à votre compte",
+    notificationModerationStrikeDescription:
+      "Consultez la sanction, les restrictions et les options de contestation dans l’état du compte.",
+    notificationModerationBanTitle: "Restriction du compte appliquée",
+    notificationModerationBanDescription:
+      "Consultez les détails de la restriction et les options de contestation dans l’état du compte.",
+    notificationModerationReviewTitle: "Mise à jour de l’examen du compte",
+    notificationModerationReviewDescription:
+      "Une décision ou une mise à jour est disponible dans l’état du compte.",
+    notificationConversationClosedTitle: "Conversation fermée",
+    notificationConversationClosedDescription:
+      "Cette conversation est en lecture seule jusqu’à sa réouverture.",
+    notificationConversationReopenedTitle: "Conversation rouverte",
+    notificationConversationReopenedDescription:
+      "Vous pouvez de nouveau envoyer des messages dans cette conversation.",
+    conversationClosedBadge: "Fermée",
+    conversationClosedTitle: "Cette conversation est fermée",
+    conversationClosedReadOnly:
+      "Vous pouvez toujours consulter les messages et les médias partagés, mais les nouveaux messages et les réactions ne sont pas disponibles.",
+    conversationClosedReasonLabel: "Motif",
+    conversationClosedAtLabel: "Fermée le",
+    conversationClosedUntilLabel: "Réouverture",
+    conversationClosedIndefinitely: "Jusqu’à nouvel ordre",
+    conversationClosedSupportLink: "Obtenir de l’aide",
+    conversationClosedComposerLabel: "Conversation fermée",
+    conversationClosedComposerDescription:
+      "La messagerie et les nouvelles réactions seront disponibles si cette conversation est rouverte.",
+    conversationReopenedLiveStatus:
+      "Cette conversation est de nouveau ouverte. La messagerie est à nouveau disponible.",
+    conversationModerationRefreshError:
+      "Impossible d’actualiser l’état de la conversation. Essayez de recharger la page.",
+    conversationClosedReasonFallback: "Fermée par l’équipe de modération.",
     signOut: "Se déconnecter",
     deleteConversation: "Supprimer la conversation",
     deleteConversationTitle: "Supprimer cette conversation ?",
@@ -1262,6 +1972,8 @@ export const translations = {
     reportDetailsLabel: "Détails",
     reportDetailsDescription:
       "Optionnel : ajoutez une courte explication avec tout contexte utile pour examiner le signalement.",
+    reportOtherDetailsDescription:
+      "Obligatoire pour Autre : ajoutez de 10 à 600 caractères de contexte pour l’équipe de modération.",
     reportDetailsPlaceholder:
       "Ajoutez du contexte, une description de preuve utile, ou les détails de ce qui s'est passé...",
     reportSubmit: "Envoyer le signalement",
@@ -1316,6 +2028,8 @@ export const translations = {
       "Votre conversation apparaîtra dans Messages après l'envoi du premier message.",
     sendFirstMessage: "Envoyer le premier message",
     messageInputPlaceholder: "Écrivez un message…",
+    messageBodyTooLong: "Limitez les messages à 2 000 caractères ou moins.",
+    messageBodyCharacterCount: "{count}/2 000 caractères",
     addMessageEmoji: "Ajouter un emoji",
     insertMessageEmoji: "Insérer",
     messageEmojiPickerLabel: "Choisir un emoji",
@@ -1396,6 +2110,281 @@ export const translations = {
     ofLabel: "sur",
     adminDashboard: "Tableau de bord d'administration",
     adminOverview: "Aperçu",
+    adminNavigationLabel: "Sections d’administration",
+    adminNavOverview: "Aperçu",
+    adminNavReports: "Signalements",
+    adminNavListings: "Annonces",
+    adminNavEnforcement: "Mesures disciplinaires",
+    adminNavUsers: "Utilisateurs",
+    adminNavConversations: "Conversations",
+    adminNavAnnouncements: "Communiqués",
+    adminNavAudit: "Journal d’audit",
+    adminMobileEntry: "Admin",
+    adminOverviewDescription:
+      "Consultez les éléments à traiter, les restrictions actives et chaque espace de modération.",
+    adminCreateAnnouncement: "Créer un communiqué",
+    adminMetricsTitle: "Mesures de modération",
+    adminMetricOpenReports: "Signalements ouverts",
+    adminMetricPendingListings: "Annonces en attente",
+    adminMetricActiveStrikes: "Sanctions actives",
+    adminMetricUnackWarnings: "Avertissements non confirmés",
+    adminMetricClosedChats: "Discussions fermées",
+    adminMetricActiveRestrictions: "Restrictions actives",
+    adminNeedsAttention: "À traiter",
+    adminNeedsAttentionDescription:
+      "Les éléments non résolus les plus anciens des espaces de modération.",
+    adminNeedsAttentionEmpty: "Aucun élément ne nécessite une attention immédiate.",
+    adminAttentionReport: "Signalement",
+    adminAttentionListing: "Examen d’annonce",
+    adminAttentionAppeal: "Contestation",
+    adminAttentionClosedChat: "Discussion fermée",
+    adminAttentionTemporaryClose: "Restriction temporaire de conversation",
+    adminAttentionIndefiniteClose: "Conversation restreinte jusqu’à sa réouverture",
+    adminRecentEnforcement: "Mesures récentes",
+    adminRecentEnforcementEmpty: "Aucun événement disciplinaire pour le moment.",
+    viewAll: "Tout afficher",
+    loading: "Chargement…",
+    retry: "Réessayer",
+    adminReportsRegistryDescription:
+      "Consultez un registre limité des signalements, du plus récent au plus ancien.",
+    adminListingsRegistryDescription:
+      "Examinez les annonces en attente d’une décision de modération.",
+    adminRegistryLoadError: "Impossible de charger ce registre de modération.",
+    adminFilterStatus: "État du signalement",
+    adminFilterSubject: "Sujet du signalement",
+    adminFilterReason: "Motif du signalement",
+    adminListingQueueFilter: "File des annonces",
+    adminListingQueuePending: "En attente d’examen",
+    adminListingQueueApproved: "Approuvées",
+    adminListingQueueRejected: "Refusées",
+    adminAuditTitle: "Journal d’audit immuable",
+    adminAuditDescription:
+      "Consultez les événements immuables récents de modération et de cycle de vie des communiqués.",
+    adminAuditEmpty: "Aucun événement d’audit pour le moment.",
+    adminUsersPaginationLabel: "Pages de l’annuaire des utilisateurs",
+    adminAnnouncementsTitle: "Gestion des communiqués",
+    adminAnnouncementsDescription:
+      "Rédigez, planifiez, envoyez, annulez, surveillez et relancez les communiqués durables.",
+    adminAnnouncementWorkerConfigured: "Worker prêt",
+    adminAnnouncementWorkerNeedsScheduler: "Planificateur non activé",
+    adminAnnouncementRunWorker: "Exécuter une passe",
+    adminAnnouncementWorkerDescription:
+      "La livraison manuelle est disponible, mais la poursuite automatique exige la planification du point de terminaison protégé lors du déploiement.",
+    adminAnnouncementStatus_draft: "Brouillon",
+    adminAnnouncementStatus_scheduled: "Planifié",
+    adminAnnouncementStatus_sending: "En cours d’envoi",
+    adminAnnouncementStatus_sent: "Envoyé",
+    adminAnnouncementStatus_partially_failed: "Échec partiel",
+    adminAnnouncementStatus_cancelled: "Annulé",
+    adminAnnouncementRecipients: "Destinataires",
+    adminAnnouncementDelivered: "Livrés",
+    adminAnnouncementFailed: "Échecs",
+    adminAnnouncementSkipped: "Ignorés",
+    adminAnnouncementRead: "Lus",
+    adminAnnouncementDismissed: "Masqués",
+    adminAnnouncementProgress: "{count} % terminés",
+    adminAnnouncementScheduledFor: "Planifié pour",
+    adminAnnouncementSendNow: "Envoyer maintenant",
+    adminAnnouncementUnschedule: "Revenir au brouillon",
+    adminAnnouncementRetry: "Relancer les échecs",
+    adminAnnouncementScheduleTime: "Heure planifiée",
+    adminAnnouncementSchedule: "Planifier",
+    adminAnnouncementEditDraft: "Modifier le brouillon",
+    adminAnnouncementCreateDraft: "Nouveau communiqué",
+    adminAnnouncementPriority: "Priorité",
+    adminAnnouncementAudience: "Public",
+    adminAnnouncementAudienceValues: "Valeurs du public",
+    adminAnnouncementChooseAudience: "Choisir un public",
+    adminAnnouncementAudienceValuesPlaceholder:
+      "Saisissez des écoles ou identifiants séparés par des virgules",
+    adminAnnouncementAudienceHint:
+      "Utilisez les noms exacts des écoles ou les UUID. Un public sélectionné est limité à 500 comptes.",
+    adminAnnouncementDeliveryPolicy: "Politique de livraison",
+    adminAnnouncementEmailUnavailable:
+      "La livraison dans l’application est active. Le courriel reste désactivé jusqu’au déploiement d’un worker suivi.",
+    adminAnnouncementHistory: "Historique des campagnes",
+    adminAnnouncementTotal: "{count} communiqués",
+    adminAnnouncementSearchPlaceholder: "Rechercher les titres",
+    adminAnnouncementStatusFilter: "État du communiqué",
+    adminAnnouncementActionError: "Impossible de terminer l’action du communiqué.",
+    adminAnnouncementActionSuccess: "Communiqué mis à jour.",
+    adminAnnouncementsEmpty: "Aucun communiqué ne correspond à ces filtres.",
+    adminAnnouncementPagination: "Pages des communiqués",
+    adminAnnouncementsLoadError: "Impossible de charger les communiqués.",
+    adminEnforcementTitle: "Mesures disciplinaires",
+    adminEnforcementDescription:
+      "Consultez l’état des comptes, les sanctions et les contestations en attente dans la place de marché.",
+    adminEnforcementSearchPlaceholder:
+      "Rechercher par identifiant, nom ou raison de politique",
+    adminEnforcementStatusFilter: "État",
+    adminEnforcementTypeFilter: "Type de sanction",
+    adminEnforcementSeverityFilter: "Gravité",
+    adminEnforcementAllStatuses: "Tous les états",
+    adminEnforcementActive: "Actives",
+    adminEnforcementPendingReview: "Contestations en attente",
+    adminEnforcementHistory: "Historique",
+    adminEnforcementAllTypes: "Tous les types",
+    adminEnforcementAllSeverities: "Toutes les gravités",
+    adminEnforcementResults: "Dossiers disciplinaires",
+    adminEnforcementEmpty: "Aucun dossier ne correspond à ces filtres.",
+    adminEnforcementIssuedBy: "Émise par",
+    adminEnforcementEffect: "Effet",
+    adminEnforcementOpenUser: "Ouvrir l’utilisateur",
+    adminUserDetailDescription:
+      "Consultez l’état du compte, son activité sur la place de marché et son historique de modération.",
+    adminUserCurrentStanding: "État actuel",
+    adminUserAccountActive: "Compte actif",
+    adminUserAccountBanned: "Compte restreint",
+    adminUserLastSignIn: "Dernière connexion",
+    adminUserEmailConfirmed: "Courriel confirmé",
+    adminUserReportsSummary: "Signalements",
+    adminUserListingsSummary: "Annonces",
+    adminUserConversationsSummary: "Conversations",
+    adminUserSanctionsSummary: "Sanctions",
+    adminUserSanctionHistory: "Historique de modération",
+    adminUserNoSanctions:
+      "Aucun historique de modération n’est disponible pour ce compte.",
+    adminIssueSanction: "Appliquer une mesure",
+    adminIssueSanctionDescription:
+      "Choisissez un avertissement ou une sanction et expliquez clairement la mesure à l’utilisateur.",
+    adminIssueWarning: "Émettre un avertissement",
+    adminIssueStrike: "Attribuer une sanction",
+    adminSanctionSeverity: "Gravité",
+    adminSanctionStrikePoints: "Points de sanction",
+    adminSanctionUserMessage: "Message à l’utilisateur",
+    adminSanctionUserMessageDescription:
+      "Expliquez le problème et la prochaine étape requise en 10 à 1000 caractères.",
+    adminSanctionActionSuccess:
+      "La mesure a été enregistrée et l’utilisateur a été avisé.",
+    adminSanctionActionError: "La mesure n’a pas pu être appliquée.",
+    adminRevokeSanction: "Révoquer",
+    adminRevokeSanctionTitle: "Révoquer cette mesure ?",
+    adminRevokeSanctionDescription:
+      "La mesure sera retirée sans effacer son historique immuable.",
+    adminRevocationReason: "Motif de révocation",
+    adminRevocationReasonDescription:
+      "Expliquez la correction en 10 à 1000 caractères.",
+    adminReviewUphold: "Maintenir",
+    adminReviewOverturn: "Annuler",
+    adminReviewOutcomeMessage: "Décision communiquée à l’utilisateur",
+    adminReviewOutcomeDescription:
+      "Expliquez la décision en 10 à 2000 caractères.",
+    adminLiftBanTitle: "Rétablir l’accès au compte ?",
+    adminLiftBanDescription:
+      "Cette action retire la restriction active sans supprimer son historique immuable.",
+    adminLiftBanReason: "Motif du rétablissement",
+    adminLiftBanReasonPlaceholder: "Expliquez pourquoi l’accès est rétabli",
+    adminLiftBanReasonValidation:
+      "Saisissez un motif de 10 à 1000 caractères.",
+    adminLiftBanBefore: "Avant",
+    adminLiftBanCurrent: "Actuel",
+    adminLiftBanAfter: "Après",
+    adminLiftBanEffect:
+      "L’accès à la place de marché est rétabli immédiatement. La restriction initiale et cette décision restent dans l’historique d’audit.",
+    adminLiftBanConfirm: "Rétablir l’accès",
+    adminLiftBanSuccess:
+      "L’accès au compte a été rétabli et l’utilisateur a été avisé.",
+    adminLiftBanReplay: "Cette action terminée a été relue sans duplication.",
+    adminLiftBanAuditRecord: "Dossier d’audit",
+    adminLiftBanOperation: "Opération",
+    adminConversationsTitle: "Modération des conversations",
+    adminConversationsDescription:
+      "Examinez les conversations signalées, consultez des preuves de messages limitées et gérez les fermetures ou réouvertures.",
+    adminConversationsWindowHint:
+      "La recherche et les filtres couvrent les 2 000 conversations d’annonces les plus récemment actives.",
+    adminConversationsTotalLabel: "Conversations",
+    adminConversationsFilterLabel: "Filtres d’état des conversations",
+    adminConversationsFilterAll: "Toutes",
+    adminConversationsFilterOpen: "Ouvertes",
+    adminConversationsFilterClosed: "Fermées",
+    adminConversationsFilterReopened: "Réouvertes",
+    adminConversationsFilterReported: "Signalées",
+    adminConversationsSearchLabel: "Rechercher des conversations",
+    adminConversationsSearchPlaceholder:
+      "Rechercher un participant, une école, une annonce ou un ID",
+    adminConversationsSearchAction: "Rechercher",
+    adminConversationsLoadErrorTitle:
+      "Impossible de charger le registre des conversations",
+    adminConversationsLoadErrorDescription:
+      "L’accès à la modération ou les données de conversation n’ont pas pu être vérifiés. Rechargez pour réessayer.",
+    adminConversationsEmptyTitle: "Aucune conversation trouvée",
+    adminConversationsEmptyDescription:
+      "Aucune conversation ne correspond à ces filtres et termes de recherche.",
+    adminConversationsOpenStatus: "Ouverte",
+    adminConversationsClosedStatus: "Fermée",
+    adminConversationsReopenedStatus: "Réouverte",
+    adminConversationsNoMessagePreview: "Aucun aperçu de message disponible.",
+    adminConversationsReviewAction: "Examiner la conversation",
+    adminConversationsLastActivity: "Dernière activité",
+    adminConversationsPaginationLabel: "Pages du registre des conversations",
+    adminConversationsPageSummary: "Page {page} sur {count}",
+    adminConversationsBackAction: "Retour aux conversations",
+    adminConversationLoadErrorTitle:
+      "Impossible de charger l’examen de la conversation",
+    adminConversationLoadErrorDescription:
+      "Le contexte de la conversation n’a pas pu être vérifié. Retournez au registre et réessayez.",
+    adminConversationReviewBadge: "Examen de modération",
+    adminConversationCloseAction: "Fermer la conversation",
+    adminConversationReopenAction: "Réouvrir la conversation",
+    adminConversationViewListing: "Voir l’annonce",
+    adminConversationBuyerLabel: "Acheteur",
+    adminConversationSellerLabel: "Vendeur",
+    adminConversationStateVersionLabel: "Version de l’état",
+    adminConversationTranscriptTitle: "Preuves de la conversation",
+    adminConversationTranscriptDescription:
+      "Une transcription limitée, de la plus récente à la plus ancienne, avec les pièces jointes, réactions et signalements.",
+    adminConversationOlderMessages: "Charger les preuves antérieures",
+    adminConversationTranscriptEmpty:
+      "Aucun message n’est disponible dans cette conversation.",
+    adminConversationCurrentRestrictionTitle:
+      "Restriction actuelle de la conversation",
+    adminConversationLinkedReportsTitle: "Signalements liés",
+    adminConversationLinkedReportsDescription:
+      "Les signalements ouverts peuvent être liés à une fermeture ou réouverture et être résolus au besoin.",
+    adminConversationLinkedReportsEmpty:
+      "Aucun signalement n’est lié à cette conversation.",
+    adminConversationNoReportDetails: "Aucun détail supplémentaire.",
+    adminConversationHistoryTitle: "Historique de modération",
+    adminConversationHistoryEmpty:
+      "Aucune fermeture ou réouverture pour le moment.",
+    adminConversationHistoryClosed: "Conversation fermée",
+    adminConversationHistoryReopened: "Conversation réouverte",
+    adminConversationCloseTitle: "Fermer cette conversation",
+    adminConversationCloseDescription:
+      "Les participants conserveront un accès en lecture seule aux messages et médias partagés.",
+    adminConversationReopenTitle: "Réouvrir cette conversation",
+    adminConversationReopenDescription:
+      "Les participants pourront de nouveau envoyer des messages et des réactions.",
+    adminConversationReasonLabel: "Motif de modération",
+    adminConversationDurationLabel: "Durée de fermeture",
+    adminConversationDuration24h: "24 heures",
+    adminConversationDuration7d: "7 jours",
+    adminConversationDuration30d: "30 jours",
+    adminConversationDurationPermanent: "Jusqu’à une réouverture manuelle",
+    adminConversationModeratorDurationHint:
+      "Les modérateurs peuvent fermer une conversation temporairement pour un maximum de 30 jours.",
+    adminConversationUserMessageLabel: "Message aux participants",
+    adminConversationUserMessagePlaceholder:
+      "Expliquez ce qui s’est passé et les prochaines étapes pour les participants…",
+    adminConversationUserMessageHint:
+      "Les deux participants recevront une notification et pourront lire ce message.",
+    adminConversationInternalNoteLabel:
+      "Note privée de modération (facultative)",
+    adminConversationInternalNotePlaceholder:
+      "Consignez le contexte interne que les participants ne doivent pas voir…",
+    adminConversationLinkedReportLabel: "Signalement ouvert lié (facultatif)",
+    adminConversationNoLinkedReport: "Aucun signalement lié",
+    adminConversationResolveReportLabel: "Résoudre le signalement lié",
+    adminConversationResolveReportDescription:
+      "Désactivé par défaut. Lorsqu’activé, le signalement est résolu de façon atomique avec cette action.",
+    adminConversationParticipantNotificationHint:
+      "Les deux participants seront avisés sans divulguer l’identité du modérateur ni les notes privées.",
+    adminConversationClosedSuccess:
+      "Conversation fermée et participants avisés.",
+    adminConversationReopenedSuccess:
+      "Conversation rouverte et participants avisés.",
+    adminConversationActionError:
+      "Impossible de mettre à jour cette conversation pour le moment.",
     adminReports: "Signalements",
     adminListings: "Annonces",
     adminUsers: "Gestion des utilisateurs",
@@ -1412,8 +2401,16 @@ export const translations = {
       "Comptes actuellement marqués comme bannis dans l'authentification.",
     adminUsersSetupDescription:
       "Ajoutez d'abord la clé Supabase de rôle de service côté serveur, puis revenez ici pour charger l'annuaire complet des utilisateurs admin.",
+    adminUsersStatusUnavailableTitle:
+      "Impossible de charger l’état des restrictions",
+    adminUsersStatusUnavailableDescription:
+      "La gestion des utilisateurs est temporairement indisponible, car l’état des restrictions du compte n’a pas pu être vérifié. Rechargez la page pour réessayer.",
     adminSearchUsersPlaceholder:
       "Rechercher des utilisateurs, courriels, établissements ou rôles",
+    adminUsersSearchScope:
+      "La recherche couvre les 5 000 comptes les plus récents et retourne au plus 50 résultats par page.",
+    adminUsersCurrentPageSummary:
+      "Nombre sur cette page de l’annuaire filtré.",
     adminNoUsersMatchFilters:
       "Aucun utilisateur ne correspond aux filtres actuels.",
     adminUserRoleStandard: "Étudiant",
@@ -1433,7 +2430,27 @@ export const translations = {
       "Nous n'avons pas pu mettre à jour le rôle de cet utilisateur pour le moment.",
     adminBanUserTitle: "Bannir cet utilisateur ?",
     adminBanUserDescription:
-      "Choisissez une durée de bannissement temporaire ou prolongée. L'utilisateur perdra l'accès à son compte jusqu'à l'expiration ou la levée du bannissement.",
+      "Choisissez une durée et fournissez une raison claire que l'utilisateur peut comprendre. L'accès sera bloqué jusqu'à l'expiration ou la levée du bannissement.",
+    adminBanReasonLabel: "Raison liée à la politique",
+    adminBanReasonDescription:
+      "Sélectionnez la catégorie qui explique le mieux pourquoi l'accès au compte est restreint.",
+    adminBanReasonPlaceholder: "Choisir une raison",
+    adminBanReasonSpam: "Pourriel ou activité indésirable répétée",
+    adminBanReasonScam: "Arnaque, fraude ou usurpation d'identité",
+    adminBanReasonMisleading: "Contenu ou comportement trompeur",
+    adminBanReasonProhibited: "Article ou activité interdite",
+    adminBanReasonHarassment: "Harcèlement, menaces ou abus",
+    adminBanReasonInappropriate: "Contenu ou comportement inapproprié",
+    adminBanReasonOther: "Autre violation de la politique",
+    adminBanMessageLabel: "Message à l'utilisateur",
+    adminBanMessageDescription:
+      "Obligatoire (10 à 1 000 caractères). Expliquez ce qui s'est passé et les prochaines étapes. Ce message sera affiché sur l'écran de compte restreint.",
+    adminBanMessagePlaceholder:
+      "Expliquez clairement et respectueusement le problème de politique et les prochaines étapes...",
+    adminBanReasonValidationError:
+      "Choisissez une raison et ajoutez un message clair avant de bannir cet utilisateur.",
+    adminBanDurationLabel: "Durée du bannissement",
+    adminBanDurationPlaceholder: "Choisir une durée",
     adminBanDuration24Hours: "Bannir pendant 24 heures",
     adminBanDuration7Days: "Bannir pendant 7 jours",
     adminBanDuration30Days: "Bannir pendant 30 jours",
@@ -1477,16 +2494,20 @@ export const translations = {
     removeMod: "Retirer le rôle de modérateur",
     newAnnouncement: "Nouveau communiqué",
     newAnnouncementPlaceholder:
-      "Rédigez un message à afficher à tous les étudiants sur la page d'accueil...",
+      "Rédigez un message à envoyer aux étudiants...",
+    announcementMessageLabel: "Message du communiqué",
     announcementDialogDescription:
       "Ce message sera envoyé dans la boîte de réception de chaque utilisateur sous forme de message direct de votre part.",
     announcementSending: "Envoi en cours...",
     announcementSentCount: "Communiqué envoyé à {count} utilisateurs",
+    announcementQueued: "Communiqué placé dans la file d’envoi.",
     announcementNoRecipients:
       "Il n'y a pas encore d'autres utilisateurs pour recevoir ce communiqué.",
     announcementPartialFailure:
       "Certains destinataires n'ont pas reçu le communiqué. Échecs : {count}",
     announcementError: "Échec de l'envoi du communiqué. Veuillez réessayer.",
+    announcementMessageValidationError:
+      "Rédigez un communiqué de 1 à 2 000 caractères avant de l'envoyer.",
     sendAnnouncement: "Envoyer le communiqué",
     pastAnnouncements: "Anciens communiqués",
     inactive: "Inactif",
@@ -1588,6 +2609,9 @@ export const translations = {
     adminListingFeedbackTitle: "Commentaire au vendeur",
     adminListingFeedbackDescription:
       "Si vous refusez cette annonce, expliquez ce qui doit changer avant que le vendeur la soumette de nouveau.",
+    adminListingFeedbackRequiredMarker: "Obligatoire pour refuser",
+    adminListingFeedbackTooLong:
+      "Limitez le commentaire au vendeur à 3 000 caractères.",
     adminListingFeedbackPlaceholder:
       "Exemple : retirez un libellé interdit, ajoutez des photos plus claires, corrigez un prix ou des détails trompeurs, ou ajustez la catégorie avant de soumettre à nouveau...",
     adminListingDecisionLockedDescription:
@@ -1611,7 +2635,9 @@ export const translations = {
       "Ajoutez un commentaire destiné au vendeur avant de refuser cette annonce.",
     adminProfileReviewDescription:
       "Inspectez les détails du profil signalé et les signalements liés avant de décider du résultat de modération.",
+    backToAdminOverview: "Retour à l’aperçu",
     backToAdminReports: "Retour aux signalements",
+    backToAdminListings: "Retour aux annonces",
     adminParticipantsTitle: "Participants à la conversation",
     adminReportedProfileTitle: "Profil signalé",
     adminProfileNoListings: "Ce profil n'a aucune annonce active pour le moment.",
@@ -1622,20 +2648,26 @@ export const translations = {
     adminCurrentReport: "Actuel",
     adminModeratorNotesTitle: "Notes de modération",
     adminModeratorNotesDescription:
-      "Notes privées pour ce signalement précis. Utilisez-les pour garder le contexte, la justification ou un suivi à faire.",
+      "Mises à jour privées et immuables pour ce signalement. Une note ne peut plus être modifiée ni supprimée après son ajout.",
     adminModeratorNotesSetupDescription:
-      "Les notes de modération exigent une petite mise à jour de la table `reports` avant de pouvoir être enregistrées ici.",
+      "L’historique des notes de modération est indisponible, car sa migration de base de données manque dans cet environnement.",
     adminModeratorNotesSetupHint:
-      "Appliquez le SQL des notes de modération dans Supabase pour activer les notes privées et leurs champs d'audit.",
+      "L’interface est prête, mais les fonctions sécurisées d’ajout et d’historique ne sont pas encore installées dans cette base de données.",
+    adminModeratorNotesComposerLabel: "Ajouter une note privée",
+    adminModeratorNotesComposerDescription:
+      "Partagez du contexte ou une mise à jour avec l’équipe de modération. Ajoutez toute correction dans une nouvelle note.",
     adminModeratorNotesPlaceholder:
-      "Ajoutez des notes privées, le contexte de la décision, ou des rappels de suivi pour ce signalement...",
-    adminModeratorNotesSaved: "Notes de modération enregistrées.",
+      "Ajoutez du contexte, une justification ou un rappel de suivi pour ce signalement...",
+    adminModeratorNotesSaved: "Note de modération ajoutée.",
     adminModeratorNotesSaveError:
-      "Nous n'avons pas pu enregistrer les notes de modération pour le moment.",
+      "Nous n'avons pas pu ajouter la note de modération pour le moment.",
     adminModeratorNotesUpdatedByPrefix: "Dernière mise à jour par",
     adminModeratorNotesUnsavedHint: "Vous avez des changements de notes non enregistrés.",
-    adminModeratorNotesEmpty: "Aucune note de modération pour le moment.",
-    saveNotes: "Enregistrer les notes",
+    adminModeratorNotesHistoryTitle: "Historique des notes",
+    adminModeratorNotesCountLabel: "affichées",
+    adminModeratorNotesLoadOlder: "Charger les notes précédentes",
+    adminModeratorNotesEmpty: "Aucune note de modération n’a encore été ajoutée.",
+    saveNotes: "Ajouter la note",
     adminCloseReportNoAction: "Fermer sans autre action",
     adminMarkReportAddressed: "Marquer comme traité",
     adminCloseAllOpenNoAction: "Fermer tous les signalements ouverts sans autre action",

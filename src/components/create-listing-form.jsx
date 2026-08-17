@@ -37,6 +37,7 @@ import {
 import {
   Field,
   FieldDescription,
+  FieldError,
   FieldGroup,
   FieldLabel,
   FieldTitle,
@@ -56,22 +57,36 @@ import {
   LISTING_APPROVAL_STATUS_VALUES,
   isListingApprovalSetupMissing,
 } from "@/lib/listing-approval";
+import {
+  parseListingRequiredFieldViolation,
+  replayAmbiguousListingWrite,
+  uploadListingImageBatch,
+} from "@/lib/listing-integrity.mjs";
+import {
+  LISTING_WRITE_ACTIONS,
+  abortOwnedListingWriteIntent,
+  clearListingWriteJournal,
+  drainOwnedListingImageCleanup,
+  hashListingWriteSignature,
+  listingWriteJournalKey,
+  prepareListingWriteJournal,
+  verifyOwnedListingReservedUpload,
+} from "@/lib/listing-write-recovery.mjs";
 import { getTranslatedConditionLabel } from "@/lib/search-listings";
+import { focusFirstInvalidField } from "@/lib/focus-first-invalid-field";
+import {
+  LISTING_DESCRIPTION_MAX_LENGTH,
+  LISTING_PRICE_MAX_CAD,
+  countUnicodeCodePoints,
+  normalizeListingPrice,
+  normalizeWriteText,
+  validateListingDraftFields,
+  validateListingPublishFields,
+} from "@/lib/write-field-contracts.mjs";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
 
 const conditionOptions = ["New", "Like New", "Used"];
-
-function slugifyTitle(value) {
-  const slug = value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .replace(/-{2,}/g, "-");
-
-  return slug || "listing";
-}
 
 function sanitizeFileName(name) {
   return name
@@ -81,18 +96,8 @@ function sanitizeFileName(name) {
     .replace(/^-+|-+$/g, "");
 }
 
-function isUniqueSlugError(error) {
-  if (!error) {
-    return false;
-  }
-
-  return (
-    error.code === "23505" &&
-    (error.message?.includes("slug") || error.details?.includes("slug"))
-  );
-}
-
 function ListingCombobox({
+  id,
   label,
   placeholder,
   value,
@@ -100,16 +105,30 @@ function ListingCombobox({
   options,
   description,
   emptyLabel,
+  error,
+  requiredLabel = null,
 }) {
   const normalizedOptions = options.map((option) =>
     typeof option === "string" ? { value: option, label: option } : option
   );
 
   return (
-    <Field>
-      <FieldLabel>{label}</FieldLabel>
+    <Field data-invalid={Boolean(error)}>
+      <FieldLabel htmlFor={id}>
+        {label}
+        {requiredLabel ? (
+          <span className="text-xs font-medium text-muted-foreground">{requiredLabel}</span>
+        ) : null}
+      </FieldLabel>
       <Combobox value={value} onValueChange={onValueChange}>
-        <ComboboxInput placeholder={placeholder} />
+        <ComboboxInput
+          id={id}
+          placeholder={placeholder}
+          required={Boolean(requiredLabel)}
+          aria-required={Boolean(requiredLabel)}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? `${id}-error` : undefined}
+        />
         <ComboboxContent>
           <ComboboxEmpty>{emptyLabel}</ComboboxEmpty>
           <ComboboxList>
@@ -122,7 +141,27 @@ function ListingCombobox({
         </ComboboxContent>
       </Combobox>
       {description ? <FieldDescription>{description}</FieldDescription> : null}
+      <FieldError id={`${id}-error`}>{error}</FieldError>
     </Field>
+  );
+}
+
+const LISTING_ERROR_TRANSLATION_KEYS = Object.freeze({
+  title: "listingTitleRequired",
+  category: "listingCategoryRequired",
+  price: "listingPriceRequired",
+  description: "listingDescriptionRequired",
+  condition: "listingConditionRequired",
+  campus: "listingCampusRequired",
+  photos: "listingPhotoRequired",
+});
+
+function getListingFieldErrors(validation, t) {
+  return Object.fromEntries(
+    Object.keys(validation.errors).map((field) => [
+      field,
+      t[LISTING_ERROR_TRANSLATION_KEYS[field]] ?? t.listingRequiredFieldsUnavailable,
+    ]),
   );
 }
 
@@ -140,12 +179,15 @@ export function CreateListingForm() {
   const [photos, setPhotos] = React.useState([]);
   const [showAllPhotoPreviews, setShowAllPhotoPreviews] = React.useState(false);
   const [photoError, setPhotoError] = React.useState("");
+  const [fieldErrors, setFieldErrors] = React.useState({});
   const [error, setError] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isSubmitWarningOpen, setIsSubmitWarningOpen] = React.useState(false);
   const [hasConfirmedRestrictions, setHasConfirmedRestrictions] = React.useState(false);
 
   const fileInputRef = React.useRef(null);
+  const formRef = React.useRef(null);
+  const pendingWriteRef = React.useRef(null);
   const photoPreviews = useLocalPhotoPreviews(photos);
 
   const appendPhotos = React.useCallback((selectedFiles) => {
@@ -169,6 +211,7 @@ export function CreateListingForm() {
 
     if (acceptedFiles.length > 0) {
       setPhotos((currentPhotos) => [...currentPhotos, ...acceptedFiles]);
+      setFieldErrors((current) => ({ ...current, photos: undefined }));
     }
   }, [language, photos.length]);
 
@@ -192,94 +235,58 @@ export function CreateListingForm() {
     setIsNegotiable(false);
     setPhotos([]);
     setPhotoError("");
+    setFieldErrors({});
     setShowAllPhotoPreviews(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   }
 
-  async function uploadListingPhotos(userId, listingId, files) {
-    const uploadedImages = [];
-
-    for (const [index, file] of files.entries()) {
-      const safeName = sanitizeFileName(file.name) || `image-${index + 1}`;
-      const storagePath = `${userId}/${listingId}/${Date.now()}-${index + 1}-${safeName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("listing-images")
-        .upload(storagePath, file, {
-          cacheControl: "3600",
-          upsert: false,
-        });
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      const { data: publicUrlData } = supabase.storage
-        .from("listing-images")
-        .getPublicUrl(storagePath);
-
-      uploadedImages.push({
-        storagePath,
-        imageUrl: publicUrlData.publicUrl,
-      });
-    }
-
-    return uploadedImages;
-  }
-
-  async function createListingRecord(userId, status, numericPrice) {
-    const baseSlug = slugifyTitle(title.trim());
-
-    for (let attempt = 0; attempt < 10; attempt += 1) {
-      const slug = attempt === 0 ? baseSlug : `${baseSlug}-${attempt + 1}`;
-
-      const { data, error: insertError } = await supabase
-        .from("listings")
-        .insert({
-          seller_id: userId,
-          slug,
-          title: title.trim(),
-          description: description.trim(),
-          price: numericPrice,
-          category,
-          condition,
-          location: campus,
-          status,
-          is_negotiable: isNegotiable,
-        })
-        .select("id, slug")
-        .single();
-
-      if (!insertError) {
-        return data;
-      }
-
-      if (!isUniqueSlugError(insertError)) {
-        throw insertError;
-      }
-    }
-
-    throw new Error("Could not generate a unique slug for this listing.");
-  }
-
   async function handleSubmit(status) {
     setError("");
+    const normalizedPriceInput = price.replaceAll("$", "").replaceAll(",", "").trim();
+    const priceResult = normalizeListingPrice(normalizedPriceInput);
+    const isPublishing = status === LISTING_APPROVAL_STATUS_VALUES.pendingReview;
+    const validation = isPublishing
+      ? validateListingPublishFields({
+          title,
+          category,
+          price: normalizedPriceInput,
+          description,
+          condition,
+          campus,
+          photoCount: photos.length,
+        })
+      : validateListingDraftFields({ title });
+    const normalizedDescription = isPublishing
+      ? validation.values.description
+      : normalizeWriteText(description, { emptyToNull: true });
+    const normalizedCategory = isPublishing
+      ? validation.values.category
+      : normalizeWriteText(category, { emptyToNull: true });
+    const normalizedCondition = isPublishing
+      ? validation.values.condition
+      : normalizeWriteText(condition, { emptyToNull: true });
+    const normalizedCampus = isPublishing
+      ? validation.values.campus
+      : normalizeWriteText(campus, { emptyToNull: true });
+    const validationErrors = getListingFieldErrors(validation, t);
 
-    const numericPrice = Number.parseFloat(
-      price.replaceAll("$", "").replaceAll(",", "").trim(),
-    );
+    if (!priceResult.ok) {
+      validationErrors.price = t.listingPriceRequired;
+    }
+    if (countUnicodeCodePoints(normalizedDescription ?? "") > LISTING_DESCRIPTION_MAX_LENGTH) {
+      validationErrors.description = t.listingDescriptionRequired;
+    }
 
-    if (!title || !category || !price || !description || !campus || !condition) {
-      setError(t.fillFields);
+    if (!validation.ok || !priceResult.ok || Object.keys(validationErrors).length > 0) {
+      setFieldErrors(validationErrors);
+      setError(t.listingValidationSummaryTitle);
+      focusFirstInvalidField(formRef.current);
       return;
     }
 
-    if (!Number.isFinite(numericPrice) || numericPrice < 0) {
-      setError(t.validPrice);
-      return;
-    }
+    setFieldErrors({});
 
     setIsSubmitting(true);
 
@@ -293,62 +300,214 @@ export function CreateListingForm() {
         throw new Error(t.mustLogin);
       }
 
-      const createdListing = await createListingRecord(user.id, status, numericPrice);
-      let uploadedImages = [];
+      const writeSignature = JSON.stringify({
+        isPublishing,
+        title: validation.values.title,
+        description: normalizedDescription,
+        price: priceResult.value,
+        category: normalizedCategory,
+        condition: normalizedCondition,
+        location: normalizedCampus,
+        isNegotiable,
+        photos: photos.map((photo) => ({
+          name: photo.name,
+          size: photo.size,
+          type: photo.type,
+          lastModified: photo.lastModified,
+        })),
+      });
+
+      const signatureHash = await hashListingWriteSignature(writeSignature);
+      const journalKey = listingWriteJournalKey(LISTING_WRITE_ACTIONS.create);
+      const imageBucket = supabase.storage.from("listing-images");
+      const prepared = await prepareListingWriteJournal({
+        supabase,
+        bucket: imageBucket,
+        storage: globalThis.localStorage,
+        key: journalKey,
+        action: LISTING_WRITE_ACTIONS.create,
+        signatureHash,
+        isPublishing,
+      });
+      if (prepared.error) throw prepared.error;
+      if (prepared.previousCompleted) {
+        resetForm();
+        pendingWriteRef.current = null;
+        toast.success(isPublishing ? t.listingSubmittedForReview : t.draftSaved);
+        router.push(isPublishing ? "/dashboard?tab=inactive" : "/dashboard?tab=draft");
+        router.refresh();
+        return;
+      }
+
+      const journal = prepared.entry;
+      if (pendingWriteRef.current?.operationId !== journal.operationId) {
+        pendingWriteRef.current = {
+          operationId: journal.operationId,
+          signatureHash,
+          uploadState: {},
+          uploadedImages: null,
+          imageManifest: null,
+        };
+      }
+      const pendingWrite = pendingWriteRef.current;
+
+      const draftWrite = await replayAmbiguousListingWrite(() => supabase
+        .rpc("commit_owned_listing_create_draft_intent", {
+          p_operation_id: journal.operationId,
+          p_signature_hash: signatureHash,
+          p_title: validation.values.title,
+          p_description: normalizedDescription,
+          p_price: priceResult.value,
+          p_category: normalizedCategory,
+          p_condition: normalizedCondition,
+          p_location: normalizedCampus,
+          p_is_negotiable: isNegotiable,
+        })
+        .single());
+      const { data: createdListing, error: draftError } = draftWrite;
+
+      if (draftError || !createdListing) {
+        throw draftError ?? new Error(t.listingRequiredFieldsUnavailable);
+      }
 
       try {
         if (photos.length > 0) {
-          uploadedImages = await uploadListingPhotos(user.id, createdListing.id, photos);
-
-          const { error: imageRowsError } = await supabase
-            .from("listing_images")
-            .insert(
-              uploadedImages.map((image, index) => ({
-                listing_id: createdListing.id,
-                image_url: image.imageUrl,
-                storage_path: image.storagePath,
-                position: index,
-              })),
-            );
-
-          if (imageRowsError) {
-            throw imageRowsError;
+          if (!pendingWrite.uploadedImages) {
+            const uploadPlan = photos.map((file, index) => {
+              const safeName = sanitizeFileName(file.name) || `image-${index + 1}`;
+              return {
+                storagePath: `${user.id}/${createdListing.id}/${journal.operationId}-${index + 1}-${safeName}`,
+                fileName: file.name,
+                mimeType: file.type,
+                sizeBytes: file.size,
+              };
+            });
+            const reservationWrite = await replayAmbiguousListingWrite(() => supabase.rpc(
+              "reserve_owned_listing_image_uploads",
+              {
+                p_operation_id: journal.operationId,
+                p_signature_hash: signatureHash,
+                p_listing_id: createdListing.id,
+                p_images: uploadPlan.map((image) => ({
+                  storage_path: image.storagePath,
+                  file_name: image.fileName,
+                  mime_type: image.mimeType,
+                  size_bytes: image.sizeBytes,
+                })),
+              },
+            ));
+            if (reservationWrite.error) throw reservationWrite.error;
+            pendingWrite.uploadedImages = await uploadListingImageBatch({
+              bucket: imageBucket,
+              files: photos,
+              uploadState: pendingWrite.uploadState,
+              getStoragePath: (_file, index) => uploadPlan[index].storagePath,
+              verifyExistingUpload: async (storagePath) => {
+                const verified = await verifyOwnedListingReservedUpload({
+                  supabase,
+                  operationId: journal.operationId,
+                  signatureHash,
+                  storagePath,
+                });
+                if (verified.error) throw verified.error;
+                return verified.data === true;
+              },
+            });
+            pendingWrite.imageManifest = pendingWrite.uploadedImages.map((image, index) => ({
+              id: crypto.randomUUID(),
+              image_url: image.imageUrl,
+              storage_path: image.storagePath,
+              position: index,
+            }));
           }
         }
       } catch (assetError) {
-        if (uploadedImages.length > 0) {
-          await supabase.storage
-            .from("listing-images")
-            .remove(uploadedImages.map((image) => image.storagePath));
-        }
-
-        const { error: discardError } = await supabase.rpc(
-          "discard_owned_listing_draft",
-          { p_listing_id: createdListing.id },
+        const aborted = await abortOwnedListingWriteIntent(
+          supabase,
+          journal.operationId,
+          signatureHash,
         );
-
-        if (discardError) {
-          console.error("Failed to discard incomplete listing:", discardError.message);
+        if (!aborted.error) {
+          const cleanup = await drainOwnedListingImageCleanup({
+            supabase,
+            bucket: imageBucket,
+          });
+          if (!cleanup.error) {
+            clearListingWriteJournal(globalThis.localStorage, journalKey, journal.operationId);
+            pendingWriteRef.current = null;
+          }
         }
         throw assetError;
       }
 
+      const committed = await replayAmbiguousListingWrite(() => supabase.rpc(
+        "commit_owned_listing_create_intent",
+        {
+          p_operation_id: journal.operationId,
+          p_signature_hash: signatureHash,
+          p_images: pendingWrite.imageManifest ?? [],
+          p_is_publishing: isPublishing,
+        },
+      ));
+      if (committed.error) {
+        if (!committed.hadAmbiguousAttempt) {
+          const aborted = await abortOwnedListingWriteIntent(
+            supabase,
+            journal.operationId,
+            signatureHash,
+          );
+          if (!aborted.error) {
+            const cleanup = await drainOwnedListingImageCleanup({
+              supabase,
+              bucket: imageBucket,
+            });
+            if (!cleanup.error) {
+              clearListingWriteJournal(
+                globalThis.localStorage,
+                journalKey,
+                journal.operationId,
+              );
+              pendingWriteRef.current = null;
+            }
+          }
+        }
+        throw committed.error;
+      }
+
+      const cleanup = await drainOwnedListingImageCleanup({
+        supabase,
+        bucket: imageBucket,
+      });
+      if (cleanup.error) throw cleanup.error;
+
       resetForm();
+      clearListingWriteJournal(globalThis.localStorage, journalKey, journal.operationId);
+      pendingWriteRef.current = null;
       toast.success(
-        status === "draft"
+        !isPublishing
           ? t.draftSaved
           : t.listingSubmittedForReview,
       );
 
-      if (status === LISTING_APPROVAL_STATUS_VALUES.pendingReview) {
+      if (isPublishing) {
         router.push("/dashboard?tab=inactive");
         router.refresh();
       }
     } catch (submitError) {
+      const requiredFields = parseListingRequiredFieldViolation(submitError);
+      if (requiredFields.length > 0) {
+        setFieldErrors(Object.fromEntries(requiredFields.map((field) => [
+          field,
+          t[LISTING_ERROR_TRANSLATION_KEYS[field]],
+        ])));
+        focusFirstInvalidField(formRef.current);
+      }
       setError(
         isListingApprovalSetupMissing(submitError)
           ? t.listingApprovalSetupRequired
-          : submitError.message || t.errorGeneric,
+          : requiredFields.length > 0
+            ? t.listingRequiredFieldsUnavailable
+            : t.errorGeneric,
       );
     } finally {
       setIsSubmitting(false);
@@ -412,71 +571,155 @@ export function CreateListingForm() {
           </CardHeader>
 
           <CardContent className="p-4 sm:p-6 md:p-8">
+            <form ref={formRef} noValidate onSubmit={(event) => event.preventDefault()}>
+              <p className="mb-4 text-xs text-muted-foreground md:mb-6 md:text-sm">
+                {t.listingDraftMinimumHint}
+              </p>
             <div className="grid gap-5 pb-24 md:gap-8 md:pb-0 xl:grid-cols-[minmax(0,1fr)_minmax(288px,0.85fr)]">
               <FieldGroup className="gap-4 md:gap-5">
-                <Field>
-                  <FieldLabel>{t.title}</FieldLabel>
+                <Field data-invalid={Boolean(fieldErrors.title)}>
+                  <FieldLabel htmlFor="listing-title">
+                    {t.title}
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {t.requiredFieldLabel}
+                    </span>
+                  </FieldLabel>
                   <Input
+                    id="listing-title"
                     value={title}
-                    onChange={(event) => setTitle(event.target.value)}
+                    onChange={(event) => {
+                      setTitle(event.target.value);
+                      setFieldErrors((current) => ({ ...current, title: undefined }));
+                    }}
                     placeholder={t.titlePlaceholder}
+                    required
+                    aria-invalid={Boolean(fieldErrors.title)}
+                    aria-describedby={fieldErrors.title ? "listing-title-error" : undefined}
                   />
+                  <FieldError id="listing-title-error">{fieldErrors.title}</FieldError>
                 </Field>
 
                 <ListingCombobox
+                  id="listing-category"
                   label={t.category}
                   placeholder={t.categoryPlaceholder}
                   value={category}
-                  onValueChange={setCategory}
+                  onValueChange={(value) => {
+                    setCategory(value);
+                    setFieldErrors((current) => ({ ...current, category: undefined }));
+                  }}
                   options={translatedCategoryOptions}
                   emptyLabel={t.noOptionFound}
+                  error={fieldErrors.category}
+                  requiredLabel={t.requiredFieldLabel}
                 />
 
-                <Field>
-                  <FieldLabel>{t.price}</FieldLabel>
+                <Field data-invalid={Boolean(fieldErrors.price)}>
+                  <FieldLabel htmlFor="listing-price">
+                    {t.price}
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {t.requiredFieldLabel}
+                    </span>
+                  </FieldLabel>
                   <Input
+                    id="listing-price"
                     value={price}
-                    onChange={(event) => setPrice(event.target.value)}
+                    onChange={(event) => {
+                      setPrice(event.target.value);
+                      setFieldErrors((current) => ({ ...current, price: undefined }));
+                    }}
                     placeholder="$0.00"
                     inputMode="decimal"
+                    min={0}
+                    max={LISTING_PRICE_MAX_CAD}
+                    required
+                    aria-invalid={Boolean(fieldErrors.price)}
+                    aria-describedby={fieldErrors.price ? "listing-price-error" : undefined}
                   />
+                  <FieldError id="listing-price-error">{fieldErrors.price}</FieldError>
                 </Field>
 
-                <Field>
-                  <FieldLabel>{t.description}</FieldLabel>
+                <Field data-invalid={Boolean(fieldErrors.description)}>
+                  <FieldLabel htmlFor="listing-description">
+                    {t.description}
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {t.requiredFieldLabel}
+                    </span>
+                  </FieldLabel>
                   <Textarea
+                    id="listing-description"
                     value={description}
-                    onChange={(event) => setDescription(event.target.value)}
+                    onChange={(event) => {
+                      setDescription(event.target.value);
+                      setFieldErrors((current) => ({ ...current, description: undefined }));
+                    }}
                     rows={4}
                     className="h-32 min-h-32 max-h-72 md:h-40 md:min-h-40"
                     placeholder={t.descriptionPlaceholder}
+                    required
+                    aria-invalid={Boolean(fieldErrors.description)}
+                    aria-describedby={fieldErrors.description ? "listing-description-error" : undefined}
                   />
+                  <FieldError id="listing-description-error">{fieldErrors.description}</FieldError>
                 </Field>
 
                 <ListingCombobox
+                  id="listing-condition"
                   label={t.condition}
                   placeholder={t.conditionPlaceholder}
                   value={condition}
-                  onValueChange={setCondition}
+                  onValueChange={(value) => {
+                    setCondition(value);
+                    setFieldErrors((current) => ({ ...current, condition: undefined }));
+                  }}
                   options={translatedConditionOptions}
                   emptyLabel={t.noOptionFound}
+                  error={fieldErrors.condition}
+                  requiredLabel={t.requiredFieldLabel}
                 />
               </FieldGroup>
 
               <div className="flex flex-col gap-4 md:gap-6">
                 <Card className="rounded-[1.25rem] border border-dashed border-zinc-300 bg-zinc-50 py-0 shadow-none dark:border-border dark:bg-muted/70 dark:ring-1 dark:ring-white/8 md:rounded-[1.75rem]">
-                  <CardContent className="space-y-3 p-3 md:space-y-5 md:p-6">
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
+                  <CardContent
+                    className="space-y-3 p-3 md:space-y-5 md:p-6"
+                    data-field-invalid={Boolean(fieldErrors.photos)}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-medium text-zinc-950 dark:text-foreground">
+                        {t.addPhotos}
+                      </span>
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {t.requiredFieldLabel}
+                      </span>
+                    </div>
+                    <div
                       className={cn(
-                        "flex min-h-32 w-full flex-col items-center justify-center rounded-2xl border bg-white px-4 py-5 text-center transition dark:bg-card md:min-h-56 md:rounded-[1.5rem] md:px-6 md:py-10",
+                        "relative flex min-h-32 w-full flex-col items-center justify-center rounded-2xl border bg-white px-4 py-5 text-center transition focus-within:ring-2 focus-within:ring-zinc-950/15 dark:bg-card dark:focus-within:ring-ring/25 md:min-h-56 md:rounded-[1.5rem] md:px-6 md:py-10",
                         isDragActive
                           ? "border-zinc-950 ring-2 ring-zinc-950/10 dark:border-ring dark:ring-ring/20"
                           : "border-zinc-200 hover:border-zinc-400 dark:border-border dark:hover:border-ring"
                       )}
                       {...dropzoneProps}
                     >
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        multiple
+                        required={photos.length === 0}
+                        aria-required="true"
+                        aria-invalid={Boolean(fieldErrors.photos)}
+                        aria-describedby={fieldErrors.photos ? "listing-photos-error" : undefined}
+                        aria-label={t.addPhotos}
+                        className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+                        onChange={(event) => {
+                          const selectedFiles = Array.from(event.target.files ?? [])
+                          if (selectedFiles.length === 0) return
+                          appendPhotos(selectedFiles)
+                          event.target.value = ""
+                        }}
+                      />
                       <div className="mb-2 flex size-11 items-center justify-center rounded-full bg-zinc-950 text-white dark:bg-primary dark:text-primary-foreground md:mb-4 md:size-14">
                         <ImagePlus className="size-5 md:size-6" />
                       </div>
@@ -491,23 +734,11 @@ export function CreateListingForm() {
                           {photos.length} {photos.length === 1 ? t.selectedFileSingular : t.selectedFilePlural}
                         </p>
                       ) : null}
-                    </button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      multiple
-                      className="hidden"
-                      onChange={(event) => {
-                        const selectedFiles = Array.from(event.target.files ?? [])
-                        if (selectedFiles.length === 0) return
-                        appendPhotos(selectedFiles)
-                        event.target.value = ""
-                      }}
-                    />
+                    </div>
                     {photoError ? (
                       <p role="alert" className="text-sm text-red-600 dark:text-red-400">{photoError}</p>
                     ) : null}
+                    <FieldError id="listing-photos-error">{fieldErrors.photos}</FieldError>
 
                     {photoPreviews.length > 0 ? (
                       <div className="-mx-1 flex snap-x snap-mandatory flex-nowrap gap-2 overflow-x-auto px-1 pb-1 md:flex-wrap md:gap-3 md:overflow-visible md:pb-0">
@@ -531,9 +762,19 @@ export function CreateListingForm() {
                             onClick={() => setShowAllPhotoPreviews((isExpanded) => !isExpanded)}
                             className="flex size-16 shrink-0 snap-start items-center justify-center rounded-2xl border border-zinc-300 bg-zinc-100 px-1 text-center text-xs font-semibold leading-4 text-zinc-700 dark:border-border dark:bg-muted dark:text-foreground sm:size-20 sm:text-sm"
                             aria-expanded={showAllPhotoPreviews}
-                            aria-label={showAllPhotoPreviews ? "Show fewer photo previews" : `${photoPreviews.length - 4} additional photos selected`}
+                            aria-label={showAllPhotoPreviews
+                              ? t.listingShowFewerPhotoPreviews
+                              : t.listingAdditionalPhotosSelected.replace(
+                                  "{count}",
+                                  photoPreviews.length - 4,
+                                )}
                           >
-                            {showAllPhotoPreviews ? "Show less" : `+${photoPreviews.length - 4} more`}
+                            {showAllPhotoPreviews
+                              ? t.listingShowLess
+                              : t.listingMorePhotos.replace(
+                                  "{count}",
+                                  photoPreviews.length - 4,
+                                )}
                           </button>
                         ) : null}
                       </div>
@@ -544,12 +785,18 @@ export function CreateListingForm() {
                 <Card className="rounded-[1.25rem] border-zinc-200 bg-zinc-50 py-0 shadow-none dark:bg-muted/70 dark:ring-1 dark:ring-white/8 md:rounded-[1.75rem]">
                   <CardContent className="space-y-3 p-3 md:space-y-5 md:p-6">
                     <ListingCombobox
+                      id="listing-campus"
                       label={t.campus}
                       placeholder={t.campusPlaceholder}
                       value={campus}
-                      onValueChange={setCampus}
+                      onValueChange={(value) => {
+                        setCampus(value);
+                        setFieldErrors((current) => ({ ...current, campus: undefined }));
+                      }}
                       options={TORONTO_CAMPUS_OPTIONS}
                       emptyLabel={t.noOptionFound}
+                      error={fieldErrors.campus}
+                      requiredLabel={t.requiredFieldLabel}
                     />
 
                     <Field orientation="horizontal" className="items-start rounded-xl border border-zinc-200 bg-white p-3 dark:border-white/10 dark:bg-card md:rounded-2xl md:p-4">
@@ -663,6 +910,7 @@ export function CreateListingForm() {
                 </AlertDialogContent>
               </AlertDialog>
             </div>
+            </form>
           </CardContent>
         </Card>
       </div>

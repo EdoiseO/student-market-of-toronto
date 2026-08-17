@@ -4,7 +4,9 @@ import { usePathname } from "next/navigation";
 
 import { CreateListingFab } from "@/components/create-listing-fab";
 import { AppSidebar } from "@/components/app-sidebar";
+import { AdminNavigation } from "@/components/admin-navigation";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
+import { ModerationStandingBanner } from "@/components/moderation-standing-banner";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -20,6 +22,7 @@ export function AppLayoutShell({ children, user }) {
   const showSidebar = !isAuthPage;
   const isMessagesConversationPage =
     pathname?.startsWith("/messages/") && pathname !== "/messages";
+  const isAdminPage = pathname?.startsWith("/admin") ?? false;
 
   return (
     <TooltipProvider>
@@ -38,7 +41,13 @@ export function AppLayoutShell({ children, user }) {
                 : "flex flex-col"
             }
           >
-            <SiteHeader user={user} />
+            {isMessagesConversationPage ? (
+              <div className="hidden shrink-0 md:block">
+                <SiteHeader user={user} />
+              </div>
+            ) : (
+              <SiteHeader user={user} />
+            )}
             <div
               className={
                 isMessagesConversationPage
@@ -54,10 +63,16 @@ export function AppLayoutShell({ children, user }) {
                     : "min-w-0 overflow-x-clip pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0"
                 }
               >
+                {isMessagesConversationPage ? null : (
+                  <ModerationStandingBanner user={user} />
+                )}
+                {isAdminPage ? <AdminNavigation role={user?.role} /> : null}
                 {children}
-                <div className="hidden md:block">
-                  <CreateListingFab user={user} />
-                </div>
+                {!isAdminPage && !isMessagesConversationPage ? (
+                  <div className="hidden md:block">
+                    <CreateListingFab user={user} />
+                  </div>
+                ) : null}
               </SidebarInset>
             </div>
             {isMessagesConversationPage ? null : <MobileBottomNav user={user} />}

@@ -5,11 +5,15 @@ const WIDTH_CLASSES = {
   md: "max-w-md",
 };
 
-export function AuthPageSkeleton({ fieldCount = 2, width = "sm" }) {
+export function AuthPageSkeleton({
+  fieldCount = 2,
+  width = "sm",
+  label = "Loading account form",
+}) {
   return (
     <main
       aria-busy="true"
-      aria-label="Loading account form"
+      aria-label={label}
       className="flex min-h-svh w-full items-start justify-center overflow-y-auto bg-zinc-100 px-4 py-6 dark:bg-background sm:items-center md:p-6"
     >
       <div className={`flex w-full ${WIDTH_CLASSES[width] ?? WIDTH_CLASSES.sm} flex-col gap-6`}>
@@ -23,6 +27,7 @@ export function AuthPageSkeleton({ fieldCount = 2, width = "sm" }) {
           </div>
 
           <div className="flex flex-col gap-5 px-4">
+            <Skeleton className="h-3 w-28" />
             {Array.from({ length: fieldCount }, (_, index) => (
               <div key={index} className="space-y-2">
                 <Skeleton className="h-4 w-24" />

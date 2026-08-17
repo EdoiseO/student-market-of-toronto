@@ -2,17 +2,27 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 import { getUserModerationRole } from "@/lib/moderation";
-import { getRestorableBanDuration } from "@/lib/admin-moderation-integrity.mjs";
+import {
+  BAN_REASON_MESSAGE_MAX_LENGTH,
+  BAN_REASON_MESSAGE_MIN_LENGTH,
+  MODERATION_ACTIONS,
+  canPerformModerationAction,
+  normalizeBanDuration,
+  validateBanReason,
+} from "@/lib/moderation-policy.mjs";
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
-import { isUserStatusTableMissing } from "@/lib/user-status";
 import { createClient } from "@/utils/supabase/server";
 
-const BAN_DURATIONS = {
-  "24h": "24h",
-  "7d": "168h",
-  "30d": "720h",
-  permanent: "876000h",
-};
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function normalizeRevocationReason(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value.replace(/\r\n?/g, "\n").trim();
+}
 
 async function getTargetUser(admin, userId) {
   const {
@@ -27,68 +37,49 @@ async function getTargetUser(admin, userId) {
   return user;
 }
 
-async function syncAppBanState(admin, userId, isBanned, bannedUntil) {
-  const { error } = await admin.from("user_status").upsert(
+async function setApplicationBan(moderationClient, input) {
+  const { data, error } = await moderationClient.rpc(
+    "set_application_moderation_ban",
     {
-      user_id: userId,
-      is_banned: isBanned,
-      banned_until: bannedUntil,
-      ban_reason: null,
-      updated_at: new Date().toISOString(),
+      p_subject_user_id: input.subjectUserId,
+      p_action: input.action,
+      p_duration: input.duration ?? null,
+      p_reason_code: input.reasonCode ?? null,
+      p_user_message: input.userMessage ?? null,
+      p_revocation_reason: input.revocationReason ?? null,
+      p_request_id: input.requestId,
     },
-    { onConflict: "user_id" },
   );
 
   if (error) {
-    if (isUserStatusTableMissing(error)) {
-      throw new Error("Ban state table is not configured in Supabase yet.", { cause: error });
-    }
-
     throw error;
   }
+
+  const result = Array.isArray(data) ? data[0] : data;
+
+  if (!result?.sanction_id || typeof result.is_banned !== "boolean") {
+    throw new Error("Application ban command returned an invalid result.");
+  }
+
+  return result;
 }
 
-async function updateBanStateWithCompensation(
-  admin,
-  targetUser,
-  nextBanDuration,
-  nextIsBanned,
-) {
-  const previousBanDuration = getRestorableBanDuration(targetUser.banned_until);
-  const {
-    data: { user: updatedUser },
-    error: authUpdateError,
-  } = await admin.auth.admin.updateUserById(targetUser.id, {
-    ban_duration: nextBanDuration,
-  });
+async function getBanAuditResult(admin, sanctionId, actorId) {
+  const { data, error } = await admin
+    .from("moderation_audit_events")
+    .select("id, event_type, occurred_at")
+    .eq("sanction_id", sanctionId)
+    .eq("actor_user_id_snapshot", actorId)
+    .order("occurred_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-  if (authUpdateError) {
-    throw authUpdateError;
+  if (error) {
+    console.error("Could not load the application-ban audit result:", error.code ?? "unknown_error");
   }
 
-  try {
-    await syncAppBanState(
-      admin,
-      targetUser.id,
-      nextIsBanned,
-      nextIsBanned ? updatedUser?.banned_until ?? null : null,
-    );
-  } catch (syncError) {
-    const { error: rollbackError } = await admin.auth.admin.updateUserById(targetUser.id, {
-      ban_duration: previousBanDuration,
-    });
-
-    if (rollbackError) {
-      console.error("Auth ban rollback failed after app-state sync error:", rollbackError.message);
-      throw new Error("Ban state could not be synchronized or safely rolled back.", {
-        cause: syncError,
-      });
-    }
-
-    throw syncError;
-  }
-
-  return updatedUser;
+  return data ?? null;
 }
 
 export async function POST(request, { params }) {
@@ -123,11 +114,37 @@ export async function POST(request, { params }) {
       );
     }
 
-    if (getUserModerationRole(accessUser) !== "admin") {
+    const body = await request.json().catch(() => null);
+
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+    }
+
+    const { action, duration, reasonCode, userMessage } = body;
+    const operationId =
+      typeof body.operationId === "string" ? body.operationId.trim() : "";
+
+    if (!UUID_PATTERN.test(operationId)) {
+      return NextResponse.json(
+        { error: "A valid moderation operation id is required." },
+        { status: 400 },
+      );
+    }
+    const requiredPermission =
+      action === "ban"
+        ? MODERATION_ACTIONS.banUser
+        : action === "unban"
+          ? MODERATION_ACTIONS.unbanUser
+          : null;
+
+    if (!requiredPermission) {
+      return NextResponse.json({ error: "Unsupported ban action." }, { status: 400 });
+    }
+
+    if (!canPerformModerationAction(getUserModerationRole(accessUser), requiredPermission)) {
       return NextResponse.json({ error: "Only admins can manage bans." }, { status: 403 });
     }
 
-    const { action, duration } = await request.json();
     const targetUserId = resolvedParams.userId;
 
     if (!targetUserId) {
@@ -135,12 +152,12 @@ export async function POST(request, { params }) {
     }
 
     if (targetUserId === accessUser.id) {
-      return NextResponse.json({ error: "You cannot ban your own account." }, { status: 400 });
+      return NextResponse.json({ error: "You cannot change your own ban state." }, { status: 400 });
     }
 
     const targetUser = await getTargetUser(admin, targetUserId);
 
-    if (getUserModerationRole(targetUser) === "admin") {
+    if (action === "ban" && getUserModerationRole(targetUser) === "admin") {
       return NextResponse.json(
         { error: "Admin accounts cannot be banned from this screen." },
         { status: 400 },
@@ -148,46 +165,93 @@ export async function POST(request, { params }) {
     }
 
     if (action === "unban") {
-      const updatedUser = await updateBanStateWithCompensation(
+      const revocationReason = normalizeRevocationReason(body.revocationReason);
+      const requestId = operationId;
+
+      if (
+        Array.from(revocationReason).length < 10 ||
+        Array.from(revocationReason).length > 1000
+      ) {
+        return NextResponse.json(
+          { error: "Explain the unban reason in 10-1000 characters." },
+          { status: 400 },
+        );
+      }
+
+      const operationResult = await setApplicationBan(supabase, {
+        subjectUserId: targetUser.id,
+        action: "unban",
+        revocationReason,
+        requestId,
+      });
+      const audit = await getBanAuditResult(
         admin,
-        targetUser,
-        "none",
-        false,
+        operationResult.sanction_id,
+        accessUser.id,
       );
 
       return NextResponse.json({
         success: true,
-        isBanned: false,
-        bannedUntil: updatedUser?.banned_until ?? null,
+        isBanned: operationResult.is_banned,
+        bannedUntil: operationResult.banned_until ?? null,
+        sanctionId: operationResult.sanction_id,
+        replayed: operationResult.replayed === true,
+        auditEventId: audit?.id ?? null,
+        auditEventType: audit?.event_type ?? null,
+        auditOccurredAt: audit?.occurred_at ?? null,
+        notificationQueued: true,
       });
     }
 
     if (action === "ban") {
-      const banDuration = BAN_DURATIONS[duration];
+      const banDuration = normalizeBanDuration(duration);
 
       if (!banDuration) {
         return NextResponse.json({ error: "Unsupported ban duration." }, { status: 400 });
       }
 
-      const updatedUser = await updateBanStateWithCompensation(
+      const validatedReason = validateBanReason({ reasonCode, userMessage });
+
+      if (!validatedReason.ok) {
+        const error =
+          validatedReason.error === "reason_code"
+            ? "Choose a supported ban reason."
+            : `Explain the ban reason in ${BAN_REASON_MESSAGE_MIN_LENGTH}-${BAN_REASON_MESSAGE_MAX_LENGTH} characters.`;
+
+        return NextResponse.json({ error }, { status: 400 });
+      }
+
+      const operationResult = await setApplicationBan(supabase, {
+        subjectUserId: targetUser.id,
+        action: "ban",
+        duration: banDuration,
+        reasonCode: validatedReason.reasonCode,
+        userMessage: validatedReason.userMessage,
+        requestId: operationId,
+      });
+      const audit = await getBanAuditResult(
         admin,
-        targetUser,
-        banDuration,
-        true,
+        operationResult.sanction_id,
+        accessUser.id,
       );
 
       return NextResponse.json({
         success: true,
-        isBanned: true,
-        bannedUntil: updatedUser?.banned_until ?? null,
+        isBanned: operationResult.is_banned,
+        bannedUntil: operationResult.banned_until ?? null,
+        reasonCode: validatedReason.reasonCode,
+        sanctionId: operationResult.sanction_id,
+        replayed: operationResult.replayed === true,
+        auditEventId: audit?.id ?? null,
+        auditEventType: audit?.event_type ?? null,
+        auditOccurredAt: audit?.occurred_at ?? null,
+        notificationQueued: true,
       });
     }
-
-    return NextResponse.json({ error: "Unsupported ban action." }, { status: 400 });
   } catch (error) {
     console.error("Failed to update ban state:", error?.message ?? error);
     return NextResponse.json(
-      { error: error?.message ?? "Could not update the ban state right now." },
+      { error: "Could not update the ban state right now." },
       { status: 500 },
     );
   }

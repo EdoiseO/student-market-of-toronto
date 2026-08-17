@@ -14,6 +14,8 @@ export default function BannedStatusLoading() {
           <Skeleton className="h-20 w-full rounded-2xl" />
           <div className="flex w-full flex-wrap items-center justify-center gap-3">
             <Skeleton className="h-11 w-28 max-w-full" />
+            <Skeleton className="h-11 w-36 max-w-full" />
+            <Skeleton className="h-11 w-40 max-w-full" />
             <Skeleton className="h-11 w-64 max-w-full" />
           </div>
         </div>

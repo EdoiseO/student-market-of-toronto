@@ -30,6 +30,7 @@ import {
   isReportsTableMissing,
   isReportsSubjectTypeUnsupported,
 } from "@/lib/moderation";
+import { validateReportDetails } from "@/lib/write-field-contracts.mjs";
 import { createClient } from "@/utils/supabase/client";
 
 export function ReportSheet({
@@ -38,16 +39,15 @@ export function ReportSheet({
   subjectType,
   subjectId,
   currentUserId,
-  reportedUserId = null,
-  listingId = null,
-  messageId = null,
-  conversationId = null,
 }) {
   const { t } = useLanguage();
   const supabase = React.useMemo(() => createClient(), []);
   const [details, setDetails] = React.useState("");
   const [selectedReason, setSelectedReason] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [detailsError, setDetailsError] = React.useState("");
+  const detailsRef = React.useRef(null);
+  const operationRef = React.useRef(null);
 
   const reasonOptions = React.useMemo(
     () => getReportReasonOptions(subjectType, t),
@@ -73,6 +73,7 @@ export function ReportSheet({
     subjectType === REPORT_SUBJECT_TYPES.profile
       ? t.reportProfileDetailsPlaceholder
       : t.reportDetailsPlaceholder;
+  const isOtherReason = selectedReason === "other";
 
   React.useEffect(() => {
     if (!open) {
@@ -81,6 +82,8 @@ export function ReportSheet({
 
     setSelectedReason(reasonOptions[0]?.value ?? "");
     setDetails("");
+    setDetailsError("");
+    operationRef.current = null;
   }, [open, reasonOptions]);
 
   async function handleSubmit(event) {
@@ -95,24 +98,39 @@ export function ReportSheet({
       return;
     }
 
-    if (reportedUserId && reportedUserId === currentUserId) {
-      toast.error(t.reportSelfUnavailable);
+    const detailsResult = validateReportDetails(details, {
+      isOther: isOtherReason,
+    });
+
+    if (!detailsResult.ok) {
+      setDetailsError(t.reportOtherDetailsRequired);
+      detailsRef.current?.focus();
       return;
+    }
+
+    setDetailsError("");
+
+    const operationPayloadKey = JSON.stringify({
+      subjectType,
+      subjectId,
+      reason: selectedReason,
+      details: detailsResult.value,
+    });
+    if (operationRef.current?.payloadKey !== operationPayloadKey) {
+      operationRef.current = {
+        payloadKey: operationPayloadKey,
+        operationId: crypto.randomUUID(),
+      };
     }
 
     setIsSubmitting(true);
 
-    const { error } = await supabase.from("reports").insert({
-      reporter_user_id: currentUserId,
-      subject_type: subjectType,
-      subject_id: subjectId,
-      listing_id: listingId,
-      message_id: messageId,
-      conversation_id: conversationId,
-      reported_user_id: reportedUserId,
-      reason: selectedReason,
-      details: details.trim() || null,
-      status: "open",
+    const { error } = await supabase.rpc("submit_marketplace_report", {
+      p_subject_type: subjectType,
+      p_subject_id: subjectId,
+      p_reason: selectedReason,
+      p_details: detailsResult.value,
+      p_operation_id: operationRef.current.operationId,
     });
 
     setIsSubmitting(false);
@@ -129,6 +147,7 @@ export function ReportSheet({
       return;
     }
 
+    operationRef.current = null;
     toast.success(t.reportSubmitted);
     onOpenChange(false);
   }
@@ -165,7 +184,10 @@ export function ReportSheet({
                   <NativeSelect
                     id="report-reason"
                     value={selectedReason}
-                    onChange={(event) => setSelectedReason(event.target.value)}
+                    onChange={(event) => {
+                      setSelectedReason(event.target.value);
+                      setDetailsError("");
+                    }}
                     className="w-full"
                     required
                   >
@@ -179,18 +201,57 @@ export function ReportSheet({
 
                 <Field orientation="vertical" className="items-stretch gap-2">
                   <FieldContent>
-                    <FieldTitle className="text-foreground">{t.reportDetailsLabel}</FieldTitle>
-                    <FieldDescription>{t.reportDetailsDescription}</FieldDescription>
+                    <FieldTitle className="text-foreground">
+                      {t.reportDetailsLabel}
+                      {isOtherReason ? (
+                        <span className="ml-1 text-xs font-medium text-destructive">
+                          ({t.requiredFieldLabel})
+                        </span>
+                      ) : null}
+                    </FieldTitle>
+                    <FieldDescription id="report-details-description">
+                      {isOtherReason
+                        ? t.reportOtherDetailsDescription
+                        : t.reportDetailsDescription}
+                    </FieldDescription>
                   </FieldContent>
                   <div className="rounded-lg border border-zinc-200 bg-background p-3 shadow-sm dark:border-border dark:bg-background">
+                    <FieldLabel htmlFor="report-details" className="sr-only">
+                      {t.reportDetailsLabel}
+                    </FieldLabel>
                     <Textarea
+                      ref={detailsRef}
+                      id="report-details"
                       value={details}
-                      onChange={(event) => setDetails(event.target.value)}
+                      onChange={(event) => {
+                        setDetails(event.target.value);
+                        if (detailsError) {
+                          setDetailsError("");
+                        }
+                      }}
                       placeholder={detailsPlaceholder}
                       rows={2}
                       className="h-20 min-h-20 max-h-48 resize-y border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0"
-                      maxLength={600}
+                      required={isOtherReason}
+                      aria-required={isOtherReason}
+                      aria-invalid={Boolean(detailsError)}
+                      aria-describedby={`report-details-description report-details-count${detailsError ? " report-details-error" : ""}`}
                     />
+                  </div>
+                  <div className="flex items-start justify-between gap-3 text-xs">
+                    <p
+                      id="report-details-error"
+                      role={detailsError ? "alert" : undefined}
+                      className="min-h-4 text-destructive"
+                    >
+                      {detailsError}
+                    </p>
+                    <p id="report-details-count" className="shrink-0 text-muted-foreground">
+                      {t.reportDetailsCharacterCount.replace(
+                        "{count}",
+                        String(Array.from(details).length),
+                      )}
+                    </p>
                   </div>
                 </Field>
               </FieldGroup>

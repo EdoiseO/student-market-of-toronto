@@ -31,7 +31,7 @@ async function copyText(value) {
   document.body.removeChild(textarea);
 }
 
-export function ListingMoreButton({ slug, listingId, currentUserId = null, sellerId = null }) {
+export function ListingMoreButton({ slug, listingId, currentUserId = null }) {
   const { t } = useLanguage();
   const [isReportSheetOpen, setIsReportSheetOpen] = React.useState(false);
 
@@ -81,9 +81,7 @@ export function ListingMoreButton({ slug, listingId, currentUserId = null, selle
           onOpenChange={setIsReportSheetOpen}
           subjectType="listing"
           subjectId={listingId}
-          listingId={listingId}
           currentUserId={currentUserId}
-          reportedUserId={sellerId}
         />
       </>
     </DropdownMenu>

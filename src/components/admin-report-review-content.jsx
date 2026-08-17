@@ -15,6 +15,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -28,6 +29,133 @@ import {
   getTranslatedReportReason,
   getTranslatedReportStatus,
 } from "@/lib/moderation";
+import {
+  FORCE_NAME_POLICY_REASON_MAX_LENGTH,
+  FORCE_NAME_USER_MESSAGE_MAX_LENGTH,
+  MODERATOR_NOTE_MAX_LENGTH,
+  REPORTED_LISTING_FEEDBACK_MAX_LENGTH,
+  REPORTED_LISTING_PRIVATE_SUMMARY_MAX_LENGTH,
+  REPORT_DECISION_SUMMARY_MAX_LENGTH,
+  validateForceNameDecision,
+  validateModeratorNoteEntry,
+  validateReportDecisionSummary,
+  validateReportedListingDecision,
+} from "@/lib/write-field-contracts.mjs";
+
+const REPORT_EVIDENCE_PANEL_CLASS =
+  "flex flex-col overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card xl:h-[clamp(28rem,60vh,34rem)]";
+
+function DecisionTextField({
+  id,
+  label,
+  description,
+  value,
+  onChange,
+  textareaRef,
+  limit,
+  error,
+  required = false,
+  rows = 4,
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-2">
+      <div className="lg:min-h-[4.75rem]">
+        <label htmlFor={id} className="text-sm font-semibold text-foreground">
+          {label}
+        </label>
+        <p id={`${id}-description`} className="mt-1 text-xs leading-5 text-muted-foreground">
+          {description}
+        </p>
+      </div>
+      <Textarea
+        ref={textareaRef}
+        id={id}
+        value={value}
+        onChange={onChange}
+        rows={rows}
+        required={required}
+        aria-invalid={Boolean(error)}
+        aria-describedby={`${id}-description${error ? ` ${id}-error` : ""}`}
+        className="min-h-32 resize-y rounded-xl"
+      />
+      <div className="flex items-start justify-between gap-3 text-xs">
+        {error ? (
+          <p id={`${id}-error`} role="alert" className="text-destructive">
+            {error}
+          </p>
+        ) : (
+          <span />
+        )}
+        <span className="shrink-0 text-muted-foreground">
+          {Array.from(value).length}/{limit}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ReportDecisionActions({
+  t,
+  canRemoveListing,
+  canForceNameChange,
+  isProcessing,
+  hasOpenRelatedReports,
+  removeListingActionLabel,
+  dismissActionLabel,
+  resolveActionLabel,
+  handleRemoveListing,
+  handleForceNameChange,
+  handleUpdateStatus,
+}) {
+  return (
+    <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <p className="max-w-xl text-xs leading-5 text-muted-foreground">
+        {t.adminDecisionActionSaveHint}
+      </p>
+      <div className="flex flex-wrap justify-start gap-2 sm:justify-end">
+        {canRemoveListing ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-xl"
+            onClick={handleRemoveListing}
+            disabled={isProcessing || !hasOpenRelatedReports}
+          >
+            {removeListingActionLabel}
+          </Button>
+        ) : null}
+        {canForceNameChange ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-xl"
+            onClick={handleForceNameChange}
+            disabled={isProcessing}
+          >
+            {t.adminForceNameChange}
+          </Button>
+        ) : null}
+        <Button
+          type="button"
+          variant="outline"
+          className="rounded-xl"
+          onClick={() => handleUpdateStatus(REPORT_STATUS_VALUES.dismissed)}
+          disabled={isProcessing || !hasOpenRelatedReports}
+        >
+          {dismissActionLabel}
+        </Button>
+        <Button
+          type="button"
+          className="rounded-xl"
+          onClick={() => handleUpdateStatus(REPORT_STATUS_VALUES.resolved)}
+          disabled={isProcessing || !hasOpenRelatedReports}
+        >
+          {resolveActionLabel}
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 function ReviewMetadata({ label, children }) {
   return (
@@ -44,18 +172,17 @@ function ModeratorNotesCard({
   t,
   language,
   notesAvailable,
-  moderatorNotes,
-  setModeratorNotes,
-  report,
-  hasModeratorNotes,
+  moderatorNoteDraft,
+  setModeratorNoteDraft,
+  moderatorNoteHistory,
+  moderatorNoteHistoryNextHref,
   isSavingNotes,
-  hasNotesChanges,
+  hasNoteDraft,
   handleSaveModeratorNotes,
-  compact = false,
 }) {
   return (
-    <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-      <CardHeader className={`border-b border-zinc-200 dark:border-border ${compact ? "px-4 py-3.5" : "px-6 py-5"}`}>
+    <Card id="moderator-notes" className="scroll-mt-24 rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
+      <CardHeader className="border-b border-zinc-200 px-7 py-6 dark:border-border">
         <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
           {t.adminModeratorNotesTitle}
         </CardTitle>
@@ -65,46 +192,85 @@ function ModeratorNotesCard({
             : t.adminModeratorNotesSetupDescription}
         </CardDescription>
       </CardHeader>
-      <CardContent className={`space-y-3 ${compact ? "px-4 py-3.5" : "px-6 py-5"}`}>
+      <CardContent className="space-y-4 px-7 py-6">
         {notesAvailable ? (
           <>
-            <div className="rounded-xl border border-zinc-200 bg-background p-3 shadow-sm dark:border-border dark:bg-background">
+            <div className="space-y-3 rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-border dark:bg-muted/20">
+              <div>
+                <label htmlFor="moderator-note-entry" className="text-sm font-semibold text-foreground">
+                  {t.adminModeratorNotesComposerLabel}
+                </label>
+                <p id="moderator-note-entry-description" className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {t.adminModeratorNotesComposerDescription}
+                </p>
+              </div>
               <Textarea
-                value={moderatorNotes}
-                onChange={(event) => setModeratorNotes(event.target.value)}
+                id="moderator-note-entry"
+                value={moderatorNoteDraft}
+                onChange={(event) => setModeratorNoteDraft(event.target.value)}
                 placeholder={t.adminModeratorNotesPlaceholder}
-                rows={compact ? 3 : 6}
-                maxLength={4000}
-                className={`${compact ? "h-24 min-h-24" : "h-40 min-h-32"} max-h-80 resize-y border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0`}
+                rows={4}
+                aria-describedby="moderator-note-entry-description"
+                className="min-h-28 max-h-64 resize-y rounded-xl bg-background"
               />
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="text-xs text-muted-foreground">
+                  {Array.from(moderatorNoteDraft).length}/{MODERATOR_NOTE_MAX_LENGTH}
+                </span>
+                <Button
+                  type="button"
+                  className="rounded-xl"
+                  disabled={isSavingNotes || !hasNoteDraft}
+                  onClick={handleSaveModeratorNotes}
+                >
+                  {isSavingNotes ? t.saving : t.saveNotes}
+                </Button>
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="text-xs text-zinc-500 dark:text-muted-foreground">
-                {report.moderatorNotesUpdatedAt ? (
-                  <span>
-                    {t.adminModeratorNotesUpdatedByPrefix} {report.moderatorNotesUpdatedBy?.name ?? t.unknown} ·{" "}
-                    <ClientFormattedDateTime
-                      value={report.moderatorNotesUpdatedAt}
-                      language={language}
-                    />
-                  </span>
-                ) : hasModeratorNotes ? (
-                  <span>{t.adminModeratorNotesUnsavedHint}</span>
-                ) : (
-                  <span>{t.adminModeratorNotesEmpty}</span>
-                )}
+            <Separator />
+
+            <section aria-labelledby="moderator-note-history-title" className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 id="moderator-note-history-title" className="text-sm font-semibold text-foreground">
+                  {t.adminModeratorNotesHistoryTitle}
+                </h3>
+                <Badge variant="outline" className="rounded-full bg-background">
+                  {moderatorNoteHistory.length} {t.adminModeratorNotesCountLabel}
+                </Badge>
               </div>
 
-              <Button
-                type="button"
-                className="rounded-xl"
-                disabled={isSavingNotes || !hasNotesChanges}
-                onClick={handleSaveModeratorNotes}
-              >
-                {isSavingNotes ? t.saving : t.saveNotes}
-              </Button>
-            </div>
+              {moderatorNoteHistory.length > 0 ? (
+                <div className="space-y-3">
+                  {moderatorNoteHistory.map((note) => (
+                    <article
+                      key={note.id}
+                      className="rounded-2xl border border-zinc-200 bg-background p-4 dark:border-border"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                        <span className="font-semibold text-foreground">{note.createdBy.name}</span>
+                        <ClientFormattedDateTime value={note.createdAt} language={language} />
+                      </div>
+                      <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">
+                        {note.body}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-4 py-5 text-sm text-muted-foreground">
+                  {t.adminModeratorNotesEmpty}
+                </div>
+              )}
+
+              {moderatorNoteHistoryNextHref ? (
+                <Button asChild variant="outline" className="w-full rounded-xl">
+                  <Link href={moderatorNoteHistoryNextHref} scroll={false}>
+                    {t.adminModeratorNotesLoadOlder}
+                  </Link>
+                </Button>
+              ) : null}
+            </section>
           </>
         ) : (
           <div className="rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-5 text-sm text-muted-foreground">
@@ -124,6 +290,8 @@ export function AdminReportReviewContent({
   listingReview = null,
   profileReview = null,
   notesAvailable = false,
+  moderatorNoteHistory = [],
+  moderatorNoteHistoryNextHref = null,
   currentUserId,
   canForceProfileNameChange = false,
 }) {
@@ -131,11 +299,29 @@ export function AdminReportReviewContent({
   const { t, language } = useLanguage();
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [isSavingNotes, setIsSavingNotes] = React.useState(false);
-  const [moderatorNotes, setModeratorNotes] = React.useState(report.moderatorNotes ?? "");
+  const [moderatorNoteDraft, setModeratorNoteDraft] = React.useState("");
+  const [decisionSummary, setDecisionSummary] = React.useState("");
+  const [sellerFeedback, setSellerFeedback] = React.useState("");
+  const [removalPrivateSummary, setRemovalPrivateSummary] = React.useState("");
+  const [forcePolicyReason, setForcePolicyReason] = React.useState("");
+  const [forceUserMessage, setForceUserMessage] = React.useState("");
+  const [forcePrivateNote, setForcePrivateNote] = React.useState("");
+  const [fieldErrors, setFieldErrors] = React.useState({});
+  const reportStatusOperationRef = React.useRef(null);
+  const removeListingOperationRef = React.useRef(null);
+  const forceNameOperationRef = React.useRef(null);
+  const notesOperationRef = React.useRef(null);
+  const decisionSummaryRef = React.useRef(null);
+  const sellerFeedbackRef = React.useRef(null);
+  const removalPrivateSummaryRef = React.useRef(null);
+  const forcePolicyReasonRef = React.useRef(null);
+  const forceUserMessageRef = React.useRef(null);
+  const forcePrivateNoteRef = React.useRef(null);
 
   React.useEffect(() => {
-    setModeratorNotes(report.moderatorNotes ?? "");
-  }, [report.id, report.moderatorNotes]);
+    setModeratorNoteDraft("");
+    notesOperationRef.current = null;
+  }, [report.id]);
 
   const isMessageReport = report.subjectType === REPORT_SUBJECT_TYPES.message;
   const isProfileReport = report.subjectType === REPORT_SUBJECT_TYPES.profile;
@@ -179,12 +365,24 @@ export function AdminReportReviewContent({
   const removeListingActionLabel = hasMultipleOpenRelatedReports
     ? t.adminRemoveListingAndResolveAllOpen
     : t.removeListing;
-  const hasModeratorNotes = moderatorNotes.trim().length > 0;
-  const hasNotesChanges = moderatorNotes !== (report.moderatorNotes ?? "");
+  const hasNoteDraft = moderatorNoteDraft.trim().length > 0;
 
-  async function updateRelatedReportStatuses(nextStatus) {
+  async function updateRelatedReportStatuses(nextStatus, privateSummary) {
     if (!currentUserId || isProcessing || actionableReportIds.length === 0) {
       return { error: true };
+    }
+
+    const operationPayloadKey = JSON.stringify({
+      action: "update_status",
+      reportIds: [...actionableReportIds].sort(),
+      status: nextStatus,
+      decisionSummary: privateSummary,
+    });
+    if (reportStatusOperationRef.current?.payloadKey !== operationPayloadKey) {
+      reportStatusOperationRef.current = {
+        payloadKey: operationPayloadKey,
+        operationId: crypto.randomUUID(),
+      };
     }
 
     const response = await fetch("/api/admin/reports/actions", {
@@ -193,9 +391,11 @@ export function AdminReportReviewContent({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        operationId: reportStatusOperationRef.current.operationId,
         action: "update_status",
         reportIds: actionableReportIds,
         status: nextStatus,
+        decisionSummary: privateSummary,
       }),
     });
 
@@ -207,6 +407,7 @@ export function AdminReportReviewContent({
       return { error: true };
     }
 
+    reportStatusOperationRef.current = null;
     return { error: false, updatedCount: payload?.updatedCount ?? actionableReportIds.length };
   }
 
@@ -215,9 +416,20 @@ export function AdminReportReviewContent({
       return;
     }
 
+    const summaryResult = validateReportDecisionSummary(decisionSummary);
+    if (!summaryResult.ok) {
+      setFieldErrors((current) => ({
+        ...current,
+        decisionSummary: t.adminReportDecisionSummaryValidation,
+      }));
+      decisionSummaryRef.current?.focus();
+      return;
+    }
+
+    setFieldErrors((current) => ({ ...current, decisionSummary: "" }));
     setIsProcessing(true);
 
-    const result = await updateRelatedReportStatuses(nextStatus);
+    const result = await updateRelatedReportStatuses(nextStatus, summaryResult.value);
 
     setIsProcessing(false);
 
@@ -235,7 +447,7 @@ export function AdminReportReviewContent({
       );
     }
 
-    router.push("/admin");
+    router.push("/admin/reports");
     router.refresh();
   }
 
@@ -244,7 +456,46 @@ export function AdminReportReviewContent({
       return;
     }
 
+    const decisionResult = validateReportedListingDecision({
+      sellerFeedback,
+      privateSummary: removalPrivateSummary,
+    });
+    if (!decisionResult.ok) {
+      const errorKey = decisionResult.error === "seller_feedback"
+        ? "sellerFeedback"
+        : "removalPrivateSummary";
+      setFieldErrors((current) => ({
+        ...current,
+        [errorKey]: decisionResult.error === "seller_feedback"
+          ? t.adminRemoveListingFeedbackValidation
+          : t.adminRemoveListingPrivateSummaryDescription,
+      }));
+      (errorKey === "sellerFeedback"
+        ? sellerFeedbackRef
+        : removalPrivateSummaryRef).current?.focus();
+      return;
+    }
+
+    setFieldErrors((current) => ({
+      ...current,
+      sellerFeedback: "",
+      removalPrivateSummary: "",
+    }));
     setIsProcessing(true);
+
+    const operationPayloadKey = JSON.stringify({
+      listingId: listingTarget.id,
+      reportIds: [...actionableReportIds].sort(),
+      sellerFeedback: decisionResult.value.sellerFeedback,
+      privateSummary: decisionResult.value.privateSummary,
+    });
+
+    if (removeListingOperationRef.current?.payloadKey !== operationPayloadKey) {
+      removeListingOperationRef.current = {
+        payloadKey: operationPayloadKey,
+        operationId: crypto.randomUUID(),
+      };
+    }
 
     const response = await fetch("/api/admin/reports/actions", {
       method: "POST",
@@ -252,9 +503,12 @@ export function AdminReportReviewContent({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        operationId: removeListingOperationRef.current.operationId,
         action: "remove_listing",
         listingId: listingTarget.id,
         reportIds: actionableReportIds,
+        sellerFeedback: decisionResult.value.sellerFeedback,
+        privateSummary: decisionResult.value.privateSummary,
       }),
     });
 
@@ -269,6 +523,7 @@ export function AdminReportReviewContent({
 
     const result = { error: false, updatedCount: payload?.updatedCount ?? actionableReportIds.length };
 
+    removeListingOperationRef.current = null;
     setIsProcessing(false);
 
     toast.success(
@@ -276,7 +531,7 @@ export function AdminReportReviewContent({
         ? t.adminListingRemovedAndAllResolved
         : t.adminListingRemovedAndResolved,
     );
-    router.push("/admin");
+    router.push("/admin/reports");
     router.refresh();
   }
 
@@ -285,13 +540,50 @@ export function AdminReportReviewContent({
       return;
     }
 
-    const confirmed = window.confirm(t.adminForceNameChangeDescription);
-
-    if (!confirmed) {
+    const decisionResult = validateForceNameDecision({
+      policyReason: forcePolicyReason,
+      userMessage: forceUserMessage,
+      privateNote: forcePrivateNote,
+    });
+    if (!decisionResult.ok) {
+      const fieldByError = {
+        policy_reason: ["forcePolicyReason", forcePolicyReasonRef],
+        user_message: ["forceUserMessage", forceUserMessageRef],
+        private_note: ["forcePrivateNote", forcePrivateNoteRef],
+      };
+      const [field, fieldRef] = fieldByError[decisionResult.error];
+      setFieldErrors((current) => ({
+        ...current,
+        [field]: decisionResult.error === "private_note"
+          ? t.adminForceNamePrivateNoteDescription
+          : decisionResult.error === "policy_reason"
+            ? t.adminForceNamePolicyReasonDescription
+            : t.adminForceNameUserMessageDescription,
+      }));
+      fieldRef.current?.focus();
       return;
     }
 
+    setFieldErrors((current) => ({
+      ...current,
+      forcePolicyReason: "",
+      forceUserMessage: "",
+      forcePrivateNote: "",
+    }));
     setIsProcessing(true);
+
+    const operationPayloadKey = JSON.stringify({
+      userId: profileTarget.id,
+      reportIds: [...actionableReportIds].sort(),
+      ...decisionResult.value,
+    });
+
+    if (forceNameOperationRef.current?.payloadKey !== operationPayloadKey) {
+      forceNameOperationRef.current = {
+        payloadKey: operationPayloadKey,
+        operationId: crypto.randomUUID(),
+      };
+    }
 
     const response = await fetch("/api/admin/reports/actions", {
       method: "POST",
@@ -299,9 +591,11 @@ export function AdminReportReviewContent({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        operationId: forceNameOperationRef.current.operationId,
         action: "force_name_change",
         userId: profileTarget.id,
         reportIds: actionableReportIds,
+        ...decisionResult.value,
       }),
     });
 
@@ -315,14 +609,32 @@ export function AdminReportReviewContent({
       return;
     }
 
+    forceNameOperationRef.current = null;
     toast.success(t.adminForceNameChangeSuccess);
-    router.push("/admin");
+    router.push("/admin/reports");
     router.refresh();
   }
 
   async function handleSaveModeratorNotes() {
-    if (!notesAvailable || !currentUserId || !report?.id || isSavingNotes || !hasNotesChanges) {
+    if (!notesAvailable || !currentUserId || !report?.id || isSavingNotes || !hasNoteDraft) {
       return;
+    }
+
+    const noteResult = validateModeratorNoteEntry(moderatorNoteDraft);
+    if (!noteResult.ok) {
+      toast.error(t.adminModeratorNotesSaveError);
+      return;
+    }
+
+    const operationPayloadKey = JSON.stringify({
+      reportId: report.id,
+      moderatorNote: noteResult.value,
+    });
+    if (notesOperationRef.current?.payloadKey !== operationPayloadKey) {
+      notesOperationRef.current = {
+        payloadKey: operationPayloadKey,
+        operationId: crypto.randomUUID(),
+      };
     }
 
     setIsSavingNotes(true);
@@ -333,9 +645,10 @@ export function AdminReportReviewContent({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        action: "save_notes",
+        action: "add_note",
         reportId: report.id,
-        moderatorNotes: moderatorNotes,
+        moderatorNote: noteResult.value,
+        operationId: notesOperationRef.current.operationId,
       }),
     });
 
@@ -349,6 +662,8 @@ export function AdminReportReviewContent({
       return;
     }
 
+    notesOperationRef.current = null;
+    setModeratorNoteDraft("");
     toast.success(t.adminModeratorNotesSaved);
     router.refresh();
   }
@@ -417,9 +732,10 @@ export function AdminReportReviewContent({
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.8fr)]">
-        {isMessageReport ? (
-          <section className="flex flex-col overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card">
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.8fr)]">
+        <div className="min-w-0 space-y-5 xl:space-y-6">
+          {isMessageReport ? (
+          <section className={REPORT_EVIDENCE_PANEL_CLASS}>
             <div className="border-b border-zinc-200 px-6 py-4 dark:border-border">
               <p className="text-lg font-semibold text-zinc-950 dark:text-foreground">
                 {t.adminConversationContextLabel}
@@ -429,7 +745,7 @@ export function AdminReportReviewContent({
               </p>
             </div>
 
-            <div className="max-h-[60vh] space-y-5 overflow-y-auto bg-zinc-50/70 px-6 py-5 dark:bg-muted/20">
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto bg-zinc-50/70 px-6 py-5 dark:bg-muted/20">
               {messages.map((message) => {
                 const isBuyer = message.sender_id === conversation.buyer.id;
                 const sender = isBuyer ? conversation.buyer : conversation.seller;
@@ -478,68 +794,9 @@ export function AdminReportReviewContent({
               })}
             </div>
 
-            <div className="border-t border-zinc-200 bg-background px-5 py-4 dark:border-border">
-              <ModeratorNotesCard
-                t={t}
-                language={language}
-                notesAvailable={notesAvailable}
-                moderatorNotes={moderatorNotes}
-                setModeratorNotes={setModeratorNotes}
-                report={report}
-                hasModeratorNotes={hasModeratorNotes}
-                isSavingNotes={isSavingNotes}
-                hasNotesChanges={hasNotesChanges}
-                handleSaveModeratorNotes={handleSaveModeratorNotes}
-                compact
-              />
-            </div>
-
-            <div className="border-t border-zinc-200 bg-background px-6 py-4 dark:border-border">
-              <div className="flex flex-wrap justify-end gap-2">
-                {canRemoveListing ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="rounded-xl"
-                    onClick={handleRemoveListing}
-                    disabled={isProcessing || !hasOpenRelatedReports}
-                  >
-                    {removeListingActionLabel}
-                  </Button>
-                ) : null}
-                {canForceNameChange ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="rounded-xl"
-                    onClick={handleForceNameChange}
-                    disabled={isProcessing}
-                  >
-                    {t.adminForceNameChange}
-                  </Button>
-                ) : null}
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-xl"
-                  onClick={() => handleUpdateStatus(REPORT_STATUS_VALUES.dismissed)}
-                  disabled={isProcessing || !hasOpenRelatedReports}
-                >
-                  {dismissActionLabel}
-                </Button>
-                <Button
-                  type="button"
-                  className="rounded-xl"
-                  onClick={() => handleUpdateStatus(REPORT_STATUS_VALUES.resolved)}
-                  disabled={isProcessing || !hasOpenRelatedReports}
-                >
-                  {resolveActionLabel}
-                </Button>
-              </div>
-            </div>
           </section>
-        ) : isProfileReport ? (
-          <section className="flex flex-col overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card">
+          ) : isProfileReport ? (
+          <section className={REPORT_EVIDENCE_PANEL_CLASS}>
             <div className="border-b border-zinc-200 px-6 py-5 dark:border-border">
               <p className="text-lg font-semibold text-zinc-950 dark:text-foreground">
                 {reviewTitle}
@@ -591,41 +848,9 @@ export function AdminReportReviewContent({
 
             </div>
 
-            <div className="border-t border-zinc-200 bg-background px-6 py-5 dark:border-border">
-              <div className="flex flex-wrap justify-end gap-2">
-                {canForceNameChange ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="rounded-xl"
-                    onClick={handleForceNameChange}
-                    disabled={isProcessing}
-                  >
-                    {t.adminForceNameChange}
-                  </Button>
-                ) : null}
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-xl"
-                  onClick={() => handleUpdateStatus(REPORT_STATUS_VALUES.dismissed)}
-                  disabled={isProcessing || !hasOpenRelatedReports}
-                >
-                  {dismissActionLabel}
-                </Button>
-                <Button
-                  type="button"
-                  className="rounded-xl"
-                  onClick={() => handleUpdateStatus(REPORT_STATUS_VALUES.resolved)}
-                  disabled={isProcessing || !hasOpenRelatedReports}
-                >
-                  {resolveActionLabel}
-                </Button>
-              </div>
-            </div>
           </section>
-        ) : (
-          <section className="flex flex-col overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card">
+          ) : (
+          <section className={REPORT_EVIDENCE_PANEL_CLASS}>
             <div className="border-b border-zinc-200 px-6 py-5 dark:border-border">
               <p className="text-lg font-semibold text-zinc-950 dark:text-foreground">
                 {t.adminListingReviewTitle}
@@ -678,65 +903,33 @@ export function AdminReportReviewContent({
                 ) : null}
               </div>
             </div>
-            <div className="border-t border-zinc-200 bg-background px-6 py-5 dark:border-border">
-              <div className="flex flex-wrap justify-end gap-2">
-                {canRemoveListing ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="rounded-xl"
-                    onClick={handleRemoveListing}
-                    disabled={isProcessing || !hasOpenRelatedReports}
-                  >
-                    {removeListingActionLabel}
-                  </Button>
-                ) : null}
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-xl"
-                  onClick={() => handleUpdateStatus(REPORT_STATUS_VALUES.dismissed)}
-                  disabled={isProcessing || !hasOpenRelatedReports}
-                >
-                  {dismissActionLabel}
-                </Button>
-                <Button
-                  type="button"
-                  className="rounded-xl"
-                  onClick={() => handleUpdateStatus(REPORT_STATUS_VALUES.resolved)}
-                  disabled={isProcessing || !hasOpenRelatedReports}
-                >
-                  {resolveActionLabel}
-                </Button>
-              </div>
-            </div>
           </section>
-        )}
-      
-        <div className="space-y-4">
-          {!isMessageReport ? (
-            <ModeratorNotesCard
-              t={t}
-              language={language}
-              notesAvailable={notesAvailable}
-              moderatorNotes={moderatorNotes}
-              setModeratorNotes={setModeratorNotes}
-              report={report}
-              hasModeratorNotes={hasModeratorNotes}
-              isSavingNotes={isSavingNotes}
-              hasNotesChanges={hasNotesChanges}
-              handleSaveModeratorNotes={handleSaveModeratorNotes}
-            />
-          ) : null}
+          )}
+
+          <ModeratorNotesCard
+            t={t}
+            language={language}
+            notesAvailable={notesAvailable}
+            moderatorNoteDraft={moderatorNoteDraft}
+            setModeratorNoteDraft={setModeratorNoteDraft}
+            moderatorNoteHistory={moderatorNoteHistory}
+            moderatorNoteHistoryNextHref={moderatorNoteHistoryNextHref}
+            isSavingNotes={isSavingNotes}
+            hasNoteDraft={hasNoteDraft}
+            handleSaveModeratorNotes={handleSaveModeratorNotes}
+          />
+        </div>
+
+        <div className="space-y-5 xl:space-y-6">
 
           <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-            <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+            <CardHeader className="border-b border-zinc-200 px-7 py-6 dark:border-border">
               <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
                 {t.adminRelatedReportsTitle}
               </CardTitle>
               <CardDescription>{t.adminRelatedReportsDescription}</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3 px-6 py-5">
+            <CardContent className="flex min-h-44 flex-col justify-center gap-4 px-7 py-6">
               {sortedRelatedReports.length > 0 ? (
                 sortedRelatedReports.map((relatedReport) => {
                   const isCurrentReport = relatedReport.id === report.id;
@@ -745,13 +938,13 @@ export function AdminReportReviewContent({
                     <Link
                       key={relatedReport.id}
                       href={`/admin/reports/${relatedReport.id}`}
-                      className={`block rounded-2xl border p-4 transition ${
+                      className={`flex min-h-32 items-center rounded-2xl border p-5 transition ${
                         isCurrentReport
                           ? "border-primary/40 bg-primary/5"
                           : "border-zinc-200 bg-zinc-50 hover:bg-background dark:border-border dark:bg-muted/40 dark:hover:bg-background"
                       }`}
                     >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="flex w-full flex-wrap items-center justify-between gap-3">
                         <div className="space-y-2">
                           <div className="flex flex-wrap items-center gap-2">
                             <Badge variant="outline" className="rounded-full border-border bg-background px-2 py-0 text-foreground">
@@ -814,12 +1007,12 @@ export function AdminReportReviewContent({
 
           {isProfileReport ? (
             <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-              <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+              <CardHeader className="border-b border-zinc-200 px-7 py-6 dark:border-border">
                 <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
                   {t.adminReportedProfileTitle}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 px-6 py-5">
+              <CardContent className="space-y-5 px-7 py-6">
                 <Link href={`/profile/${profileTarget?.id}`} className="flex items-center gap-3 rounded-xl transition hover:bg-zinc-50/80 dark:hover:bg-muted/40">
                   <ProfileAvatar
                     name={profileTarget?.name}
@@ -848,14 +1041,14 @@ export function AdminReportReviewContent({
           ) : (
             <>
               <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-                <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+                <CardHeader className="border-b border-zinc-200 px-7 py-6 dark:border-border">
                   <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
                     {t.aboutListing}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4 px-6 py-5">
-                  <Link href={`/listings/${listingTarget.slug}`} className="block rounded-2xl bg-zinc-50 p-4 transition hover:bg-background dark:bg-muted/40 dark:hover:bg-background">
-                    <div className="flex items-center gap-4">
+                <CardContent className="flex min-h-44 items-center px-7 py-6">
+                  <Link href={`/listings/${listingTarget.slug}`} className="w-full rounded-2xl bg-zinc-50 p-5 transition hover:bg-background dark:bg-muted/40 dark:hover:bg-background">
+                    <div className="flex min-h-24 items-center gap-4">
                       <div className="relative h-18 w-18 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted">
                         {listingTarget?.imageUrl ? (
                           <Image
@@ -885,18 +1078,18 @@ export function AdminReportReviewContent({
               </Card>
 
               <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-                <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+                <CardHeader className="border-b border-zinc-200 px-7 py-6 dark:border-border">
                   <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
                     {isMessageReport ? t.adminParticipantsTitle : t.seller}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4 px-6 py-5">
+                <CardContent className="flex min-h-52 flex-col justify-center gap-0 px-7 py-6">
                   {(isMessageReport ? [conversation.buyer, conversation.seller] : [listingReview?.seller])
                     .filter(Boolean)
                     .map((participant, index) => (
                       <React.Fragment key={participant.id}>
                         {index > 0 ? <Separator /> : null}
-                        <Link href={`/profile/${participant.id}`} className="flex items-center gap-3 rounded-xl transition hover:bg-zinc-50/80 dark:hover:bg-muted/40">
+                        <Link href={`/profile/${participant.id}`} className="flex min-h-20 items-center gap-3 rounded-xl transition hover:bg-zinc-50/80 dark:hover:bg-muted/40">
                           <ProfileAvatar
                             name={participant.name}
                             avatarPresetId={participant.avatarPresetId}
@@ -916,6 +1109,128 @@ export function AdminReportReviewContent({
           )}
         </div>
       </div>
+
+      {hasOpenRelatedReports ? (
+        <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
+          <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border sm:px-7 sm:py-6">
+            <CardTitle className="text-lg text-zinc-950 dark:text-foreground">
+              {t.adminReportDecisionDetailsTitle}
+            </CardTitle>
+            <CardDescription>{t.adminDecisionPrivateFieldsNotice}</CardDescription>
+          </CardHeader>
+          <CardContent className={`grid items-start gap-x-6 gap-y-7 px-6 py-6 sm:px-7 sm:py-7 ${
+            canRemoveListing || canForceNameChange ? "lg:grid-cols-2" : "lg:grid-cols-1"
+          }`}>
+            <DecisionTextField
+              id="report-decision-summary"
+              label={t.adminReportDecisionSummaryLabel}
+              description={t.adminReportDecisionSummaryDescription}
+              value={decisionSummary}
+              onChange={(event) => {
+                setDecisionSummary(event.target.value);
+                setFieldErrors((current) => ({ ...current, decisionSummary: "" }));
+              }}
+              textareaRef={decisionSummaryRef}
+              limit={REPORT_DECISION_SUMMARY_MAX_LENGTH}
+              error={fieldErrors.decisionSummary}
+              required
+            />
+
+            {canRemoveListing ? (
+              <>
+                <DecisionTextField
+                  id="reported-listing-seller-feedback"
+                  label={t.adminRemoveListingFeedbackLabel}
+                  description={t.adminRemoveListingFeedbackDescription}
+                  value={sellerFeedback}
+                  onChange={(event) => {
+                    setSellerFeedback(event.target.value);
+                    setFieldErrors((current) => ({ ...current, sellerFeedback: "" }));
+                  }}
+                  textareaRef={sellerFeedbackRef}
+                  limit={REPORTED_LISTING_FEEDBACK_MAX_LENGTH}
+                  error={fieldErrors.sellerFeedback}
+                  required
+                />
+                <DecisionTextField
+                  id="reported-listing-private-summary"
+                  label={t.adminRemoveListingPrivateSummaryLabel}
+                  description={t.adminRemoveListingPrivateSummaryDescription}
+                  value={removalPrivateSummary}
+                  onChange={(event) => {
+                    setRemovalPrivateSummary(event.target.value);
+                    setFieldErrors((current) => ({ ...current, removalPrivateSummary: "" }));
+                  }}
+                  textareaRef={removalPrivateSummaryRef}
+                  limit={REPORTED_LISTING_PRIVATE_SUMMARY_MAX_LENGTH}
+                  error={fieldErrors.removalPrivateSummary}
+                />
+              </>
+            ) : null}
+
+            {canForceNameChange ? (
+              <>
+                <DecisionTextField
+                  id="force-name-policy-reason"
+                  label={t.adminForceNamePolicyReasonLabel}
+                  description={t.adminForceNamePolicyReasonDescription}
+                  value={forcePolicyReason}
+                  onChange={(event) => {
+                    setForcePolicyReason(event.target.value);
+                    setFieldErrors((current) => ({ ...current, forcePolicyReason: "" }));
+                  }}
+                  textareaRef={forcePolicyReasonRef}
+                  limit={FORCE_NAME_POLICY_REASON_MAX_LENGTH}
+                  error={fieldErrors.forcePolicyReason}
+                  required
+                />
+                <DecisionTextField
+                  id="force-name-user-message"
+                  label={t.adminForceNameUserMessageLabel}
+                  description={t.adminForceNameUserMessageDescription}
+                  value={forceUserMessage}
+                  onChange={(event) => {
+                    setForceUserMessage(event.target.value);
+                    setFieldErrors((current) => ({ ...current, forceUserMessage: "" }));
+                  }}
+                  textareaRef={forceUserMessageRef}
+                  limit={FORCE_NAME_USER_MESSAGE_MAX_LENGTH}
+                  error={fieldErrors.forceUserMessage}
+                  required
+                />
+                <DecisionTextField
+                  id="force-name-private-note"
+                  label={t.adminForceNamePrivateNoteLabel}
+                  description={t.adminForceNamePrivateNoteDescription}
+                  value={forcePrivateNote}
+                  onChange={(event) => {
+                    setForcePrivateNote(event.target.value);
+                    setFieldErrors((current) => ({ ...current, forcePrivateNote: "" }));
+                  }}
+                  textareaRef={forcePrivateNoteRef}
+                  limit={MODERATOR_NOTE_MAX_LENGTH}
+                  error={fieldErrors.forcePrivateNote}
+                />
+              </>
+            ) : null}
+          </CardContent>
+          <CardFooter className="border-zinc-200 bg-muted/20 px-6 py-5 dark:border-border sm:px-7 sm:py-6">
+            <ReportDecisionActions
+              t={t}
+              canRemoveListing={canRemoveListing}
+              canForceNameChange={canForceNameChange}
+              isProcessing={isProcessing}
+              hasOpenRelatedReports={hasOpenRelatedReports}
+              removeListingActionLabel={removeListingActionLabel}
+              dismissActionLabel={dismissActionLabel}
+              resolveActionLabel={resolveActionLabel}
+              handleRemoveListing={handleRemoveListing}
+              handleForceNameChange={handleForceNameChange}
+              handleUpdateStatus={handleUpdateStatus}
+            />
+          </CardFooter>
+        </Card>
+      ) : null}
     </div>
   );
 }

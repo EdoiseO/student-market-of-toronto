@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { Settings2Icon, UserRoundIcon } from "lucide-react";
+import { Settings2Icon, ShieldAlertIcon, UserRoundIcon } from "lucide-react";
 
 import { DashboardTableClient } from "@/components/dashboard-table-client";
 import { normalizeCategoryValue } from "@/lib/categories";
@@ -21,6 +21,7 @@ const DASHBOARD_LISTING_SELECT = `
   price,
   category,
   status,
+  content_revision,
   retired_at,
   moderation_feedback,
   moderation_reviewed_at,
@@ -40,6 +41,7 @@ const DASHBOARD_LISTING_FALLBACK_SELECT = `
   price,
   category,
   status,
+  content_revision,
   location,
   created_at,
   listing_images (
@@ -63,17 +65,22 @@ function normalizeDashboardListing(
   dashboardStatus = listing.status,
   messageCount = 0,
 ) {
+  const numericPrice = listing.price === null || listing.price === undefined
+    ? null
+    : Number(listing.price);
+
   return {
     id: listing.id,
     slug: listing.slug,
     title: listing.title,
     meta: listing.location ?? "",
     imageUrl: getPrimaryImageUrl(listing.listing_images),
-    price: `$${Number(listing.price).toFixed(2)}`,
-    priceValue: Number(listing.price),
+    price: Number.isFinite(numericPrice) ? `$${numericPrice.toFixed(2)}` : "—",
+    priceValue: Number.isFinite(numericPrice) ? numericPrice : null,
     createdAt: listing.created_at,
     category: normalizeCategoryValue(listing.category),
     status: listing.status,
+    contentRevision: Number(listing.content_revision) || 1,
     dashboardStatus,
     moderationFeedback: listing.moderation_feedback ?? null,
     moderationReviewedAt: listing.moderation_reviewed_at ?? null,
@@ -213,17 +220,23 @@ export default async function DashboardPage({ searchParams }) {
             <p className="max-w-2xl text-base text-zinc-600 dark:text-muted-foreground">
               {t.dashboardDescription}
             </p>
-            <nav aria-label={t.account} className="mt-3 grid grid-cols-2 gap-2 md:hidden">
-              <Button asChild variant="outline" className="justify-start rounded-xl bg-white px-3 dark:bg-background">
+            <nav aria-label={t.account} className="mt-3 grid grid-cols-1 gap-2 min-[360px]:grid-cols-3 md:hidden">
+              <Button asChild variant="outline" className="min-w-0 justify-start rounded-xl bg-white px-3 dark:bg-background">
                 <Link href="/dashboard/profile">
-                  <UserRoundIcon className="size-4" />
-                  {t.profile}
+                  <UserRoundIcon className="size-4 shrink-0" />
+                  <span className="truncate">{t.profile}</span>
                 </Link>
               </Button>
-              <Button asChild variant="outline" className="justify-start rounded-xl bg-white px-3 dark:bg-background">
+              <Button asChild variant="outline" className="min-w-0 justify-start rounded-xl bg-white px-3 dark:bg-background">
                 <Link href="/dashboard/settings">
-                  <Settings2Icon className="size-4" />
-                  {t.settings}
+                  <Settings2Icon className="size-4 shrink-0" />
+                  <span className="truncate">{t.settings}</span>
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="min-w-0 justify-start rounded-xl bg-white px-3 dark:bg-background">
+                <Link href="/dashboard/standing">
+                  <ShieldAlertIcon className="size-4 shrink-0" />
+                  <span className="truncate">{t.accountStanding}</span>
                 </Link>
               </Button>
             </nav>

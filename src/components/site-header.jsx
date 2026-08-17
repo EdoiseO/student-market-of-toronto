@@ -45,6 +45,8 @@ export function SiteHeader({ user }) {
         ? t.adminDashboard
       : pathname.startsWith("/messages")
         ? t.messages
+      : pathname.startsWith("/dashboard/standing")
+        ? t.accountStanding
       : pathname.startsWith("/dashboard")
         ? t.dashboard
         : pathname.endsWith("/edit")

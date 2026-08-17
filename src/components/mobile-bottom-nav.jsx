@@ -1,15 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { CircleUserRound, House, LayoutGrid, MessageCircle, Plus } from "lucide-react";
+import { CircleUserRound, House, LayoutGrid, MessageCircle, Plus, ShieldCheck } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 import { useLanguage } from "@/context/LanguageContext";
 import { cn } from "@/lib/utils";
+import { isModerationRole } from "@/lib/moderation";
 
 export function MobileBottomNav({ user }) {
   const pathname = usePathname() ?? "";
   const { language, t } = useLanguage();
+  const showModerationEntry = isModerationRole(user?.role);
 
   const items = [
     {
@@ -24,13 +26,21 @@ export function MobileBottomNav({ user }) {
       icon: LayoutGrid,
       isActive: pathname.startsWith("/search") || pathname.startsWith("/categories"),
     },
-    {
-      href: "/listings/create",
-      label: language === "fr" ? "Vendre" : "Sell",
-      icon: Plus,
-      isActive: pathname.startsWith("/listings/create"),
-      isPrimary: true,
-    },
+    showModerationEntry
+      ? {
+          href: "/admin",
+          label: t.adminMobileEntry,
+          icon: ShieldCheck,
+          isActive: pathname.startsWith("/admin"),
+          isPrimary: true,
+        }
+      : {
+          href: "/listings/create",
+          label: language === "fr" ? "Vendre" : "Sell",
+          icon: Plus,
+          isActive: pathname.startsWith("/listings/create"),
+          isPrimary: true,
+        },
     {
       href: "/messages",
       label: t.messages,

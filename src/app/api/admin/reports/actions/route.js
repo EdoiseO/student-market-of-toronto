@@ -6,7 +6,10 @@ import {
   getUserModerationRole,
   REPORT_STATUS_VALUES,
 } from "@/lib/moderation";
-import { areOpenReportsBoundToOneSubject } from "@/lib/admin-moderation-integrity.mjs";
+import {
+  MODERATION_ACTIONS,
+  canPerformModerationAction,
+} from "@/lib/moderation-policy.mjs";
 import {
   REJECTED_PROFILE_NAME_FINGERPRINT_HISTORY_KEY,
   REJECTED_PROFILE_NAME_FINGERPRINT_KEY,
@@ -15,21 +18,25 @@ import {
   getProfileNameFingerprint,
 } from "@/lib/name-sanction.mjs";
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
+import {
+  validateForceNameDecision,
+  validateModeratorNote,
+  validateModeratorNoteEntry,
+  validateReportDecisionSummary,
+  validateReportedListingDecision,
+} from "@/lib/write-field-contracts.mjs";
 import { createClient } from "@/utils/supabase/server";
 
-function isReportNotesColumnsMissing(error) {
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isModerationWriteConflict(error) {
   const message = [error?.message, error?.details, error?.hint]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
 
-  return (
-    error?.code === "42703" ||
-    error?.code === "PGRST204" ||
-    message.includes("moderator_notes") ||
-    message.includes("moderator_notes_updated_at") ||
-    message.includes("moderator_notes_updated_by")
-  );
+  return error?.code === "40001" || message.includes("moderation_report_set_conflict");
 }
 
 async function requireModerationUser() {
@@ -77,7 +84,7 @@ async function requireModerationUser() {
     };
   }
 
-  return { admin, user: moderationUser };
+  return { admin, supabase, user: moderationUser };
 }
 
 export async function POST(request) {
@@ -88,17 +95,38 @@ export async function POST(request) {
       return moderationContext.errorResponse;
     }
 
-    const { admin, user } = moderationContext;
+    const { admin, supabase, user } = moderationContext;
     const payload = await request.json();
     const action = payload?.action;
+    const moderationRole = getUserModerationRole(user);
+
+    const requireAction = (requiredAction, message) => {
+      if (canPerformModerationAction(moderationRole, requiredAction)) {
+        return null;
+      }
+
+      return NextResponse.json({ error: message }, { status: 403 });
+    };
 
     if (action === "update_status") {
+      const permissionError = requireAction(
+        MODERATION_ACTIONS.decideReports,
+        "Report decision permission required.",
+      );
+
+      if (permissionError) {
+        return permissionError;
+      }
+
       const reportIds = Array.isArray(payload?.reportIds)
         ? [...new Set(payload.reportIds.filter(Boolean))]
         : [];
       const nextStatus = payload?.status;
+      const operationId =
+        typeof payload?.operationId === "string" ? payload.operationId.trim() : "";
+      const decisionSummaryResult = validateReportDecisionSummary(payload?.decisionSummary);
 
-      if (!reportIds.length) {
+      if (!reportIds.length || !UUID_PATTERN.test(operationId) || !decisionSummaryResult.ok) {
         return NextResponse.json({ error: "Missing report ids." }, { status: 400 });
       }
 
@@ -109,122 +137,97 @@ export async function POST(request) {
         return NextResponse.json({ error: "Unsupported report status." }, { status: 400 });
       }
 
-      const { data: reportRows, error: reportLookupError } = await admin
-        .from("reports")
-        .select(
-          "id, subject_type, subject_id, listing_id, message_id, reported_user_id, status",
-        )
-        .in("id", reportIds);
+      const { data: updatedCount, error } = await supabase.rpc("decide_report_set_with_summary", {
+        p_report_ids: reportIds,
+        p_status: nextStatus,
+        p_private_summary: decisionSummaryResult.value,
+        p_request_id: operationId,
+      });
 
-      if (reportLookupError) {
-        throw reportLookupError;
-      }
-
-      if (!areOpenReportsBoundToOneSubject(reportRows, reportIds)) {
+      if (isModerationWriteConflict(error)) {
         return NextResponse.json(
-          { error: "Every selected report must be open and belong to the same subject." },
+          { error: "The selected reports changed or do not belong to one open subject." },
           { status: 409 },
         );
       }
-
-      const reviewedAt = new Date().toISOString();
-      const { data: updatedReports, error } = await admin
-        .from("reports")
-        .update({
-          status: nextStatus,
-          reviewed_by: user.id,
-          reviewed_at: reviewedAt,
-        })
-        .in("id", reportIds)
-        .eq("status", REPORT_STATUS_VALUES.open)
-        .select("id");
 
       if (error) {
         throw error;
       }
 
-      if (updatedReports?.length !== reportIds.length) {
-        return NextResponse.json(
-          { error: "The selected reports changed before they could be updated." },
-          { status: 409 },
-        );
-      }
-
-      return NextResponse.json({ success: true, updatedCount: updatedReports.length });
+      return NextResponse.json({ success: true, updatedCount });
     }
 
     if (action === "remove_listing") {
+      const reportPermissionError = requireAction(
+        MODERATION_ACTIONS.decideReports,
+        "Report decision permission required.",
+      );
+      const listingPermissionError = requireAction(
+        MODERATION_ACTIONS.decideListings,
+        "Listing decision permission required.",
+      );
+
+      if (reportPermissionError || listingPermissionError) {
+        return reportPermissionError ?? listingPermissionError;
+      }
+
       const reportIds = Array.isArray(payload?.reportIds)
         ? [...new Set(payload.reportIds.filter(Boolean))]
         : [];
       const listingId = payload?.listingId;
+      const operationId =
+        typeof payload?.operationId === "string" ? payload.operationId.trim() : "";
+      const decisionResult = validateReportedListingDecision({
+        sellerFeedback: payload?.sellerFeedback,
+        privateSummary: payload?.privateSummary,
+      });
 
-      if (!reportIds.length || !listingId) {
+      if (
+        !reportIds.length ||
+        !listingId ||
+        !UUID_PATTERN.test(operationId) ||
+        !decisionResult.ok
+      ) {
         return NextResponse.json({ error: "Missing listing moderation payload." }, { status: 400 });
       }
 
-      const { data: reportRows, error: reportLookupError } = await admin
-        .from("reports")
-        .select("id, subject_type, subject_id, listing_id, status")
-        .in("id", reportIds);
+      const { data: updatedCount, error } = await supabase.rpc(
+        "remove_reported_listing_with_rationale",
+        {
+          p_report_ids: reportIds,
+          p_listing_id: listingId,
+          p_seller_feedback: decisionResult.value.sellerFeedback,
+          p_private_summary: decisionResult.value.privateSummary,
+          p_request_id: operationId,
+        },
+      );
 
-      if (reportLookupError) {
-        throw reportLookupError;
-      }
-
-      const everyReportMatchesListing =
-        reportRows?.length === reportIds.length &&
-        reportRows.every((report) => {
-          const reportTargetIds = [report.listing_id, report.subject_id].filter(Boolean);
-
-          return (
-            report.subject_type === "listing" &&
-            report.status === REPORT_STATUS_VALUES.open &&
-            reportTargetIds.length > 0 &&
-            reportTargetIds.every((reportTargetId) => reportTargetId === listingId)
-          );
-        });
-
-      if (!everyReportMatchesListing) {
+      if (isModerationWriteConflict(error)) {
         return NextResponse.json(
-          { error: "Every selected open report must belong to this listing." },
+          { error: "The listing or selected open reports changed before removal." },
           { status: 409 },
         );
       }
 
-      const reviewedAt = new Date().toISOString();
-      const { error: listingError } = await admin
-        .from("listings")
-        .update({
-          status: "inactive",
-          moderation_reviewed_at: reviewedAt,
-          moderation_reviewed_by: user.id,
-        })
-        .eq("id", listingId);
-
-      if (listingError) {
-        throw listingError;
+      if (error) {
+        throw error;
       }
 
-      const { error: reportsError } = await admin
-        .from("reports")
-        .update({
-          status: REPORT_STATUS_VALUES.resolved,
-          reviewed_by: user.id,
-          reviewed_at: reviewedAt,
-        })
-        .in("id", reportIds)
-        .eq("status", REPORT_STATUS_VALUES.open);
-
-      if (reportsError) {
-        throw reportsError;
-      }
-
-      return NextResponse.json({ success: true, updatedCount: reportIds.length });
+      return NextResponse.json({ success: true, updatedCount });
     }
 
     if (action === "force_name_change") {
-      if (getUserModerationRole(user) !== "admin") {
+      const permissionError = requireAction(
+        MODERATION_ACTIONS.decideReports,
+        "Report decision permission required.",
+      );
+
+      if (permissionError) {
+        return permissionError;
+      }
+
+      if (moderationRole !== "admin") {
         return NextResponse.json(
           { error: "Only admins can require a name change." },
           { status: 403 },
@@ -235,8 +238,20 @@ export async function POST(request) {
         ? [...new Set(payload.reportIds.filter(Boolean))]
         : [];
       const targetUserId = payload?.userId;
+      const operationId =
+        typeof payload?.operationId === "string" ? payload.operationId.trim() : "";
+      const forceNameDecision = validateForceNameDecision({
+        policyReason: payload?.policyReason,
+        userMessage: payload?.userMessage,
+        privateNote: payload?.privateNote,
+      });
 
-      if (!reportIds.length || !targetUserId) {
+      if (
+        !reportIds.length ||
+        !targetUserId ||
+        !UUID_PATTERN.test(operationId) ||
+        !forceNameDecision.ok
+      ) {
         return NextResponse.json(
           { error: "Missing name change moderation payload." },
           { status: 400 },
@@ -285,7 +300,7 @@ export async function POST(request) {
         throw targetProfileError;
       }
 
-      const reviewedAt = new Date().toISOString();
+      const requestId = operationId;
       const rejectedNameFingerprint = getProfileNameFingerprint(
         targetProfile?.first_name,
         targetProfile?.last_name,
@@ -308,79 +323,239 @@ export async function POST(request) {
           rejectedNameFingerprints;
       }
 
-      const { error: authUpdateError } = await admin.auth.admin.updateUserById(targetUserId, {
-        app_metadata: nextAppMetadata,
-      });
+      const { data: operationRows, error: beginError } = await supabase.rpc(
+        "begin_force_name_operation_with_rationale",
+        {
+          p_report_ids: reportIds,
+          p_subject_user_id: targetUserId,
+          p_desired_metadata: nextAppMetadata,
+          p_rollback_metadata: targetUser.app_metadata ?? {},
+          p_policy_reason: forceNameDecision.value.policyReason,
+          p_user_message: forceNameDecision.value.userMessage,
+          p_private_note: forceNameDecision.value.privateNote,
+          p_request_id: requestId,
+        },
+      );
 
-      if (authUpdateError) {
-        throw authUpdateError;
+      if (beginError) {
+        throw beginError;
       }
 
-      const { error: profileError } = await admin
-        .from("profiles")
-        .update({
-          first_name: null,
-          last_name: null,
-        })
-        .eq("id", targetUserId);
+      const operation = Array.isArray(operationRows) ? operationRows[0] : operationRows;
 
-      if (profileError) {
-        throw profileError;
+      if (!operation?.operation_id) {
+        throw new Error("Force-name-change operation could not be started.");
       }
 
-      const { error: reportsError } = await admin
-        .from("reports")
-        .update({
-          status: REPORT_STATUS_VALUES.resolved,
-          reviewed_by: user.id,
-          reviewed_at: reviewedAt,
-        })
-        .in("id", reportIds)
-        .eq("status", REPORT_STATUS_VALUES.open);
+      if (operation.operation_status === "completed") {
+        const { data: updatedCount, error: completionError } = await supabase.rpc(
+          "complete_force_name_operation_with_rationale",
+          { p_operation_id: operation.operation_id },
+        );
 
-      if (reportsError) {
-        throw reportsError;
+        if (completionError) {
+          throw completionError;
+        }
+
+        return NextResponse.json({ success: true, updatedCount });
       }
 
-      return NextResponse.json({ success: true, updatedCount: reportIds.length });
+      if (operation.operation_status !== "pending") {
+        throw new Error("force_name_change_reconciliation_required");
+      }
+
+      let authMutationApplied = false;
+
+      try {
+        const { error: authUpdateError } = await admin.auth.admin.updateUserById(targetUserId, {
+          app_metadata: nextAppMetadata,
+        });
+
+        if (authUpdateError) {
+          throw authUpdateError;
+        }
+
+        authMutationApplied = true;
+        const { data: updatedCount, error: forceNameError } = await supabase.rpc(
+          "complete_force_name_operation_with_rationale",
+          { p_operation_id: operation.operation_id },
+        );
+
+        if (forceNameError) {
+          throw forceNameError;
+        }
+
+        return NextResponse.json({ success: true, updatedCount });
+      } catch (forceNameError) {
+        const { data: replayCount, error: replayError } = await supabase.rpc(
+          "complete_force_name_operation_with_rationale",
+          { p_operation_id: operation.operation_id },
+        );
+
+        if (!replayError) {
+          return NextResponse.json({ success: true, updatedCount: replayCount });
+        }
+
+        if (!authMutationApplied) {
+          const { data: safelyAborted, error: abortError } = await supabase.rpc(
+            "abort_force_name_operation",
+            { p_operation_id: operation.operation_id },
+          );
+
+          if (abortError || safelyAborted !== true) {
+            throw new Error("force_name_change_reconciliation_required", {
+              cause: forceNameError,
+            });
+          }
+
+          throw forceNameError;
+        }
+
+        const latestTargetUser = await getLatestAuthUser(
+          admin,
+          targetUserId,
+          "force-name-change compensation",
+        );
+        const latestMetadata = latestTargetUser?.app_metadata ?? {};
+        const metadataStillMatches =
+          latestMetadata.force_name_change === true &&
+          latestMetadata[REJECTED_PROFILE_NAME_FINGERPRINT_KEY] ===
+            nextAppMetadata[REJECTED_PROFILE_NAME_FINGERPRINT_KEY] &&
+          JSON.stringify(
+            latestMetadata[REJECTED_PROFILE_NAME_FINGERPRINT_HISTORY_KEY] ?? [],
+          ) ===
+            JSON.stringify(
+              nextAppMetadata[REJECTED_PROFILE_NAME_FINGERPRINT_HISTORY_KEY] ?? [],
+            );
+
+        if (!metadataStillMatches) {
+          console.error(
+            "Force-name-change Auth metadata changed during compensation; reconciliation required.",
+          );
+          throw new Error("force_name_change_reconciliation_required");
+        }
+
+        const rollbackMetadata = {
+          ...latestMetadata,
+          force_name_change: targetUser.app_metadata?.force_name_change ?? null,
+          [REJECTED_PROFILE_NAME_FINGERPRINT_KEY]:
+            targetUser.app_metadata?.[REJECTED_PROFILE_NAME_FINGERPRINT_KEY] ?? null,
+          [REJECTED_PROFILE_NAME_FINGERPRINT_HISTORY_KEY]:
+            targetUser.app_metadata?.[REJECTED_PROFILE_NAME_FINGERPRINT_HISTORY_KEY] ?? null,
+        };
+        const { error: rollbackError } = await admin.auth.admin.updateUserById(
+          targetUserId,
+          { app_metadata: rollbackMetadata },
+        );
+
+        if (rollbackError) {
+          console.error(
+            "Force-name-change Auth compensation failed; reconciliation required:",
+            rollbackError.message,
+          );
+          throw new Error("force_name_change_reconciliation_required");
+        }
+
+        const { data: safelyAborted, error: abortError } = await supabase.rpc(
+          "abort_force_name_operation",
+          { p_operation_id: operation.operation_id },
+        );
+
+        if (abortError || safelyAborted !== true) {
+          console.error(
+            "Force-name-change operation could not verify compensation; reconciliation required.",
+            abortError?.message,
+          );
+          throw new Error("force_name_change_reconciliation_required", {
+            cause: forceNameError,
+          });
+        }
+
+        throw forceNameError;
+      }
     }
 
     if (action === "save_notes") {
-      const reportId = payload?.reportId;
-      const moderatorNotes = typeof payload?.moderatorNotes === "string" ? payload.moderatorNotes : "";
+      const permissionError = requireAction(
+        MODERATION_ACTIONS.triageReports,
+        "Report triage permission required.",
+      );
 
-      if (!reportId) {
+      if (permissionError) {
+        return permissionError;
+      }
+
+      const reportId = typeof payload?.reportId === "string" ? payload.reportId.trim() : "";
+      const moderatorNotesResult = validateModeratorNote(payload?.moderatorNotes);
+      const operationId =
+        typeof payload?.operationId === "string" ? payload.operationId.trim() : "";
+
+      if (
+        !UUID_PATTERN.test(reportId)
+        || !UUID_PATTERN.test(operationId)
+        || !moderatorNotesResult.ok
+      ) {
         return NextResponse.json({ error: "Missing report id." }, { status: 400 });
       }
 
-      const { error } = await admin
-        .from("reports")
-        .update({
-          moderator_notes: moderatorNotes.trim() || null,
-          moderator_notes_updated_at: new Date().toISOString(),
-          moderator_notes_updated_by: user.id,
-        })
-        .eq("id", reportId);
+      const { error } = await supabase.rpc("save_report_moderator_note", {
+        p_report_id: reportId,
+        p_moderator_note: moderatorNotesResult.value,
+        p_request_id: operationId,
+      });
 
       if (error) {
-        if (isReportNotesColumnsMissing(error)) {
-          return NextResponse.json(
-            { error: "Moderator notes are not configured in this environment yet." },
-            { status: 400 },
-          );
-        }
-
         throw error;
       }
 
       return NextResponse.json({ success: true });
     }
 
+    if (action === "add_note") {
+      const permissionError = requireAction(
+        MODERATION_ACTIONS.triageReports,
+        "Report triage permission required.",
+      );
+
+      if (permissionError) {
+        return permissionError;
+      }
+
+      const reportId = typeof payload?.reportId === "string" ? payload.reportId.trim() : "";
+      const moderatorNoteResult = validateModeratorNoteEntry(payload?.moderatorNote);
+      const operationId =
+        typeof payload?.operationId === "string" ? payload.operationId.trim() : "";
+
+      if (
+        !UUID_PATTERN.test(reportId)
+        || !UUID_PATTERN.test(operationId)
+        || !moderatorNoteResult.ok
+      ) {
+        return NextResponse.json({ error: "Missing report note." }, { status: 400 });
+      }
+
+      const { data: noteRows, error } = await supabase.rpc(
+        "append_report_moderator_note",
+        {
+          p_report_id: reportId,
+          p_moderator_note: moderatorNoteResult.value,
+          p_request_id: operationId,
+        },
+      );
+
+      if (error) {
+        throw error;
+      }
+
+      const note = Array.isArray(noteRows) ? noteRows[0] : noteRows;
+      return NextResponse.json({ success: true, note });
+    }
+
     return NextResponse.json({ error: "Unsupported moderation action." }, { status: 400 });
   } catch (error) {
     console.error("Failed to perform moderation action:", error?.message ?? error);
     return NextResponse.json(
-      { error: error?.message ?? "Could not complete the moderation action right now." },
+      { error: "Could not complete the moderation action right now." },
       { status: 500 },
     );
   }

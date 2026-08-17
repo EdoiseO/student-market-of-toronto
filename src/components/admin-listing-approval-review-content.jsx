@@ -26,6 +26,11 @@ import {
   isPendingListingApproval,
   isListingResubmittedAfterEdit,
 } from "@/lib/listing-approval";
+import {
+  REPORTED_LISTING_FEEDBACK_MAX_LENGTH,
+  countUnicodeCodePoints,
+  normalizeWriteText,
+} from "@/lib/write-field-contracts.mjs";
 import { createClient } from "@/utils/supabase/client";
 
 function ReviewMetadata({ label, children }) {
@@ -68,7 +73,10 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
   const listingSubmittedForReviewAt = listing.submittedForReviewAt;
   const listingModerationReviewedAt = listing.moderationReviewedAt;
   const [feedback, setFeedback] = React.useState(() => getListingFeedbackResetValue(listing));
+  const [feedbackError, setFeedbackError] = React.useState("");
   const [isProcessing, setIsProcessing] = React.useState(false);
+  const decisionOperationRef = React.useRef(null);
+  const feedbackRef = React.useRef(null);
 
   const isPendingReview = isPendingListingApproval(listing);
 
@@ -81,6 +89,7 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
         moderationReviewedAt: listingModerationReviewedAt,
       }),
     );
+    setFeedbackError("");
   }, [
     listingId,
     listingStatus,
@@ -91,6 +100,19 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
 
   async function handleModerationDecision(action, nextFeedback = null) {
     setIsProcessing(true);
+
+    const operationPayloadKey = JSON.stringify({
+      action,
+      feedback: nextFeedback,
+      expectedContentRevision: listing.contentRevision,
+      expectedSubmittedForReviewAt: listing.submittedForReviewAt,
+    });
+    if (decisionOperationRef.current?.payloadKey !== operationPayloadKey) {
+      decisionOperationRef.current = {
+        payloadKey: operationPayloadKey,
+        operationId: crypto.randomUUID(),
+      };
+    }
 
     const { error: refreshSessionError } = await supabase.auth.refreshSession();
 
@@ -104,6 +126,7 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        operationId: decisionOperationRef.current.operationId,
         action,
         feedback: nextFeedback,
         expectedContentRevision: listing.contentRevision,
@@ -121,6 +144,7 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
       return false;
     }
 
+    decisionOperationRef.current = null;
     return true;
   }
 
@@ -129,7 +153,16 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
       return;
     }
 
-    const wasSuccessful = await handleModerationDecision("approved");
+    const normalizedFeedback = normalizeWriteText(feedback);
+
+    if (countUnicodeCodePoints(normalizedFeedback) > REPORTED_LISTING_FEEDBACK_MAX_LENGTH) {
+      setFeedbackError(t.adminListingFeedbackTooLong);
+      feedbackRef.current?.focus();
+      return;
+    }
+
+    setFeedbackError("");
+    const wasSuccessful = await handleModerationDecision("approved", normalizedFeedback || null);
 
     if (!wasSuccessful) {
       return;
@@ -145,14 +178,24 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
       return;
     }
 
-    if (!feedback.trim()) {
+    const normalizedFeedback = normalizeWriteText(feedback);
+    const feedbackLength = countUnicodeCodePoints(normalizedFeedback);
+
+    if (!normalizedFeedback) {
+      setFeedbackError(t.adminListingRejectionFeedbackRequired);
       toast.error(t.adminListingRejectionFeedbackRequired);
+      feedbackRef.current?.focus();
       return;
     }
 
-    const trimmedFeedback = feedback.trim();
+    if (feedbackLength > REPORTED_LISTING_FEEDBACK_MAX_LENGTH) {
+      setFeedbackError(t.adminListingFeedbackTooLong);
+      feedbackRef.current?.focus();
+      return;
+    }
 
-    const wasSuccessful = await handleModerationDecision("rejected", trimmedFeedback);
+    setFeedbackError("");
+    const wasSuccessful = await handleModerationDecision("rejected", normalizedFeedback);
 
     if (!wasSuccessful) {
       return;
@@ -274,20 +317,47 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
                 <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">
                   {t.adminListingFeedbackTitle}
                 </CardTitle>
-                <CardDescription>{t.adminListingFeedbackDescription}</CardDescription>
+                <CardDescription id="listing-moderation-feedback-description">
+                  {t.adminListingFeedbackDescription}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 px-6 py-6">
+                <label
+                  htmlFor="listing-moderation-feedback"
+                  className="text-sm font-medium text-foreground"
+                >
+                  {t.adminListingFeedbackTitle}{" "}
+                  <span className="text-muted-foreground">
+                    ({t.adminListingFeedbackRequiredMarker})
+                  </span>
+                </label>
                 <div className="rounded-xl border border-zinc-200 bg-background p-3 shadow-sm dark:border-border dark:bg-background">
                   <Textarea
+                    ref={feedbackRef}
+                    id="listing-moderation-feedback"
                     value={feedback}
-                    onChange={(event) => setFeedback(event.target.value)}
+                    onChange={(event) => {
+                      setFeedback(event.target.value);
+                      if (feedbackError) {
+                        setFeedbackError("");
+                      }
+                    }}
                     placeholder={t.adminListingFeedbackPlaceholder}
                     rows={6}
                     className="h-40 min-h-32 max-h-80 resize-y border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0"
-                    maxLength={3000}
                     disabled={!isPendingReview || isProcessing}
+                    aria-required={isPendingReview ? "true" : "false"}
+                    aria-invalid={Boolean(feedbackError)}
+                    aria-describedby="listing-moderation-feedback-description listing-moderation-feedback-error"
                   />
                 </div>
+                <p
+                  id="listing-moderation-feedback-error"
+                  role={feedbackError ? "alert" : undefined}
+                  className="min-h-5 text-sm text-destructive"
+                >
+                  {feedbackError}
+                </p>
                 {!isPendingReview ? (
                   <p className="text-sm text-zinc-500 dark:text-muted-foreground">
                     {t.adminListingDecisionLockedDescription}

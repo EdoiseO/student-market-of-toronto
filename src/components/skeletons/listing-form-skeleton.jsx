@@ -3,7 +3,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 function FieldSkeleton({ multiline = false }) {
   return (
     <div className="space-y-2">
-      <Skeleton className="h-4 w-24" />
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-3 w-14" />
+      </div>
       <Skeleton
         className={
           multiline
@@ -97,6 +100,7 @@ export function ListingFormSkeleton({ mode = "create" }) {
           </header>
 
           <div className="p-4 sm:p-6 md:p-8">
+            <Skeleton className="mb-4 h-3 w-full max-w-2xl md:mb-6 md:h-4" />
             <div className="grid gap-5 pb-24 md:gap-8 md:pb-0 xl:grid-cols-[minmax(0,1fr)_minmax(288px,0.85fr)]">
               <div className="space-y-4 md:space-y-5">
                 <FieldSkeleton />

@@ -31,11 +31,16 @@ export async function proxy(request) {
 
   const path = request.nextUrl.pathname;
   const isBannedRoute = path === "/banned";
+  const isAccountStandingRoute = path === "/dashboard/standing";
+  const isAccountDeleteRoute =
+    path === "/api/account/delete" && request.method === "POST";
+  const isBannedAccountAllowedRoute =
+    isBannedRoute || isAccountStandingRoute || isAccountDeleteRoute;
 
   function isProtectedRoute(pathname) {
     return (
       pathname === "/profile" ||
-      pathname === "/dashboard" ||
+      pathname.startsWith("/dashboard") ||
       pathname === "/listings/create" ||
       /^\/listings\/[^/]+\/edit$/.test(pathname)
     );
@@ -43,8 +48,21 @@ export async function proxy(request) {
 
   if (user) {
     const userStatusResult = await getUserStatusRow(supabase, user.id);
+    const userStatusUnavailable =
+      userStatusResult.available !== true || Boolean(userStatusResult.error);
 
-    if (isUserBanned(userStatusResult.data) && !isBannedRoute) {
+    if (userStatusUnavailable && !isBannedAccountAllowedRoute) {
+      const unavailableResponse = NextResponse.json(
+        { error: "Account status is temporarily unavailable." },
+        { status: 503 },
+      );
+      response.cookies.getAll().forEach((cookie) => {
+        unavailableResponse.cookies.set(cookie.name, cookie.value, cookie);
+      });
+      return unavailableResponse;
+    }
+
+    if (isUserBanned(userStatusResult.data) && !isBannedAccountAllowedRoute) {
       const redirectResponse = NextResponse.redirect(new URL("/banned", request.url));
       response.cookies.getAll().forEach((cookie) => {
         redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
@@ -52,7 +70,7 @@ export async function proxy(request) {
       return redirectResponse;
     }
 
-    if (!isUserBanned(userStatusResult.data) && isBannedRoute) {
+    if (!userStatusUnavailable && !isUserBanned(userStatusResult.data) && isBannedRoute) {
       const redirectResponse = NextResponse.redirect(new URL("/", request.url));
       response.cookies.getAll().forEach((cookie) => {
         redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
@@ -61,9 +79,16 @@ export async function proxy(request) {
     }
 
     const isNameChangeAllowedRoute =
-      path === "/dashboard/profile" || path === "/auth/callback" || path.startsWith("/api/");
+      path === "/dashboard/profile" ||
+      path === "/auth/callback" ||
+      path === "/api/account/name" ||
+      isAccountDeleteRoute;
 
-    if (isNameChangeRequired(user) && !isNameChangeAllowedRoute && !isBannedRoute) {
+    if (
+      isNameChangeRequired(user) &&
+      !isNameChangeAllowedRoute &&
+      !isBannedAccountAllowedRoute
+    ) {
       const redirectResponse = NextResponse.redirect(new URL("/dashboard/profile", request.url));
       response.cookies.getAll().forEach((cookie) => {
         redirectResponse.cookies.set(cookie.name, cookie.value, cookie);

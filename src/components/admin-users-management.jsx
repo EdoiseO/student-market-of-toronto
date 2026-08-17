@@ -24,13 +24,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import {
   Table,
   TableBody,
@@ -39,9 +35,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
 import { useLanguage } from "@/context/LanguageContext";
 import { createClient } from "@/utils/supabase/client";
 import { cn } from "@/lib/utils";
+import {
+  BAN_REASON_CODE_VALUES,
+  BAN_REASON_MESSAGE_MAX_LENGTH,
+  BAN_REASON_MESSAGE_MIN_LENGTH,
+  validateBanReason,
+} from "@/lib/moderation-policy.mjs";
 
 function getRoleLabel(role, t) {
   switch (role) {
@@ -66,19 +69,6 @@ function getStatusLabel(user, t) {
   }
 
   return t.adminUserStatusActive;
-}
-
-function getSearchText(user, t) {
-  return [
-    user.name,
-    user.email,
-    user.school,
-    getRoleLabel(user.role, t),
-    getStatusLabel(user, t),
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
 }
 
 function SummaryCard({ title, value, description }) {
@@ -159,7 +149,7 @@ function UserRoleActions({ user, currentUserId, currentUserRole, onRoleUpdated, 
         >
           {t.removeMod}
         </Button>
-      ) : user.role !== "admin" ? (
+      ) : user.role !== "admin" && !user.isBanned ? (
         <Button
           type="button"
           variant="outline"
@@ -172,7 +162,7 @@ function UserRoleActions({ user, currentUserId, currentUserRole, onRoleUpdated, 
         </Button>
       ) : null}
 
-      {user.id !== currentUserId && user.role !== "admin" ? (
+      {user.id !== currentUserId && user.role !== "admin" && !user.isBanned ? (
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button
@@ -209,9 +199,13 @@ function UserRoleActions({ user, currentUserId, currentUserRole, onRoleUpdated, 
 
 function UserBanActions({ user, currentUserId, currentUserRole, onBanUpdated, mobile = false }) {
   const { t } = useLanguage();
+  const fieldId = React.useId();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-  const [pendingBanDuration, setPendingBanDuration] = React.useState(null);
+  const [pendingBanDuration, setPendingBanDuration] = React.useState("");
+  const [pendingBanReasonCode, setPendingBanReasonCode] = React.useState("");
+  const [pendingBanMessage, setPendingBanMessage] = React.useState("");
+  const banOperationRef = React.useRef(null);
 
   if (currentUserRole !== "admin") {
     return null;
@@ -221,20 +215,73 @@ function UserBanActions({ user, currentUserId, currentUserRole, onBanUpdated, mo
     return null;
   }
 
+  const banReasonLabels = {
+    spam: t.adminBanReasonSpam,
+    scam: t.adminBanReasonScam,
+    misleading: t.adminBanReasonMisleading,
+    prohibited: t.adminBanReasonProhibited,
+    harassment: t.adminBanReasonHarassment,
+    inappropriate: t.adminBanReasonInappropriate,
+    other: t.adminBanReasonOther,
+  };
+  const banMessageLength = Array.from(pendingBanMessage).length;
+  const banReasonValidation = validateBanReason({
+    reasonCode: pendingBanReasonCode,
+    userMessage: pendingBanMessage,
+  });
+  const normalizedBanMessage = banReasonValidation.userMessage;
+  const isBanReasonComplete = banReasonValidation.ok;
+
+  function resetBanDialog() {
+    banOperationRef.current = null;
+    setPendingBanDuration("");
+    setPendingBanReasonCode("");
+    setPendingBanMessage("");
+  }
+
   async function submitBanAction(action, duration = null) {
     if (isSubmitting) {
+      return;
+    }
+
+    if (action === "ban" && !isBanReasonComplete) {
+      toast.error(t.adminBanReasonValidationError);
       return;
     }
 
     setIsSubmitting(true);
 
     try {
+      const operationPayloadKey = JSON.stringify({
+        action,
+        duration,
+        reasonCode: action === "ban" ? pendingBanReasonCode : null,
+        userMessage: action === "ban" ? normalizedBanMessage : null,
+      });
+
+      if (banOperationRef.current?.payloadKey !== operationPayloadKey) {
+        banOperationRef.current = {
+          payloadKey: operationPayloadKey,
+          operationId: crypto.randomUUID(),
+        };
+      }
+
       const response = await fetch(`/api/admin/users/${user.id}/ban`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ action, duration }),
+        body: JSON.stringify({
+          operationId: banOperationRef.current.operationId,
+          action,
+          duration,
+          ...(action === "ban"
+            ? {
+                reasonCode: pendingBanReasonCode,
+                userMessage: normalizedBanMessage,
+              }
+            : {}),
+        }),
       });
       const payload = await response.json().catch(() => ({}));
 
@@ -243,28 +290,29 @@ function UserBanActions({ user, currentUserId, currentUserRole, onBanUpdated, mo
       }
 
       onBanUpdated?.(user.id, payload);
+      banOperationRef.current = null;
       toast.success(action === "unban" ? t.userUnbanned : t.userBanned);
+      setIsDialogOpen(false);
+      resetBanDialog();
     } catch (error) {
       console.error("Failed to update user ban state:", error);
       toast.error(error.message || t.adminUserBanActionError);
     } finally {
       setIsSubmitting(false);
-      setPendingBanDuration(null);
-      setIsDialogOpen(false);
     }
   }
 
   if (user.isBanned) {
     return (
       <Button
-        type="button"
+        asChild
         variant="outline"
         size="sm"
         className={cn("rounded-xl", mobile && "min-w-32 flex-1 px-3")}
-        onClick={() => submitBanAction("unban")}
-        disabled={isSubmitting}
       >
-        {t.unban}
+        <Link href={`/admin/users/${user.id}`}>
+          {t.unban}
+        </Link>
       </Button>
     );
   }
@@ -273,78 +321,144 @@ function UserBanActions({ user, currentUserId, currentUserRole, onBanUpdated, mo
     <AlertDialog
       open={isDialogOpen}
       onOpenChange={(open) => {
+        if (isSubmitting) {
+          return;
+        }
+
         setIsDialogOpen(open);
         if (!open) {
-          setPendingBanDuration(null);
+          resetBanDialog();
         }
       }}
     >
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className={cn("rounded-xl", mobile && "min-w-32 flex-1 px-3")}
-            disabled={isSubmitting}
-          >
-            {t.banUser}
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48 rounded-2xl">
-          <DropdownMenuItem
-            onSelect={(event) => {
-              event.preventDefault();
-              setPendingBanDuration("24h");
-              setIsDialogOpen(true);
-            }}
-          >
-            {t.adminBanDuration24Hours}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onSelect={(event) => {
-              event.preventDefault();
-              setPendingBanDuration("7d");
-              setIsDialogOpen(true);
-            }}
-          >
-            {t.adminBanDuration7Days}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onSelect={(event) => {
-              event.preventDefault();
-              setPendingBanDuration("30d");
-              setIsDialogOpen(true);
-            }}
-          >
-            {t.adminBanDuration30Days}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onSelect={(event) => {
-              event.preventDefault();
-              setPendingBanDuration("permanent");
-              setIsDialogOpen(true);
-            }}
-          >
-            {t.adminBanDurationPermanent}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <AlertDialogTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={cn("rounded-xl", mobile && "min-w-32 flex-1 px-3")}
+          disabled={isSubmitting}
+        >
+          {t.banUser}
+        </Button>
+      </AlertDialogTrigger>
 
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{t.adminBanUserTitle}</AlertDialogTitle>
-          <AlertDialogDescription>{t.adminBanUserDescription}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isSubmitting}>{t.cancel}</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={() => submitBanAction("ban", pendingBanDuration)}
-            disabled={isSubmitting || !pendingBanDuration}
-          >
-            {isSubmitting ? t.saving : t.ban}
-          </AlertDialogAction>
-        </AlertDialogFooter>
+      <AlertDialogContent className="max-w-xl p-0 sm:p-0">
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submitBanAction("ban", pendingBanDuration);
+          }}
+          className="grid min-w-0 gap-0"
+        >
+          <AlertDialogHeader className="border-b border-border px-4 py-4 sm:px-6 sm:py-5">
+            <AlertDialogTitle>{t.adminBanUserTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{t.adminBanUserDescription}</AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="grid min-w-0 gap-5 px-4 py-5 sm:px-6">
+            <div className="grid min-w-0 gap-2">
+              <Label htmlFor={`${fieldId}-ban-duration`}>
+                {t.adminBanDurationLabel}
+                <span className="text-destructive" aria-hidden="true">
+                  *
+                </span>
+              </Label>
+              <NativeSelect
+                id={`${fieldId}-ban-duration`}
+                value={pendingBanDuration}
+                onChange={(event) => setPendingBanDuration(event.target.value)}
+                className="w-full"
+                required
+              >
+                <NativeSelectOption value="" disabled>
+                  {t.adminBanDurationPlaceholder}
+                </NativeSelectOption>
+                <NativeSelectOption value="24h">{t.adminBanDuration24Hours}</NativeSelectOption>
+                <NativeSelectOption value="7d">{t.adminBanDuration7Days}</NativeSelectOption>
+                <NativeSelectOption value="30d">{t.adminBanDuration30Days}</NativeSelectOption>
+                <NativeSelectOption value="permanent">
+                  {t.adminBanDurationPermanent}
+                </NativeSelectOption>
+              </NativeSelect>
+            </div>
+
+            <div className="grid min-w-0 gap-2">
+              <Label htmlFor={`${fieldId}-ban-reason`}>
+                {t.adminBanReasonLabel}
+                <span className="text-destructive" aria-hidden="true">
+                  *
+                </span>
+              </Label>
+              <p id={`${fieldId}-ban-reason-help`} className="text-xs leading-relaxed text-muted-foreground">
+                {t.adminBanReasonDescription}
+              </p>
+              <NativeSelect
+                id={`${fieldId}-ban-reason`}
+                value={pendingBanReasonCode}
+                onChange={(event) => setPendingBanReasonCode(event.target.value)}
+                className="w-full"
+                aria-describedby={`${fieldId}-ban-reason-help`}
+                required
+              >
+                <NativeSelectOption value="" disabled>
+                  {t.adminBanReasonPlaceholder}
+                </NativeSelectOption>
+                {BAN_REASON_CODE_VALUES.map((reasonCode) => (
+                  <NativeSelectOption key={reasonCode} value={reasonCode}>
+                    {banReasonLabels[reasonCode] ?? reasonCode}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+            </div>
+
+            <div className="grid min-w-0 gap-2">
+              <div className="flex min-w-0 items-center justify-between gap-3">
+                <Label htmlFor={`${fieldId}-ban-message`}>
+                  {t.adminBanMessageLabel}
+                  <span className="text-destructive" aria-hidden="true">
+                    *
+                  </span>
+                </Label>
+                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                  {banMessageLength}/{BAN_REASON_MESSAGE_MAX_LENGTH}
+                </span>
+              </div>
+              <p id={`${fieldId}-ban-message-help`} className="text-xs leading-relaxed text-muted-foreground">
+                {t.adminBanMessageDescription}
+              </p>
+              <Textarea
+                id={`${fieldId}-ban-message`}
+                value={pendingBanMessage}
+                onChange={(event) => {
+                  const nextMessage = Array.from(event.target.value)
+                    .slice(0, BAN_REASON_MESSAGE_MAX_LENGTH)
+                    .join("");
+                  setPendingBanMessage(nextMessage);
+                }}
+                placeholder={t.adminBanMessagePlaceholder}
+                className="min-h-28 resize-y"
+                rows={4}
+                minLength={BAN_REASON_MESSAGE_MIN_LENGTH}
+                aria-describedby={`${fieldId}-ban-message-help`}
+                required
+              />
+            </div>
+          </div>
+
+          <AlertDialogFooter className="border-t border-border px-4 py-4 sm:px-6">
+            <AlertDialogCancel className="w-full sm:w-auto" disabled={isSubmitting}>
+              {t.cancel}
+            </AlertDialogCancel>
+            <Button
+              type="submit"
+              className="w-full sm:w-auto"
+              disabled={isSubmitting || !pendingBanDuration || !isBanReasonComplete}
+            >
+              {isSubmitting ? t.saving : t.ban}
+            </Button>
+          </AlertDialogFooter>
+        </form>
       </AlertDialogContent>
     </AlertDialog>
   );
@@ -352,6 +466,7 @@ function UserBanActions({ user, currentUserId, currentUserRole, onBanUpdated, mo
 
 function hasMobileUserActions(user, currentUserId, currentUserRole) {
   return (
+    Boolean(user.id) ||
     user.profileExists ||
     (currentUserRole === "admin" && user.id !== currentUserId && user.role !== "admin")
   );
@@ -423,6 +538,11 @@ function UserMobileList({
               role="group"
               aria-label={t.actions}
             >
+              <Button asChild variant="outline" size="sm" className="min-w-32 flex-1 rounded-xl px-3">
+                <Link href={`/admin/users/${user.id}`}>
+                  {t.adminEnforcementOpenUser ?? t.actions}
+                </Link>
+              </Button>
               {user.profileExists ? (
                 <Button asChild variant="outline" size="sm" className="min-w-32 flex-1 rounded-xl px-3">
                   <Link href={`/profile/${user.id}`}>{t.viewProfile}</Link>
@@ -450,12 +570,10 @@ function UserMobileList({
   );
 }
 
-export function AdminUsersManagement({ users, currentUserId, currentUserRole }) {
+export function AdminUsersManagement({ users, currentUserId, currentUserRole, pagination = null }) {
   const { t, language } = useLanguage();
   const [userRows, setUserRows] = React.useState(users);
   const [currentViewerRole, setCurrentViewerRole] = React.useState(currentUserRole);
-  const [searchQuery, setSearchQuery] = React.useState("");
-  const [roleFilter, setRoleFilter] = React.useState("all");
 
   React.useEffect(() => {
     setUserRows(users);
@@ -464,28 +582,6 @@ export function AdminUsersManagement({ users, currentUserId, currentUserRole }) 
   React.useEffect(() => {
     setCurrentViewerRole(currentUserRole);
   }, [currentUserRole]);
-
-  const filteredUsers = React.useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
-
-    return userRows.filter((user) => {
-      if (roleFilter !== "all") {
-        if (roleFilter === "standard" && user.role) {
-          return false;
-        }
-
-        if (roleFilter !== "standard" && user.role !== roleFilter) {
-          return false;
-        }
-      }
-
-      if (!normalizedQuery) {
-        return true;
-      }
-
-      return getSearchText(user, t).includes(normalizedQuery);
-    });
-  }, [roleFilter, searchQuery, t, userRows]);
 
   const roleFilterOptions = [
     { value: "all", label: t.all },
@@ -542,59 +638,48 @@ export function AdminUsersManagement({ users, currentUserId, currentUserRole }) 
       <div className="grid gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-3">
         <SummaryCard
           title={t.students}
-          value={userRows.length}
+          value={pagination?.total ?? userRows.length}
           description={t.adminUsersSummaryDescription}
         />
         <SummaryCard
           title={t.adminModerationTeamTitle}
           value={moderationUsersCount}
-          description={t.adminModerationTeamDescription}
+          description={t.adminUsersCurrentPageSummary}
         />
         <SummaryCard
           title={t.banned}
           value={bannedCount}
-          description={t.adminBannedUsersDescription}
+          description={t.adminUsersCurrentPageSummary}
         />
       </div>
 
       <Card className="rounded-3xl bg-card py-0 shadow-sm ring-border">
         <CardContent className="space-y-6 px-6 py-6">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap gap-2">
-              {roleFilterOptions.map((option) => {
-                const isActive = roleFilter === option.value;
-
-                return (
-                  <Button
-                    key={option.value}
-                    type="button"
-                    variant={isActive ? "default" : "outline"}
-                    size="sm"
-                    className={cn("rounded-full px-3", !isActive && "bg-background")}
-                    onClick={() => setRoleFilter(option.value)}
-                  >
-                    {option.label}
-                  </Button>
-                );
-              })}
-            </div>
-
+          <form action="/admin/users" method="get" className="space-y-2">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <div className="relative w-full lg:max-w-sm">
               <Search className="pointer-events-none absolute top-0 bottom-0 left-3 my-auto size-4 text-muted-foreground" />
               <Input
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
+                name="q"
+                defaultValue={pagination?.query ?? ""}
                 placeholder={t.adminSearchUsersPlaceholder}
                 className="rounded-full bg-background pl-9"
                 aria-label={t.adminSearchUsersPlaceholder}
+                maxLength={100}
               />
             </div>
-          </div>
+              <NativeSelect name="role" defaultValue={pagination?.role ?? "all"} aria-label={t.role} className="w-full lg:w-52">
+                {roleFilterOptions.map((option) => <NativeSelectOption key={option.value} value={option.value}>{option.label}</NativeSelectOption>)}
+              </NativeSelect>
+              <Button type="submit" className="rounded-xl">{t.applyFilters}</Button>
+            </div>
+            <p className="text-xs text-muted-foreground">{t.adminUsersSearchScope}</p>
+          </form>
 
-          {filteredUsers.length > 0 ? (
+          {userRows.length > 0 ? (
             <>
               <UserMobileList
-                users={filteredUsers}
+                users={userRows}
                 currentUserId={currentUserId}
                 currentUserRole={currentViewerRole}
                 language={language}
@@ -615,7 +700,7 @@ export function AdminUsersManagement({ users, currentUserId, currentUserRole }) 
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredUsers.map((user) => (
+                    {userRows.map((user) => (
                       <TableRow key={user.id}>
                         <TableCell>
                           <p className="font-medium text-foreground">{user.name}</p>
@@ -649,6 +734,11 @@ export function AdminUsersManagement({ users, currentUserId, currentUserRole }) 
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex flex-wrap justify-end gap-2">
+                            <Button asChild variant="outline" size="sm" className="rounded-xl">
+                              <Link href={`/admin/users/${user.id}`}>
+                                {t.adminEnforcementOpenUser ?? t.actions}
+                              </Link>
+                            </Button>
                             {user.profileExists ? (
                               <Button asChild variant="outline" size="sm" className="rounded-xl">
                                 <Link href={`/profile/${user.id}`}>{t.viewProfile}</Link>
@@ -679,6 +769,16 @@ export function AdminUsersManagement({ users, currentUserId, currentUserRole }) 
               {t.adminNoUsersMatchFilters}
             </div>
           )}
+
+          {pagination?.totalPages > 1 ? (
+            <nav aria-label={t.adminUsersPaginationLabel} className="flex items-center justify-between gap-3 border-t border-border pt-4">
+              {pagination.page <= 1 ? <Button type="button" variant="outline" size="sm" className="rounded-xl" disabled>{t.previousPage}</Button> : <Button asChild variant="outline" size="sm" className="rounded-xl"><Link href={pagination.previousHref}>{t.previousPage}</Link></Button>}
+              <p className="text-sm text-muted-foreground">
+                {t.pageLabel} {pagination.page} / {pagination.totalPages}
+              </p>
+              {pagination.page >= pagination.totalPages ? <Button type="button" variant="outline" size="sm" className="rounded-xl" disabled>{t.nextPage}</Button> : <Button asChild variant="outline" size="sm" className="rounded-xl"><Link href={pagination.nextHref}>{t.nextPage}</Link></Button>}
+            </nav>
+          ) : null}
         </CardContent>
       </Card>
     </div>

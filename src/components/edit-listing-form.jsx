@@ -29,6 +29,7 @@ import {
 import {
   Field,
   FieldDescription,
+  FieldError,
   FieldGroup,
   FieldLabel,
   FieldTitle,
@@ -53,12 +54,39 @@ import {
 import {
   LISTING_APPROVAL_STATUS_VALUES,
 } from "@/lib/listing-approval";
+import {
+  isListingReviewRevisionConflict,
+  parseListingContentRevision,
+  parseListingRequiredFieldViolation,
+  replayAmbiguousListingWrite,
+  uploadListingImageBatch,
+} from "@/lib/listing-integrity.mjs";
+import {
+  LISTING_WRITE_ACTIONS,
+  abortOwnedListingWriteIntent,
+  clearListingWriteJournal,
+  drainOwnedListingImageCleanup,
+  hashListingWriteSignature,
+  listingWriteJournalKey,
+  prepareListingWriteJournal,
+  verifyOwnedListingReservedUpload,
+} from "@/lib/listing-write-recovery.mjs";
+import { focusFirstInvalidField } from "@/lib/focus-first-invalid-field";
+import {
+  LISTING_DESCRIPTION_MAX_LENGTH,
+  LISTING_PRICE_MAX_CAD,
+  countUnicodeCodePoints,
+  normalizeListingPrice,
+  normalizeWriteText,
+  validateListingDraftFields,
+} from "@/lib/write-field-contracts.mjs";
 import { getTranslatedConditionLabel } from "@/lib/search-listings";
 import { cn } from "@/lib/utils";
 
 const conditionOptions = ["New", "Like New", "Used"];
 
 function ListingCombobox({
+  id,
   label,
   placeholder,
   value,
@@ -66,16 +94,30 @@ function ListingCombobox({
   options,
   description,
   emptyLabel,
+  error,
+  requiredLabel = null,
 }) {
   const normalizedOptions = options.map((option) =>
     typeof option === "string" ? { value: option, label: option } : option
   );
 
   return (
-    <Field>
-      <FieldLabel>{label}</FieldLabel>
+    <Field data-invalid={Boolean(error)}>
+      <FieldLabel htmlFor={id}>
+        {label}
+        {requiredLabel ? (
+          <span className="text-xs font-medium text-muted-foreground">{requiredLabel}</span>
+        ) : null}
+      </FieldLabel>
       <Combobox value={value} onValueChange={onValueChange}>
-        <ComboboxInput placeholder={placeholder} />
+        <ComboboxInput
+          id={id}
+          placeholder={placeholder}
+          required={Boolean(requiredLabel)}
+          aria-required={Boolean(requiredLabel)}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? `${id}-error` : undefined}
+        />
         <ComboboxContent>
           <ComboboxEmpty>{emptyLabel}</ComboboxEmpty>
           <ComboboxList>
@@ -88,7 +130,27 @@ function ListingCombobox({
         </ComboboxContent>
       </Combobox>
       {description ? <FieldDescription>{description}</FieldDescription> : null}
+      <FieldError id={`${id}-error`}>{error}</FieldError>
     </Field>
+  );
+}
+
+const LISTING_ERROR_TRANSLATION_KEYS = Object.freeze({
+  title: "listingTitleRequired",
+  category: "listingCategoryRequired",
+  price: "listingPriceRequired",
+  description: "listingDescriptionRequired",
+  condition: "listingConditionRequired",
+  campus: "listingCampusRequired",
+  photos: "listingPhotoRequired",
+});
+
+function getListingFieldErrors(validation, t) {
+  return Object.fromEntries(
+    Object.keys(validation.errors).map((field) => [
+      field,
+      t[LISTING_ERROR_TRANSLATION_KEYS[field]] ?? t.listingRequiredFieldsUnavailable,
+    ]),
   );
 }
 
@@ -100,7 +162,7 @@ export function EditListingForm({ listing }) {
 
   const [title, setTitle] = React.useState(listing.title ?? "");
   const [category, setCategory] = React.useState(
-    normalizeCategoryValue(listing.category) || "Other"
+    normalizeCategoryValue(listing.category) || ""
   );
   const [price, setPrice] = React.useState(String(listing.price ?? ""));
   const [description, setDescription] = React.useState(listing.description ?? "");
@@ -114,10 +176,13 @@ export function EditListingForm({ listing }) {
   const [newPhotos, setNewPhotos] = React.useState([]);
   const [showAllPhotoPreviews, setShowAllPhotoPreviews] = React.useState(false);
   const [photoError, setPhotoError] = React.useState("");
+  const [fieldErrors, setFieldErrors] = React.useState({});
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState("");
 
   const fileInputRef = React.useRef(null);
+  const formRef = React.useRef(null);
+  const pendingWriteRef = React.useRef(null);
   const newPhotoPreviews = useLocalPhotoPreviews(newPhotos);
 
   const appendNewPhotos = React.useCallback((selectedFiles) => {
@@ -144,6 +209,7 @@ export function EditListingForm({ listing }) {
 
     if (acceptedFiles.length > 0) {
       setNewPhotos((currentPhotos) => [...currentPhotos, ...acceptedFiles]);
+      setFieldErrors((current) => ({ ...current, photos: undefined }));
     }
   }, [language, newPhotos.length, photos.length]);
 
@@ -172,77 +238,57 @@ export function EditListingForm({ listing }) {
     tagPreview.push(t.negotiable);
   }
 
-  async function cleanupNewUploads(uploadedPaths, insertedImageIds) {
-    if (insertedImageIds.length > 0) {
-      const { error: cleanupRowsError } = await supabase
-        .from("listing_images")
-        .delete()
-        .in("id", insertedImageIds);
-      if (cleanupRowsError) {
-        console.error("Row cleanup failed:", cleanupRowsError.message);
-        return false;
-      }
-    }
-
-    if (uploadedPaths.length > 0) {
-      const { error: cleanupStorageError } = await supabase.storage
-        .from("listing-images")
-        .remove(uploadedPaths);
-      if (cleanupStorageError) {
-        console.error("Storage cleanup failed:", cleanupStorageError.message);
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  async function restoreRemovedPhotoRows() {
-    if (removedPhotos.length === 0) {
-      return true;
-    }
-
-    const { error: restoreError } = await supabase
-      .from("listing_images")
-      .insert(
-        removedPhotos.map((photo) => ({
-          listing_id: listing.id,
-          image_url: photo.image_url,
-          storage_path: photo.storage_path,
-          position: photo.position,
-        })),
-      );
-
-    if (restoreError) {
-      console.error("Photo metadata restore failed:", restoreError.message);
-      return false;
-    }
-
-    return true;
-  }
-
   async function handleSave() {
-    const normalizedTitle = title.trim();
-    const normalizedCategory = category.trim();
-    const normalizedDescription = description.trim();
-    const normalizedCampus = campus.trim();
-    const normalizedCondition = condition.trim();
-    const numericPrice = Number.parseFloat(price);
+    const validation = validateListingDraftFields({ title });
+    const normalizedTitle = validation.values.title;
+    const normalizedCategory = normalizeWriteText(category, { emptyToNull: true });
+    const normalizedDescription = normalizeWriteText(description, { emptyToNull: true });
+    const normalizedCampus = normalizeWriteText(campus, { emptyToNull: true });
+    const normalizedCondition = normalizeWriteText(condition, { emptyToNull: true });
+    const priceResult = normalizeListingPrice(
+      price.replaceAll("$", "").replaceAll(",", "").trim(),
+    );
+    const validationErrors = getListingFieldErrors(validation, t);
 
-    if (
-      !normalizedTitle ||
-      !normalizedCategory ||
-      !normalizedDescription ||
-      Number.isNaN(numericPrice) ||
-      numericPrice < 0 ||
-      !normalizedCondition
-    ) {
-      setError(t.fillFieldsValidPrice);
+    if (!priceResult.ok) {
+      validationErrors.price = t.listingPriceRequired;
+    }
+    if (countUnicodeCodePoints(normalizedDescription ?? "") > LISTING_DESCRIPTION_MAX_LENGTH) {
+      validationErrors.description = t.listingDescriptionRequired;
+    }
+
+    if (!validation.ok || !priceResult.ok || Object.keys(validationErrors).length > 0) {
+      setFieldErrors(validationErrors);
+      setError(t.listingValidationSummaryTitle);
+      focusFirstInvalidField(formRef.current);
+      return;
+    }
+
+    const hasMeaningfulFieldChanges =
+      normalizedTitle !== normalizeWriteText(listing.title) ||
+      normalizedCategory !== normalizeWriteText(
+        normalizeCategoryValue(listing.category),
+        { emptyToNull: true },
+      ) ||
+      priceResult.value !== (listing.price === null ? null : Number(listing.price)) ||
+      normalizedDescription !== normalizeWriteText(listing.description, { emptyToNull: true }) ||
+      normalizedCampus !== normalizeWriteText(listing.location, { emptyToNull: true }) ||
+      normalizedCondition !== normalizeWriteText(listing.condition, { emptyToNull: true }) ||
+      isNegotiable !== Boolean(listing.is_negotiable);
+    const hasMeaningfulPhotoChanges = newPhotos.length > 0 || removedPhotos.length > 0;
+
+    if (!hasMeaningfulFieldChanges && !hasMeaningfulPhotoChanges) {
+      toast.info(
+        listing.status === LISTING_APPROVAL_STATUS_VALUES.rejected
+          ? t.listingRejectedNoChangesToSave
+          : t.listingNoChangesToSave,
+      );
       return;
     }
 
     setLoading(true);
     setError("");
+    setFieldErrors({});
 
     const {
       data: { user },
@@ -255,167 +301,229 @@ export function EditListingForm({ listing }) {
       return;
     }
 
-    const hasMeaningfulFieldChanges =
-      normalizedTitle !== (listing.title ?? "").trim() ||
-      normalizedCategory !== normalizeCategoryValue(listing.category) ||
-      numericPrice !== Number(listing.price ?? 0) ||
-      normalizedDescription !== (listing.description ?? "").trim() ||
-      (normalizedCampus || null) !== (listing.location ?? null) ||
-      normalizedCondition !== (listing.condition ?? "") ||
-      isNegotiable !== Boolean(listing.is_negotiable);
-    const hasMeaningfulPhotoChanges = newPhotos.length > 0 || removedPhotos.length > 0;
-    const shouldResubmitListing =
-      ["active", "sold", LISTING_APPROVAL_STATUS_VALUES.pendingReview].includes(
-        listing.status,
-      ) &&
-      (hasMeaningfulFieldChanges || hasMeaningfulPhotoChanges);
-
-    const listingUpdateValues = {
+    const writeSignature = JSON.stringify({
+      listingId: listing.id,
+      revision: parseListingContentRevision(listing.content_revision),
       title: normalizedTitle,
       category: normalizedCategory,
-      price: numericPrice,
+      price: priceResult.value,
       description: normalizedDescription,
-      location: normalizedCampus || null,
+      location: normalizedCampus,
       condition: normalizedCondition,
-      is_negotiable: isNegotiable,
-    };
+      isNegotiable,
+      retainedPhotoIds: photos.map((photo) => photo.id),
+      newPhotos: newPhotos.map((photo) => ({
+        name: photo.name,
+        size: photo.size,
+        type: photo.type,
+        lastModified: photo.lastModified,
+      })),
+    });
+    const imageBucket = supabase.storage.from("listing-images");
+    const signatureHash = await hashListingWriteSignature(writeSignature);
+    const journalKey = listingWriteJournalKey(LISTING_WRITE_ACTIONS.edit, listing.id);
+    const prepared = await prepareListingWriteJournal({
+      supabase,
+      bucket: imageBucket,
+      storage: globalThis.localStorage,
+      key: journalKey,
+      action: LISTING_WRITE_ACTIONS.edit,
+      signatureHash,
+      listingId: listing.id,
+      expectedContentRevision: parseListingContentRevision(listing.content_revision),
+    });
+    if (prepared.error) {
+      setError(prepared.error.message ?? t.errorGeneric);
+      setLoading(false);
+      return;
+    }
+    if (prepared.previousCompleted) {
+      pendingWriteRef.current = null;
+      const destination = listing.status === "draft"
+        ? `/listings/${listing.slug}`
+        : "/dashboard?tab=draft";
+      toast.success(
+        listing.status === "draft" ? t.listingUpdatedSuccess : t.listingSavedAsDraftAfterEdit,
+      );
+      router.push(destination);
+      router.refresh();
+      return;
+    }
 
-    const { error: updateError } = await supabase
-      .from("listings")
-      .update(listingUpdateValues)
-      .eq("id", listing.id)
-      .eq("seller_id", user.id);
+    const journal = prepared.entry;
+    if (pendingWriteRef.current?.operationId !== journal.operationId) {
+      pendingWriteRef.current = {
+        operationId: journal.operationId,
+        uploadState: {},
+        uploadedImages: null,
+        imageMetadata: null,
+      };
+    }
+    const pendingWrite = pendingWriteRef.current;
+
+    if (!pendingWrite.uploadedImages) {
+      const uploadPlan = newPhotos.map((file, index) => {
+        const safeName = file.name
+          .toLowerCase()
+          .replace(/[^a-z0-9.]+/g, "-")
+          .replace(/-{2,}/g, "-")
+          .replace(/^-+|-+$/g, "");
+        return {
+          storagePath: `${user.id}/${listing.id}/${journal.operationId}-${index + 1}-${safeName || `image-${index + 1}`}`,
+          fileName: file.name,
+          mimeType: file.type,
+          sizeBytes: file.size,
+        };
+      });
+      if (uploadPlan.length > 0) {
+        const reservationWrite = await replayAmbiguousListingWrite(() => supabase.rpc(
+          "reserve_owned_listing_image_uploads",
+          {
+            p_operation_id: journal.operationId,
+            p_signature_hash: signatureHash,
+            p_listing_id: listing.id,
+            p_images: uploadPlan.map((image) => ({
+              storage_path: image.storagePath,
+              file_name: image.fileName,
+              mime_type: image.mimeType,
+              size_bytes: image.sizeBytes,
+            })),
+          },
+        ));
+        if (reservationWrite.error) {
+          setError(reservationWrite.error.message ?? t.errorGeneric);
+          setLoading(false);
+          return;
+        }
+      }
+      try {
+        const uploadedImages = await uploadListingImageBatch({
+          bucket: imageBucket,
+          files: newPhotos,
+          uploadState: pendingWrite.uploadState,
+          getStoragePath: (_file, index) => uploadPlan[index].storagePath,
+          verifyExistingUpload: async (storagePath) => {
+            const verified = await verifyOwnedListingReservedUpload({
+              supabase,
+              operationId: journal.operationId,
+              signatureHash,
+              storagePath,
+            });
+            if (verified.error) throw verified.error;
+            return verified.data === true;
+          },
+        });
+        pendingWrite.uploadedImages = uploadedImages.map((image) => ({
+          id: crypto.randomUUID(),
+          imageUrl: image.imageUrl,
+          storagePath: image.storagePath,
+        }));
+      } catch (uploadError) {
+        const aborted = await abortOwnedListingWriteIntent(
+          supabase,
+          journal.operationId,
+          signatureHash,
+        );
+        if (!aborted.error) {
+          const cleanup = await drainOwnedListingImageCleanup({ supabase, bucket: imageBucket });
+          if (!cleanup.error) {
+            clearListingWriteJournal(globalThis.localStorage, journalKey, journal.operationId);
+            pendingWriteRef.current = null;
+          }
+        }
+        setError(uploadError.message ?? t.errorGeneric);
+        setLoading(false);
+        return;
+      }
+    }
+
+    if (!pendingWrite.imageMetadata) {
+      pendingWrite.imageMetadata = [
+        ...photos.map((photo) => ({
+          id: photo.id,
+          image_url: photo.image_url,
+          storage_path: photo.storage_path,
+        })),
+        ...pendingWrite.uploadedImages.map((photo) => ({
+          id: photo.id,
+          image_url: photo.imageUrl,
+          storage_path: photo.storagePath,
+        })),
+      ].map((photo, position) => ({ ...photo, position }));
+    }
+
+    const listingWrite = await replayAmbiguousListingWrite(() => supabase.rpc(
+      "commit_owned_listing_edit_intent",
+      {
+        p_operation_id: journal.operationId,
+        p_signature_hash: signatureHash,
+        p_images: pendingWrite.imageMetadata,
+        p_title: normalizedTitle,
+        p_category: normalizedCategory,
+        p_price: priceResult.value,
+        p_description: normalizedDescription,
+        p_location: normalizedCampus,
+        p_condition: normalizedCondition,
+        p_is_negotiable: isNegotiable,
+      },
+    ));
+    const { data: savedListing, error: updateError } = listingWrite;
 
     if (updateError) {
-      setError(updateError.message);
+      if (!listingWrite.hadAmbiguousAttempt) {
+        const aborted = await abortOwnedListingWriteIntent(
+          supabase,
+          journal.operationId,
+          signatureHash,
+        );
+        if (!aborted.error) {
+          const cleanup = await drainOwnedListingImageCleanup({ supabase, bucket: imageBucket });
+          if (!cleanup.error) {
+            clearListingWriteJournal(globalThis.localStorage, journalKey, journal.operationId);
+            pendingWriteRef.current = null;
+          }
+        }
+      }
+      const requiredFields = parseListingRequiredFieldViolation(updateError);
+      if (requiredFields.length > 0) {
+        setFieldErrors(Object.fromEntries(requiredFields.map((field) => [
+          field,
+          t[LISTING_ERROR_TRANSLATION_KEYS[field]],
+        ])));
+        focusFirstInvalidField(formRef.current);
+      }
+      setError(
+        isListingReviewRevisionConflict(updateError)
+          ? t.listingChangedRefresh
+          : requiredFields.length > 0
+            ? t.listingRequiredFieldsUnavailable
+            : t.errorGeneric,
+      );
       setLoading(false);
       return;
     }
 
-    const uploadedPaths = [];
-    const uploadedImages = [];
-    const insertedImageIds = [];
-
-    // Upload replacements first while the old metadata and blobs remain fully
-    // recoverable. Database rows are swapped only after every upload succeeds.
-    for (let index = 0; index < newPhotos.length; index += 1) {
-      const file = newPhotos[index];
-      const safeName = file.name
-        .toLowerCase()
-        .replace(/[^a-z0-9.]+/g, "-")
-        .replace(/-{2,}/g, "-")
-        .replace(/^-+|-+$/g, "");
-      const filePath = `${user.id}/${listing.id}/${Date.now()}-${index + 1}-${safeName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("listing-images")
-        .upload(filePath, file);
-
-      if (uploadError) {
-        await cleanupNewUploads(uploadedPaths, insertedImageIds);
-        setError(uploadError.message);
-        setLoading(false);
-        return;
-      }
-
-      uploadedPaths.push(filePath);
-
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("listing-images").getPublicUrl(filePath);
-
-      uploadedImages.push({ filePath, publicUrl, position: photos.length + index });
+    const savedAsDraft =
+      (hasMeaningfulFieldChanges || hasMeaningfulPhotoChanges) &&
+      listing.status !== "draft";
+    const destination =
+      savedAsDraft || savedListing?.status === "draft"
+        ? "/dashboard?tab=draft"
+        : `/listings/${savedListing?.slug ?? listing.slug}`;
+    const cleanup = await drainOwnedListingImageCleanup({ supabase, bucket: imageBucket });
+    if (cleanup.error) {
+      setError(cleanup.error.message ?? t.errorGeneric);
+      setLoading(false);
+      return;
     }
 
-    // Release removed metadata slots before inserting replacements. Old blobs
-    // remain in Storage until all replacement rows and ordering updates succeed.
-    if (removedPhotos.length > 0) {
-      const { error: removeRowsError } = await supabase
-        .from("listing_images")
-        .delete()
-        .in("id", removedPhotos.map((photo) => photo.id));
-
-      if (removeRowsError) {
-        await cleanupNewUploads(uploadedPaths, insertedImageIds);
-        setError(removeRowsError.message);
-        setLoading(false);
-        return;
-      }
-    }
-
-    for (const uploadedImage of uploadedImages) {
-      const { data: insertedImage, error: imageInsertError } = await supabase
-        .from("listing_images")
-        .insert({
-          listing_id: listing.id,
-          image_url: uploadedImage.publicUrl,
-          storage_path: uploadedImage.filePath,
-          position: uploadedImage.position,
-        })
-        .select("id")
-        .single();
-
-      if (imageInsertError) {
-        await cleanupNewUploads(uploadedPaths, insertedImageIds);
-        const restored = await restoreRemovedPhotoRows();
-        setError(
-          restored
-            ? imageInsertError.message
-            : `${imageInsertError.message} Photo recovery also failed; refresh before retrying.`,
-        );
-        setLoading(false);
-        return;
-      }
-
-      insertedImageIds.push(insertedImage.id);
-    }
-
-    const finalPhotoOrder = [...photos.map((photo) => photo.id), ...insertedImageIds];
-
-    if (finalPhotoOrder.length > 0) {
-      const positionUpdates = await Promise.all(
-        finalPhotoOrder.map((imageId, index) =>
-          supabase.from("listing_images").update({ position: index }).eq("id", imageId)
-        )
-      );
-
-      const failedPositionUpdate = positionUpdates.find(
-        ({ error: positionError }) => positionError
-      );
-
-      if (failedPositionUpdate?.error) {
-        await cleanupNewUploads(uploadedPaths, insertedImageIds);
-        const restored = await restoreRemovedPhotoRows();
-        setError(
-          restored
-            ? failedPositionUpdate.error.message
-            : `${failedPositionUpdate.error.message} Photo recovery also failed; refresh before retrying.`,
-        );
-        setLoading(false);
-        return;
-      }
-    }
-
-    const removedStoragePaths = removedPhotos
-      .map((photo) => photo.storage_path)
-      .filter(Boolean);
-    if (removedStoragePaths.length > 0) {
-      const { error: removeStorageError } = await supabase.storage
-        .from("listing-images")
-        .remove(removedStoragePaths);
-
-      if (removeStorageError) {
-        // The listing state is already correct and no active row points at the
-        // old blob. Keep the successful edit and surface the orphan for logs.
-        console.error("Storage cleanup failed:", removeStorageError.message);
-      }
-    }
-
+    clearListingWriteJournal(globalThis.localStorage, journalKey, journal.operationId);
+    pendingWriteRef.current = null;
     setLoading(false);
     toast.success(
-      shouldResubmitListing ? t.listingResubmittedAfterEdit : t.listingUpdatedSuccess,
+      savedAsDraft ? t.listingSavedAsDraftAfterEdit : t.listingUpdatedSuccess,
     );
-    router.push(shouldResubmitListing ? "/dashboard?tab=inactive" : `/listings/${listing.slug}`);
+    router.push(destination);
     router.refresh();
   }
 
@@ -433,80 +541,171 @@ export function EditListingForm({ listing }) {
           </CardHeader>
 
           <CardContent className="p-4 sm:p-6 md:p-8">
+            <form ref={formRef} noValidate onSubmit={(event) => event.preventDefault()}>
             {listing.status === LISTING_APPROVAL_STATUS_VALUES.rejected ? (
               <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs leading-5 text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200 md:mb-6 md:rounded-[1.5rem] md:p-5 md:text-sm">
                 <p className="font-semibold">{t.listingRejectedTitle}</p>
                 <p className="mt-1.5 md:mt-2 md:leading-6">
-                  {listing.moderation_feedback || t.listingRejectedDescription}
+                  {t.listingRejectedDescription}
                 </p>
+                {listing.moderation_feedback ? (
+                  <p className="mt-2 rounded-xl border border-rose-200/80 bg-white/60 px-3 py-2 dark:border-rose-900/60 dark:bg-rose-950/30 md:mt-3">
+                    <span className="font-semibold">{t.listingPreviousFeedbackPrefix}</span>{" "}
+                    {listing.moderation_feedback}
+                  </p>
+                ) : null}
               </div>
             ) : null}
 
+            <p className="mb-4 text-xs text-muted-foreground md:mb-6 md:text-sm">
+              {t.listingDraftMinimumHint}
+            </p>
+
             <div className="grid gap-5 pb-24 md:gap-8 md:pb-0 xl:grid-cols-[minmax(0,1fr)_minmax(288px,0.85fr)]">
               <FieldGroup className="gap-4 md:gap-5">
-                <Field>
-                  <FieldLabel>{t.title}</FieldLabel>
+                <Field data-invalid={Boolean(fieldErrors.title)}>
+                  <FieldLabel htmlFor="listing-title">
+                    {t.title}
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {t.requiredFieldLabel}
+                    </span>
+                  </FieldLabel>
                   <Input
+                    id="listing-title"
                     value={title}
-                    onChange={(event) => setTitle(event.target.value)}
+                    onChange={(event) => {
+                      setTitle(event.target.value);
+                      setFieldErrors((current) => ({ ...current, title: undefined }));
+                    }}
                     placeholder={t.titlePlaceholder}
+                    required
+                    aria-invalid={Boolean(fieldErrors.title)}
+                    aria-describedby={fieldErrors.title ? "listing-title-error" : undefined}
                   />
+                  <FieldError id="listing-title-error">{fieldErrors.title}</FieldError>
                 </Field>
 
                 <ListingCombobox
+                  id="listing-category"
                   label={t.category}
                   placeholder={t.categoryPlaceholder}
                   value={category}
-                  onValueChange={setCategory}
+                  onValueChange={(value) => {
+                    setCategory(value);
+                    setFieldErrors((current) => ({ ...current, category: undefined }));
+                  }}
                   options={translatedCategoryOptions}
                   emptyLabel={t.noOptionFound}
+                  error={fieldErrors.category}
+                  requiredLabel={t.requiredFieldLabel}
                 />
 
-                <Field>
-                  <FieldLabel>{t.price}</FieldLabel>
+                <Field data-invalid={Boolean(fieldErrors.price)}>
+                  <FieldLabel htmlFor="listing-price">
+                    {t.price}
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {t.requiredFieldLabel}
+                    </span>
+                  </FieldLabel>
                   <Input
+                    id="listing-price"
                     value={price}
-                    onChange={(event) => setPrice(event.target.value)}
+                    onChange={(event) => {
+                      setPrice(event.target.value);
+                      setFieldErrors((current) => ({ ...current, price: undefined }));
+                    }}
                     placeholder="$0.00"
                     inputMode="decimal"
+                    min={0}
+                    max={LISTING_PRICE_MAX_CAD}
+                    required
+                    aria-invalid={Boolean(fieldErrors.price)}
+                    aria-describedby={fieldErrors.price ? "listing-price-error" : undefined}
                   />
+                  <FieldError id="listing-price-error">{fieldErrors.price}</FieldError>
                 </Field>
 
-                <Field>
-                  <FieldLabel>{t.description}</FieldLabel>
+                <Field data-invalid={Boolean(fieldErrors.description)}>
+                  <FieldLabel htmlFor="listing-description">
+                    {t.description}
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {t.requiredFieldLabel}
+                    </span>
+                  </FieldLabel>
                   <Textarea
+                    id="listing-description"
                     value={description}
-                    onChange={(event) => setDescription(event.target.value)}
+                    onChange={(event) => {
+                      setDescription(event.target.value);
+                      setFieldErrors((current) => ({ ...current, description: undefined }));
+                    }}
                     rows={4}
                     className="h-32 min-h-32 max-h-72 md:h-40 md:min-h-40"
                     placeholder={t.descriptionPlaceholder}
+                    required
+                    aria-invalid={Boolean(fieldErrors.description)}
+                    aria-describedby={fieldErrors.description ? "listing-description-error" : undefined}
                   />
+                  <FieldError id="listing-description-error">{fieldErrors.description}</FieldError>
                 </Field>
 
                 <ListingCombobox
+                  id="listing-condition"
                   label={t.condition}
                   placeholder={t.conditionPlaceholder}
                   value={condition}
-                  onValueChange={setCondition}
+                  onValueChange={(value) => {
+                    setCondition(value);
+                    setFieldErrors((current) => ({ ...current, condition: undefined }));
+                  }}
                   options={translatedConditionOptions}
                   emptyLabel={t.noOptionFound}
+                  error={fieldErrors.condition}
+                  requiredLabel={t.requiredFieldLabel}
                 />
               </FieldGroup>
 
               <div className="flex flex-col gap-4 md:gap-6">
                 <Card className="rounded-[1.25rem] border border-dashed border-zinc-300 bg-zinc-50 py-0 shadow-none dark:border-border dark:bg-muted/70 dark:ring-1 dark:ring-white/8 md:rounded-[1.75rem]">
-                  <CardContent className="space-y-3 p-3 md:space-y-5 md:p-6">
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
+                  <CardContent
+                    className="space-y-3 p-3 md:space-y-5 md:p-6"
+                    data-field-invalid={Boolean(fieldErrors.photos)}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-medium text-zinc-950 dark:text-foreground">
+                        {t.addPhotos}
+                      </span>
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {t.requiredFieldLabel}
+                      </span>
+                    </div>
+                    <div
                       className={cn(
-                        "flex min-h-32 w-full flex-col items-center justify-center rounded-2xl border bg-white px-4 py-5 text-center transition dark:bg-card md:min-h-56 md:rounded-[1.5rem] md:px-6 md:py-10",
+                        "relative flex min-h-32 w-full flex-col items-center justify-center rounded-2xl border bg-white px-4 py-5 text-center transition focus-within:ring-2 focus-within:ring-zinc-950/15 dark:bg-card dark:focus-within:ring-ring/25 md:min-h-56 md:rounded-[1.5rem] md:px-6 md:py-10",
                         isDragActive
                           ? "border-zinc-950 ring-2 ring-zinc-950/10 dark:border-ring dark:ring-ring/20"
                           : "border-zinc-200 hover:border-zinc-400 dark:border-border dark:hover:border-ring"
                       )}
                       {...dropzoneProps}
                     >
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        multiple
+                        required={photos.length + newPhotos.length === 0}
+                        aria-required="true"
+                        aria-invalid={Boolean(fieldErrors.photos)}
+                        aria-describedby={fieldErrors.photos ? "listing-photos-error" : undefined}
+                        aria-label={t.addPhotos}
+                        className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+                        onChange={(event) => {
+                          const selectedFiles = Array.from(event.target.files ?? []);
+                          if (selectedFiles.length === 0) return;
+                          appendNewPhotos(selectedFiles);
+                          event.target.value = "";
+                        }}
+                      />
                       <div className="mb-2 flex size-11 items-center justify-center rounded-full bg-zinc-950 text-white dark:bg-primary dark:text-primary-foreground md:mb-4 md:size-14">
                         <ImagePlus className="size-5 md:size-6" />
                       </div>
@@ -521,23 +720,11 @@ export function EditListingForm({ listing }) {
                           {photos.length + newPhotos.length} {t.filesAvailableLabel}
                         </p>
                       ) : null}
-                    </button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      multiple
-                      className="hidden"
-                      onChange={(event) => {
-                        const selectedFiles = Array.from(event.target.files ?? []);
-                        if (selectedFiles.length === 0) return;
-                        appendNewPhotos(selectedFiles);
-                        event.target.value = "";
-                      }}
-                    />
+                    </div>
                     {photoError ? (
                       <p role="alert" className="text-sm text-red-600 dark:text-red-400">{photoError}</p>
                     ) : null}
+                    <FieldError id="listing-photos-error">{fieldErrors.photos}</FieldError>
 
                     {photos.length > 0 || newPhotoPreviews.length > 0 ? (
                       <div className="-mx-1 flex snap-x snap-mandatory flex-nowrap gap-2 overflow-x-auto px-1 pb-1 md:flex-wrap md:gap-3 md:overflow-visible md:pb-0">
@@ -576,9 +763,19 @@ export function EditListingForm({ listing }) {
                             onClick={() => setShowAllPhotoPreviews((isExpanded) => !isExpanded)}
                             className="flex size-16 shrink-0 snap-start items-center justify-center rounded-2xl border border-zinc-300 bg-zinc-100 px-1 text-center text-xs font-semibold leading-4 text-zinc-700 dark:border-border dark:bg-muted dark:text-foreground sm:size-20 sm:text-sm"
                             aria-expanded={showAllPhotoPreviews}
-                            aria-label={showAllPhotoPreviews ? "Show fewer photo previews" : `${photos.length + newPhotoPreviews.length - 4} additional photos selected`}
+                            aria-label={showAllPhotoPreviews
+                              ? t.listingShowFewerPhotoPreviews
+                              : t.listingAdditionalPhotosSelected.replace(
+                                  "{count}",
+                                  photos.length + newPhotoPreviews.length - 4,
+                                )}
                           >
-                            {showAllPhotoPreviews ? "Show less" : `+${photos.length + newPhotoPreviews.length - 4} more`}
+                            {showAllPhotoPreviews
+                              ? t.listingShowLess
+                              : t.listingMorePhotos.replace(
+                                  "{count}",
+                                  photos.length + newPhotoPreviews.length - 4,
+                                )}
                           </button>
                         ) : null}
                       </div>
@@ -589,12 +786,18 @@ export function EditListingForm({ listing }) {
                 <Card className="rounded-[1.25rem] border-zinc-200 bg-zinc-50 py-0 shadow-none dark:bg-muted/70 dark:ring-1 dark:ring-white/8 md:rounded-[1.75rem]">
                   <CardContent className="space-y-3 p-3 md:space-y-5 md:p-6">
                     <ListingCombobox
+                      id="listing-campus"
                       label={t.campus}
                       placeholder={t.campusPlaceholder}
                       value={campus}
-                      onValueChange={setCampus}
+                      onValueChange={(value) => {
+                        setCampus(value);
+                        setFieldErrors((current) => ({ ...current, campus: undefined }));
+                      }}
                       options={TORONTO_CAMPUS_OPTIONS}
                       emptyLabel={t.noOptionFound}
+                      error={fieldErrors.campus}
+                      requiredLabel={t.requiredFieldLabel}
                     />
 
                     <Field
@@ -663,6 +866,7 @@ export function EditListingForm({ listing }) {
                 {loading ? t.saving : t.saveChanges}
               </Button>
             </div>
+            </form>
           </CardContent>
         </Card>
       </div>

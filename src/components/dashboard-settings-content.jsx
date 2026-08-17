@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { AlertTriangle, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, ChevronRight, ShieldAlert, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
@@ -278,6 +279,31 @@ export function DashboardSettingsContent({
       </section>
 
       <div className="flex flex-col gap-3 md:gap-4">
+        <Card className="gap-0 rounded-2xl bg-card py-0 shadow-sm ring-border md:rounded-3xl">
+          <CardContent className="p-0">
+            <Button
+              asChild
+              variant="ghost"
+              className="h-auto min-h-16 w-full min-w-0 justify-start whitespace-normal rounded-2xl px-4 py-3 text-left md:min-h-20 md:rounded-3xl md:px-6"
+            >
+              <Link href="/dashboard/standing" className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground">
+                  <ShieldAlert className="size-4" aria-hidden="true" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block break-words text-sm font-semibold text-foreground md:text-base">
+                    {t.accountStanding}
+                  </span>
+                  <span className="mt-0.5 block break-words text-xs leading-5 text-muted-foreground md:text-sm">
+                    {t.accountStandingDescription}
+                  </span>
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+
         <Card className="gap-0 rounded-2xl bg-card py-0 shadow-sm ring-border md:rounded-3xl">
           <section aria-labelledby="settings-appearance-title" className="border-b border-border px-4 py-3 md:px-6 md:py-5">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
