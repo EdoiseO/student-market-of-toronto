@@ -18,7 +18,7 @@ const fullChainMigrationNames = (await readdir(migrationDirectory))
   .filter(
     (name) =>
       name.endsWith(".sql") &&
-      name <= "20260817120920_stage8_release_security_hardening.sql",
+      name <= "20260817121321_stage8_advisor_hardening.sql",
   )
   .sort();
 const fullChainMigrations = await Promise.all(
@@ -757,7 +757,7 @@ test(
 
       assert.equal(
         fullChainMigrationNames.at(-1),
-        "20260817120920_stage8_release_security_hardening.sql",
+        "20260817121321_stage8_advisor_hardening.sql",
       );
       assert.equal(
         sql("select has_function_privilege('service_role','public.transition_conversation_moderation_state(uuid,bigint,text,text,text,uuid,timestamptz,text,uuid,text)','execute');"),

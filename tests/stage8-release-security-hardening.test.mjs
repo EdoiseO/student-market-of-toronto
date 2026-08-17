@@ -9,6 +9,13 @@ const migration = await readFile(
   ),
   "utf8",
 );
+const advisorMigration = await readFile(
+  new URL(
+    "../supabase/migrations/20260817121321_stage8_advisor_hardening.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 test("Stage 8 binds listing reservations to final Storage metadata", () => {
   assert.match(migration, /new\.metadata ->> 'mimetype'/);
@@ -53,4 +60,45 @@ test("Stage 8 enforces and synchronizes school identity on Auth email changes", 
   );
   assert.match(migration, /smot\.profile_identity_scope', 'auth_email_sync'/);
   assert.match(migration, /new\.school is distinct from derived_school/);
+});
+
+test("Stage 8 pins legacy search paths and hides trigger-only definers", () => {
+  for (const functionName of [
+    "update_updated_at_column",
+    "set_profiles_updated_at",
+    "notification_preference_key_from_notification_type",
+    "is_moderation_role",
+    "touch_conversation_user_state_updated_at",
+    "enforce_active_listing_for_conversation",
+    "enforce_active_listing_for_message",
+    "guard_conversation_listing_status",
+    "guard_message_listing_status",
+  ]) {
+    assert.match(
+      advisorMigration,
+      new RegExp(`'public\\.${functionName}\\(`),
+    );
+  }
+  assert.match(
+    advisorMigration,
+    /'alter function %s set search_path = pg_catalog, public'/,
+  );
+
+  for (const functionName of [
+    "enqueue_notification_email",
+    "notify_favouriters_of_listing_activity",
+    "rls_auto_enable",
+    "skip_disabled_message_notifications",
+    "skip_disabled_notifications",
+    "unhide_conversation_for_recipient",
+  ]) {
+    assert.match(
+      advisorMigration,
+      new RegExp(`'public\\.${functionName}\\(\\)'`),
+    );
+  }
+
+  assert.match(advisorMigration, /'public\.create_or_get_listing_conversation\(uuid\)'/);
+  assert.match(advisorMigration, /'revoke all on function %s from public, anon'/);
+  assert.match(advisorMigration, /'grant execute on function %s to authenticated, service_role'/);
 });
