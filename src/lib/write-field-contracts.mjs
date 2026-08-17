@@ -318,3 +318,10 @@ export function validateModeratorNote(value) {
     "moderator_note",
   );
 }
+
+export function validateModeratorNoteEntry(value) {
+  return withContractError(
+    validateRequiredText(value, { maxLength: MODERATOR_NOTE_MAX_LENGTH }),
+    "moderator_note",
+  );
+}

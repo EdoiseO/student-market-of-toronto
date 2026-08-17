@@ -291,9 +291,25 @@ function AdminReportWorkspaceSkeleton() {
             <Skeleton className="h-3.5 w-72 max-w-full" />
           </div>
           <div className="space-y-4 px-7 py-6">
-            <Skeleton className="h-44 w-full rounded-xl" />
-            <div className="flex justify-end">
+            <div className="space-y-3 rounded-2xl border border-border p-4">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-72 max-w-full" />
+              <Skeleton className="h-28 w-full rounded-xl" />
+            </div>
+            <div className="flex justify-between">
+              <Skeleton className="h-3 w-16" />
               <Skeleton className="h-10 w-28 rounded-xl" />
+            </div>
+            <div className="border-t border-border pt-4">
+              <div className="mb-3 flex items-center justify-between">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-6 w-16 rounded-full" />
+              </div>
+              <div className="space-y-3">
+                {Array.from({ length: 2 }, (_, index) => (
+                  <Skeleton key={index} className="h-24 w-full rounded-2xl" />
+                ))}
+              </div>
             </div>
           </div>
         </section>

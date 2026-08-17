@@ -52,6 +52,10 @@ test("report loading follows the evidence, notes, context, and decision hierarch
     skeletons.slice(reportSkeletonIndex),
     /<AdminReportWorkspaceSkeleton \/>[\s\S]*<AdminDecisionDetailsSkeleton \/>/,
   );
+  const reportWorkspace = skeletons.slice(reportWorkspaceIndex, decisionDetailsIndex);
+  assert.match(reportWorkspace, /h-28 w-full rounded-xl/);
+  assert.match(reportWorkspace, /Array\.from\(\{ length: 2 \}/);
+  assert.match(reportWorkspace, /h-24 w-full rounded-2xl/);
 });
 
 test("interactive moderation loading states expose busy semantics", () => {

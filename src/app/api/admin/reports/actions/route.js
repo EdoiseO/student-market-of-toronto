@@ -21,6 +21,7 @@ import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import {
   validateForceNameDecision,
   validateModeratorNote,
+  validateModeratorNoteEntry,
   validateReportDecisionSummary,
   validateReportedListingDecision,
 } from "@/lib/write-field-contracts.mjs";
@@ -484,12 +485,16 @@ export async function POST(request) {
         return permissionError;
       }
 
-      const reportId = payload?.reportId;
+      const reportId = typeof payload?.reportId === "string" ? payload.reportId.trim() : "";
       const moderatorNotesResult = validateModeratorNote(payload?.moderatorNotes);
       const operationId =
         typeof payload?.operationId === "string" ? payload.operationId.trim() : "";
 
-      if (!reportId || !UUID_PATTERN.test(operationId) || !moderatorNotesResult.ok) {
+      if (
+        !UUID_PATTERN.test(reportId)
+        || !UUID_PATTERN.test(operationId)
+        || !moderatorNotesResult.ok
+      ) {
         return NextResponse.json({ error: "Missing report id." }, { status: 400 });
       }
 
@@ -504,6 +509,46 @@ export async function POST(request) {
       }
 
       return NextResponse.json({ success: true });
+    }
+
+    if (action === "add_note") {
+      const permissionError = requireAction(
+        MODERATION_ACTIONS.triageReports,
+        "Report triage permission required.",
+      );
+
+      if (permissionError) {
+        return permissionError;
+      }
+
+      const reportId = typeof payload?.reportId === "string" ? payload.reportId.trim() : "";
+      const moderatorNoteResult = validateModeratorNoteEntry(payload?.moderatorNote);
+      const operationId =
+        typeof payload?.operationId === "string" ? payload.operationId.trim() : "";
+
+      if (
+        !UUID_PATTERN.test(reportId)
+        || !UUID_PATTERN.test(operationId)
+        || !moderatorNoteResult.ok
+      ) {
+        return NextResponse.json({ error: "Missing report note." }, { status: 400 });
+      }
+
+      const { data: noteRows, error } = await supabase.rpc(
+        "append_report_moderator_note",
+        {
+          p_report_id: reportId,
+          p_moderator_note: moderatorNoteResult.value,
+          p_request_id: operationId,
+        },
+      );
+
+      if (error) {
+        throw error;
+      }
+
+      const note = Array.isArray(noteRows) ? noteRows[0] : noteRows;
+      return NextResponse.json({ success: true, note });
     }
 
     return NextResponse.json({ error: "Unsupported moderation action." }, { status: 400 });

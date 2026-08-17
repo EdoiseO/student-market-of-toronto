@@ -7,6 +7,7 @@ import {
   normalizeWriteText,
   validateMessageBody,
   validateForceNameDecision,
+  validateModeratorNoteEntry,
   validateReportDecisionSummary,
   validateReportDetails,
   validateReportedListingDecision,
@@ -70,6 +71,9 @@ test("Unicode code-point boundaries match report and action-specific decision co
   assert.equal(validateMessageBody("😀".repeat(2001)).ok, false);
   assert.equal(validateMessageBody("\u00A0\u2003\uFEFF").error, "required");
   assert.equal(validateMessageBody("\r\n\t", { allowEmpty: true }).value, null);
+  assert.equal(validateModeratorNoteEntry("\u00A0\u2003\uFEFF").error, "moderator_note");
+  assert.equal(validateModeratorNoteEntry("😀".repeat(4000)).ok, true);
+  assert.equal(validateModeratorNoteEntry("😀".repeat(4001)).ok, false);
   assert.equal(
     validateReportedListingDecision({
       sellerFeedback: "😀".repeat(10),
@@ -88,8 +92,9 @@ test("Unicode code-point boundaries match report and action-specific decision co
 });
 
 test("Stage 6 moderation rationale foundation is append-only, bounded, private, and reviewable", async () => {
-  const [sql, route, listingRoute, reportUi, listingUi, notifications, auditPage, reportPage, translations] = await Promise.all([
+  const [sql, noteTimelineSql, route, listingRoute, reportUi, listingUi, notifications, auditPage, reportPage, translations] = await Promise.all([
     read("../supabase/migrations/20260816193317_moderation_decision_requirements_foundation.sql"),
+    read("../supabase/migrations/20260817053000_append_only_report_moderator_notes.sql"),
     read("../src/app/api/admin/reports/actions/route.js"),
     read("../src/app/api/admin/listings/[listingId]/decision/route.js"),
     read("../src/components/admin-report-review-content.jsx"),
@@ -116,6 +121,15 @@ test("Stage 6 moderation rationale foundation is append-only, bounded, private, 
   assert.match(sql, /security invoker[\s\S]*get_records_by_audit_ids_impl\(p_audit_event_ids\)/i);
   assert.match(sql, /private_summary[\s\S]*moderation_request_id_payload_conflict/i);
   assert.match(sql, /jsonb_build_object\('has_note', normalized_note is not null\)/i);
+  assert.match(noteTimelineSql, /append_report_moderator_note_impl/i);
+  assert.match(noteTimelineSql, /get_report_note_history_impl/i);
+  assert.match(noteTimelineSql, /record\.action = 'report_moderator_note_saved'/i);
+  assert.match(noteTimelineSql, /order by record\.created_at desc, record\.id desc/i);
+  assert.match(noteTimelineSql, /p_limit not between 1 and 101/i);
+  assert.match(noteTimelineSql, /require_triage_actor\(\)/i);
+  assert.match(noteTimelineSql, /metadata, request_id[\s\S]*'\{\}'::jsonb, p_request_id::text/i);
+  assert.doesNotMatch(noteTimelineSql, /insert into public\.notifications/i);
+  assert.doesNotMatch(noteTimelineSql, /update moderation_decision_private\.records/i);
   assert.match(
     sql,
     /notification_metadata := jsonb_build_object\(\s*'listing_title',[\s\S]*?'feedback', normalized_feedback\s*\)/i,
@@ -128,6 +142,7 @@ test("Stage 6 moderation rationale foundation is append-only, bounded, private, 
   assert.match(route, /validateReportedListingDecision/);
   assert.match(route, /validateForceNameDecision/);
   assert.match(route, /validateModeratorNote/);
+  assert.match(route, /validateModeratorNoteEntry/);
   assert.match(route, /decide_report_set_with_summary/);
   assert.match(route, /remove_reported_listing_with_rationale/);
   assert.match(route, /begin_force_name_operation_with_rationale/);
@@ -137,6 +152,8 @@ test("Stage 6 moderation rationale foundation is append-only, bounded, private, 
     /operation\.operation_status === "completed"\)[\s\S]{0,180}operation\.result_updated_count/,
   );
   assert.match(route, /save_report_moderator_note/);
+  assert.match(route, /action === "add_note"/);
+  assert.match(route, /append_report_moderator_note/);
   assert.doesNotMatch(route, /\.from\("reports"\)\s*\.update/);
   assert.doesNotMatch(reportUi, /maxLength=/);
   const reportGridIndex = reportUi.indexOf("grid items-start gap-4");
@@ -166,6 +183,11 @@ test("Stage 6 moderation rationale foundation is append-only, bounded, private, 
     1,
     "all report types must render the same moderator-notes card below their evidence",
   );
+  assert.match(reportUi, /adminModeratorNotesHistoryTitle/);
+  assert.match(reportUi, /moderatorNoteHistory\.map/);
+  assert.match(reportUi, /action: "add_note"/);
+  assert.match(reportUi, /setModeratorNoteDraft\(""\)/);
+  assert.doesNotMatch(reportUi, /setModeratorNotes\(report\.moderatorNotes/);
   assert.match(
     reportUi,
     /REPORT_EVIDENCE_PANEL_CLASS[\s\S]*xl:h-\[clamp\(28rem,60vh,34rem\)\]/,
@@ -215,7 +237,13 @@ test("Stage 6 moderation rationale foundation is append-only, bounded, private, 
   assert.match(auditPage, /rpc\("get_moderation_decision_records"/);
   assert.match(auditPage, /decision\?\.private_note/);
   assert.match(reportPage, /rpc\(\s*"get_report_moderator_notes"/);
+  assert.match(reportPage, /rpc\("get_report_moderator_note_history"/);
+  assert.match(reportPage, /MODERATOR_NOTE_HISTORY_PAGE_SIZE = 10/);
+  assert.match(reportPage, /MODERATOR_NOTE_HISTORY_MAX_VISIBLE = 100/);
   assert.doesNotMatch(reportPage, /MODERATION_REPORT_NOTES_SELECT/);
+  assert.equal((translations.match(/adminModeratorNotesComposerLabel:/g) ?? []).length, 2);
+  assert.equal((translations.match(/adminModeratorNotesHistoryTitle:/g) ?? []).length, 2);
+  assert.equal((translations.match(/adminModeratorNotesLoadOlder:/g) ?? []).length, 2);
   assert.match(notifications, /LISTING_REMOVED_NOTIFICATION_TYPE/);
   assert.match(notifications, /PROFILE_NAME_CHANGE_REQUIRED_NOTIFICATION_TYPE/);
   assert.match(notifications, /Array\.from\(feedback\.trim\(\)\)\.slice\(0, 3000\)/);

@@ -22,14 +22,25 @@ import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
+const MODERATOR_NOTE_HISTORY_PAGE_SIZE = 10;
+const MODERATOR_NOTE_HISTORY_MAX_VISIBLE = 100;
+
 function getPrimaryListingImageUrl(listingImages) {
   return (listingImages ?? [])
     .slice()
     .sort((firstImage, secondImage) => firstImage.position - secondImage.position)[0]?.image_url;
 }
 
-export default async function AdminReportReviewPage({ params }) {
+export default async function AdminReportReviewPage({ params, searchParams }) {
   const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+  const requestedNoteHistoryCount = Math.min(
+    MODERATOR_NOTE_HISTORY_MAX_VISIBLE,
+    Math.max(
+      MODERATOR_NOTE_HISTORY_PAGE_SIZE,
+      Number.parseInt(resolvedSearchParams?.notes, 10) || MODERATOR_NOTE_HISTORY_PAGE_SIZE,
+    ),
+  );
   const cookieStore = await cookies();
   const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
   const t = translations[language] || translations.en;
@@ -112,17 +123,34 @@ export default async function AdminReportReviewPage({ params }) {
 
   let notesAvailable = true;
   let reportNotesRows = [];
+  let moderatorNoteHistoryRows = [];
+  let moderatorNoteHistoryHasMore = false;
 
-  const { data: fetchedReportNotesRows, error: reportNotesError } = await supabase.rpc(
-    "get_report_moderator_notes",
-    { p_report_ids: relatedReportRows.map((relatedReport) => relatedReport.id) },
-  );
+  const [reportNotesResult, moderatorNoteHistoryResult] = await Promise.all([
+    supabase.rpc(
+      "get_report_moderator_notes",
+      { p_report_ids: relatedReportRows.map((relatedReport) => relatedReport.id) },
+    ),
+    supabase.rpc("get_report_moderator_note_history", {
+      p_report_id: reportRow.id,
+      p_limit: requestedNoteHistoryCount + 1,
+    }),
+  ]);
 
-  if (reportNotesError) {
+  if (reportNotesResult.error || moderatorNoteHistoryResult.error) {
     notesAvailable = false;
-    console.error("Failed to load moderation report notes:", reportNotesError.message);
+    console.error(
+      "Failed to load moderation report notes:",
+      reportNotesResult.error?.message ?? moderatorNoteHistoryResult.error?.message,
+    );
   } else {
-    reportNotesRows = fetchedReportNotesRows ?? [];
+    reportNotesRows = reportNotesResult.data ?? [];
+    moderatorNoteHistoryHasMore =
+      (moderatorNoteHistoryResult.data?.length ?? 0) > requestedNoteHistoryCount;
+    moderatorNoteHistoryRows = (moderatorNoteHistoryResult.data ?? []).slice(
+      0,
+      requestedNoteHistoryCount,
+    );
   }
 
   const reportNotesById = new Map(
@@ -134,6 +162,7 @@ export default async function AdminReportReviewPage({ params }) {
     ...relatedReportRows.map((report) => report.reported_user_id),
     ...relatedReportRows.map((report) => report.reviewed_by),
     ...reportNotesRows.map((report) => report.moderator_notes_updated_by),
+    ...moderatorNoteHistoryRows.map((note) => note.created_by_user_id),
     reportRow.subject_type === REPORT_SUBJECT_TYPES.profile ? reportRow.subject_id : null,
   ].filter(Boolean);
   const { data: reportProfiles, error: reportProfilesError } = profileIds.length
@@ -369,6 +398,23 @@ export default async function AdminReportReviewPage({ params }) {
       : null,
   }));
 
+  const moderatorNoteHistory = moderatorNoteHistoryRows.map((note) => ({
+    id: note.note_id,
+    body: note.moderator_note,
+    createdAt: note.created_at,
+    createdBy: {
+      id: note.created_by_user_id,
+      name: getModerationDisplayName(reportProfilesById.get(note.created_by_user_id), t),
+    },
+  }));
+  const moderatorNoteHistoryNextHref = moderatorNoteHistoryHasMore
+    && requestedNoteHistoryCount < MODERATOR_NOTE_HISTORY_MAX_VISIBLE
+    ? `/admin/reports/${reportRow.id}?notes=${Math.min(
+        MODERATOR_NOTE_HISTORY_MAX_VISIBLE,
+        requestedNoteHistoryCount + MODERATOR_NOTE_HISTORY_PAGE_SIZE,
+      )}#moderator-notes`
+    : null;
+
   const ReviewIcon = reviewIcon;
 
   return (
@@ -395,6 +441,8 @@ export default async function AdminReportReviewPage({ params }) {
         listingReview={listingReview}
         profileReview={profileReview}
         notesAvailable={notesAvailable}
+        moderatorNoteHistory={moderatorNoteHistory}
+        moderatorNoteHistoryNextHref={moderatorNoteHistoryNextHref}
         currentUserId={user.id}
         canForceProfileNameChange={getUserModerationRole(accessUser) === "admin"}
       />

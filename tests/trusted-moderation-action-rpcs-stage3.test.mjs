@@ -27,6 +27,13 @@ const stage6ModerationFoundation = await readFile(
   ),
   "utf8",
 );
+const moderatorNoteTimelineMigration = await readFile(
+  new URL(
+    "../supabase/migrations/20260817053000_append_only_report_moderator_notes.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 test("trusted moderation RPCs resolve live actors and remove broad service writes", () => {
   assert.match(migration, /auth\.uid\(\)/);
@@ -335,6 +342,8 @@ test(
     const stage6DecisionReport = "cccccccc-1111-4111-8111-cccccccccccc";
     const stage6DecisionRequest = "dddddddd-1111-4111-8111-dddddddddddd";
     const stage6NoteRequest = "eeeeeeee-1111-4111-8111-eeeeeeeeeeee";
+    const stage8NoteRequestOne = "22222222-3333-4333-8333-222222222221";
+    const stage8NoteRequestTwo = "22222222-3333-4333-8333-222222222222";
     const stage6RejectedListing = "ffffffff-1111-4111-8111-ffffffffffff";
     const stage6ApprovedListing = "12121212-1111-4111-8111-121212121212";
     const stage6RejectRequest = "13131313-1111-4111-8111-131313131313";
@@ -359,6 +368,7 @@ test(
       sql(foundation);
       sql(migration);
       sql(stage6ModerationFoundation);
+      sql(moderatorNoteTimelineMigration);
 
       // These test-only definers create the exact historical deadlock shape:
       // one session holds the actor row before retrying begin, while another
@@ -1375,6 +1385,111 @@ test(
           and position('Case note' in summary)=0
           from moderation_audit_events where request_id='${stage6NoteRequest}';`),
         "t",
+      );
+      const firstTimelineNoteId = asUser(
+        admin,
+        `select note_id from append_report_moderator_note(
+          '${stage6DecisionReport}',E'Timeline note one\r\nwith context','${stage8NoteRequestOne}'
+        );`,
+      );
+      assert.match(firstTimelineNoteId, /^[0-9a-f-]{36}$/);
+      assert.equal(
+        asUser(
+          admin,
+          `select note_id from append_report_moderator_note(
+            '${stage6DecisionReport}',E'Timeline note one\nwith context','${stage8NoteRequestOne}'
+          );`,
+        ),
+        firstTimelineNoteId,
+      );
+      assert.equal(
+        sql(`select count(*) from moderation_decision_private.records
+          where request_id='${stage8NoteRequestOne}';`),
+        "1",
+      );
+      assert.equal(
+        asUser(
+          moderator,
+          `select moderator_note from append_report_moderator_note(
+            '${stage6DecisionReport}','Timeline note two','${stage8NoteRequestTwo}'
+          );`,
+        ),
+        "Timeline note two",
+      );
+      assert.equal(
+        asUser(
+          moderator,
+          `select count(*)=3
+            and (array_agg(moderator_note order by created_at desc,note_id desc))[1]
+              ='Timeline note two'
+           from get_report_moderator_note_history('${stage6DecisionReport}',101);`,
+        ),
+        "t",
+      );
+      assert.equal(
+        asUser(
+          admin,
+          `select moderator_notes='Timeline note two'
+           from get_report_moderator_notes(array['${stage6DecisionReport}'::uuid]);`,
+        ),
+        "t",
+      );
+      assert.match(
+        asUser(
+          subject,
+          `select * from get_report_moderator_note_history('${stage6DecisionReport}',10);`,
+          true,
+        ),
+        /moderation_action_not_permitted/,
+      );
+      for (const invalidLimit of ["null", "0", "102"]) {
+        assert.match(
+          asUser(
+            admin,
+            `select * from get_report_moderator_note_history(
+              '${stage6DecisionReport}',${invalidLimit}
+            );`,
+            true,
+          ),
+          /moderator_note_history_request_invalid/,
+        );
+      }
+      assert.match(
+        asUser(
+          admin,
+          `select * from append_report_moderator_note(
+            '${stage6DecisionReport}',E'\t\r\n','22222222-3333-4333-8333-222222222223'
+          );`,
+          true,
+        ),
+        /moderator_note_invalid/,
+      );
+      assert.match(
+        asUser(
+          admin,
+          `select * from append_report_moderator_note(
+            '${stage6DecisionReport}','Conflicting note','${stage8NoteRequestOne}'
+          );`,
+          true,
+        ),
+        /moderation_request_id_payload_conflict/,
+      );
+      assert.equal(
+        sql(`select not (metadata ? 'private_note')
+          and position('Timeline note' in metadata::text)=0
+          and position('Timeline note' in summary)=0
+          from moderation_audit_events where request_id='${stage8NoteRequestTwo}';`),
+        "t",
+      );
+      assert.equal(
+        sql(`select count(*) from notifications
+          where metadata::text like '%Timeline note%';`),
+        "0",
+      );
+      assert.match(
+        sql(`update moderation_decision_private.records set private_note='tampered'
+          where request_id='${stage8NoteRequestOne}';`, true),
+        /moderation_decision_record_is_immutable/,
       );
       assert.match(
         asUser(

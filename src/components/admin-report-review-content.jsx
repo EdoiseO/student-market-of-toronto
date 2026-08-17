@@ -37,7 +37,7 @@ import {
   REPORTED_LISTING_PRIVATE_SUMMARY_MAX_LENGTH,
   REPORT_DECISION_SUMMARY_MAX_LENGTH,
   validateForceNameDecision,
-  validateModeratorNote,
+  validateModeratorNoteEntry,
   validateReportDecisionSummary,
   validateReportedListingDecision,
 } from "@/lib/write-field-contracts.mjs";
@@ -172,16 +172,16 @@ function ModeratorNotesCard({
   t,
   language,
   notesAvailable,
-  moderatorNotes,
-  setModeratorNotes,
-  report,
-  hasModeratorNotes,
+  moderatorNoteDraft,
+  setModeratorNoteDraft,
+  moderatorNoteHistory,
+  moderatorNoteHistoryNextHref,
   isSavingNotes,
-  hasNotesChanges,
+  hasNoteDraft,
   handleSaveModeratorNotes,
 }) {
   return (
-    <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
+    <Card id="moderator-notes" className="scroll-mt-24 rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
       <CardHeader className="border-b border-zinc-200 px-7 py-6 dark:border-border">
         <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
           {t.adminModeratorNotesTitle}
@@ -195,42 +195,82 @@ function ModeratorNotesCard({
       <CardContent className="space-y-4 px-7 py-6">
         {notesAvailable ? (
           <>
-            <div className="rounded-xl border border-zinc-200 bg-background p-3 shadow-sm dark:border-border dark:bg-background">
+            <div className="space-y-3 rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-border dark:bg-muted/20">
+              <div>
+                <label htmlFor="moderator-note-entry" className="text-sm font-semibold text-foreground">
+                  {t.adminModeratorNotesComposerLabel}
+                </label>
+                <p id="moderator-note-entry-description" className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {t.adminModeratorNotesComposerDescription}
+                </p>
+              </div>
               <Textarea
-                value={moderatorNotes}
-                onChange={(event) => setModeratorNotes(event.target.value)}
+                id="moderator-note-entry"
+                value={moderatorNoteDraft}
+                onChange={(event) => setModeratorNoteDraft(event.target.value)}
                 placeholder={t.adminModeratorNotesPlaceholder}
-                rows={7}
-                className="h-44 min-h-36 max-h-96 resize-y border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0"
+                rows={4}
+                aria-describedby="moderator-note-entry-description"
+                className="min-h-28 max-h-64 resize-y rounded-xl bg-background"
               />
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="text-xs text-muted-foreground">
+                  {Array.from(moderatorNoteDraft).length}/{MODERATOR_NOTE_MAX_LENGTH}
+                </span>
+                <Button
+                  type="button"
+                  className="rounded-xl"
+                  disabled={isSavingNotes || !hasNoteDraft}
+                  onClick={handleSaveModeratorNotes}
+                >
+                  {isSavingNotes ? t.saving : t.saveNotes}
+                </Button>
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="text-xs text-zinc-500 dark:text-muted-foreground">
-                {report.moderatorNotesUpdatedAt ? (
-                  <span>
-                    {t.adminModeratorNotesUpdatedByPrefix} {report.moderatorNotesUpdatedBy?.name ?? t.unknown} ·{" "}
-                    <ClientFormattedDateTime
-                      value={report.moderatorNotesUpdatedAt}
-                      language={language}
-                    />
-                  </span>
-                ) : hasModeratorNotes ? (
-                  <span>{t.adminModeratorNotesUnsavedHint}</span>
-                ) : (
-                  <span>{t.adminModeratorNotesEmpty}</span>
-                )}
+            <Separator />
+
+            <section aria-labelledby="moderator-note-history-title" className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 id="moderator-note-history-title" className="text-sm font-semibold text-foreground">
+                  {t.adminModeratorNotesHistoryTitle}
+                </h3>
+                <Badge variant="outline" className="rounded-full bg-background">
+                  {moderatorNoteHistory.length} {t.adminModeratorNotesCountLabel}
+                </Badge>
               </div>
 
-              <Button
-                type="button"
-                className="rounded-xl"
-                disabled={isSavingNotes || !hasNotesChanges}
-                onClick={handleSaveModeratorNotes}
-              >
-                {isSavingNotes ? t.saving : t.saveNotes}
-              </Button>
-            </div>
+              {moderatorNoteHistory.length > 0 ? (
+                <div className="space-y-3">
+                  {moderatorNoteHistory.map((note) => (
+                    <article
+                      key={note.id}
+                      className="rounded-2xl border border-zinc-200 bg-background p-4 dark:border-border"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                        <span className="font-semibold text-foreground">{note.createdBy.name}</span>
+                        <ClientFormattedDateTime value={note.createdAt} language={language} />
+                      </div>
+                      <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">
+                        {note.body}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-4 py-5 text-sm text-muted-foreground">
+                  {t.adminModeratorNotesEmpty}
+                </div>
+              )}
+
+              {moderatorNoteHistoryNextHref ? (
+                <Button asChild variant="outline" className="w-full rounded-xl">
+                  <Link href={moderatorNoteHistoryNextHref} scroll={false}>
+                    {t.adminModeratorNotesLoadOlder}
+                  </Link>
+                </Button>
+              ) : null}
+            </section>
           </>
         ) : (
           <div className="rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-5 text-sm text-muted-foreground">
@@ -250,6 +290,8 @@ export function AdminReportReviewContent({
   listingReview = null,
   profileReview = null,
   notesAvailable = false,
+  moderatorNoteHistory = [],
+  moderatorNoteHistoryNextHref = null,
   currentUserId,
   canForceProfileNameChange = false,
 }) {
@@ -257,7 +299,7 @@ export function AdminReportReviewContent({
   const { t, language } = useLanguage();
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [isSavingNotes, setIsSavingNotes] = React.useState(false);
-  const [moderatorNotes, setModeratorNotes] = React.useState(report.moderatorNotes ?? "");
+  const [moderatorNoteDraft, setModeratorNoteDraft] = React.useState("");
   const [decisionSummary, setDecisionSummary] = React.useState("");
   const [sellerFeedback, setSellerFeedback] = React.useState("");
   const [removalPrivateSummary, setRemovalPrivateSummary] = React.useState("");
@@ -277,8 +319,9 @@ export function AdminReportReviewContent({
   const forcePrivateNoteRef = React.useRef(null);
 
   React.useEffect(() => {
-    setModeratorNotes(report.moderatorNotes ?? "");
-  }, [report.id, report.moderatorNotes]);
+    setModeratorNoteDraft("");
+    notesOperationRef.current = null;
+  }, [report.id]);
 
   const isMessageReport = report.subjectType === REPORT_SUBJECT_TYPES.message;
   const isProfileReport = report.subjectType === REPORT_SUBJECT_TYPES.profile;
@@ -322,8 +365,7 @@ export function AdminReportReviewContent({
   const removeListingActionLabel = hasMultipleOpenRelatedReports
     ? t.adminRemoveListingAndResolveAllOpen
     : t.removeListing;
-  const hasModeratorNotes = moderatorNotes.trim().length > 0;
-  const hasNotesChanges = moderatorNotes !== (report.moderatorNotes ?? "");
+  const hasNoteDraft = moderatorNoteDraft.trim().length > 0;
 
   async function updateRelatedReportStatuses(nextStatus, privateSummary) {
     if (!currentUserId || isProcessing || actionableReportIds.length === 0) {
@@ -574,11 +616,11 @@ export function AdminReportReviewContent({
   }
 
   async function handleSaveModeratorNotes() {
-    if (!notesAvailable || !currentUserId || !report?.id || isSavingNotes || !hasNotesChanges) {
+    if (!notesAvailable || !currentUserId || !report?.id || isSavingNotes || !hasNoteDraft) {
       return;
     }
 
-    const noteResult = validateModeratorNote(moderatorNotes);
+    const noteResult = validateModeratorNoteEntry(moderatorNoteDraft);
     if (!noteResult.ok) {
       toast.error(t.adminModeratorNotesSaveError);
       return;
@@ -586,7 +628,7 @@ export function AdminReportReviewContent({
 
     const operationPayloadKey = JSON.stringify({
       reportId: report.id,
-      moderatorNotes: noteResult.value,
+      moderatorNote: noteResult.value,
     });
     if (notesOperationRef.current?.payloadKey !== operationPayloadKey) {
       notesOperationRef.current = {
@@ -603,9 +645,9 @@ export function AdminReportReviewContent({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        action: "save_notes",
+        action: "add_note",
         reportId: report.id,
-        moderatorNotes: noteResult.value,
+        moderatorNote: noteResult.value,
         operationId: notesOperationRef.current.operationId,
       }),
     });
@@ -621,6 +663,7 @@ export function AdminReportReviewContent({
     }
 
     notesOperationRef.current = null;
+    setModeratorNoteDraft("");
     toast.success(t.adminModeratorNotesSaved);
     router.refresh();
   }
@@ -867,12 +910,12 @@ export function AdminReportReviewContent({
             t={t}
             language={language}
             notesAvailable={notesAvailable}
-            moderatorNotes={moderatorNotes}
-            setModeratorNotes={setModeratorNotes}
-            report={report}
-            hasModeratorNotes={hasModeratorNotes}
+            moderatorNoteDraft={moderatorNoteDraft}
+            setModeratorNoteDraft={setModeratorNoteDraft}
+            moderatorNoteHistory={moderatorNoteHistory}
+            moderatorNoteHistoryNextHref={moderatorNoteHistoryNextHref}
             isSavingNotes={isSavingNotes}
-            hasNotesChanges={hasNotesChanges}
+            hasNoteDraft={hasNoteDraft}
             handleSaveModeratorNotes={handleSaveModeratorNotes}
           />
         </div>

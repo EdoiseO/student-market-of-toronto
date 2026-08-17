@@ -1183,19 +1183,25 @@ export const translations = {
     adminCurrentReport: "Current",
     adminModeratorNotesTitle: "Moderator notes",
     adminModeratorNotesDescription:
-      "Private review notes for this specific report. Use them to capture context, rationale, or follow-up details.",
+      "Private, append-only updates for this specific report. Notes cannot be edited or deleted after they are added.",
     adminModeratorNotesSetupDescription:
-      "Moderator notes are unavailable because this environment is missing the moderation-notes database migration.",
+      "The moderator-note timeline is unavailable because this environment is missing its database migration.",
     adminModeratorNotesSetupHint:
-      "The interface is ready, but the secure note reader and save functions are not installed in this database yet.",
+      "The interface is ready, but the secure append and history functions are not installed in this database yet.",
+    adminModeratorNotesComposerLabel: "Add a private note",
+    adminModeratorNotesComposerDescription:
+      "Share context or a follow-up update with the moderation team. Add a correction as a new note.",
     adminModeratorNotesPlaceholder:
-      "Add private review notes, decision context, or follow-up reminders for this report...",
-    adminModeratorNotesSaved: "Moderator notes saved.",
-    adminModeratorNotesSaveError: "We could not save moderator notes right now.",
+      "Add context, rationale, or a follow-up reminder for this report...",
+    adminModeratorNotesSaved: "Moderator note added.",
+    adminModeratorNotesSaveError: "We could not add the moderator note right now.",
     adminModeratorNotesUpdatedByPrefix: "Last updated by",
     adminModeratorNotesUnsavedHint: "You have unsaved note changes.",
-    adminModeratorNotesEmpty: "No moderator notes yet.",
-    saveNotes: "Save notes",
+    adminModeratorNotesHistoryTitle: "Note history",
+    adminModeratorNotesCountLabel: "shown",
+    adminModeratorNotesLoadOlder: "Load older notes",
+    adminModeratorNotesEmpty: "No moderator notes have been added yet.",
+    saveNotes: "Add note",
     adminCloseReportNoAction: "Close with no action",
     adminMarkReportAddressed: "Mark as addressed",
     adminCloseAllOpenNoAction: "Close all open reports with no action",
@@ -2642,20 +2648,26 @@ export const translations = {
     adminCurrentReport: "Actuel",
     adminModeratorNotesTitle: "Notes de modération",
     adminModeratorNotesDescription:
-      "Notes privées pour ce signalement précis. Utilisez-les pour garder le contexte, la justification ou un suivi à faire.",
+      "Mises à jour privées et immuables pour ce signalement. Une note ne peut plus être modifiée ni supprimée après son ajout.",
     adminModeratorNotesSetupDescription:
-      "Les notes de modération sont indisponibles, car la migration de base de données correspondante manque dans cet environnement.",
+      "L’historique des notes de modération est indisponible, car sa migration de base de données manque dans cet environnement.",
     adminModeratorNotesSetupHint:
-      "L’interface est prête, mais les fonctions sécurisées de lecture et d’enregistrement ne sont pas encore installées dans cette base de données.",
+      "L’interface est prête, mais les fonctions sécurisées d’ajout et d’historique ne sont pas encore installées dans cette base de données.",
+    adminModeratorNotesComposerLabel: "Ajouter une note privée",
+    adminModeratorNotesComposerDescription:
+      "Partagez du contexte ou une mise à jour avec l’équipe de modération. Ajoutez toute correction dans une nouvelle note.",
     adminModeratorNotesPlaceholder:
-      "Ajoutez des notes privées, le contexte de la décision, ou des rappels de suivi pour ce signalement...",
-    adminModeratorNotesSaved: "Notes de modération enregistrées.",
+      "Ajoutez du contexte, une justification ou un rappel de suivi pour ce signalement...",
+    adminModeratorNotesSaved: "Note de modération ajoutée.",
     adminModeratorNotesSaveError:
-      "Nous n'avons pas pu enregistrer les notes de modération pour le moment.",
+      "Nous n'avons pas pu ajouter la note de modération pour le moment.",
     adminModeratorNotesUpdatedByPrefix: "Dernière mise à jour par",
     adminModeratorNotesUnsavedHint: "Vous avez des changements de notes non enregistrés.",
-    adminModeratorNotesEmpty: "Aucune note de modération pour le moment.",
-    saveNotes: "Enregistrer les notes",
+    adminModeratorNotesHistoryTitle: "Historique des notes",
+    adminModeratorNotesCountLabel: "affichées",
+    adminModeratorNotesLoadOlder: "Charger les notes précédentes",
+    adminModeratorNotesEmpty: "Aucune note de modération n’a encore été ajoutée.",
+    saveNotes: "Ajouter la note",
     adminCloseReportNoAction: "Fermer sans autre action",
     adminMarkReportAddressed: "Marquer comme traité",
     adminCloseAllOpenNoAction: "Fermer tous les signalements ouverts sans autre action",
