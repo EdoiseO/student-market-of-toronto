@@ -221,6 +221,9 @@ export const translations = {
     listingMorePhotos: "+{count} more",
     listingSavedAsDraftAfterEdit:
       "Changes saved as a draft. Submit the listing for review when it is complete.",
+    listingNoChangesToSave: "There are no changes to save.",
+    listingRejectedNoChangesToSave:
+      "Make at least one requested change before saving this listing as a draft.",
     listingChangedRefresh: "This listing changed in another session. Refresh and try again.",
     listingRequiredFieldsUnavailable:
       "The listing could not be saved. Review the required fields and try again.",
@@ -1609,6 +1612,9 @@ export const translations = {
     listingMorePhotos: "+{count} de plus",
     listingSavedAsDraftAfterEdit:
       "Les modifications ont été enregistrées comme brouillon. Soumettez l’annonce à l’examen lorsqu’elle est complète.",
+    listingNoChangesToSave: "Il n’y a aucune modification à enregistrer.",
+    listingRejectedNoChangesToSave:
+      "Apportez au moins une modification demandée avant d’enregistrer cette annonce comme brouillon.",
     listingChangedRefresh:
       "Cette annonce a été modifiée dans une autre session. Actualisez la page et réessayez.",
     listingRequiredFieldsUnavailable:

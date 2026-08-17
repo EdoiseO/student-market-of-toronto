@@ -139,8 +139,10 @@ test("listing forms use durable intent, reservation, commit, and cleanup RPCs", 
   assert.match(editForm, /listingSavedAsDraftAfterEdit/);
   assert.match(
     editForm,
-    /if \(!hasMeaningfulFieldChanges && !hasMeaningfulPhotoChanges\) \{\s*return;\s*\}[\s\S]*prepareListingWriteJournal/,
+    /if \(!hasMeaningfulFieldChanges && !hasMeaningfulPhotoChanges\) \{[\s\S]*toast\.info\([\s\S]*listingRejectedNoChangesToSave[\s\S]*listingNoChangesToSave[\s\S]*return;\s*\}[\s\S]*prepareListingWriteJournal/,
   );
+  assert.match(editForm, /listingRejectedDescription/);
+  assert.match(editForm, /listingPreviousFeedbackPrefix/);
   assert.match(createForm, /pendingWriteRef/);
   assert.match(editForm, /pendingWriteRef/);
   assert.match(createForm, /uploadState: \{\}/);

@@ -278,6 +278,11 @@ export function EditListingForm({ listing }) {
     const hasMeaningfulPhotoChanges = newPhotos.length > 0 || removedPhotos.length > 0;
 
     if (!hasMeaningfulFieldChanges && !hasMeaningfulPhotoChanges) {
+      toast.info(
+        listing.status === LISTING_APPROVAL_STATUS_VALUES.rejected
+          ? t.listingRejectedNoChangesToSave
+          : t.listingNoChangesToSave,
+      );
       return;
     }
 
@@ -541,8 +546,14 @@ export function EditListingForm({ listing }) {
               <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs leading-5 text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200 md:mb-6 md:rounded-[1.5rem] md:p-5 md:text-sm">
                 <p className="font-semibold">{t.listingRejectedTitle}</p>
                 <p className="mt-1.5 md:mt-2 md:leading-6">
-                  {listing.moderation_feedback || t.listingRejectedDescription}
+                  {t.listingRejectedDescription}
                 </p>
+                {listing.moderation_feedback ? (
+                  <p className="mt-2 rounded-xl border border-rose-200/80 bg-white/60 px-3 py-2 dark:border-rose-900/60 dark:bg-rose-950/30 md:mt-3">
+                    <span className="font-semibold">{t.listingPreviousFeedbackPrefix}</span>{" "}
+                    {listing.moderation_feedback}
+                  </p>
+                ) : null}
               </div>
             ) : null}
 
