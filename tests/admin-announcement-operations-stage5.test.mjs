@@ -112,7 +112,12 @@ test("overview and registries use bounded, filtered, fail-closed moderation data
   assert.match(overviewPage, /\.neq\("restrictions", "\{\}"\)/);
   assert.doesNotMatch(overviewPage, /\.neq\("restrictions", \{\}\)/);
   assert.match(overviewPage, /\.eq\("status", "inactive"\)\.not\("submitted_for_review_at", "is", null\)/);
-  assert.match(reportsPage, /<form method="get"/);
+  assert.match(reportsPage, /<form[\s\S]*?method="get"/);
+  assert.match(reportsPage, /function FilterField/);
+  assert.match(reportsPage, /NativeSelect className="w-full" name="status"/);
+  assert.match(reportsPage, /NativeSelect className="w-full" name="subject"/);
+  assert.match(reportsPage, /NativeSelect className="w-full" name="reason"/);
+  assert.match(reportsPage, /xl:grid-cols-\[minmax\(260px,1\.7fr\)_repeat\(3,minmax\(150px,1fr\)\)_minmax\(170px,0\.8fr\)\]/);
   assert.match(reportsPage, /filterParams\.set\("status", status\)/);
   assert.match(reportsPage, /\.range\(from, from \+ PAGE_SIZE - 1\)/);
   assert.match(listingsPage, /<form method="get"/);

@@ -129,7 +129,7 @@ export function AdminConversationRegistry({
               <Button asChild variant="ghost" className="-ml-2 mb-2 h-9 rounded-full px-3">
                 <Link href="/admin">
                   <ArrowLeft className="size-4" />
-                  {t.backToAdminReports}
+                  {t.backToAdminOverview}
                 </Link>
               </Button>
               <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
@@ -176,7 +176,11 @@ export function AdminConversationRegistry({
               </div>
             </nav>
 
-            <form action="/admin/conversations" className="flex min-w-0 gap-2" role="search">
+            <form
+              action="/admin/conversations"
+              className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"
+              role="search"
+            >
               {filter !== "all" ? <input type="hidden" name="filter" value={filter} /> : null}
               <label className="relative min-w-0 flex-1">
                 <span className="sr-only">{t.adminConversationsSearchLabel}</span>
@@ -189,8 +193,11 @@ export function AdminConversationRegistry({
                   className="h-11 rounded-full pl-10"
                 />
               </label>
-              <Button type="submit" className="h-11 shrink-0 rounded-full px-4">
-                {t.search}
+              <Button
+                type="submit"
+                className="h-11 w-full rounded-full px-5 sm:min-w-28 sm:w-auto"
+              >
+                {t.adminConversationsSearchAction}
               </Button>
             </form>
             <p className="px-1 text-xs leading-5 text-muted-foreground">

@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminUserDetailLoading() {
   return (
-    <main className="min-h-screen bg-zinc-100 px-3 py-4 dark:bg-background sm:px-5 lg:p-8">
+    <main aria-busy="true" aria-label="Loading user details" className="min-h-screen bg-zinc-100 px-3 py-4 dark:bg-background sm:px-5 lg:p-8">
       <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-4">
         <section className="rounded-2xl border border-border bg-card p-4 sm:rounded-3xl sm:p-6">
           <Skeleton className="h-8 w-28 rounded-full" />

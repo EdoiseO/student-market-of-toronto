@@ -15,6 +15,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -41,6 +42,9 @@ import {
   validateReportedListingDecision,
 } from "@/lib/write-field-contracts.mjs";
 
+const REPORT_EVIDENCE_PANEL_CLASS =
+  "flex flex-col overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card xl:h-[clamp(28rem,60vh,34rem)]";
+
 function DecisionTextField({
   id,
   label,
@@ -51,11 +55,11 @@ function DecisionTextField({
   limit,
   error,
   required = false,
-  rows = 3,
+  rows = 4,
 }) {
   return (
-    <div className="space-y-2">
-      <div>
+    <div className="flex min-w-0 flex-col gap-2">
+      <div className="lg:min-h-[4.75rem]">
         <label htmlFor={id} className="text-sm font-semibold text-foreground">
           {label}
         </label>
@@ -72,7 +76,7 @@ function DecisionTextField({
         required={required}
         aria-invalid={Boolean(error)}
         aria-describedby={`${id}-description${error ? ` ${id}-error` : ""}`}
-        className="min-h-24 resize-y rounded-xl"
+        className="min-h-32 resize-y rounded-xl"
       />
       <div className="flex items-start justify-between gap-3 text-xs">
         {error ? (
@@ -85,6 +89,69 @@ function DecisionTextField({
         <span className="shrink-0 text-muted-foreground">
           {Array.from(value).length}/{limit}
         </span>
+      </div>
+    </div>
+  );
+}
+
+function ReportDecisionActions({
+  t,
+  canRemoveListing,
+  canForceNameChange,
+  isProcessing,
+  hasOpenRelatedReports,
+  removeListingActionLabel,
+  dismissActionLabel,
+  resolveActionLabel,
+  handleRemoveListing,
+  handleForceNameChange,
+  handleUpdateStatus,
+}) {
+  return (
+    <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <p className="max-w-xl text-xs leading-5 text-muted-foreground">
+        {t.adminDecisionActionSaveHint}
+      </p>
+      <div className="flex flex-wrap justify-start gap-2 sm:justify-end">
+        {canRemoveListing ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-xl"
+            onClick={handleRemoveListing}
+            disabled={isProcessing || !hasOpenRelatedReports}
+          >
+            {removeListingActionLabel}
+          </Button>
+        ) : null}
+        {canForceNameChange ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-xl"
+            onClick={handleForceNameChange}
+            disabled={isProcessing}
+          >
+            {t.adminForceNameChange}
+          </Button>
+        ) : null}
+        <Button
+          type="button"
+          variant="outline"
+          className="rounded-xl"
+          onClick={() => handleUpdateStatus(REPORT_STATUS_VALUES.dismissed)}
+          disabled={isProcessing || !hasOpenRelatedReports}
+        >
+          {dismissActionLabel}
+        </Button>
+        <Button
+          type="button"
+          className="rounded-xl"
+          onClick={() => handleUpdateStatus(REPORT_STATUS_VALUES.resolved)}
+          disabled={isProcessing || !hasOpenRelatedReports}
+        >
+          {resolveActionLabel}
+        </Button>
       </div>
     </div>
   );
@@ -112,11 +179,10 @@ function ModeratorNotesCard({
   isSavingNotes,
   hasNotesChanges,
   handleSaveModeratorNotes,
-  compact = false,
 }) {
   return (
     <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-      <CardHeader className={`border-b border-zinc-200 dark:border-border ${compact ? "px-4 py-3.5" : "px-6 py-5"}`}>
+      <CardHeader className="border-b border-zinc-200 px-7 py-6 dark:border-border">
         <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
           {t.adminModeratorNotesTitle}
         </CardTitle>
@@ -126,7 +192,7 @@ function ModeratorNotesCard({
             : t.adminModeratorNotesSetupDescription}
         </CardDescription>
       </CardHeader>
-      <CardContent className={`space-y-3 ${compact ? "px-4 py-3.5" : "px-6 py-5"}`}>
+      <CardContent className="space-y-4 px-7 py-6">
         {notesAvailable ? (
           <>
             <div className="rounded-xl border border-zinc-200 bg-background p-3 shadow-sm dark:border-border dark:bg-background">
@@ -134,8 +200,8 @@ function ModeratorNotesCard({
                 value={moderatorNotes}
                 onChange={(event) => setModeratorNotes(event.target.value)}
                 placeholder={t.adminModeratorNotesPlaceholder}
-                rows={compact ? 3 : 6}
-                className={`${compact ? "h-24 min-h-24" : "h-40 min-h-32"} max-h-80 resize-y border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0`}
+                rows={7}
+                className="h-44 min-h-36 max-h-96 resize-y border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0"
               />
             </div>
 
@@ -339,7 +405,7 @@ export function AdminReportReviewContent({
       );
     }
 
-    router.push("/admin");
+    router.push("/admin/reports");
     router.refresh();
   }
 
@@ -423,7 +489,7 @@ export function AdminReportReviewContent({
         ? t.adminListingRemovedAndAllResolved
         : t.adminListingRemovedAndResolved,
     );
-    router.push("/admin");
+    router.push("/admin/reports");
     router.refresh();
   }
 
@@ -503,7 +569,7 @@ export function AdminReportReviewContent({
 
     forceNameOperationRef.current = null;
     toast.success(t.adminForceNameChangeSuccess);
-    router.push("/admin");
+    router.push("/admin/reports");
     router.refresh();
   }
 
@@ -623,15 +689,395 @@ export function AdminReportReviewContent({
         </CardContent>
       </Card>
 
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.8fr)]">
+        <div className="min-w-0 space-y-5 xl:space-y-6">
+          {isMessageReport ? (
+          <section className={REPORT_EVIDENCE_PANEL_CLASS}>
+            <div className="border-b border-zinc-200 px-6 py-4 dark:border-border">
+              <p className="text-lg font-semibold text-zinc-950 dark:text-foreground">
+                {t.adminConversationContextLabel}
+              </p>
+              <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
+                {t.adminConversationContextDescription}
+              </p>
+            </div>
+
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto bg-zinc-50/70 px-6 py-5 dark:bg-muted/20">
+              {messages.map((message) => {
+                const isBuyer = message.sender_id === conversation.buyer.id;
+                const sender = isBuyer ? conversation.buyer : conversation.seller;
+                const isFlagged = message.id === flaggedMessageId;
+
+                return (
+                  <div key={message.id} className={`flex items-end gap-3 ${isBuyer ? "" : "flex-row-reverse"}`}>
+                    <ProfileAvatar
+                      name={sender.name}
+                      avatarPresetId={sender.avatarPresetId}
+                      avatarUrl={sender.avatarUrl}
+                      className="size-10 border border-zinc-200 shadow-sm dark:border-border"
+                    />
+
+                    <div className={`relative flex max-w-[85%] flex-col gap-1.5 sm:max-w-[70%] ${isBuyer ? "items-start" : "items-end"}`}>
+                      <p className="px-1 text-xs text-zinc-500 dark:text-muted-foreground">
+                        <span className="font-semibold text-zinc-900 dark:text-foreground">
+                          {sender.name}
+                        </span>{" "}
+                        <ClientFormattedDateTime value={message.created_at} language={language} />
+                      </p>
+
+                      <div
+                        className={`w-fit rounded-[1.5rem] px-4 py-3 text-left shadow-sm ${
+                          isFlagged
+                            ? "border border-yellow-400 bg-yellow-50 text-zinc-950 dark:border-yellow-500/60 dark:bg-yellow-500/10 dark:text-foreground"
+                            : isBuyer
+                              ? "rounded-tl-md border border-zinc-200 bg-white text-zinc-900 dark:border-border dark:bg-card dark:text-foreground"
+                              : "rounded-tr-md bg-primary text-primary-foreground"
+                        }`}
+                      >
+                        {isFlagged ? (
+                          <div className="mb-2">
+                            <Badge className="rounded-full bg-amber-100 px-2 py-0 text-amber-900 shadow-none dark:bg-amber-500/15 dark:text-amber-200">
+                              {t.adminReportedMessageBadge}
+                            </Badge>
+                          </div>
+                        ) : null}
+                        <p className="whitespace-pre-wrap break-words text-sm leading-6">
+                          {message.body}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+          </section>
+          ) : isProfileReport ? (
+          <section className={REPORT_EVIDENCE_PANEL_CLASS}>
+            <div className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+              <p className="text-lg font-semibold text-zinc-950 dark:text-foreground">
+                {reviewTitle}
+              </p>
+              <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
+                {reviewDescription}
+              </p>
+            </div>
+
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-zinc-50/70 px-6 py-5 dark:bg-muted/20">
+              <Card className="rounded-[1.75rem] border-zinc-200 bg-white py-0 shadow-none dark:bg-card dark:ring-border">
+                <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+                  <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">
+                    {t.adminReportedProfileTitle}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-6 py-6">
+                  <Link href={`/profile/${profileTarget?.id}`} className="flex items-center gap-4 rounded-2xl bg-zinc-50 p-4 transition hover:bg-background dark:bg-muted/40 dark:hover:bg-background">
+                    <ProfileAvatar
+                      name={profileTarget?.name}
+                      avatarPresetId={profileTarget?.avatarPresetId}
+                      avatarUrl={profileTarget?.avatarUrl}
+                      className="size-16 border border-zinc-200 dark:border-border"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xl font-semibold text-zinc-950 dark:text-foreground">
+                        {profileTarget?.name}
+                      </p>
+                      <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
+                        {profileTarget?.school || t.torontoStudent}
+                      </p>
+                    </div>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-[1.75rem] border-zinc-200 bg-white py-0 shadow-none dark:bg-card dark:ring-border">
+                <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+                  <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">
+                    {t.profileDescriptionTitle}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-6 py-6">
+                  <p className="whitespace-pre-line text-sm leading-6 text-zinc-600 dark:text-muted-foreground">
+                    {profileTarget?.bio || t.profileNoBio}
+                  </p>
+                </CardContent>
+              </Card>
+
+            </div>
+
+          </section>
+          ) : (
+          <section className={REPORT_EVIDENCE_PANEL_CLASS}>
+            <div className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+              <p className="text-lg font-semibold text-zinc-950 dark:text-foreground">
+                {t.adminListingReviewTitle}
+              </p>
+              <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
+                {t.adminListingReviewDescription}
+              </p>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto bg-zinc-50/70 px-6 py-5 dark:bg-muted/20">
+              <div className="space-y-5">
+                <div className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 dark:border-border dark:bg-card">
+                  <div className="flex items-start gap-4">
+                    <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted">
+                      {listingReview?.listing?.imageUrl ? (
+                        <Image
+                          src={listingReview.listing.imageUrl}
+                          alt={listingReview.listing.title}
+                          fill
+                          sizes="96px"
+                          placeholder="blur"
+                          blurDataURL={REMOTE_IMAGE_BLUR_DATA_URL}
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xl font-semibold text-zinc-950 dark:text-foreground">
+                        {listingReview?.listing?.title}
+                      </p>
+                      <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
+                        {listingReview?.listing?.location || t.torontoMeetup}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {listingReview?.listing?.description ? (
+                  <Card className="rounded-[1.75rem] border-zinc-200 bg-white py-0 shadow-none dark:bg-card dark:ring-border">
+                    <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+                      <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">
+                        {t.description}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-6 py-6">
+                      <ListingDescriptionContent description={listingReview.listing.description} className="whitespace-normal leading-6 text-sm" />
+                    </CardContent>
+                  </Card>
+                ) : null}
+              </div>
+            </div>
+          </section>
+          )}
+
+          <ModeratorNotesCard
+            t={t}
+            language={language}
+            notesAvailable={notesAvailable}
+            moderatorNotes={moderatorNotes}
+            setModeratorNotes={setModeratorNotes}
+            report={report}
+            hasModeratorNotes={hasModeratorNotes}
+            isSavingNotes={isSavingNotes}
+            hasNotesChanges={hasNotesChanges}
+            handleSaveModeratorNotes={handleSaveModeratorNotes}
+          />
+        </div>
+
+        <div className="space-y-5 xl:space-y-6">
+
+          <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
+            <CardHeader className="border-b border-zinc-200 px-7 py-6 dark:border-border">
+              <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
+                {t.adminRelatedReportsTitle}
+              </CardTitle>
+              <CardDescription>{t.adminRelatedReportsDescription}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex min-h-44 flex-col justify-center gap-4 px-7 py-6">
+              {sortedRelatedReports.length > 0 ? (
+                sortedRelatedReports.map((relatedReport) => {
+                  const isCurrentReport = relatedReport.id === report.id;
+
+                  return (
+                    <Link
+                      key={relatedReport.id}
+                      href={`/admin/reports/${relatedReport.id}`}
+                      className={`flex min-h-32 items-center rounded-2xl border p-5 transition ${
+                        isCurrentReport
+                          ? "border-primary/40 bg-primary/5"
+                          : "border-zinc-200 bg-zinc-50 hover:bg-background dark:border-border dark:bg-muted/40 dark:hover:bg-background"
+                      }`}
+                    >
+                      <div className="flex w-full flex-wrap items-center justify-between gap-3">
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="outline" className="rounded-full border-border bg-background px-2 py-0 text-foreground">
+                              {getTranslatedReportReason(relatedReport.reason, t, relatedReport.subjectType)}
+                            </Badge>
+                            <Badge variant="outline" className="rounded-full border-border bg-background px-2 py-0 text-foreground">
+                              {getTranslatedReportStatus(relatedReport.status, t)}
+                            </Badge>
+                            {isCurrentReport ? (
+                              <Badge className="rounded-full bg-primary px-2 py-0 text-primary-foreground shadow-none">
+                                {t.adminCurrentReport}
+                              </Badge>
+                            ) : null}
+                          </div>
+
+                          <p className="text-sm font-medium text-zinc-950 dark:text-foreground">
+                            {relatedReport.reporter.name}
+                          </p>
+
+                          {relatedReport.reviewedBy || relatedReport.reviewedAt ? (
+                            <p className="text-xs text-zinc-500 dark:text-muted-foreground">
+                              {relatedReport.reviewedBy
+                                ? `${t.adminReviewedBy}: ${relatedReport.reviewedBy.name}`
+                                : t.reviewedAt}
+                              {relatedReport.reviewedAt ? (
+                                <>
+                                  {" "}· <ClientFormattedDateTime value={relatedReport.reviewedAt} language={language} />
+                                </>
+                              ) : null}
+                            </p>
+                          ) : null}
+
+                          {relatedReport.moderatorNotes ? (
+                            <p className="line-clamp-2 text-xs text-zinc-500 dark:text-muted-foreground">
+                              {relatedReport.moderatorNotes}
+                            </p>
+                          ) : null}
+
+                          {relatedReport.details ? (
+                            <p className="line-clamp-2 text-sm text-zinc-500 dark:text-muted-foreground">
+                              {relatedReport.details}
+                            </p>
+                          ) : null}
+                        </div>
+
+                        <div className="text-right text-xs text-zinc-500 dark:text-muted-foreground">
+                          <ClientFormattedDateTime value={relatedReport.createdAt} language={language} />
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })
+              ) : (
+                <p className="text-sm text-zinc-500 dark:text-muted-foreground">
+                  {t.adminNoRelatedReports}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {isProfileReport ? (
+            <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
+              <CardHeader className="border-b border-zinc-200 px-7 py-6 dark:border-border">
+                <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
+                  {t.adminReportedProfileTitle}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5 px-7 py-6">
+                <Link href={`/profile/${profileTarget?.id}`} className="flex items-center gap-3 rounded-xl transition hover:bg-zinc-50/80 dark:hover:bg-muted/40">
+                  <ProfileAvatar
+                    name={profileTarget?.name}
+                    avatarPresetId={profileTarget?.avatarPresetId}
+                    avatarUrl={profileTarget?.avatarUrl}
+                    className="size-10 border border-zinc-200 dark:border-border"
+                  />
+                  <div>
+                    <p className="font-medium text-zinc-950 dark:text-foreground">{profileTarget?.name}</p>
+                    <p className="text-sm text-zinc-500 dark:text-muted-foreground">{profileTarget?.school}</p>
+                  </div>
+                </Link>
+                <Separator />
+                <ReviewMetadata label={t.memberSince}>
+                  {profileTarget?.createdAt ? (
+                    <ClientFormattedDateTime value={profileTarget.createdAt} language={language} />
+                  ) : (
+                    "—"
+                  )}
+                </ReviewMetadata>
+                <Button asChild variant="outline" className="w-full rounded-xl">
+                  <Link href={`/profile/${profileTarget?.id}`}>{t.viewProfile}</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
+                <CardHeader className="border-b border-zinc-200 px-7 py-6 dark:border-border">
+                  <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
+                    {t.aboutListing}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex min-h-44 items-center px-7 py-6">
+                  <Link href={`/listings/${listingTarget.slug}`} className="w-full rounded-2xl bg-zinc-50 p-5 transition hover:bg-background dark:bg-muted/40 dark:hover:bg-background">
+                    <div className="flex min-h-24 items-center gap-4">
+                      <div className="relative h-18 w-18 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted">
+                        {listingTarget?.imageUrl ? (
+                          <Image
+                            src={listingTarget.imageUrl}
+                            alt={listingTarget.title}
+                            fill
+                            sizes="72px"
+                            placeholder="blur"
+                            blurDataURL={REMOTE_IMAGE_BLUR_DATA_URL}
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-base font-semibold text-zinc-950 dark:text-foreground">
+                          {listingTarget?.title}
+                        </p>
+                        <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
+                          {listingTarget?.location || t.torontoMeetup}
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
+                <CardHeader className="border-b border-zinc-200 px-7 py-6 dark:border-border">
+                  <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
+                    {isMessageReport ? t.adminParticipantsTitle : t.seller}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex min-h-52 flex-col justify-center gap-0 px-7 py-6">
+                  {(isMessageReport ? [conversation.buyer, conversation.seller] : [listingReview?.seller])
+                    .filter(Boolean)
+                    .map((participant, index) => (
+                      <React.Fragment key={participant.id}>
+                        {index > 0 ? <Separator /> : null}
+                        <Link href={`/profile/${participant.id}`} className="flex min-h-20 items-center gap-3 rounded-xl transition hover:bg-zinc-50/80 dark:hover:bg-muted/40">
+                          <ProfileAvatar
+                            name={participant.name}
+                            avatarPresetId={participant.avatarPresetId}
+                            avatarUrl={participant.avatarUrl}
+                            className="size-10 border border-zinc-200 dark:border-border"
+                          />
+                          <div>
+                            <p className="font-medium text-zinc-950 dark:text-foreground">{participant.name}</p>
+                            <p className="text-sm text-zinc-500 dark:text-muted-foreground">{participant.school}</p>
+                          </div>
+                        </Link>
+                      </React.Fragment>
+                    ))}
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </div>
+      </div>
+
       {hasOpenRelatedReports ? (
         <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-          <CardHeader className="border-b border-zinc-200 px-5 py-4 dark:border-border sm:px-6">
+          <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border sm:px-7 sm:py-6">
             <CardTitle className="text-lg text-zinc-950 dark:text-foreground">
-              {t.adminReportDecisionSummaryLabel}
+              {t.adminReportDecisionDetailsTitle}
             </CardTitle>
             <CardDescription>{t.adminDecisionPrivateFieldsNotice}</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-5 px-5 py-5 sm:px-6 lg:grid-cols-2">
+          <CardContent className={`grid items-start gap-x-6 gap-y-7 px-6 py-6 sm:px-7 sm:py-7 ${
+            canRemoveListing || canForceNameChange ? "lg:grid-cols-2" : "lg:grid-cols-1"
+          }`}>
             <DecisionTextField
               id="report-decision-summary"
               label={t.adminReportDecisionSummaryLabel}
@@ -725,508 +1171,23 @@ export function AdminReportReviewContent({
               </>
             ) : null}
           </CardContent>
+          <CardFooter className="border-zinc-200 bg-muted/20 px-6 py-5 dark:border-border sm:px-7 sm:py-6">
+            <ReportDecisionActions
+              t={t}
+              canRemoveListing={canRemoveListing}
+              canForceNameChange={canForceNameChange}
+              isProcessing={isProcessing}
+              hasOpenRelatedReports={hasOpenRelatedReports}
+              removeListingActionLabel={removeListingActionLabel}
+              dismissActionLabel={dismissActionLabel}
+              resolveActionLabel={resolveActionLabel}
+              handleRemoveListing={handleRemoveListing}
+              handleForceNameChange={handleForceNameChange}
+              handleUpdateStatus={handleUpdateStatus}
+            />
+          </CardFooter>
         </Card>
       ) : null}
-
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.8fr)]">
-        {isMessageReport ? (
-          <section className="flex flex-col overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card">
-            <div className="border-b border-zinc-200 px-6 py-4 dark:border-border">
-              <p className="text-lg font-semibold text-zinc-950 dark:text-foreground">
-                {t.adminConversationContextLabel}
-              </p>
-              <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
-                {t.adminConversationContextDescription}
-              </p>
-            </div>
-
-            <div className="max-h-[60vh] space-y-5 overflow-y-auto bg-zinc-50/70 px-6 py-5 dark:bg-muted/20">
-              {messages.map((message) => {
-                const isBuyer = message.sender_id === conversation.buyer.id;
-                const sender = isBuyer ? conversation.buyer : conversation.seller;
-                const isFlagged = message.id === flaggedMessageId;
-
-                return (
-                  <div key={message.id} className={`flex items-end gap-3 ${isBuyer ? "" : "flex-row-reverse"}`}>
-                    <ProfileAvatar
-                      name={sender.name}
-                      avatarPresetId={sender.avatarPresetId}
-                      avatarUrl={sender.avatarUrl}
-                      className="size-10 border border-zinc-200 shadow-sm dark:border-border"
-                    />
-
-                    <div className={`relative flex max-w-[85%] flex-col gap-1.5 sm:max-w-[70%] ${isBuyer ? "items-start" : "items-end"}`}>
-                      <p className="px-1 text-xs text-zinc-500 dark:text-muted-foreground">
-                        <span className="font-semibold text-zinc-900 dark:text-foreground">
-                          {sender.name}
-                        </span>{" "}
-                        <ClientFormattedDateTime value={message.created_at} language={language} />
-                      </p>
-
-                      <div
-                        className={`w-fit rounded-[1.5rem] px-4 py-3 text-left shadow-sm ${
-                          isFlagged
-                            ? "border border-yellow-400 bg-yellow-50 text-zinc-950 dark:border-yellow-500/60 dark:bg-yellow-500/10 dark:text-foreground"
-                            : isBuyer
-                              ? "rounded-tl-md border border-zinc-200 bg-white text-zinc-900 dark:border-border dark:bg-card dark:text-foreground"
-                              : "rounded-tr-md bg-primary text-primary-foreground"
-                        }`}
-                      >
-                        {isFlagged ? (
-                          <div className="mb-2">
-                            <Badge className="rounded-full bg-amber-100 px-2 py-0 text-amber-900 shadow-none dark:bg-amber-500/15 dark:text-amber-200">
-                              {t.adminReportedMessageBadge}
-                            </Badge>
-                          </div>
-                        ) : null}
-                        <p className="whitespace-pre-wrap break-words text-sm leading-6">
-                          {message.body}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="border-t border-zinc-200 bg-background px-5 py-4 dark:border-border">
-              <ModeratorNotesCard
-                t={t}
-                language={language}
-                notesAvailable={notesAvailable}
-                moderatorNotes={moderatorNotes}
-                setModeratorNotes={setModeratorNotes}
-                report={report}
-                hasModeratorNotes={hasModeratorNotes}
-                isSavingNotes={isSavingNotes}
-                hasNotesChanges={hasNotesChanges}
-                handleSaveModeratorNotes={handleSaveModeratorNotes}
-                compact
-              />
-            </div>
-
-            <div className="border-t border-zinc-200 bg-background px-6 py-4 dark:border-border">
-              <div className="flex flex-wrap justify-end gap-2">
-                {canRemoveListing ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="rounded-xl"
-                    onClick={handleRemoveListing}
-                    disabled={isProcessing || !hasOpenRelatedReports}
-                  >
-                    {removeListingActionLabel}
-                  </Button>
-                ) : null}
-                {canForceNameChange ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="rounded-xl"
-                    onClick={handleForceNameChange}
-                    disabled={isProcessing}
-                  >
-                    {t.adminForceNameChange}
-                  </Button>
-                ) : null}
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-xl"
-                  onClick={() => handleUpdateStatus(REPORT_STATUS_VALUES.dismissed)}
-                  disabled={isProcessing || !hasOpenRelatedReports}
-                >
-                  {dismissActionLabel}
-                </Button>
-                <Button
-                  type="button"
-                  className="rounded-xl"
-                  onClick={() => handleUpdateStatus(REPORT_STATUS_VALUES.resolved)}
-                  disabled={isProcessing || !hasOpenRelatedReports}
-                >
-                  {resolveActionLabel}
-                </Button>
-              </div>
-            </div>
-          </section>
-        ) : isProfileReport ? (
-          <section className="flex flex-col overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card">
-            <div className="border-b border-zinc-200 px-6 py-5 dark:border-border">
-              <p className="text-lg font-semibold text-zinc-950 dark:text-foreground">
-                {reviewTitle}
-              </p>
-              <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
-                {reviewDescription}
-              </p>
-            </div>
-
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-zinc-50/70 px-6 py-5 dark:bg-muted/20">
-              <Card className="rounded-[1.75rem] border-zinc-200 bg-white py-0 shadow-none dark:bg-card dark:ring-border">
-                <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
-                  <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">
-                    {t.adminReportedProfileTitle}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="px-6 py-6">
-                  <Link href={`/profile/${profileTarget?.id}`} className="flex items-center gap-4 rounded-2xl bg-zinc-50 p-4 transition hover:bg-background dark:bg-muted/40 dark:hover:bg-background">
-                    <ProfileAvatar
-                      name={profileTarget?.name}
-                      avatarPresetId={profileTarget?.avatarPresetId}
-                      avatarUrl={profileTarget?.avatarUrl}
-                      className="size-16 border border-zinc-200 dark:border-border"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-xl font-semibold text-zinc-950 dark:text-foreground">
-                        {profileTarget?.name}
-                      </p>
-                      <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
-                        {profileTarget?.school || t.torontoStudent}
-                      </p>
-                    </div>
-                  </Link>
-                </CardContent>
-              </Card>
-
-              <Card className="rounded-[1.75rem] border-zinc-200 bg-white py-0 shadow-none dark:bg-card dark:ring-border">
-                <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
-                  <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">
-                    {t.profileDescriptionTitle}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="px-6 py-6">
-                  <p className="whitespace-pre-line text-sm leading-6 text-zinc-600 dark:text-muted-foreground">
-                    {profileTarget?.bio || t.profileNoBio}
-                  </p>
-                </CardContent>
-              </Card>
-
-            </div>
-
-            <div className="border-t border-zinc-200 bg-background px-6 py-5 dark:border-border">
-              <div className="flex flex-wrap justify-end gap-2">
-                {canForceNameChange ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="rounded-xl"
-                    onClick={handleForceNameChange}
-                    disabled={isProcessing}
-                  >
-                    {t.adminForceNameChange}
-                  </Button>
-                ) : null}
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-xl"
-                  onClick={() => handleUpdateStatus(REPORT_STATUS_VALUES.dismissed)}
-                  disabled={isProcessing || !hasOpenRelatedReports}
-                >
-                  {dismissActionLabel}
-                </Button>
-                <Button
-                  type="button"
-                  className="rounded-xl"
-                  onClick={() => handleUpdateStatus(REPORT_STATUS_VALUES.resolved)}
-                  disabled={isProcessing || !hasOpenRelatedReports}
-                >
-                  {resolveActionLabel}
-                </Button>
-              </div>
-            </div>
-          </section>
-        ) : (
-          <section className="flex flex-col overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card">
-            <div className="border-b border-zinc-200 px-6 py-5 dark:border-border">
-              <p className="text-lg font-semibold text-zinc-950 dark:text-foreground">
-                {t.adminListingReviewTitle}
-              </p>
-              <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
-                {t.adminListingReviewDescription}
-              </p>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto bg-zinc-50/70 px-6 py-5 dark:bg-muted/20">
-              <div className="space-y-5">
-                <div className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 dark:border-border dark:bg-card">
-                  <div className="flex items-start gap-4">
-                    <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted">
-                      {listingReview?.listing?.imageUrl ? (
-                        <Image
-                          src={listingReview.listing.imageUrl}
-                          alt={listingReview.listing.title}
-                          fill
-                          sizes="96px"
-                          placeholder="blur"
-                          blurDataURL={REMOTE_IMAGE_BLUR_DATA_URL}
-                          className="object-cover"
-                        />
-                      ) : (
-                        <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xl font-semibold text-zinc-950 dark:text-foreground">
-                        {listingReview?.listing?.title}
-                      </p>
-                      <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
-                        {listingReview?.listing?.location || t.torontoMeetup}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {listingReview?.listing?.description ? (
-                  <Card className="rounded-[1.75rem] border-zinc-200 bg-white py-0 shadow-none dark:bg-card dark:ring-border">
-                    <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
-                      <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">
-                        {t.description}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="px-6 py-6">
-                      <ListingDescriptionContent description={listingReview.listing.description} className="whitespace-normal leading-6 text-sm" />
-                    </CardContent>
-                  </Card>
-                ) : null}
-              </div>
-            </div>
-            <div className="border-t border-zinc-200 bg-background px-6 py-5 dark:border-border">
-              <div className="flex flex-wrap justify-end gap-2">
-                {canRemoveListing ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="rounded-xl"
-                    onClick={handleRemoveListing}
-                    disabled={isProcessing || !hasOpenRelatedReports}
-                  >
-                    {removeListingActionLabel}
-                  </Button>
-                ) : null}
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-xl"
-                  onClick={() => handleUpdateStatus(REPORT_STATUS_VALUES.dismissed)}
-                  disabled={isProcessing || !hasOpenRelatedReports}
-                >
-                  {dismissActionLabel}
-                </Button>
-                <Button
-                  type="button"
-                  className="rounded-xl"
-                  onClick={() => handleUpdateStatus(REPORT_STATUS_VALUES.resolved)}
-                  disabled={isProcessing || !hasOpenRelatedReports}
-                >
-                  {resolveActionLabel}
-                </Button>
-              </div>
-            </div>
-          </section>
-        )}
-      
-        <div className="space-y-4">
-          {!isMessageReport ? (
-            <ModeratorNotesCard
-              t={t}
-              language={language}
-              notesAvailable={notesAvailable}
-              moderatorNotes={moderatorNotes}
-              setModeratorNotes={setModeratorNotes}
-              report={report}
-              hasModeratorNotes={hasModeratorNotes}
-              isSavingNotes={isSavingNotes}
-              hasNotesChanges={hasNotesChanges}
-              handleSaveModeratorNotes={handleSaveModeratorNotes}
-            />
-          ) : null}
-
-          <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-            <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
-              <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
-                {t.adminRelatedReportsTitle}
-              </CardTitle>
-              <CardDescription>{t.adminRelatedReportsDescription}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 px-6 py-5">
-              {sortedRelatedReports.length > 0 ? (
-                sortedRelatedReports.map((relatedReport) => {
-                  const isCurrentReport = relatedReport.id === report.id;
-
-                  return (
-                    <Link
-                      key={relatedReport.id}
-                      href={`/admin/reports/${relatedReport.id}`}
-                      className={`block rounded-2xl border p-4 transition ${
-                        isCurrentReport
-                          ? "border-primary/40 bg-primary/5"
-                          : "border-zinc-200 bg-zinc-50 hover:bg-background dark:border-border dark:bg-muted/40 dark:hover:bg-background"
-                      }`}
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="space-y-2">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant="outline" className="rounded-full border-border bg-background px-2 py-0 text-foreground">
-                              {getTranslatedReportReason(relatedReport.reason, t, relatedReport.subjectType)}
-                            </Badge>
-                            <Badge variant="outline" className="rounded-full border-border bg-background px-2 py-0 text-foreground">
-                              {getTranslatedReportStatus(relatedReport.status, t)}
-                            </Badge>
-                            {isCurrentReport ? (
-                              <Badge className="rounded-full bg-primary px-2 py-0 text-primary-foreground shadow-none">
-                                {t.adminCurrentReport}
-                              </Badge>
-                            ) : null}
-                          </div>
-
-                          <p className="text-sm font-medium text-zinc-950 dark:text-foreground">
-                            {relatedReport.reporter.name}
-                          </p>
-
-                          {relatedReport.reviewedBy || relatedReport.reviewedAt ? (
-                            <p className="text-xs text-zinc-500 dark:text-muted-foreground">
-                              {relatedReport.reviewedBy
-                                ? `${t.adminReviewedBy}: ${relatedReport.reviewedBy.name}`
-                                : t.reviewedAt}
-                              {relatedReport.reviewedAt ? (
-                                <>
-                                  {" "}· <ClientFormattedDateTime value={relatedReport.reviewedAt} language={language} />
-                                </>
-                              ) : null}
-                            </p>
-                          ) : null}
-
-                          {relatedReport.moderatorNotes ? (
-                            <p className="line-clamp-2 text-xs text-zinc-500 dark:text-muted-foreground">
-                              {relatedReport.moderatorNotes}
-                            </p>
-                          ) : null}
-
-                          {relatedReport.details ? (
-                            <p className="line-clamp-2 text-sm text-zinc-500 dark:text-muted-foreground">
-                              {relatedReport.details}
-                            </p>
-                          ) : null}
-                        </div>
-
-                        <div className="text-right text-xs text-zinc-500 dark:text-muted-foreground">
-                          <ClientFormattedDateTime value={relatedReport.createdAt} language={language} />
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })
-              ) : (
-                <p className="text-sm text-zinc-500 dark:text-muted-foreground">
-                  {t.adminNoRelatedReports}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          {isProfileReport ? (
-            <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-              <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
-                <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
-                  {t.adminReportedProfileTitle}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 px-6 py-5">
-                <Link href={`/profile/${profileTarget?.id}`} className="flex items-center gap-3 rounded-xl transition hover:bg-zinc-50/80 dark:hover:bg-muted/40">
-                  <ProfileAvatar
-                    name={profileTarget?.name}
-                    avatarPresetId={profileTarget?.avatarPresetId}
-                    avatarUrl={profileTarget?.avatarUrl}
-                    className="size-10 border border-zinc-200 dark:border-border"
-                  />
-                  <div>
-                    <p className="font-medium text-zinc-950 dark:text-foreground">{profileTarget?.name}</p>
-                    <p className="text-sm text-zinc-500 dark:text-muted-foreground">{profileTarget?.school}</p>
-                  </div>
-                </Link>
-                <Separator />
-                <ReviewMetadata label={t.memberSince}>
-                  {profileTarget?.createdAt ? (
-                    <ClientFormattedDateTime value={profileTarget.createdAt} language={language} />
-                  ) : (
-                    "—"
-                  )}
-                </ReviewMetadata>
-                <Button asChild variant="outline" className="w-full rounded-xl">
-                  <Link href={`/profile/${profileTarget?.id}`}>{t.viewProfile}</Link>
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <>
-              <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-                <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
-                  <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
-                    {t.aboutListing}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 px-6 py-5">
-                  <Link href={`/listings/${listingTarget.slug}`} className="block rounded-2xl bg-zinc-50 p-4 transition hover:bg-background dark:bg-muted/40 dark:hover:bg-background">
-                    <div className="flex items-center gap-4">
-                      <div className="relative h-18 w-18 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted">
-                        {listingTarget?.imageUrl ? (
-                          <Image
-                            src={listingTarget.imageUrl}
-                            alt={listingTarget.title}
-                            fill
-                            sizes="72px"
-                            placeholder="blur"
-                            blurDataURL={REMOTE_IMAGE_BLUR_DATA_URL}
-                            className="object-cover"
-                          />
-                        ) : (
-                          <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-base font-semibold text-zinc-950 dark:text-foreground">
-                          {listingTarget?.title}
-                        </p>
-                        <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
-                          {listingTarget?.location || t.torontoMeetup}
-                        </p>
-                      </div>
-                    </div>
-                  </Link>
-                </CardContent>
-              </Card>
-
-              <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-                <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
-                  <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
-                    {isMessageReport ? t.adminParticipantsTitle : t.seller}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 px-6 py-5">
-                  {(isMessageReport ? [conversation.buyer, conversation.seller] : [listingReview?.seller])
-                    .filter(Boolean)
-                    .map((participant, index) => (
-                      <React.Fragment key={participant.id}>
-                        {index > 0 ? <Separator /> : null}
-                        <Link href={`/profile/${participant.id}`} className="flex items-center gap-3 rounded-xl transition hover:bg-zinc-50/80 dark:hover:bg-muted/40">
-                          <ProfileAvatar
-                            name={participant.name}
-                            avatarPresetId={participant.avatarPresetId}
-                            avatarUrl={participant.avatarUrl}
-                            className="size-10 border border-zinc-200 dark:border-border"
-                          />
-                          <div>
-                            <p className="font-medium text-zinc-950 dark:text-foreground">{participant.name}</p>
-                            <p className="text-sm text-zinc-500 dark:text-muted-foreground">{participant.school}</p>
-                          </div>
-                        </Link>
-                      </React.Fragment>
-                    ))}
-                </CardContent>
-              </Card>
-            </>
-          )}
-        </div>
-      </div>
     </div>
   );
 }

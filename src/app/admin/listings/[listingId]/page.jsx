@@ -145,9 +145,9 @@ export default async function AdminListingApprovalReviewPage({ params }) {
       <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Button asChild variant="ghost" className="h-9 rounded-full px-3">
-            <Link href="/admin">
+            <Link href="/admin/listings">
               <ArrowLeft className="size-4" />
-              <span>{t.backToAdminReports}</span>
+              <span>{t.backToAdminListings}</span>
             </Link>
           </Button>
           <div className="flex items-center gap-2 rounded-full bg-background px-3 py-1.5 text-sm text-muted-foreground shadow-sm">

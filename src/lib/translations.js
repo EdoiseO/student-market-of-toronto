@@ -226,9 +226,10 @@ export const translations = {
       "The listing could not be saved. Review the required fields and try again.",
     reportOtherDetailsRequired: "Add 10–600 characters of detail when you choose Other.",
     reportDetailsCharacterCount: "{count}/600 characters",
-    adminReportDecisionSummaryLabel: "Private decision summary",
+    adminReportDecisionDetailsTitle: "Decision details",
+    adminReportDecisionSummaryLabel: "Outcome note for moderators",
     adminReportDecisionSummaryDescription:
-      "Required. Explain the report outcome for moderation staff in 10–1,000 characters.",
+      "Required when closing or marking reports addressed. Explain the outcome in 10–1,000 characters.",
     adminReportDecisionSummaryPlaceholder:
       "Record why these reports are being resolved or dismissed…",
     adminReportDecisionSummaryValidation:
@@ -239,9 +240,9 @@ export const translations = {
     adminRemoveListingFeedbackPlaceholder: "Explain why the listing was removed…",
     adminRemoveListingFeedbackValidation:
       "Enter a seller message between 10 and 3,000 characters.",
-    adminRemoveListingPrivateSummaryLabel: "Private decision summary (optional)",
+    adminRemoveListingPrivateSummaryLabel: "Internal removal note (optional)",
     adminRemoveListingPrivateSummaryDescription:
-      "Visible only to authorized moderation staff. Maximum 1,000 characters.",
+      "Additional context for authorized moderation staff only. Maximum 1,000 characters.",
     adminForceNamePolicyReasonLabel: "Policy reason",
     adminForceNamePolicyReasonDescription:
       "Required. Record the policy basis in 10–1,000 characters.",
@@ -252,7 +253,9 @@ export const translations = {
     adminForceNamePrivateNoteDescription:
       "Visible only to authorized moderation staff. Maximum 4,000 characters.",
     adminDecisionPrivateFieldsNotice:
-      "Private moderation text is never included in user notifications.",
+      "Complete the fields for the action you plan to take. Private moderation text is never included in user notifications.",
+    adminDecisionActionSaveHint:
+      "There is no separate Save button here. Choosing an action saves the fields required for that action.",
     notificationProfileNameChangeRequiredTitle: "Update your profile name",
     notificationProfileNameChangeRequiredDescription:
       "A moderator requires you to update your profile name before continuing.",
@@ -864,6 +867,7 @@ export const translations = {
     adminConversationsSearchLabel: "Search conversations",
     adminConversationsSearchPlaceholder:
       "Search participants, school, listing, or conversation ID",
+    adminConversationsSearchAction: "Search",
     adminConversationsLoadErrorTitle: "Conversation registry could not load",
     adminConversationsLoadErrorDescription:
       "Moderation access or conversation data could not be verified. Reload to try again.",
@@ -1163,7 +1167,9 @@ export const translations = {
       "Add seller-facing feedback before rejecting this listing.",
     adminProfileReviewDescription:
       "Inspect the reported profile details and the related reports before deciding on the moderation outcome.",
+    backToAdminOverview: "Back to overview",
     backToAdminReports: "Back to reports",
+    backToAdminListings: "Back to listings",
     adminParticipantsTitle: "Conversation participants",
     adminReportedProfileTitle: "Reported profile",
     adminProfileNoListings: "This profile has no active listings right now.",
@@ -1176,9 +1182,9 @@ export const translations = {
     adminModeratorNotesDescription:
       "Private review notes for this specific report. Use them to capture context, rationale, or follow-up details.",
     adminModeratorNotesSetupDescription:
-      "Moderator notes need a small reports-table update before they can be saved here.",
+      "Moderator notes are unavailable because this environment is missing the moderation-notes database migration.",
     adminModeratorNotesSetupHint:
-      "Apply the moderator notes SQL in Supabase to enable private report notes and note audit fields.",
+      "The interface is ready, but the secure note reader and save functions are not installed in this database yet.",
     adminModeratorNotesPlaceholder:
       "Add private review notes, decision context, or follow-up reminders for this report...",
     adminModeratorNotesSaved: "Moderator notes saved.",
@@ -1610,9 +1616,10 @@ export const translations = {
     reportOtherDetailsRequired:
       "Ajoutez de 10 à 600 caractères de détails lorsque vous choisissez Autre.",
     reportDetailsCharacterCount: "{count}/600 caractères",
-    adminReportDecisionSummaryLabel: "Résumé privé de la décision",
+    adminReportDecisionDetailsTitle: "Détails de la décision",
+    adminReportDecisionSummaryLabel: "Note de résultat pour la modération",
     adminReportDecisionSummaryDescription:
-      "Obligatoire. Expliquez le résultat du signalement au personnel de modération en 10 à 1 000 caractères.",
+      "Obligatoire pour fermer ou marquer les signalements comme traités. Expliquez le résultat en 10 à 1 000 caractères.",
     adminReportDecisionSummaryPlaceholder:
       "Indiquez pourquoi ces signalements sont résolus ou rejetés…",
     adminReportDecisionSummaryValidation:
@@ -1625,9 +1632,9 @@ export const translations = {
     adminRemoveListingFeedbackValidation:
       "Saisissez un message au vendeur de 10 à 3 000 caractères.",
     adminRemoveListingPrivateSummaryLabel:
-      "Résumé privé de la décision (facultatif)",
+      "Note interne sur le retrait (facultative)",
     adminRemoveListingPrivateSummaryDescription:
-      "Visible uniquement par le personnel de modération autorisé. Maximum de 1 000 caractères.",
+      "Contexte supplémentaire réservé au personnel de modération autorisé. Maximum de 1 000 caractères.",
     adminForceNamePolicyReasonLabel: "Motif de politique",
     adminForceNamePolicyReasonDescription:
       "Obligatoire. Consignez le fondement de politique en 10 à 1 000 caractères.",
@@ -1639,7 +1646,9 @@ export const translations = {
     adminForceNamePrivateNoteDescription:
       "Visible uniquement par le personnel de modération autorisé. Maximum de 4 000 caractères.",
     adminDecisionPrivateFieldsNotice:
-      "Le texte privé de modération n’est jamais inclus dans les notifications aux utilisateurs.",
+      "Remplissez les champs correspondant à l’action prévue. Le texte privé de modération n’est jamais inclus dans les notifications aux utilisateurs.",
+    adminDecisionActionSaveHint:
+      "Il n’y a pas de bouton Enregistrer distinct ici. Le choix d’une action enregistre les champs requis pour cette action.",
     notificationProfileNameChangeRequiredTitle:
       "Mettez à jour votre nom de profil",
     notificationProfileNameChangeRequiredDescription:
@@ -2281,6 +2290,7 @@ export const translations = {
     adminConversationsSearchLabel: "Rechercher des conversations",
     adminConversationsSearchPlaceholder:
       "Rechercher un participant, une école, une annonce ou un ID",
+    adminConversationsSearchAction: "Rechercher",
     adminConversationsLoadErrorTitle:
       "Impossible de charger le registre des conversations",
     adminConversationsLoadErrorDescription:
@@ -2613,7 +2623,9 @@ export const translations = {
       "Ajoutez un commentaire destiné au vendeur avant de refuser cette annonce.",
     adminProfileReviewDescription:
       "Inspectez les détails du profil signalé et les signalements liés avant de décider du résultat de modération.",
+    backToAdminOverview: "Retour à l’aperçu",
     backToAdminReports: "Retour aux signalements",
+    backToAdminListings: "Retour aux annonces",
     adminParticipantsTitle: "Participants à la conversation",
     adminReportedProfileTitle: "Profil signalé",
     adminProfileNoListings: "Ce profil n'a aucune annonce active pour le moment.",
@@ -2626,9 +2638,9 @@ export const translations = {
     adminModeratorNotesDescription:
       "Notes privées pour ce signalement précis. Utilisez-les pour garder le contexte, la justification ou un suivi à faire.",
     adminModeratorNotesSetupDescription:
-      "Les notes de modération exigent une petite mise à jour de la table `reports` avant de pouvoir être enregistrées ici.",
+      "Les notes de modération sont indisponibles, car la migration de base de données correspondante manque dans cet environnement.",
     adminModeratorNotesSetupHint:
-      "Appliquez le SQL des notes de modération dans Supabase pour activer les notes privées et leurs champs d'audit.",
+      "L’interface est prête, mais les fonctions sécurisées de lecture et d’enregistrement ne sont pas encore installées dans cette base de données.",
     adminModeratorNotesPlaceholder:
       "Ajoutez des notes privées, le contexte de la décision, ou des rappels de suivi pour ce signalement...",
     adminModeratorNotesSaved: "Notes de modération enregistrées.",

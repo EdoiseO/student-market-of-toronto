@@ -139,6 +139,69 @@ test("Stage 6 moderation rationale foundation is append-only, bounded, private, 
   assert.match(route, /save_report_moderator_note/);
   assert.doesNotMatch(route, /\.from\("reports"\)\s*\.update/);
   assert.doesNotMatch(reportUi, /maxLength=/);
+  const reportGridIndex = reportUi.indexOf("grid items-start gap-4");
+  const reportEvidenceColumnIndex = reportUi.indexOf("min-w-0 space-y-5 xl:space-y-6", reportGridIndex);
+  const reportEvidenceIndex = reportUi.indexOf("{isMessageReport ? (", reportEvidenceColumnIndex);
+  const moderatorNotesIndex = reportUi.indexOf("<ModeratorNotesCard", reportEvidenceIndex);
+  const reportContextColumnIndex = reportUi.indexOf(
+    '<div className="space-y-5 xl:space-y-6">',
+    moderatorNotesIndex,
+  );
+  const relatedReportsIndex = reportUi.indexOf("adminRelatedReportsTitle", reportContextColumnIndex);
+  const decisionDetailsIndex = reportUi.indexOf("adminReportDecisionDetailsTitle", relatedReportsIndex);
+  assert.ok(
+    reportGridIndex >= 0
+      && reportGridIndex < reportEvidenceColumnIndex
+      && reportEvidenceColumnIndex < reportEvidenceIndex
+      && reportGridIndex < reportEvidenceIndex
+      && reportEvidenceIndex < moderatorNotesIndex
+      && moderatorNotesIndex < reportContextColumnIndex
+      && reportContextColumnIndex < relatedReportsIndex
+      && moderatorNotesIndex < relatedReportsIndex
+      && relatedReportsIndex < decisionDetailsIndex,
+    "evidence and moderator notes must stay in the left column before the right-rail context and full-width decision details",
+  );
+  assert.equal(
+    (reportUi.match(/<ModeratorNotesCard/g) ?? []).length,
+    1,
+    "all report types must render the same moderator-notes card below their evidence",
+  );
+  assert.match(
+    reportUi,
+    /REPORT_EVIDENCE_PANEL_CLASS[\s\S]*xl:h-\[clamp\(28rem,60vh,34rem\)\]/,
+  );
+  assert.equal(
+    (reportUi.match(/<section className=\{REPORT_EVIDENCE_PANEL_CLASS\}>/g) ?? []).length,
+    3,
+    "message, profile, and listing evidence must share one desktop viewport size",
+  );
+  assert.match(reportUi, /min-h-0 flex-1 space-y-5 overflow-y-auto/);
+  assert.doesNotMatch(reportUi, /max-h-\[60vh\]/);
+  assert.doesNotMatch(reportUi, /\bcompact\b/);
+  assert.ok(
+    reportUi.indexOf("adminConversationContextLabel")
+      < reportUi.indexOf("adminReportDecisionDetailsTitle"),
+    "report and conversation context should appear before decision controls",
+  );
+  assert.match(reportUi, /lg:min-h-\[4\.75rem\]/);
+  assert.match(reportUi, /canRemoveListing \|\| canForceNameChange \? "lg:grid-cols-2" : "lg:grid-cols-1"/);
+  assert.match(reportUi, /min-h-32 resize-y rounded-xl/);
+  assert.match(reportUi, /space-y-5 xl:space-y-6/);
+  assert.match(reportUi, /flex min-h-44 flex-col justify-center gap-4 px-7 py-6/);
+  assert.match(reportUi, /flex min-h-44 items-center px-7 py-6/);
+  assert.match(reportUi, /flex min-h-52 flex-col justify-center gap-0 px-7 py-6/);
+  assert.match(reportUi, /flex min-h-20 items-center gap-3 rounded-xl/);
+  assert.match(reportUi, /<CardFooter[\s\S]*?<ReportDecisionActions/);
+  assert.equal(
+    (reportUi.match(/router\.push\("\/admin\/reports"\)/g) ?? []).length,
+    3,
+    "all successful report actions must return to the reports registry",
+  );
+  assert.doesNotMatch(reportUi, /router\.push\("\/admin"\)/);
+  assert.match(reportPage, /<Link href="\/admin\/reports">/);
+  assert.doesNotMatch(reportPage, /<Link href="\/admin">/);
+  assert.equal((translations.match(/adminReportDecisionDetailsTitle:/g) ?? []).length, 2);
+  assert.equal((translations.match(/adminDecisionActionSaveHint:/g) ?? []).length, 2);
 
   assert.doesNotMatch(listingUi, /maxLength=/);
   assert.match(listingRoute, /normalizeWriteText\(feedback\)/);

@@ -61,7 +61,7 @@ export function AdminEnforcementContent({
         <Button asChild variant="ghost" size="sm" className="mb-3 -ml-2 rounded-full">
           <Link href="/admin">
             <ArrowLeftIcon aria-hidden="true" className="size-4" />
-            {t.backToAdminReports}
+            {t.backToAdminOverview}
           </Link>
         </Button>
         <div className="flex min-w-0 items-start gap-3">

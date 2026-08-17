@@ -47,7 +47,6 @@ import {
   StarIcon,
   Settings2Icon,
   ShieldCheckIcon,
-  ShieldAlertIcon,
   TerminalIcon,
   UserIcon,
   FileTextIcon,
@@ -191,11 +190,6 @@ export function AppSidebar({ user, ...props }) {
       title: t.settings,
       url: "/dashboard/settings",
       icon: Settings2Icon,
-    },
-    {
-      title: t.accountStanding,
-      url: "/dashboard/standing",
-      icon: ShieldAlertIcon,
     },
     ...(showModerationItem
       ? [

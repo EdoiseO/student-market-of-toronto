@@ -73,7 +73,7 @@ export default async function AdminUsersPage({ searchParams }) {
             <Button asChild variant="ghost" className="h-9 rounded-full px-3">
               <Link href="/admin">
                 <ArrowLeft className="size-4" />
-                <span>{t.backToAdminReports}</span>
+                <span>{t.backToAdminOverview}</span>
               </Link>
             </Button>
             <div className="flex items-center gap-2 rounded-full bg-background px-3 py-1.5 text-sm text-muted-foreground shadow-sm">
@@ -197,7 +197,7 @@ export default async function AdminUsersPage({ searchParams }) {
               <Button asChild variant="outline" className="rounded-xl">
                 <Link href="/admin">
                   <ArrowLeft className="size-4" />
-                  <span>{t.backToAdminReports}</span>
+                  <span>{t.backToAdminOverview}</span>
                 </Link>
               </Button>
             </div>

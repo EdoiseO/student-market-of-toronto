@@ -176,8 +176,8 @@ test("bell soft-dismisses enforcement notices without changing legacy deletion b
   assert.match(notificationsButton, /supabase\.from\("notifications"\)\.delete\(\)/i);
 });
 
-test("standing is reachable on desktop and at 320px without exposing private notice fields", () => {
-  assert.match(sidebar, /title: t\.accountStanding,[\s\S]*url: "\/dashboard\/standing"/i);
+test("standing stays out of the everyday sidebar while canonical account paths remain reachable", () => {
+  assert.doesNotMatch(sidebar, /t\.accountStanding|\/dashboard\/standing|ShieldAlertIcon/i);
   assert.match(dashboard, /grid-cols-1[\s\S]*min-\[360px\]:grid-cols-3/i);
   assert.match(dashboard, /href="\/dashboard\/standing"/i);
   assert.match(settings, /href="\/dashboard\/standing"/i);

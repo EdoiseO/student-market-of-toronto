@@ -113,7 +113,11 @@ test("closed UI preserves history/media while replacing writes across responsive
   assert.match(thread, /overflow-x-hidden/);
   assert.match(thread, /max-w-4xl min-w-0/);
   assert.match(listSkeleton, /showStatus/);
-  assert.match(threadSkeleton, /border-amber-200/);
+  assert.doesNotMatch(
+    threadSkeleton,
+    /border-amber/,
+    "the data-agnostic thread skeleton must not imply that every conversation is closed",
+  );
 });
 
 test("conversation transition notification trigger emits safe recipient-only signals", async () => {

@@ -168,6 +168,54 @@ test("Stage 5 surfaces use only bounded trusted RPCs and stable operation IDs", 
   assert.doesNotMatch(safeNotificationSql, /supabase_realtime|notification_realtime_signals/i);
 });
 
+test("conversation navigation and search controls are visible and ordered", async () => {
+  const [navigation, registry, translations] = await Promise.all([
+    readFile(new URL("../src/components/admin-navigation.jsx", import.meta.url), "utf8"),
+    readFile(
+      new URL("../src/components/admin-conversation-registry.jsx", import.meta.url),
+      "utf8",
+    ),
+    readFile(new URL("../src/lib/translations.js", import.meta.url), "utf8"),
+  ]);
+
+  assert.ok(
+    navigation.indexOf('key: "conversations"') < navigation.indexOf('key: "enforcement"'),
+    "Conversations must appear before Enforcement",
+  );
+  assert.match(registry, /\{t\.adminConversationsSearchAction\}/);
+  assert.doesNotMatch(registry, /\{t\.search\}/);
+  assert.match(registry, /sm:grid-cols-\[minmax\(0,1fr\)_auto\]/);
+  assert.equal(
+    (translations.match(/\badminConversationsSearchAction:/g) ?? []).length,
+    2,
+    "the conversation search action must have EN and FR copy",
+  );
+});
+
+test("admin back links use destination-specific copy and registry routes", async () => {
+  const [conversationRegistry, enforcement, users, listingReview, reportReview, translations] =
+    await Promise.all([
+      readFile(new URL("../src/components/admin-conversation-registry.jsx", import.meta.url), "utf8"),
+      readFile(new URL("../src/components/admin-enforcement-content.jsx", import.meta.url), "utf8"),
+      readFile(new URL("../src/app/admin/users/page.jsx", import.meta.url), "utf8"),
+      readFile(new URL("../src/app/admin/listings/[listingId]/page.jsx", import.meta.url), "utf8"),
+      readFile(new URL("../src/app/admin/reports/[reportId]/page.jsx", import.meta.url), "utf8"),
+      readFile(new URL("../src/lib/translations.js", import.meta.url), "utf8"),
+    ]);
+
+  for (const overviewSurface of [conversationRegistry, enforcement, users]) {
+    assert.match(overviewSurface, /href="\/admin"/);
+    assert.match(overviewSurface, /backToAdminOverview/);
+    assert.doesNotMatch(overviewSurface, /backToAdminReports/);
+  }
+
+  assert.match(listingReview, /<Link href="\/admin\/listings">[\s\S]*?backToAdminListings/);
+  assert.match(reportReview, /<Link href="\/admin\/reports">[\s\S]*?backToAdminReports/);
+  assert.equal((translations.match(/\bbackToAdminOverview:/g) ?? []).length, 2);
+  assert.equal((translations.match(/\bbackToAdminReports:/g) ?? []).length, 2);
+  assert.equal((translations.match(/\bbackToAdminListings:/g) ?? []).length, 2);
+});
+
 test("PostgreSQL enforces bounded reads, exact replay, report atomicity, and role limits", { timeout: 120_000 }, async (t) => {
   const postgresBin = getPostgresBin();
 

@@ -45,11 +45,11 @@ export function getAdminNavigationItems(role, t) {
       action: MODERATION_ACTIONS.readListings,
     },
     {
-      key: "enforcement",
-      label: t.adminNavEnforcement,
-      href: "/admin/enforcement",
-      icon: Gavel,
-      action: MODERATION_ACTIONS.readUsers,
+      key: "conversations",
+      label: t.adminNavConversations,
+      href: "/admin/conversations",
+      icon: MessagesSquare,
+      action: MODERATION_ACTIONS.readConversations,
     },
     {
       key: "users",
@@ -60,11 +60,11 @@ export function getAdminNavigationItems(role, t) {
       roles: ["admin"],
     },
     {
-      key: "conversations",
-      label: t.adminNavConversations,
-      href: "/admin/conversations",
-      icon: MessagesSquare,
-      action: MODERATION_ACTIONS.readConversations,
+      key: "enforcement",
+      label: t.adminNavEnforcement,
+      href: "/admin/enforcement",
+      icon: Gavel,
+      action: MODERATION_ACTIONS.readUsers,
     },
     {
       key: "announcements",
