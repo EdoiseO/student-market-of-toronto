@@ -18,7 +18,7 @@ const fullChainMigrationNames = (await readdir(migrationDirectory))
   .filter(
     (name) =>
       name.endsWith(".sql") &&
-      name <= "20260817010541_stage7_security_remediation.sql",
+      name <= "20260817120920_stage8_release_security_hardening.sql",
   )
   .sort();
 const fullChainMigrations = await Promise.all(
@@ -702,7 +702,7 @@ create publication supabase_realtime;
 `;
 
 test(
-  "fresh PostgreSQL applies the actual repository migration chain through Stage 7 remediation",
+  "fresh PostgreSQL applies the actual repository migration chain through Stage 8 hardening",
   { skip: !postgresBin, timeout: 120_000 },
   async () => {
     const cluster = await mkdtemp(join(tmpdir(), "smot-stage6-full-chain-"));
@@ -755,7 +755,10 @@ test(
         sql(migration.sql, migration.name);
       }
 
-      assert.equal(fullChainMigrationNames.at(-1), "20260817010541_stage7_security_remediation.sql");
+      assert.equal(
+        fullChainMigrationNames.at(-1),
+        "20260817120920_stage8_release_security_hardening.sql",
+      );
       assert.equal(
         sql("select has_function_privilege('service_role','public.transition_conversation_moderation_state(uuid,bigint,text,text,text,uuid,timestamptz,text,uuid,text)','execute');"),
         "f",
@@ -797,6 +800,8 @@ test(
       const reportOperation = "33333333-3333-4333-8333-333333333333";
       const moderationOperation = "44444444-4444-4444-8444-444444444444";
       const sendOperation = "66666666-6666-4666-8666-666666666666";
+      const pendingAbortOperation = "61616161-6161-4616-8616-616161616161";
+      const listingUploadOperation = "62626262-6262-4626-8626-626262626262";
       const adminSanctionOperation = "77777777-7777-4777-8777-777777777777";
       const hierarchyOperation = "88888888-8888-4888-8888-888888888888";
       sql(`
@@ -830,6 +835,77 @@ test(
         insert into public.conversations(id,listing_id,buyer_id,seller_id)
         values ('${conversation}','${listing}','${buyer}','${seller}');
       `, "full-chain operational fixtures");
+
+      sqlFailure(`
+        update auth.users
+        set email = 'seller@example.com'
+        where id = '${seller}';
+      `, /unsupported_toronto_school_email/, "unsupported Auth email changes are rejected");
+      sql(`
+        update auth.users
+        set email = 'seller@yorku.ca'
+        where id = '${seller}';
+      `, "supported Auth email changes remain available");
+      assert.equal(
+        sql(`select school from public.profiles where id='${seller}';`),
+        "York University",
+      );
+
+      const reservedListingPath = `${seller}/${listing}/stage8-bound.webp`;
+      sql(`
+        insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
+        values (
+          'listing-images','listing-images',true,5242880,
+          array['image/jpeg','image/png','image/webp']::text[]
+        ) on conflict (id) do nothing;
+        insert into listing_action_private.write_intents(
+          actor_user_id,operation_id,action,signature_hash,
+          request_listing_id,request_expected_content_revision,
+          listing_id,expected_content_revision,state,stage
+        ) values (
+          '${seller}','${listingUploadOperation}','edit_listing',repeat('a',64),
+          '${listing}',1,'${listing}',1,'in_progress','uploads_reserved'
+        );
+        insert into listing_action_private.image_upload_reservations(
+          storage_path,actor_user_id_snapshot,operation_id,listing_id_snapshot,
+          file_name,mime_type,size_bytes,expires_at
+        ) values (
+          '${reservedListingPath}','${seller}','${listingUploadOperation}','${listing}',
+          'stage8-bound.webp','image/webp',100,
+          pg_catalog.statement_timestamp() + interval '1 hour'
+        );
+      `, "Stage 8 listing upload reservation fixture");
+      sqlFailure(`
+        set request.jwt.claims = '{"role":"authenticated","sub":"${seller}"}';
+        insert into storage.objects(bucket_id,name,owner_id,metadata)
+        values (
+          'listing-images','${reservedListingPath}','${seller}',
+          '{"mimetype":"image/webp","size":"101"}'::jsonb
+        );
+      `, /listing_image_reservation_metadata_mismatch/, "reserved listing uploads reject size mismatches");
+      sql(`
+        set request.jwt.claims = '{"role":"authenticated","sub":"${seller}"}';
+        insert into storage.objects(bucket_id,name,owner_id,metadata)
+        values (
+          'listing-images','${reservedListingPath}','${seller}',
+          '{"mimetype":"image/webp","size":"100"}'::jsonb
+        );
+      `, "reserved listing uploads accept exact metadata");
+
+      sql(`
+        insert into message_send_private.operations(
+          sender_user_id,sender_user_id_snapshot,operation_id,
+          conversation_id,conversation_id_snapshot,canonical_payload
+        ) values (
+          '${buyer}','${buyer}','${pendingAbortOperation}',
+          '${conversation}','${conversation}',
+          jsonb_build_object(
+            'conversation_id','${conversation}',
+            'body','Cancelled pending message',
+            'attachments','[]'::jsonb
+          )
+        );
+      `, "pending operation fixture for the abort quota");
 
       sql(`
         set role authenticated;
@@ -907,6 +983,13 @@ test(
           gen_random_uuid(),'${conversation}','Cancelled message','[]'::jsonb
         );
       `, /message_send_abort_rate_limit/, "abort operations are rate limited");
+      sqlFailure(`
+        set role authenticated;
+        set request.jwt.claims = '{"role":"authenticated","sub":"${buyer}"}';
+        select public.abort_message_send_operation(
+          '${pendingAbortOperation}','${conversation}','Cancelled pending message','[]'::jsonb
+        );
+      `, /message_send_abort_rate_limit/, "existing pending operations cannot bypass the abort quota");
 
       sqlFailure(`
         set role authenticated;
@@ -943,6 +1026,7 @@ test(
       `, /moderation_sanction_issuer_hierarchy/, "admin-issued sanctions resist moderator lifecycle actions");
 
       const expiredMessageOperation = "abababab-abab-4bab-8bab-abababababab";
+      const expiredPendingOperation = "acacacac-acac-4cac-8cac-acacacacacac";
       const expiredReportOperation = "cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd";
       sql(`
         reset role;
@@ -955,6 +1039,20 @@ test(
           '${conversation}','${conversation}',
           jsonb_build_object('conversation_id','${conversation}','body','Sensitive old body','attachments','[]'::jsonb),
           'completed','{"status":"completed"}'::jsonb,now(),now()-interval '8 days'
+        );
+        insert into message_send_private.operations(
+          sender_user_id,sender_user_id_snapshot,operation_id,
+          conversation_id,conversation_id_snapshot,canonical_payload,
+          replay_expires_at
+        ) values (
+          '${buyer}','${buyer}','${expiredPendingOperation}',
+          '${conversation}','${conversation}',
+          jsonb_build_object(
+            'conversation_id','${conversation}',
+            'body','Sensitive abandoned pending body',
+            'attachments','[]'::jsonb
+          ),
+          now()-interval '8 days'
         );
         insert into report_submission_private.commands(
           actor_user_id_snapshot,operation_id,payload,report_id,result,replay_expires_at
@@ -972,6 +1070,14 @@ test(
       assert.equal(
         sql(`select canonical_payload->>'body' from message_send_private.operations where operation_id='${expiredMessageOperation}';`),
         "",
+      );
+      assert.equal(
+        sql(`select status || ':' || (scrubbed_at is not null)::text || ':' || (canonical_payload->>'body') from message_send_private.operations where operation_id='${expiredPendingOperation}';`),
+        "aborted:true:",
+      );
+      assert.equal(
+        sql(`select count(*) from message_send_private.operation_tombstones where operation_id='${expiredPendingOperation}';`),
+        "1",
       );
       assert.equal(
         sql(`select payload->>'expired' from report_submission_private.commands where operation_id='${expiredReportOperation}';`),
