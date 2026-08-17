@@ -241,7 +241,6 @@ export async function POST(request) {
       // makes an HTTP retry replay the same retirement after an ambiguous response.
       operationId: user.id,
     });
-
     const [{ data: profileRow, error: profileError }, { data: ownedListings, error: listingsError }] =
       await Promise.all([
         admin.from("profiles").select("avatar_url").eq("id", user.id).maybeSingle(),
@@ -310,6 +309,14 @@ export async function POST(request) {
       MESSAGE_MEDIA_RESERVATION_BUCKET,
       messageMediaPaths,
     );
+
+    const { data: stage7PurgeResult, error: stage7PurgeError } = await admin.rpc(
+      "purge_stage7_user_security_data",
+      { p_user_id: user.id },
+    );
+    if (stage7PurgeError || stage7PurgeResult !== true) {
+      throw stage7PurgeError ?? new Error("Stage 7 private data cleanup failed.");
+    }
 
     const { error: deleteUserError } = await admin.auth.admin.deleteUser(user.id, true);
 

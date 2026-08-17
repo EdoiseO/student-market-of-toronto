@@ -41,7 +41,7 @@ export function AppLayoutShell({ children, user }) {
                 : "flex flex-col"
             }
           >
-            <SiteHeader user={user} />
+            {isMessagesConversationPage ? null : <SiteHeader user={user} />}
             <div
               className={
                 isMessagesConversationPage

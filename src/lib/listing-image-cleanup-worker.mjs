@@ -332,6 +332,7 @@ export async function runListingImageCleanupWorkerPass({
     compactedCommands: 0,
   };
   let maintenanceErrorCount = 0;
+  let securityLedgerMaintenance = null;
 
   try {
     maintenance = normalizeMaintenanceResult(
@@ -345,6 +346,14 @@ export async function runListingImageCleanupWorkerPass({
     maintenanceErrorCount = 1;
   }
 
+  try {
+    securityLedgerMaintenance = await callRpc(admin, "maintain_stage7_security_ledgers", {
+      p_limit: boundedMaintenanceLimit,
+    });
+  } catch {
+    maintenanceErrorCount += 1;
+  }
+
   const claims = await callRpc(admin, "claim_listing_image_cleanup_tasks", {
     p_limit: boundedCleanupLimit,
   });
@@ -356,6 +365,7 @@ export async function runListingImageCleanupWorkerPass({
 
   return {
     ...maintenance,
+    securityLedgerMaintenance,
     maintenanceErrorCount,
     ...cleanup,
   };

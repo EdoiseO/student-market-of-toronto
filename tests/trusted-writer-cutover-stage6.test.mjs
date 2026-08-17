@@ -18,7 +18,7 @@ const fullChainMigrationNames = (await readdir(migrationDirectory))
   .filter(
     (name) =>
       name.endsWith(".sql") &&
-      name <= "20260816235109_stage6_trusted_writer_cutover.sql",
+      name <= "20260817010541_stage7_security_remediation.sql",
   )
   .sort();
 const fullChainMigrations = await Promise.all(
@@ -688,6 +688,11 @@ alter table public.notifications enable row level security;
 alter table public.notification_preferences enable row level security;
 alter table public.reports enable row level security;
 
+create policy profiles_owner_select on public.profiles
+for select to authenticated using (id = auth.uid());
+create policy profiles_owner_update on public.profiles
+for update to authenticated using (id = auth.uid()) with check (id = auth.uid());
+
 grant usage on schema public to anon, authenticated, service_role;
 grant select, insert, update, delete on all tables in schema public to authenticated, service_role;
 grant select on public.listings, public.listing_images, public.profiles to anon;
@@ -697,7 +702,7 @@ create publication supabase_realtime;
 `;
 
 test(
-  "fresh PostgreSQL applies the actual repository migration chain through the trusted-writer cutover",
+  "fresh PostgreSQL applies the actual repository migration chain through Stage 7 remediation",
   { skip: !postgresBin, timeout: 120_000 },
   async () => {
     const cluster = await mkdtemp(join(tmpdir(), "smot-stage6-full-chain-"));
@@ -724,6 +729,18 @@ test(
       assert.equal(result.status, 0, `${label}: ${result.stderr || result.stdout}`);
       return result.stdout.trim();
     };
+    const sqlFailure = (statement, pattern, label = "SQL failure") => {
+      const result = spawnSync(
+        join(postgresBin, "psql"),
+        [
+          "-X", "-qAt", "-h", cluster, "-p", String(port), "-d", "postgres",
+          "-v", "ON_ERROR_STOP=1",
+        ],
+        { encoding: "utf8", input: statement },
+      );
+      assert.notEqual(result.status, 0, `${label}: expected failure`);
+      assert.match(result.stderr, pattern, label);
+    };
 
     try {
       command("initdb", ["-D", data, "-A", "trust", "--no-locale", "--encoding=UTF8"]);
@@ -738,7 +755,7 @@ test(
         sql(migration.sql, migration.name);
       }
 
-      assert.equal(fullChainMigrationNames.at(-1), "20260816235109_stage6_trusted_writer_cutover.sql");
+      assert.equal(fullChainMigrationNames.at(-1), "20260817010541_stage7_security_remediation.sql");
       assert.equal(
         sql("select has_function_privilege('service_role','public.transition_conversation_moderation_state(uuid,bigint,text,text,text,uuid,timestamptz,text,uuid,text)','execute');"),
         "f",
@@ -756,6 +773,14 @@ test(
         "f",
       );
       assert.equal(
+        sql("select case when to_regprocedure('public.send_conversation_message(uuid,text)') is null then false else has_function_privilege('authenticated','public.send_conversation_message(uuid,text)','execute') end;"),
+        "f",
+      );
+      assert.equal(
+        sql("select coalesce(moderation_action_private.resolve_role_from_account('{}'::jsonb,'admin'),'none');"),
+        "none",
+      );
+      assert.equal(
         sql("select has_table_privilege('authenticated','public.listings','insert,update,delete,truncate');"),
         "f",
       );
@@ -764,10 +789,16 @@ test(
       const seller = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
       const buyer = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
       const reporter = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+      const forcedUser = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+      const moderator = "ffffffff-ffff-4fff-8fff-ffffffffffff";
+      const legacyRoleUser = "99999999-9999-4999-8999-999999999999";
       const listing = "11111111-1111-4111-8111-111111111111";
       const conversation = "22222222-2222-4222-8222-222222222222";
       const reportOperation = "33333333-3333-4333-8333-333333333333";
       const moderationOperation = "44444444-4444-4444-8444-444444444444";
+      const sendOperation = "66666666-6666-4666-8666-666666666666";
+      const adminSanctionOperation = "77777777-7777-4777-8777-777777777777";
+      const hierarchyOperation = "88888888-8888-4888-8888-888888888888";
       sql(`
         insert into auth.users(id,email,raw_app_meta_data,raw_user_meta_data,role)
         values
@@ -778,7 +809,16 @@ test(
           ('${buyer}','buyer@georgebrown.ca','{}',
             '{"first_name":"Buyer","last_name":"User"}','authenticated'),
           ('${reporter}','reporter@georgebrown.ca','{}',
-            '{"first_name":"Reporter","last_name":"User"}','authenticated');
+            '{"first_name":"Reporter","last_name":"User"}','authenticated'),
+          ('${forcedUser}','forced@georgebrown.ca','{}',
+            '{"first_name":"Forced","last_name":"User"}','authenticated'),
+          ('${moderator}','moderator@georgebrown.ca','{"role":"moderator"}',
+            '{"first_name":"Moderator","last_name":"User"}','authenticated'),
+          ('${legacyRoleUser}','legacy@georgebrown.ca','{}',
+            '{"first_name":"Legacy","last_name":"User"}','admin');
+        update auth.users
+        set raw_app_meta_data = '{"force_name_change":true,"role":"admin"}'::jsonb
+        where id = '${forcedUser}';
         insert into public.listings(
           id,seller_id,slug,title,description,price,category,condition,location,
           status,is_negotiable,is_featured,view_count
@@ -801,6 +841,141 @@ test(
       assert.equal(
         sql(`select count(*) from public.reports where reporter_user_id='${reporter}' and listing_id='${listing}';`),
         "1",
+      );
+      assert.equal(
+        sql(`select coalesce(moderation_action_private.resolve_role('${legacyRoleUser}'),'none');`),
+        "none",
+      );
+      assert.equal(
+        sql(`select coalesce(moderation_action_private.resolve_role('${forcedUser}'),'none');`),
+        "none",
+      );
+      sqlFailure(`
+        set role authenticated;
+        set request.jwt.claims = '{"role":"authenticated","sub":"${reporter}"}';
+        select public.submit_marketplace_report(
+          'listing','${listing}','spam',null,'55555555-5555-4555-8555-555555555555'
+        );
+      `, /report_already_submitted_recently/, "duplicate report is rejected independently of operation UUID");
+      sqlFailure(`
+        set role authenticated;
+        set request.jwt.claims = '{"role":"authenticated","sub":"${forcedUser}"}';
+        update public.profiles set bio = 'bypass' where id = '${forcedUser}';
+      `, /profile_name_change_required/, "forced-name direct write is rejected");
+      sqlFailure(`
+        set role authenticated;
+        set request.jwt.claims = '{"role":"authenticated","sub":"${seller}"}';
+        insert into storage.objects(bucket_id,name,owner_id)
+        values ('listing-images','${seller}/${listing}/unreserved.webp','${seller}');
+      `, /listing_image_reservation_required/, "unreserved listing Storage insert is rejected");
+
+      sql(`
+        set role authenticated;
+        set request.jwt.claims = '{"role":"authenticated","sub":"${buyer}"}';
+        select public.send_conversation_message_idempotent(
+          '${sendOperation}','${conversation}','A normal Stage 7 message.','[]'::jsonb
+        );
+      `, "retained idempotent message send");
+      assert.equal(
+        sql(`select count(*) from public.messages where conversation_id='${conversation}' and sender_id='${buyer}';`),
+        "1",
+      );
+      sqlFailure(`
+        set role authenticated;
+        set request.jwt.claims = '{"role":"authenticated","sub":"${reporter}"}';
+        select public.abort_message_send_operation(
+          gen_random_uuid(),'${conversation}','Cancelled message','[]'::jsonb
+        );
+      `, /message_send_conversation_access_denied/, "outsiders cannot mint aborted message operations");
+      sql(`
+        set role authenticated;
+        set request.jwt.claims = '{"role":"authenticated","sub":"${buyer}"}';
+        do $block$
+        begin
+          for operation_index in 1..20 loop
+            perform public.abort_message_send_operation(
+              gen_random_uuid(),'${conversation}','Cancelled message','[]'::jsonb
+            );
+          end loop;
+        end
+        $block$;
+      `, "bounded participant abort operations");
+      sqlFailure(`
+        set role authenticated;
+        set request.jwt.claims = '{"role":"authenticated","sub":"${buyer}"}';
+        select public.abort_message_send_operation(
+          gen_random_uuid(),'${conversation}','Cancelled message','[]'::jsonb
+        );
+      `, /message_send_abort_rate_limit/, "abort operations are rate limited");
+
+      sqlFailure(`
+        set role authenticated;
+        set request.jwt.claims = '{"role":"authenticated","sub":"${moderator}"}';
+        select public.issue_moderation_strike(
+          '${seller}','critical','spam','A critical moderator strike is not allowed.',3::smallint,
+          null,null,'{}'::jsonb,null,null,null,true,gen_random_uuid()::text
+        );
+      `, /moderator_standard_strike_limit/, "moderator strike severity and points are bounded");
+      sql(`
+        set role authenticated;
+        set request.jwt.claims = '{"role":"authenticated","sub":"${moderator}"}';
+        select public.issue_moderation_strike(
+          '${buyer}','medium','spam','A standard one point moderator strike is allowed.',1::smallint,
+          null,null,'{}'::jsonb,null,null,null,true,gen_random_uuid()::text
+        );
+      `, "standard moderator strike remains available");
+      const adminSanctionId = sql(`
+        set role authenticated;
+        set request.jwt.claims = '{"role":"authenticated","sub":"${admin}"}';
+        select public.issue_moderation_warning(
+          '${seller}','medium','spam','This administrator warning remains protected.',
+          null,null,'{}'::jsonb,null,null,null,true,'${adminSanctionOperation}'
+        );
+      `);
+      assert.match(adminSanctionId, /^[0-9a-f-]{36}$/i);
+      sqlFailure(`
+        set role authenticated;
+        set request.jwt.claims = '{"role":"authenticated","sub":"${moderator}"}';
+        select * from public.execute_moderation_sanction_action(
+          '${adminSanctionId}','revoke',null,
+          'A moderator cannot revoke an administrator warning.','${hierarchyOperation}'
+        );
+      `, /moderation_sanction_issuer_hierarchy/, "admin-issued sanctions resist moderator lifecycle actions");
+
+      const expiredMessageOperation = "abababab-abab-4bab-8bab-abababababab";
+      const expiredReportOperation = "cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd";
+      sql(`
+        reset role;
+        insert into message_send_private.operations(
+          sender_user_id,sender_user_id_snapshot,operation_id,
+          conversation_id,conversation_id_snapshot,canonical_payload,
+          status,result,completed_at,replay_expires_at
+        ) values (
+          '${buyer}','${buyer}','${expiredMessageOperation}',
+          '${conversation}','${conversation}',
+          jsonb_build_object('conversation_id','${conversation}','body','Sensitive old body','attachments','[]'::jsonb),
+          'completed','{"status":"completed"}'::jsonb,now(),now()-interval '8 days'
+        );
+        insert into report_submission_private.commands(
+          actor_user_id_snapshot,operation_id,payload,report_id,result,replay_expires_at
+        ) values (
+          '${reporter}','${expiredReportOperation}',
+          jsonb_build_object('subject_type','listing','subject_id','${listing}','reason','other','details','Sensitive old allegation'),
+          (select id from public.reports where reporter_user_id='${reporter}' limit 1),
+          jsonb_build_object('id',(select id from public.reports where reporter_user_id='${reporter}' limit 1),'status','open'),
+          now()-interval '8 days'
+        );
+        set role service_role;
+        set request.jwt.claims = '{"role":"service_role"}';
+        select public.maintain_stage7_security_ledgers(100);
+      `, "bounded security-ledger maintenance");
+      assert.equal(
+        sql(`select canonical_payload->>'body' from message_send_private.operations where operation_id='${expiredMessageOperation}';`),
+        "",
+      );
+      assert.equal(
+        sql(`select payload->>'expired' from report_submission_private.commands where operation_id='${expiredReportOperation}';`),
+        "true",
       );
 
       sql(`

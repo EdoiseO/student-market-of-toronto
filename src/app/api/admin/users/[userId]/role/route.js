@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
-import { getUserModerationRole } from "@/lib/moderation";
+import { getUserModerationRole, isNameChangeRequired } from "@/lib/moderation";
 import { MODERATOR_ROLE_GRANTED_NOTIFICATION_TYPE } from "@/lib/notifications";
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { getUserStatusRow, isUserBanned } from "@/lib/user-status";
@@ -51,6 +51,9 @@ async function getTargetUser(admin, userId) {
 async function updateUserRole(admin, user, nextRole) {
   const { error: updateError } = await admin.auth.admin.updateUserById(user.id, {
     app_metadata: buildAppMetadata(user.app_metadata, nextRole),
+    // auth.users.role is a legacy authorization source. Always collapse it to
+    // the ordinary Data API role in the same Auth update as app_metadata.
+    role: "authenticated",
   });
 
   if (updateError) {
@@ -127,6 +130,13 @@ export async function POST(request, { params }) {
     if (isUserBanned(actorStatusResult.data)) {
       return NextResponse.json(
         { error: "Restricted accounts cannot manage moderation roles." },
+        { status: 403 },
+      );
+    }
+
+    if (isNameChangeRequired(accessUser)) {
+      return NextResponse.json(
+        { error: "Complete the required profile name update before managing roles." },
         { status: 403 },
       );
     }
@@ -210,6 +220,7 @@ export async function POST(request, { params }) {
       } catch (transferError) {
         const { error: rollbackError } = await admin.auth.admin.updateUserById(targetUser.id, {
           app_metadata: targetUser.app_metadata ?? {},
+          role: "authenticated",
         });
 
         if (rollbackError) {

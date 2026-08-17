@@ -108,7 +108,7 @@ export async function POST(request, { params }) {
       }
       const sanctionResult = await admin
         .from("moderation_sanctions")
-        .select("id, subject_user_id_snapshot, sanction_type, review_status, revoked_at, expires_at")
+        .select("id, subject_user_id_snapshot, sanction_type, review_status, revoked_at, expires_at, issued_by_role")
         .eq("id", body.sanctionId)
         .maybeSingle();
       if (sanctionResult.error || !sanctionResult.data) {
@@ -117,6 +117,12 @@ export async function POST(request, { params }) {
       sanction = sanctionResult.data;
       if (sanction.subject_user_id_snapshot !== userId) {
         return NextResponse.json({ error: "The sanction does not belong to this user." }, { status: 409 });
+      }
+      if (actorRole === "moderator" && sanction.issued_by_role === "admin") {
+        return NextResponse.json(
+          { error: "Only an administrator can change an administrator-issued sanction." },
+          { status: 403 },
+        );
       }
     }
 
@@ -143,6 +149,16 @@ export async function POST(request, { params }) {
       const strikePoints = Number.parseInt(body.strikePoints, 10);
       if (body.action === "issue_strike" && (!Number.isInteger(strikePoints) || strikePoints < 1 || strikePoints > 3)) {
         return NextResponse.json({ error: "Strike points must be between 1 and 3." }, { status: 400 });
+      }
+      if (
+        body.action === "issue_strike" &&
+        actorRole === "moderator" &&
+        (strikePoints !== 1 || !["low", "medium"].includes(body.severity))
+      ) {
+        return NextResponse.json(
+          { error: "Moderators can issue only a one-point low or medium standard strike." },
+          { status: 403 },
+        );
       }
       const functionName = body.action === "issue_warning" ? "issue_moderation_warning" : "issue_moderation_strike";
       const args = {

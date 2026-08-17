@@ -74,6 +74,17 @@ test("worker maintenance, claim, Storage deletion, and completion stay bounded",
           error: null,
         },
       ],
+      maintain_stage7_security_ledgers: [
+        {
+          data: {
+            message_scrubbed: 4,
+            message_deleted: 1,
+            report_scrubbed: 2,
+            report_deleted: 1,
+          },
+          error: null,
+        },
+      ],
       claim_listing_image_cleanup_tasks: [{ data: [firstClaim], error: null }],
       complete_listing_image_cleanup_task: [{ data: true, error: null }],
     },
@@ -89,6 +100,12 @@ test("worker maintenance, claim, Storage deletion, and completion stay bounded",
     expiredReservationsEnqueued: 2,
     scrubbedIntents: 1,
     compactedCommands: 3,
+    securityLedgerMaintenance: {
+      message_scrubbed: 4,
+      message_deleted: 1,
+      report_scrubbed: 2,
+      report_deleted: 1,
+    },
     maintenanceErrorCount: 0,
     claimedCount: 1,
     cleanedCount: 1,
@@ -98,11 +115,12 @@ test("worker maintenance, claim, Storage deletion, and completion stay bounded",
     releaseErrorCount: 0,
   });
   assert.deepEqual(removedBatches, [[firstClaim.storage_path]]);
-  assert.deepEqual(calls.slice(0, 2), [
+  assert.deepEqual(calls.slice(0, 3), [
     { name: "maintain_listing_write_recovery", args: { p_limit: 100 } },
+    { name: "maintain_stage7_security_ledgers", args: { p_limit: 100 } },
     { name: "claim_listing_image_cleanup_tasks", args: { p_limit: 20 } },
   ]);
-  assert.deepEqual(calls[2], {
+  assert.deepEqual(calls[3], {
     name: "complete_listing_image_cleanup_task",
     args: {
       p_task_id: firstClaim.task_id,

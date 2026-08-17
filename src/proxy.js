@@ -79,7 +79,10 @@ export async function proxy(request) {
     }
 
     const isNameChangeAllowedRoute =
-      path === "/dashboard/profile" || path === "/auth/callback" || path.startsWith("/api/");
+      path === "/dashboard/profile" ||
+      path === "/auth/callback" ||
+      path === "/api/account/name" ||
+      isAccountDeleteRoute;
 
     if (
       isNameChangeRequired(user) &&

@@ -84,7 +84,6 @@ export function getUserModerationRole(user) {
   const roleCandidates = [
     user?.app_metadata?.role,
     ...(Array.isArray(user?.app_metadata?.roles) ? user.app_metadata.roles : []),
-    user?.role,
   ];
 
   for (const candidate of roleCandidates) {

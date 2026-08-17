@@ -1398,9 +1398,9 @@ export function MessagesThread({
   }
 
   return (
-    <section className="@container/thread flex min-h-0 max-w-full flex-1 touch-pan-y flex-col overflow-hidden overscroll-x-none border-y border-zinc-200 bg-white/95 dark:border-border dark:bg-card md:rounded-[1.5rem] md:border md:shadow-sm">
-      <div className="shrink-0 border-b border-zinc-200 px-3 py-2.5 dark:border-border md:px-4 md:py-3">
-        <div className="flex flex-col gap-2.5 @2xl/thread:flex-row @2xl/thread:items-center @2xl/thread:justify-between">
+    <section className="@container/thread flex min-h-0 max-w-full flex-1 touch-pan-y flex-col overflow-hidden overscroll-x-none border-y border-zinc-200 bg-white/95 dark:border-border dark:bg-card md:rounded-2xl md:border md:shadow-sm">
+      <div className="shrink-0 border-b border-zinc-200 px-3 py-2 dark:border-border md:px-3">
+        <div className="flex flex-col gap-2 @2xl/thread:flex-row @2xl/thread:items-center @2xl/thread:justify-between">
           {isAnnouncementConversation ? (
             <div className="block rounded-xl border border-zinc-200/80 bg-zinc-50/80 p-2 dark:border-border dark:bg-muted/30 @2xl/thread:w-full @2xl/thread:max-w-sm">
               <div className="flex items-center gap-3">
@@ -1421,16 +1421,16 @@ export function MessagesThread({
           ) : hasListingLink ? (
             <Link
               href={`/listings/${conversation.listing.slug}`}
-              className="block rounded-xl border border-zinc-200/80 bg-zinc-50/80 p-2 transition hover:bg-zinc-100/80 dark:border-border dark:bg-muted/30 dark:hover:bg-muted/50 @2xl/thread:w-full @2xl/thread:max-w-sm"
+              className="block rounded-xl border border-zinc-200/80 bg-zinc-50/80 p-1.5 transition hover:bg-zinc-100/80 dark:border-border dark:bg-muted/30 dark:hover:bg-muted/50 @2xl/thread:w-full @2xl/thread:max-w-sm"
             >
               <div className="flex items-center gap-3">
-                <div className="relative size-11 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-muted md:size-12">
+                <div className="relative size-10 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-muted">
                   {conversation.listing.imageUrl ? (
                     <Image
                       src={conversation.listing.imageUrl}
                       alt={conversation.listing.title}
                       fill
-                      sizes="(max-width: 767px) 44px, 48px"
+                      sizes="40px"
                       placeholder="blur"
                       blurDataURL={REMOTE_IMAGE_BLUR_DATA_URL}
                       className="object-cover"
@@ -1838,10 +1838,10 @@ export function MessagesThread({
           </div>
         </div>
       ) : (
-      <form ref={composerFormRef} onSubmit={handleSubmit} className="sticky bottom-0 z-20 shrink-0 border-t border-zinc-200 bg-white/95 px-2.5 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-sm dark:border-border dark:bg-card/95 md:px-4 md:py-3">
+      <form ref={composerFormRef} onSubmit={handleSubmit} className="sticky bottom-0 z-20 shrink-0 border-t border-zinc-200 bg-white/95 px-2 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] backdrop-blur-sm dark:border-border dark:bg-card/95 md:px-3 md:py-2">
         <div
           {...dropzoneProps}
-          className={`relative mx-auto max-w-4xl rounded-[1.1rem] border bg-zinc-50/70 p-1.5 transition-colors dark:bg-muted/20 ${
+          className={`relative mx-auto w-full max-w-5xl rounded-[1.1rem] border bg-zinc-50/70 p-1 transition-colors dark:bg-muted/20 ${
             isDragActive && isMediaSelectionAvailable
               ? "border-dashed border-primary ring-2 ring-primary/20"
               : "border-zinc-200 dark:border-border"
@@ -1924,35 +1924,8 @@ export function MessagesThread({
               ))}
             </div>
           ) : null}
-          <Textarea
-            id="conversation-message-body"
-            ref={composerRef}
-            value={draft}
-            onChange={handleDraftChange}
-            onKeyDown={handleComposerKeyDown}
-            onKeyUp={rememberComposerSelection}
-            onSelect={rememberComposerSelection}
-            onBlur={rememberComposerSelection}
-            placeholder={t.messageInputPlaceholder}
-            rows={1}
-            className="min-h-11 max-h-28 resize-none overflow-y-auto border-0 bg-transparent px-2 py-2.5 text-base leading-5 shadow-none [field-sizing:content] focus-visible:ring-0"
-            aria-invalid={Boolean(messageBodyError)}
-            aria-describedby="conversation-message-body-count conversation-message-body-error"
-            disabled={
-              !isMessagingAvailable || Boolean(blockReason) || isSending || isSendIntentLocked
-            }
-          />
-
-          <p
-            id="conversation-message-body-error"
-            role={messageBodyError ? "alert" : undefined}
-            className="min-h-4 px-2 text-xs text-red-600 dark:text-red-400"
-          >
-            {messageBodyError}
-          </p>
-
-          <div className="mt-0.5 flex items-center justify-between gap-3 border-t border-zinc-200 px-1 pt-1.5 dark:border-border">
-            <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-end gap-0.5">
+            <div className="flex shrink-0 items-center self-end">
               <MessageEmojiPicker
                 disabled={
                   !isMessagingAvailable || Boolean(blockReason) || isSending || isSendIntentLocked
@@ -1972,7 +1945,7 @@ export function MessagesThread({
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    className="size-11 rounded-full text-zinc-500 dark:text-muted-foreground"
+                    className="size-10 rounded-full text-zinc-500 dark:text-muted-foreground md:size-11"
                     disabled={
                       !isMessagingAvailable ||
                       Boolean(blockReason) ||
@@ -1991,13 +1964,33 @@ export function MessagesThread({
                 </TooltipContent>
               </Tooltip>
 
-              <p id="conversation-message-body-count" className="text-xs text-zinc-500 dark:text-muted-foreground">
-                {t.messageBodyCharacterCount.replace(
-                  "{count}",
-                  String(draftCharacterCount),
-                )}
-              </p>
             </div>
+
+            <Textarea
+              id="conversation-message-body"
+              ref={composerRef}
+              value={draft}
+              onChange={handleDraftChange}
+              onKeyDown={handleComposerKeyDown}
+              onKeyUp={rememberComposerSelection}
+              onSelect={rememberComposerSelection}
+              onBlur={rememberComposerSelection}
+              placeholder={t.messageInputPlaceholder}
+              rows={1}
+              className="min-h-10 max-h-32 min-w-0 flex-1 resize-none overflow-y-auto border-0 bg-transparent px-2 py-2.5 text-base leading-5 shadow-none [field-sizing:content] focus-visible:ring-0"
+              aria-invalid={Boolean(messageBodyError)}
+              aria-describedby="conversation-message-body-count conversation-message-body-error"
+              disabled={
+                !isMessagingAvailable || Boolean(blockReason) || isSending || isSendIntentLocked
+              }
+            />
+
+            <p
+              id="conversation-message-body-count"
+              className={draftCharacterCount >= 1800 ? "shrink-0 self-center px-1 text-xs text-zinc-500 dark:text-muted-foreground" : "sr-only"}
+            >
+              {t.messageBodyCharacterCount.replace("{count}", String(draftCharacterCount))}
+            </p>
 
             {isSendIntentLocked ? (
               <Button
@@ -2028,6 +2021,18 @@ export function MessagesThread({
               <SendHorizontal className="size-4.5" />
             </Button>
           </div>
+
+          {messageBodyError ? (
+            <p
+              id="conversation-message-body-error"
+              role="alert"
+              className="px-12 pb-1 pt-0.5 text-xs text-red-600 dark:text-red-400"
+            >
+              {messageBodyError}
+            </p>
+          ) : (
+            <span id="conversation-message-body-error" className="sr-only" />
+          )}
         </div>
       </form>
       )}
