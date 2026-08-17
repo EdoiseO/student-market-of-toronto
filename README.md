@@ -63,11 +63,14 @@ These values come from your Supabase project settings.
 `SUPABASE_SERVICE_ROLE_KEY` is required for server-side destructive account actions such as full account deletion from `/dashboard/settings`.
 
 `CRON_SECRET` protects the bounded announcement delivery worker at
-`/api/internal/announcements/worker`. Before enabling announcements in
-production, invoke that endpoint at least every five minutes with
-`Authorization: Bearer <CRON_SECRET>`. Vercel Pro can schedule it with Vercel
-Cron; Vercel Hobby requires a Supabase or other external scheduler. Do not put
-the secret in a public or `NEXT_PUBLIC_` variable.
+`/api/internal/announcements/worker` and the listing image recovery worker at
+`/api/internal/listing-images/cleanup`. In production, invoke both endpoints at
+least every five minutes with `Authorization: Bearer <CRON_SECRET>`. The listing
+worker removes only database-leased, unreferenced objects through the Supabase
+Storage API and also performs bounded recovery-ledger maintenance. Vercel Pro
+can schedule these endpoints with Vercel Cron; Vercel Hobby requires a Supabase
+or other external scheduler. Do not put the secret in a public or
+`NEXT_PUBLIC_` variable.
 
 ## Install Dependencies
 

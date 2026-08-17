@@ -11,12 +11,10 @@ import {
   getConversationDisplayName,
 } from "@/lib/messages";
 import {
-  MODERATION_REPORT_NOTES_SELECT,
   MODERATION_REPORT_SELECT,
   REPORT_SUBJECT_TYPES,
   getModerationDisplayName,
   getUserModerationRole,
-  isReportNotesColumnsMissing,
   isModerationRole,
   isReportsTableMissing,
 } from "@/lib/moderation";
@@ -115,22 +113,21 @@ export default async function AdminReportReviewPage({ params }) {
   let notesAvailable = true;
   let reportNotesRows = [];
 
-  const { data: fetchedReportNotesRows, error: reportNotesError } = await dataClient
-    .from("reports")
-    .select(MODERATION_REPORT_NOTES_SELECT)
-    .in("id", relatedReportRows.map((relatedReport) => relatedReport.id));
+  const { data: fetchedReportNotesRows, error: reportNotesError } = await supabase.rpc(
+    "get_report_moderator_notes",
+    { p_report_ids: relatedReportRows.map((relatedReport) => relatedReport.id) },
+  );
 
   if (reportNotesError) {
-    if (isReportNotesColumnsMissing(reportNotesError)) {
-      notesAvailable = false;
-    } else {
-      console.error("Failed to load moderation report notes:", reportNotesError.message);
-    }
+    notesAvailable = false;
+    console.error("Failed to load moderation report notes:", reportNotesError.message);
   } else {
     reportNotesRows = fetchedReportNotesRows ?? [];
   }
 
-  const reportNotesById = new Map((reportNotesRows ?? []).map((notesRow) => [notesRow.id, notesRow]));
+  const reportNotesById = new Map(
+    (reportNotesRows ?? []).map((notesRow) => [notesRow.report_id, notesRow]),
+  );
 
   const profileIds = [
     ...relatedReportRows.map((report) => report.reporter_user_id),

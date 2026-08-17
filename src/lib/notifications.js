@@ -10,6 +10,7 @@ export const FAVOURITE_PRICE_CHANGE_NOTIFICATION_TYPE = "favourite_price_change"
 export const LISTING_SOLD_NOTIFICATION_TYPE = "listing_sold";
 export const LISTING_APPROVED_NOTIFICATION_TYPE = "listing_approved";
 export const LISTING_REJECTED_NOTIFICATION_TYPE = "listing_rejected";
+export const LISTING_REMOVED_NOTIFICATION_TYPE = "listing_removed";
 export const MODERATOR_ROLE_GRANTED_NOTIFICATION_TYPE = "moderator_role_granted";
 export const MODERATION_WARNING_NOTIFICATION_TYPE = "moderation_warning";
 export const MODERATION_STRIKE_NOTIFICATION_TYPE = "moderation_strike";
@@ -17,6 +18,7 @@ export const MODERATION_BAN_NOTIFICATION_TYPE = "moderation_ban";
 export const MODERATION_REVIEW_UPDATE_NOTIFICATION_TYPE = "moderation_review_update";
 export const CONVERSATION_CLOSED_NOTIFICATION_TYPE = "conversation_closed";
 export const CONVERSATION_REOPENED_NOTIFICATION_TYPE = "conversation_reopened";
+export const PROFILE_NAME_CHANGE_REQUIRED_NOTIFICATION_TYPE = "profile_name_change_required";
 
 export const MESSAGE_NOTIFICATION_ROW_TYPES = [
   LEGACY_MESSAGE_NOTIFICATION_TYPE,
@@ -43,6 +45,8 @@ export const ENFORCEMENT_NOTIFICATION_ROW_TYPES = [
   MODERATION_REVIEW_UPDATE_NOTIFICATION_TYPE,
   CONVERSATION_CLOSED_NOTIFICATION_TYPE,
   CONVERSATION_REOPENED_NOTIFICATION_TYPE,
+  LISTING_REMOVED_NOTIFICATION_TYPE,
+  PROFILE_NAME_CHANGE_REQUIRED_NOTIFICATION_TYPE,
 ];
 
 export const ALWAYS_ON_NOTIFICATION_ROW_TYPES = [
@@ -304,6 +308,14 @@ function getSystemNotificationDescription(notification, t) {
 }
 
 function getEnforcementNotificationHref(notification) {
+  if (notification.type === LISTING_REMOVED_NOTIFICATION_TYPE) {
+    return "/dashboard";
+  }
+
+  if (notification.type === PROFILE_NAME_CHANGE_REQUIRED_NOTIFICATION_TYPE) {
+    return "/dashboard/settings";
+  }
+
   if (
     (notification.type === CONVERSATION_CLOSED_NOTIFICATION_TYPE ||
       notification.type === CONVERSATION_REOPENED_NOTIFICATION_TYPE) &&
@@ -328,7 +340,7 @@ function getParticipantSafeConversationMessage(notification) {
     return null;
   }
 
-  return normalizedMessage.slice(0, 1000);
+  return Array.from(normalizedMessage).slice(0, 1000).join("");
 }
 
 function getEnforcementNotificationContent(notification, t) {
@@ -366,6 +378,31 @@ function getEnforcementNotificationContent(notification, t) {
       description:
         getParticipantSafeConversationMessage(notification) ??
         t.notificationConversationClosedDescription,
+    };
+  }
+
+  if (notification.type === LISTING_REMOVED_NOTIFICATION_TYPE) {
+    const feedback = getNotificationMetadata(notification).feedback;
+    const safeFeedback = typeof feedback === "string"
+      ? Array.from(feedback.trim()).slice(0, 3000).join("")
+      : "";
+
+    return {
+      title: t.notificationListingRemovedTitle,
+      description: safeFeedback
+        ? t.notificationListingRemovedWithFeedback.replace("{feedback}", safeFeedback)
+        : t.notificationListingRemovedDescription,
+    };
+  }
+
+  if (notification.type === PROFILE_NAME_CHANGE_REQUIRED_NOTIFICATION_TYPE) {
+    const userMessage = getParticipantSafeConversationMessage(notification);
+
+    return {
+      title: t.notificationProfileNameChangeRequiredTitle,
+      description: userMessage
+        ? t.notificationProfileNameChangeRequiredWithMessage.replace("{message}", userMessage)
+        : t.notificationProfileNameChangeRequiredDescription,
     };
   }
 

@@ -18,6 +18,12 @@ import {
   getProfileNameFingerprint,
 } from "@/lib/name-sanction.mjs";
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
+import {
+  validateForceNameDecision,
+  validateModeratorNote,
+  validateReportDecisionSummary,
+  validateReportedListingDecision,
+} from "@/lib/write-field-contracts.mjs";
 import { createClient } from "@/utils/supabase/server";
 
 const UUID_PATTERN =
@@ -30,21 +36,6 @@ function isModerationWriteConflict(error) {
     .toLowerCase();
 
   return error?.code === "40001" || message.includes("moderation_report_set_conflict");
-}
-
-function isReportNotesColumnsMissing(error) {
-  const message = [error?.message, error?.details, error?.hint]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-
-  return (
-    error?.code === "42703" ||
-    error?.code === "PGRST204" ||
-    message.includes("moderator_notes") ||
-    message.includes("moderator_notes_updated_at") ||
-    message.includes("moderator_notes_updated_by")
-  );
 }
 
 async function requireModerationUser() {
@@ -132,8 +123,9 @@ export async function POST(request) {
       const nextStatus = payload?.status;
       const operationId =
         typeof payload?.operationId === "string" ? payload.operationId.trim() : "";
+      const decisionSummaryResult = validateReportDecisionSummary(payload?.decisionSummary);
 
-      if (!reportIds.length || !UUID_PATTERN.test(operationId)) {
+      if (!reportIds.length || !UUID_PATTERN.test(operationId) || !decisionSummaryResult.ok) {
         return NextResponse.json({ error: "Missing report ids." }, { status: 400 });
       }
 
@@ -144,9 +136,10 @@ export async function POST(request) {
         return NextResponse.json({ error: "Unsupported report status." }, { status: 400 });
       }
 
-      const { data: updatedCount, error } = await supabase.rpc("decide_report_set", {
+      const { data: updatedCount, error } = await supabase.rpc("decide_report_set_with_summary", {
         p_report_ids: reportIds,
         p_status: nextStatus,
+        p_private_summary: decisionSummaryResult.value,
         p_request_id: operationId,
       });
 
@@ -184,16 +177,27 @@ export async function POST(request) {
       const listingId = payload?.listingId;
       const operationId =
         typeof payload?.operationId === "string" ? payload.operationId.trim() : "";
+      const decisionResult = validateReportedListingDecision({
+        sellerFeedback: payload?.sellerFeedback,
+        privateSummary: payload?.privateSummary,
+      });
 
-      if (!reportIds.length || !listingId || !UUID_PATTERN.test(operationId)) {
+      if (
+        !reportIds.length ||
+        !listingId ||
+        !UUID_PATTERN.test(operationId) ||
+        !decisionResult.ok
+      ) {
         return NextResponse.json({ error: "Missing listing moderation payload." }, { status: 400 });
       }
 
       const { data: updatedCount, error } = await supabase.rpc(
-        "remove_reported_listing",
+        "remove_reported_listing_with_rationale",
         {
           p_report_ids: reportIds,
           p_listing_id: listingId,
+          p_seller_feedback: decisionResult.value.sellerFeedback,
+          p_private_summary: decisionResult.value.privateSummary,
           p_request_id: operationId,
         },
       );
@@ -235,8 +239,18 @@ export async function POST(request) {
       const targetUserId = payload?.userId;
       const operationId =
         typeof payload?.operationId === "string" ? payload.operationId.trim() : "";
+      const forceNameDecision = validateForceNameDecision({
+        policyReason: payload?.policyReason,
+        userMessage: payload?.userMessage,
+        privateNote: payload?.privateNote,
+      });
 
-      if (!reportIds.length || !targetUserId || !UUID_PATTERN.test(operationId)) {
+      if (
+        !reportIds.length ||
+        !targetUserId ||
+        !UUID_PATTERN.test(operationId) ||
+        !forceNameDecision.ok
+      ) {
         return NextResponse.json(
           { error: "Missing name change moderation payload." },
           { status: 400 },
@@ -309,12 +323,15 @@ export async function POST(request) {
       }
 
       const { data: operationRows, error: beginError } = await supabase.rpc(
-        "begin_force_name_operation",
+        "begin_force_name_operation_with_rationale",
         {
           p_report_ids: reportIds,
           p_subject_user_id: targetUserId,
           p_desired_metadata: nextAppMetadata,
           p_rollback_metadata: targetUser.app_metadata ?? {},
+          p_policy_reason: forceNameDecision.value.policyReason,
+          p_user_message: forceNameDecision.value.userMessage,
+          p_private_note: forceNameDecision.value.privateNote,
           p_request_id: requestId,
         },
       );
@@ -330,10 +347,16 @@ export async function POST(request) {
       }
 
       if (operation.operation_status === "completed") {
-        return NextResponse.json({
-          success: true,
-          updatedCount: operation.result_updated_count,
-        });
+        const { data: updatedCount, error: completionError } = await supabase.rpc(
+          "complete_force_name_operation_with_rationale",
+          { p_operation_id: operation.operation_id },
+        );
+
+        if (completionError) {
+          throw completionError;
+        }
+
+        return NextResponse.json({ success: true, updatedCount });
       }
 
       if (operation.operation_status !== "pending") {
@@ -353,7 +376,7 @@ export async function POST(request) {
 
         authMutationApplied = true;
         const { data: updatedCount, error: forceNameError } = await supabase.rpc(
-          "complete_force_name_operation",
+          "complete_force_name_operation_with_rationale",
           { p_operation_id: operation.operation_id },
         );
 
@@ -364,7 +387,7 @@ export async function POST(request) {
         return NextResponse.json({ success: true, updatedCount });
       } catch (forceNameError) {
         const { data: replayCount, error: replayError } = await supabase.rpc(
-          "complete_force_name_operation",
+          "complete_force_name_operation_with_rationale",
           { p_operation_id: operation.operation_id },
         );
 
@@ -462,29 +485,21 @@ export async function POST(request) {
       }
 
       const reportId = payload?.reportId;
-      const moderatorNotes = typeof payload?.moderatorNotes === "string" ? payload.moderatorNotes : "";
+      const moderatorNotesResult = validateModeratorNote(payload?.moderatorNotes);
+      const operationId =
+        typeof payload?.operationId === "string" ? payload.operationId.trim() : "";
 
-      if (!reportId) {
+      if (!reportId || !UUID_PATTERN.test(operationId) || !moderatorNotesResult.ok) {
         return NextResponse.json({ error: "Missing report id." }, { status: 400 });
       }
 
-      const { error } = await admin
-        .from("reports")
-        .update({
-          moderator_notes: moderatorNotes.trim() || null,
-          moderator_notes_updated_at: new Date().toISOString(),
-          moderator_notes_updated_by: user.id,
-        })
-        .eq("id", reportId);
+      const { error } = await supabase.rpc("save_report_moderator_note", {
+        p_report_id: reportId,
+        p_moderator_note: moderatorNotesResult.value,
+        p_request_id: operationId,
+      });
 
       if (error) {
-        if (isReportNotesColumnsMissing(error)) {
-          return NextResponse.json(
-            { error: "Moderator notes are not configured in this environment yet." },
-            { status: 400 },
-          );
-        }
-
         throw error;
       }
 

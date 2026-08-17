@@ -1,24 +1,11 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { isNameChangeRequired } from "@/lib/moderation";
-import {
-  getRejectedProfileNameFingerprints,
-  matchesRejectedProfileName,
-} from "@/lib/name-sanction.mjs";
+import { getProfileNameFingerprint } from "@/lib/name-sanction.mjs";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { getUserStatusRow, isUserBanned } from "@/lib/user-status";
+import { validateProfileIdentity } from "@/lib/write-field-contracts.mjs";
 import { createClient } from "@/utils/supabase/server";
-
-const MAX_PROFILE_NAME_LENGTH = 100;
-
-function normalizeName(value) {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  return value.trim() || null;
-}
 
 export async function POST(request) {
   const admin = createAdminClient();
@@ -58,85 +45,70 @@ export async function POST(request) {
   }
 
   try {
-    const payload = await request.json();
-    const firstName = normalizeName(payload?.firstName);
-    const lastName = normalizeName(payload?.lastName);
+    const payload = await request.json().catch(() => null);
+    const identity = validateProfileIdentity(payload);
 
-    if (
-      (firstName?.length ?? 0) > MAX_PROFILE_NAME_LENGTH ||
-      (lastName?.length ?? 0) > MAX_PROFILE_NAME_LENGTH
-    ) {
-      return NextResponse.json({ error: "Profile names are too long." }, { status: 400 });
-    }
-
-    const {
-      data: { user: latestUser },
-      error: latestUserError,
-    } = await admin.auth.admin.getUserById(user.id);
-
-    if (latestUserError || !latestUser) {
-      console.error(
-        "Failed to verify profile name update user:",
-        latestUserError?.message ?? "Missing Auth user",
-      );
-      return NextResponse.json({ error: "Could not verify your account." }, { status: 503 });
-    }
-
-    const requiresNameChange = isNameChangeRequired(latestUser);
-
-    if (requiresNameChange && (!firstName || !lastName)) {
+    if (!identity.ok) {
       return NextResponse.json(
-        { error: "Both first and last name are required." },
+        {
+          error: "Enter a first and last name between 1 and 100 characters.",
+          fieldErrors: identity.errors,
+        },
         { status: 400 },
       );
     }
 
-    const rejectedNameFingerprints = getRejectedProfileNameFingerprints(
-      latestUser.app_metadata,
+    const { firstName, lastName } = identity.values;
+
+    const nameFingerprint = getProfileNameFingerprint(firstName, lastName);
+    const { data: clearedRequiredNameChange, error: profileError } = await admin.rpc(
+      "save_profile_identity_from_server",
+      {
+        p_subject_user_id: user.id,
+        p_first_name: firstName,
+        p_last_name: lastName,
+        p_name_fingerprint: nameFingerprint,
+      },
     );
 
-    if (
-      matchesRejectedProfileName(firstName, lastName, rejectedNameFingerprints)
-    ) {
+    if (profileError) {
+      const profileErrorText = [profileError.message, profileError.details, profileError.hint]
+        .filter(Boolean)
+        .join(" ");
+
+      if (profileErrorText.includes("profile_name_rejected")) {
+        return NextResponse.json(
+          { error: "Choose a different first or last name." },
+          { status: 409 },
+        );
+      }
+      if (profileErrorText.includes("force_name_change_operation_in_progress")) {
+        return NextResponse.json(
+          { error: "A moderator action is still being completed. Try again shortly." },
+          { status: 409 },
+        );
+      }
+      if (profileErrorText.includes("account_is_banned")) {
+        return NextResponse.json(
+          { error: "Account changes are unavailable while this account is restricted." },
+          { status: 403 },
+        );
+      }
+      throw profileError;
+    }
+
+    if (clearedRequiredNameChange === null) {
       return NextResponse.json(
-        { error: "Choose a different first or last name." },
+        { error: "A moderator action is still being completed. Try again shortly." },
         { status: 409 },
       );
     }
 
-    const { error: profileError } = await admin.from("profiles").upsert(
-      {
-        id: user.id,
-        first_name: firstName,
-        last_name: lastName,
-      },
-      { onConflict: "id" },
-    );
-
-    if (profileError) {
-      throw profileError;
-    }
-
-    if (requiresNameChange) {
-      const nextAppMetadata = {
-        ...(latestUser.app_metadata ?? {}),
-        // Auth Admin metadata updates merge keys. Sending null explicitly clears
-        // the sanction while retaining the server-controlled fingerprint history.
-        force_name_change: null,
-      };
-
-      const { error: authUpdateError } = await admin.auth.admin.updateUserById(user.id, {
-        app_metadata: nextAppMetadata,
-      });
-
-      if (authUpdateError) {
-        // The profile may now contain an acceptable replacement, but the trusted
-        // sanction remains set until this update succeeds, so retries fail closed.
-        throw authUpdateError;
-      }
-    }
-
-    return NextResponse.json({ success: true, requiresNameChange: false });
+    return NextResponse.json({
+      success: true,
+      requiresNameChange: false,
+      clearedRequiredNameChange: clearedRequiredNameChange === true,
+    });
   } catch (error) {
     console.error("Failed to update trusted profile name:", error?.message ?? error);
     return NextResponse.json(

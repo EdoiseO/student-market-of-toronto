@@ -227,7 +227,6 @@ export default async function ListingDetailPage({ params }) {
                         slug={listing.slug}
                         listingId={listing.id}
                         currentUserId={user?.id ?? null}
-                        sellerId={listing.seller_id}
                       />
                     </div>
                   </div>

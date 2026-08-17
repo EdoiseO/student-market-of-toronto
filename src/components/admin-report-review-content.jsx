@@ -28,6 +28,67 @@ import {
   getTranslatedReportReason,
   getTranslatedReportStatus,
 } from "@/lib/moderation";
+import {
+  FORCE_NAME_POLICY_REASON_MAX_LENGTH,
+  FORCE_NAME_USER_MESSAGE_MAX_LENGTH,
+  MODERATOR_NOTE_MAX_LENGTH,
+  REPORTED_LISTING_FEEDBACK_MAX_LENGTH,
+  REPORTED_LISTING_PRIVATE_SUMMARY_MAX_LENGTH,
+  REPORT_DECISION_SUMMARY_MAX_LENGTH,
+  validateForceNameDecision,
+  validateModeratorNote,
+  validateReportDecisionSummary,
+  validateReportedListingDecision,
+} from "@/lib/write-field-contracts.mjs";
+
+function DecisionTextField({
+  id,
+  label,
+  description,
+  value,
+  onChange,
+  textareaRef,
+  limit,
+  error,
+  required = false,
+  rows = 3,
+}) {
+  return (
+    <div className="space-y-2">
+      <div>
+        <label htmlFor={id} className="text-sm font-semibold text-foreground">
+          {label}
+        </label>
+        <p id={`${id}-description`} className="mt-1 text-xs leading-5 text-muted-foreground">
+          {description}
+        </p>
+      </div>
+      <Textarea
+        ref={textareaRef}
+        id={id}
+        value={value}
+        onChange={onChange}
+        rows={rows}
+        required={required}
+        aria-invalid={Boolean(error)}
+        aria-describedby={`${id}-description${error ? ` ${id}-error` : ""}`}
+        className="min-h-24 resize-y rounded-xl"
+      />
+      <div className="flex items-start justify-between gap-3 text-xs">
+        {error ? (
+          <p id={`${id}-error`} role="alert" className="text-destructive">
+            {error}
+          </p>
+        ) : (
+          <span />
+        )}
+        <span className="shrink-0 text-muted-foreground">
+          {Array.from(value).length}/{limit}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 function ReviewMetadata({ label, children }) {
   return (
@@ -74,7 +135,6 @@ function ModeratorNotesCard({
                 onChange={(event) => setModeratorNotes(event.target.value)}
                 placeholder={t.adminModeratorNotesPlaceholder}
                 rows={compact ? 3 : 6}
-                maxLength={4000}
                 className={`${compact ? "h-24 min-h-24" : "h-40 min-h-32"} max-h-80 resize-y border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0`}
               />
             </div>
@@ -132,9 +192,23 @@ export function AdminReportReviewContent({
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [isSavingNotes, setIsSavingNotes] = React.useState(false);
   const [moderatorNotes, setModeratorNotes] = React.useState(report.moderatorNotes ?? "");
+  const [decisionSummary, setDecisionSummary] = React.useState("");
+  const [sellerFeedback, setSellerFeedback] = React.useState("");
+  const [removalPrivateSummary, setRemovalPrivateSummary] = React.useState("");
+  const [forcePolicyReason, setForcePolicyReason] = React.useState("");
+  const [forceUserMessage, setForceUserMessage] = React.useState("");
+  const [forcePrivateNote, setForcePrivateNote] = React.useState("");
+  const [fieldErrors, setFieldErrors] = React.useState({});
   const reportStatusOperationRef = React.useRef(null);
   const removeListingOperationRef = React.useRef(null);
   const forceNameOperationRef = React.useRef(null);
+  const notesOperationRef = React.useRef(null);
+  const decisionSummaryRef = React.useRef(null);
+  const sellerFeedbackRef = React.useRef(null);
+  const removalPrivateSummaryRef = React.useRef(null);
+  const forcePolicyReasonRef = React.useRef(null);
+  const forceUserMessageRef = React.useRef(null);
+  const forcePrivateNoteRef = React.useRef(null);
 
   React.useEffect(() => {
     setModeratorNotes(report.moderatorNotes ?? "");
@@ -185,7 +259,7 @@ export function AdminReportReviewContent({
   const hasModeratorNotes = moderatorNotes.trim().length > 0;
   const hasNotesChanges = moderatorNotes !== (report.moderatorNotes ?? "");
 
-  async function updateRelatedReportStatuses(nextStatus) {
+  async function updateRelatedReportStatuses(nextStatus, privateSummary) {
     if (!currentUserId || isProcessing || actionableReportIds.length === 0) {
       return { error: true };
     }
@@ -194,6 +268,7 @@ export function AdminReportReviewContent({
       action: "update_status",
       reportIds: [...actionableReportIds].sort(),
       status: nextStatus,
+      decisionSummary: privateSummary,
     });
     if (reportStatusOperationRef.current?.payloadKey !== operationPayloadKey) {
       reportStatusOperationRef.current = {
@@ -212,6 +287,7 @@ export function AdminReportReviewContent({
         action: "update_status",
         reportIds: actionableReportIds,
         status: nextStatus,
+        decisionSummary: privateSummary,
       }),
     });
 
@@ -232,9 +308,20 @@ export function AdminReportReviewContent({
       return;
     }
 
+    const summaryResult = validateReportDecisionSummary(decisionSummary);
+    if (!summaryResult.ok) {
+      setFieldErrors((current) => ({
+        ...current,
+        decisionSummary: t.adminReportDecisionSummaryValidation,
+      }));
+      decisionSummaryRef.current?.focus();
+      return;
+    }
+
+    setFieldErrors((current) => ({ ...current, decisionSummary: "" }));
     setIsProcessing(true);
 
-    const result = await updateRelatedReportStatuses(nextStatus);
+    const result = await updateRelatedReportStatuses(nextStatus, summaryResult.value);
 
     setIsProcessing(false);
 
@@ -261,11 +348,38 @@ export function AdminReportReviewContent({
       return;
     }
 
+    const decisionResult = validateReportedListingDecision({
+      sellerFeedback,
+      privateSummary: removalPrivateSummary,
+    });
+    if (!decisionResult.ok) {
+      const errorKey = decisionResult.error === "seller_feedback"
+        ? "sellerFeedback"
+        : "removalPrivateSummary";
+      setFieldErrors((current) => ({
+        ...current,
+        [errorKey]: decisionResult.error === "seller_feedback"
+          ? t.adminRemoveListingFeedbackValidation
+          : t.adminRemoveListingPrivateSummaryDescription,
+      }));
+      (errorKey === "sellerFeedback"
+        ? sellerFeedbackRef
+        : removalPrivateSummaryRef).current?.focus();
+      return;
+    }
+
+    setFieldErrors((current) => ({
+      ...current,
+      sellerFeedback: "",
+      removalPrivateSummary: "",
+    }));
     setIsProcessing(true);
 
     const operationPayloadKey = JSON.stringify({
       listingId: listingTarget.id,
       reportIds: [...actionableReportIds].sort(),
+      sellerFeedback: decisionResult.value.sellerFeedback,
+      privateSummary: decisionResult.value.privateSummary,
     });
 
     if (removeListingOperationRef.current?.payloadKey !== operationPayloadKey) {
@@ -285,6 +399,8 @@ export function AdminReportReviewContent({
         action: "remove_listing",
         listingId: listingTarget.id,
         reportIds: actionableReportIds,
+        sellerFeedback: decisionResult.value.sellerFeedback,
+        privateSummary: decisionResult.value.privateSummary,
       }),
     });
 
@@ -316,17 +432,42 @@ export function AdminReportReviewContent({
       return;
     }
 
-    const confirmed = window.confirm(t.adminForceNameChangeDescription);
-
-    if (!confirmed) {
+    const decisionResult = validateForceNameDecision({
+      policyReason: forcePolicyReason,
+      userMessage: forceUserMessage,
+      privateNote: forcePrivateNote,
+    });
+    if (!decisionResult.ok) {
+      const fieldByError = {
+        policy_reason: ["forcePolicyReason", forcePolicyReasonRef],
+        user_message: ["forceUserMessage", forceUserMessageRef],
+        private_note: ["forcePrivateNote", forcePrivateNoteRef],
+      };
+      const [field, fieldRef] = fieldByError[decisionResult.error];
+      setFieldErrors((current) => ({
+        ...current,
+        [field]: decisionResult.error === "private_note"
+          ? t.adminForceNamePrivateNoteDescription
+          : decisionResult.error === "policy_reason"
+            ? t.adminForceNamePolicyReasonDescription
+            : t.adminForceNameUserMessageDescription,
+      }));
+      fieldRef.current?.focus();
       return;
     }
 
+    setFieldErrors((current) => ({
+      ...current,
+      forcePolicyReason: "",
+      forceUserMessage: "",
+      forcePrivateNote: "",
+    }));
     setIsProcessing(true);
 
     const operationPayloadKey = JSON.stringify({
       userId: profileTarget.id,
       reportIds: [...actionableReportIds].sort(),
+      ...decisionResult.value,
     });
 
     if (forceNameOperationRef.current?.payloadKey !== operationPayloadKey) {
@@ -346,6 +487,7 @@ export function AdminReportReviewContent({
         action: "force_name_change",
         userId: profileTarget.id,
         reportIds: actionableReportIds,
+        ...decisionResult.value,
       }),
     });
 
@@ -370,6 +512,23 @@ export function AdminReportReviewContent({
       return;
     }
 
+    const noteResult = validateModeratorNote(moderatorNotes);
+    if (!noteResult.ok) {
+      toast.error(t.adminModeratorNotesSaveError);
+      return;
+    }
+
+    const operationPayloadKey = JSON.stringify({
+      reportId: report.id,
+      moderatorNotes: noteResult.value,
+    });
+    if (notesOperationRef.current?.payloadKey !== operationPayloadKey) {
+      notesOperationRef.current = {
+        payloadKey: operationPayloadKey,
+        operationId: crypto.randomUUID(),
+      };
+    }
+
     setIsSavingNotes(true);
 
     const response = await fetch("/api/admin/reports/actions", {
@@ -380,7 +539,8 @@ export function AdminReportReviewContent({
       body: JSON.stringify({
         action: "save_notes",
         reportId: report.id,
-        moderatorNotes: moderatorNotes,
+        moderatorNotes: noteResult.value,
+        operationId: notesOperationRef.current.operationId,
       }),
     });
 
@@ -394,6 +554,7 @@ export function AdminReportReviewContent({
       return;
     }
 
+    notesOperationRef.current = null;
     toast.success(t.adminModeratorNotesSaved);
     router.refresh();
   }
@@ -461,6 +622,111 @@ export function AdminReportReviewContent({
           ) : null}
         </CardContent>
       </Card>
+
+      {hasOpenRelatedReports ? (
+        <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
+          <CardHeader className="border-b border-zinc-200 px-5 py-4 dark:border-border sm:px-6">
+            <CardTitle className="text-lg text-zinc-950 dark:text-foreground">
+              {t.adminReportDecisionSummaryLabel}
+            </CardTitle>
+            <CardDescription>{t.adminDecisionPrivateFieldsNotice}</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-5 px-5 py-5 sm:px-6 lg:grid-cols-2">
+            <DecisionTextField
+              id="report-decision-summary"
+              label={t.adminReportDecisionSummaryLabel}
+              description={t.adminReportDecisionSummaryDescription}
+              value={decisionSummary}
+              onChange={(event) => {
+                setDecisionSummary(event.target.value);
+                setFieldErrors((current) => ({ ...current, decisionSummary: "" }));
+              }}
+              textareaRef={decisionSummaryRef}
+              limit={REPORT_DECISION_SUMMARY_MAX_LENGTH}
+              error={fieldErrors.decisionSummary}
+              required
+            />
+
+            {canRemoveListing ? (
+              <>
+                <DecisionTextField
+                  id="reported-listing-seller-feedback"
+                  label={t.adminRemoveListingFeedbackLabel}
+                  description={t.adminRemoveListingFeedbackDescription}
+                  value={sellerFeedback}
+                  onChange={(event) => {
+                    setSellerFeedback(event.target.value);
+                    setFieldErrors((current) => ({ ...current, sellerFeedback: "" }));
+                  }}
+                  textareaRef={sellerFeedbackRef}
+                  limit={REPORTED_LISTING_FEEDBACK_MAX_LENGTH}
+                  error={fieldErrors.sellerFeedback}
+                  required
+                />
+                <DecisionTextField
+                  id="reported-listing-private-summary"
+                  label={t.adminRemoveListingPrivateSummaryLabel}
+                  description={t.adminRemoveListingPrivateSummaryDescription}
+                  value={removalPrivateSummary}
+                  onChange={(event) => {
+                    setRemovalPrivateSummary(event.target.value);
+                    setFieldErrors((current) => ({ ...current, removalPrivateSummary: "" }));
+                  }}
+                  textareaRef={removalPrivateSummaryRef}
+                  limit={REPORTED_LISTING_PRIVATE_SUMMARY_MAX_LENGTH}
+                  error={fieldErrors.removalPrivateSummary}
+                />
+              </>
+            ) : null}
+
+            {canForceNameChange ? (
+              <>
+                <DecisionTextField
+                  id="force-name-policy-reason"
+                  label={t.adminForceNamePolicyReasonLabel}
+                  description={t.adminForceNamePolicyReasonDescription}
+                  value={forcePolicyReason}
+                  onChange={(event) => {
+                    setForcePolicyReason(event.target.value);
+                    setFieldErrors((current) => ({ ...current, forcePolicyReason: "" }));
+                  }}
+                  textareaRef={forcePolicyReasonRef}
+                  limit={FORCE_NAME_POLICY_REASON_MAX_LENGTH}
+                  error={fieldErrors.forcePolicyReason}
+                  required
+                />
+                <DecisionTextField
+                  id="force-name-user-message"
+                  label={t.adminForceNameUserMessageLabel}
+                  description={t.adminForceNameUserMessageDescription}
+                  value={forceUserMessage}
+                  onChange={(event) => {
+                    setForceUserMessage(event.target.value);
+                    setFieldErrors((current) => ({ ...current, forceUserMessage: "" }));
+                  }}
+                  textareaRef={forceUserMessageRef}
+                  limit={FORCE_NAME_USER_MESSAGE_MAX_LENGTH}
+                  error={fieldErrors.forceUserMessage}
+                  required
+                />
+                <DecisionTextField
+                  id="force-name-private-note"
+                  label={t.adminForceNamePrivateNoteLabel}
+                  description={t.adminForceNamePrivateNoteDescription}
+                  value={forcePrivateNote}
+                  onChange={(event) => {
+                    setForcePrivateNote(event.target.value);
+                    setFieldErrors((current) => ({ ...current, forcePrivateNote: "" }));
+                  }}
+                  textareaRef={forcePrivateNoteRef}
+                  limit={MODERATOR_NOTE_MAX_LENGTH}
+                  error={fieldErrors.forcePrivateNote}
+                />
+              </>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.8fr)]">
         {isMessageReport ? (

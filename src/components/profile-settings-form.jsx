@@ -26,7 +26,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -41,16 +41,20 @@ import {
   readProfileImageDimensions,
   validateProfileImageDimensions,
 } from "@/lib/profile-image-crop.mjs";
-
-function normalizeProfileText(value) {
-  const normalizedValue = value.trim();
-  return normalizedValue.length > 0 ? normalizedValue : null;
-}
+import { focusFirstInvalidField } from "@/lib/focus-first-invalid-field";
+import {
+  countUnicodeCodePoints,
+  normalizeWriteText,
+  validateProfileBio,
+  validateProfileIdentity,
+  WRITE_FIELD_ERROR_CODES,
+} from "@/lib/write-field-contracts.mjs";
 
 export function ProfileSettingsForm({ initialProfile }) {
   const router = useRouter();
   const supabase = React.useMemo(() => createClient(), []);
   const fileInputRef = React.useRef(null);
+  const formRef = React.useRef(null);
   const { t } = useLanguage();
 
   const [firstName, setFirstName] = React.useState(initialProfile.firstName ?? "");
@@ -62,6 +66,7 @@ export function ProfileSettingsForm({ initialProfile }) {
   const [avatarEditorSource, setAvatarEditorSource] = React.useState(null);
   const [isUpdatingAvatar, setIsUpdatingAvatar] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [fieldErrors, setFieldErrors] = React.useState({});
   const [isMobileViewport, setIsMobileViewport] = React.useState(false);
   const [requiresNameChange, setRequiresNameChange] = React.useState(
     initialProfile.requiresNameChange === true,
@@ -109,18 +114,18 @@ export function ProfileSettingsForm({ initialProfile }) {
     .slice(0, 2)
     .toUpperCase() || "SM";
 
-  const initialNormalizedFirstName = normalizeProfileText(initialProfile.firstName ?? "");
-  const initialNormalizedLastName = normalizeProfileText(initialProfile.lastName ?? "");
-  const initialNormalizedBio = normalizeProfileText(initialProfile.bio ?? "");
-  const currentNormalizedFirstName = normalizeProfileText(firstName);
-  const currentNormalizedLastName = normalizeProfileText(lastName);
-  const currentNormalizedBio = normalizeProfileText(bio);
+  const initialNormalizedFirstName = normalizeWriteText(initialProfile.firstName ?? "");
+  const initialNormalizedLastName = normalizeWriteText(initialProfile.lastName ?? "");
+  const initialNormalizedBio = normalizeWriteText(initialProfile.bio ?? "", { emptyToNull: true });
+  const currentNormalizedFirstName = normalizeWriteText(firstName);
+  const currentNormalizedLastName = normalizeWriteText(lastName);
+  const currentNormalizedBio = normalizeWriteText(bio, { emptyToNull: true });
   const hasNameChanges =
     currentNormalizedFirstName !== initialNormalizedFirstName ||
     currentNormalizedLastName !== initialNormalizedLastName;
+  const hasBioChanges = currentNormalizedBio !== initialNormalizedBio;
 
-  const hasProfileChanges =
-    hasNameChanges || currentNormalizedBio !== initialNormalizedBio;
+  const hasProfileChanges = hasNameChanges || hasBioChanges;
 
   async function saveAvatarPreset(nextPresetId) {
     setIsUpdatingAvatar(true);
@@ -279,18 +284,28 @@ export function ProfileSettingsForm({ initialProfile }) {
   async function handleSubmit(event) {
     event.preventDefault();
 
-    if (!hasProfileChanges || isSaving) {
+    if ((!hasProfileChanges && !requiresNameChange) || isSaving) {
       return;
     }
 
-    const normalizedFirstName = currentNormalizedFirstName;
-    const normalizedLastName = currentNormalizedLastName;
-    const normalizedBio = currentNormalizedBio;
+    const identity = validateProfileIdentity({ firstName, lastName });
+    const bioResult = hasBioChanges
+      ? validateProfileBio(bio)
+      : { ok: true, value: initialNormalizedBio, error: null };
+    const nextFieldErrors = { ...identity.errors };
 
-    if (requiresNameChange && (!normalizedFirstName || !normalizedLastName)) {
-      toast.error(t.profileNameChangeRequiredError);
+    if (!bioResult.ok) {
+      nextFieldErrors.bio = bioResult.error;
+    }
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors);
+      toast.error(t.formReviewFieldErrors);
+      focusFirstInvalidField(formRef.current);
       return;
     }
+
+    setFieldErrors({});
 
     setIsSaving(true);
 
@@ -300,34 +315,34 @@ export function ProfileSettingsForm({ initialProfile }) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            firstName: normalizedFirstName,
-            lastName: normalizedLastName,
+            firstName: identity.values.firstName,
+            lastName: identity.values.lastName,
           }),
         });
         const namePayload = await nameResponse.json().catch(() => ({}));
 
         if (!nameResponse.ok) {
+          if (namePayload?.fieldErrors) {
+            setFieldErrors(namePayload.fieldErrors);
+            focusFirstInvalidField(formRef.current);
+          }
           throw new Error(namePayload?.error || t.profileUpdateError);
         }
 
         setRequiresNameChange(false);
       }
 
-      const { error: profileUpsertError } = await supabase
-        .from("profiles")
-        .upsert(
-          {
-            id: initialProfile.id,
-            bio: normalizedBio,
-            avatar_preset_id: avatarPresetId,
-            avatar_url: avatarUrl || null,
-            is_public: initialProfile.isPublic ?? false,
-          },
-          { onConflict: "id" },
-        );
+      if (hasBioChanges) {
+        const { data: updatedProfile, error: profileUpdateError } = await supabase
+          .from("profiles")
+          .update({ bio: bioResult.value })
+          .eq("id", initialProfile.id)
+          .select("id")
+          .maybeSingle();
 
-      if (profileUpsertError) {
-        throw profileUpsertError;
+        if (profileUpdateError || !updatedProfile) {
+          throw profileUpdateError ?? new Error("Profile row was not available for update.");
+        }
       }
 
       toast.success(t.profileUpdated);
@@ -341,7 +356,7 @@ export function ProfileSettingsForm({ initialProfile }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 pb-3 md:gap-8 md:pb-0">
+    <form ref={formRef} onSubmit={handleSubmit} noValidate className="flex flex-col gap-3 pb-3 md:gap-8 md:pb-0">
       {requiresNameChange ? (
         <Card className="rounded-2xl border-amber-300 bg-amber-50 py-0 shadow-sm dark:border-amber-500/40 dark:bg-amber-500/10 md:rounded-3xl">
           <CardHeader className="px-4 py-4 md:px-6 md:py-5">
@@ -465,40 +480,86 @@ export function ProfileSettingsForm({ initialProfile }) {
           </CardHeader>
           <CardContent className="px-4 py-3 md:px-6 md:py-8">
             <FieldGroup className="gap-3 md:gap-6">
-              <div className="grid w-full grid-cols-2 gap-3 md:max-w-[70%] md:gap-4">
-                <Field>
-                  <FieldLabel htmlFor="profile-first-name">{t.firstName}</FieldLabel>
+              <p className="text-xs text-muted-foreground">{t.requiredFieldsLegend}</p>
+              <div className="grid w-full grid-cols-1 gap-3 min-[360px]:grid-cols-2 md:max-w-[70%] md:gap-4">
+                <Field data-invalid={Boolean(fieldErrors.firstName)}>
+                  <FieldLabel htmlFor="profile-first-name">
+                    {t.firstName} <span aria-hidden="true">*</span>
+                  </FieldLabel>
                   <Input
                     id="profile-first-name"
                     value={firstName}
-                    onChange={(event) => setFirstName(event.target.value)}
+                    onChange={(event) => {
+                      setFirstName(event.target.value);
+                      setFieldErrors((current) => ({ ...current, firstName: undefined }));
+                    }}
+                    required
+                    aria-required="true"
+                    aria-invalid={Boolean(fieldErrors.firstName)}
+                    aria-describedby={fieldErrors.firstName ? "profile-first-name-error" : undefined}
                     placeholder={t.firstNamePlaceholder}
                     className="rounded-xl bg-white dark:bg-input/30"
                   />
+                  <FieldError id="profile-first-name-error">
+                    {fieldErrors.firstName === WRITE_FIELD_ERROR_CODES.tooLong
+                      ? t.profileNameLengthError
+                      : fieldErrors.firstName
+                        ? t.profileFirstNameRequired
+                        : null}
+                  </FieldError>
                 </Field>
 
-                <Field>
-                  <FieldLabel htmlFor="profile-last-name">{t.lastName}</FieldLabel>
+                <Field data-invalid={Boolean(fieldErrors.lastName)}>
+                  <FieldLabel htmlFor="profile-last-name">
+                    {t.lastName} <span aria-hidden="true">*</span>
+                  </FieldLabel>
                   <Input
                     id="profile-last-name"
                     value={lastName}
-                    onChange={(event) => setLastName(event.target.value)}
+                    onChange={(event) => {
+                      setLastName(event.target.value);
+                      setFieldErrors((current) => ({ ...current, lastName: undefined }));
+                    }}
+                    required
+                    aria-required="true"
+                    aria-invalid={Boolean(fieldErrors.lastName)}
+                    aria-describedby={fieldErrors.lastName ? "profile-last-name-error" : undefined}
                     placeholder={t.lastNamePlaceholder}
                     className="rounded-xl bg-white dark:bg-input/30"
                   />
+                  <FieldError id="profile-last-name-error">
+                    {fieldErrors.lastName === WRITE_FIELD_ERROR_CODES.tooLong
+                      ? t.profileNameLengthError
+                      : fieldErrors.lastName
+                        ? t.profileLastNameRequired
+                        : null}
+                  </FieldError>
                 </Field>
               </div>
 
-              <Field>
+              <Field data-invalid={Boolean(fieldErrors.bio)}>
                 <FieldLabel htmlFor="profile-description">{t.description}</FieldLabel>
                 <Textarea
                   id="profile-description"
                   value={bio}
-                  onChange={(event) => setBio(event.target.value)}
+                  onChange={(event) => {
+                    setBio(event.target.value);
+                    setFieldErrors((current) => ({ ...current, bio: undefined }));
+                  }}
                   rows={4}
                   className="h-32 min-h-32 max-h-72 rounded-xl bg-white dark:bg-input/30 md:h-36 md:min-h-36 md:rounded-2xl"
                   placeholder={t.profileBioPlaceholder}
+                  aria-invalid={Boolean(fieldErrors.bio)}
+                  aria-describedby={fieldErrors.bio
+                    ? "profile-description-count profile-description-error"
+                    : "profile-description-count"}
                 />
+                <div id="profile-description-count" className="text-right text-xs text-muted-foreground">
+                  {t.profileBioCharacterCount.replace("{count}", countUnicodeCodePoints(bio))}
+                </div>
+                <FieldError id="profile-description-error">
+                  {fieldErrors.bio ? t.profileBioLengthError : null}
+                </FieldError>
               </Field>
 
               <div className="-mx-4 flex justify-end border-t border-zinc-200 bg-white px-4 py-2 dark:border-border dark:bg-card md:mx-0 md:border-0 md:bg-transparent md:p-0">
@@ -506,7 +567,7 @@ export function ProfileSettingsForm({ initialProfile }) {
                   type="submit"
                   size="sm"
                   className="rounded-xl px-4"
-                  disabled={isSaving || !hasProfileChanges}
+                  disabled={isSaving || (!hasProfileChanges && !requiresNameChange)}
                 >
                   {isSaving ? t.saving : t.saveProfile}
                 </Button>

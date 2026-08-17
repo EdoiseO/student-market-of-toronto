@@ -193,6 +193,74 @@ export const translations = {
     alreadyHaveAccount: "Already have an account?",
     passwordsDoNotMatch: "Passwords do not match.",
     accountCreatedSuccess: "Account created! Check your email to verify.",
+    requiredFieldLabel: "Required",
+    requiredFieldsLegend: "* Required fields",
+    formReviewFieldErrors: "Review the highlighted fields and try again.",
+    profileFirstNameRequired: "Enter your first name.",
+    profileLastNameRequired: "Enter your last name.",
+    profileNameLengthError: "Keep each name between 1 and 100 characters.",
+    profileBioLengthError: "Keep your description at 1,000 characters or fewer.",
+    profileBioCharacterCount: "{count}/1,000 characters",
+    registrationPasswordRequired: "Enter a password.",
+    registrationConfirmPasswordRequired: "Confirm your password.",
+    loadingAccountForm: "Loading account form",
+    loadingProfileSettings: "Loading profile settings",
+    listingDraftMinimumHint:
+      "A draft only needs a title. Complete every required field and add at least one photo before submitting.",
+    listingValidationSummaryTitle: "Complete the highlighted listing details",
+    listingTitleRequired: "Enter a title between 1 and 120 characters.",
+    listingCategoryRequired: "Choose a category.",
+    listingPriceRequired: "Enter a price from $0 to $1,000,000 CAD.",
+    listingDescriptionRequired: "Enter a description between 1 and 5,000 characters.",
+    listingConditionRequired: "Choose the item’s condition.",
+    listingCampusRequired: "Choose a meetup campus.",
+    listingPhotoRequired: "Add at least one photo. Listings can include up to 10.",
+    listingShowFewerPhotoPreviews: "Show fewer photo previews",
+    listingAdditionalPhotosSelected: "{count} additional photos selected",
+    listingShowLess: "Show less",
+    listingMorePhotos: "+{count} more",
+    listingSavedAsDraftAfterEdit:
+      "Changes saved as a draft. Submit the listing for review when it is complete.",
+    listingChangedRefresh: "This listing changed in another session. Refresh and try again.",
+    listingRequiredFieldsUnavailable:
+      "The listing could not be saved. Review the required fields and try again.",
+    reportOtherDetailsRequired: "Add 10–600 characters of detail when you choose Other.",
+    reportDetailsCharacterCount: "{count}/600 characters",
+    adminReportDecisionSummaryLabel: "Private decision summary",
+    adminReportDecisionSummaryDescription:
+      "Required. Explain the report outcome for moderation staff in 10–1,000 characters.",
+    adminReportDecisionSummaryPlaceholder:
+      "Record why these reports are being resolved or dismissed…",
+    adminReportDecisionSummaryValidation:
+      "Enter a private decision summary between 10 and 1,000 characters.",
+    adminRemoveListingFeedbackLabel: "Message to the seller",
+    adminRemoveListingFeedbackDescription:
+      "Required. Explain the removal and next steps in 10–3,000 characters.",
+    adminRemoveListingFeedbackPlaceholder: "Explain why the listing was removed…",
+    adminRemoveListingFeedbackValidation:
+      "Enter a seller message between 10 and 3,000 characters.",
+    adminRemoveListingPrivateSummaryLabel: "Private decision summary (optional)",
+    adminRemoveListingPrivateSummaryDescription:
+      "Visible only to authorized moderation staff. Maximum 1,000 characters.",
+    adminForceNamePolicyReasonLabel: "Policy reason",
+    adminForceNamePolicyReasonDescription:
+      "Required. Record the policy basis in 10–1,000 characters.",
+    adminForceNameUserMessageLabel: "Message to the user",
+    adminForceNameUserMessageDescription:
+      "Required. Explain what must change in 10–1,000 characters.",
+    adminForceNamePrivateNoteLabel: "Private moderator note (optional)",
+    adminForceNamePrivateNoteDescription:
+      "Visible only to authorized moderation staff. Maximum 4,000 characters.",
+    adminDecisionPrivateFieldsNotice:
+      "Private moderation text is never included in user notifications.",
+    notificationProfileNameChangeRequiredTitle: "Update your profile name",
+    notificationProfileNameChangeRequiredDescription:
+      "A moderator requires you to update your profile name before continuing.",
+    notificationProfileNameChangeRequiredWithMessage: "{message}",
+    notificationListingRemovedTitle: "Listing removed",
+    notificationListingRemovedDescription:
+      "A moderator removed this listing after reviewing user reports.",
+    notificationListingRemovedWithFeedback: "{feedback}",
     createListingDesc:
       "Add the main item details first. Photos, campus, condition, and tag preview are included here so the page reflects how the listing will look later in the marketplace. Submitted listings now go through moderator review before they go live.",
     createListingRestrictionsTitle: "Marketplace restrictions",
@@ -480,6 +548,8 @@ export const translations = {
     reportDetailsLabel: "Details",
     reportDetailsDescription:
       "Optional: add a short explanation with any context that would help review the report.",
+    reportOtherDetailsDescription:
+      "Required for Other: add 10–600 characters of context for the moderation team.",
     reportDetailsPlaceholder:
       "Add any extra context, screenshots described in words, or details about what happened...",
     reportSubmit: "Submit report",
@@ -532,6 +602,8 @@ export const translations = {
       "Your conversation will appear in Messages after you send the first message.",
     sendFirstMessage: "Send first message",
     messageInputPlaceholder: "Write a message...",
+    messageBodyTooLong: "Keep messages at 2,000 characters or fewer.",
+    messageBodyCharacterCount: "{count}/2,000 characters",
     addMessageEmoji: "Add an emoji",
     insertMessageEmoji: "Insert",
     messageEmojiPickerLabel: "Choose an emoji",
@@ -1065,6 +1137,9 @@ export const translations = {
     adminListingFeedbackTitle: "Seller feedback",
     adminListingFeedbackDescription:
       "If you reject this listing, explain what needs to change before the seller resubmits it.",
+    adminListingFeedbackRequiredMarker: "Required for rejection",
+    adminListingFeedbackTooLong:
+      "Keep seller feedback at 3,000 characters or fewer.",
     adminListingFeedbackPlaceholder:
       "Example: remove prohibited wording, add clearer photos, rewrite misleading price/details, or fix the category before resubmitting...",
     adminListingDecisionLockedDescription:
@@ -1494,6 +1569,86 @@ export const translations = {
     passwordsDoNotMatch: "Les mots de passe ne correspondent pas.",
     accountCreatedSuccess:
       "Compte créé ! Vérifiez votre e-mail pour le confirmer.",
+    requiredFieldLabel: "Obligatoire",
+    requiredFieldsLegend: "* Champs obligatoires",
+    formReviewFieldErrors:
+      "Vérifiez les champs en surbrillance et réessayez.",
+    profileFirstNameRequired: "Saisissez votre prénom.",
+    profileLastNameRequired: "Saisissez votre nom de famille.",
+    profileNameLengthError:
+      "Limitez chaque nom à une longueur de 1 à 100 caractères.",
+    profileBioLengthError:
+      "Limitez votre description à 1 000 caractères ou moins.",
+    profileBioCharacterCount: "{count}/1 000 caractères",
+    registrationPasswordRequired: "Saisissez un mot de passe.",
+    registrationConfirmPasswordRequired: "Confirmez votre mot de passe.",
+    loadingAccountForm: "Chargement du formulaire de compte",
+    loadingProfileSettings: "Chargement des paramètres du profil",
+    listingDraftMinimumHint:
+      "Un brouillon nécessite seulement un titre. Remplissez tous les champs obligatoires et ajoutez au moins une photo avant de le soumettre.",
+    listingValidationSummaryTitle:
+      "Complétez les détails de l’annonce en surbrillance",
+    listingTitleRequired: "Saisissez un titre de 1 à 120 caractères.",
+    listingCategoryRequired: "Choisissez une catégorie.",
+    listingPriceRequired: "Saisissez un prix de 0 $ à 1 000 000 $ CA.",
+    listingDescriptionRequired:
+      "Saisissez une description de 1 à 5 000 caractères.",
+    listingConditionRequired: "Choisissez l’état de l’article.",
+    listingCampusRequired: "Choisissez un campus de rencontre.",
+    listingPhotoRequired:
+      "Ajoutez au moins une photo. Une annonce peut en contenir jusqu’à 10.",
+    listingShowFewerPhotoPreviews: "Afficher moins d’aperçus de photos",
+    listingAdditionalPhotosSelected: "{count} photos supplémentaires sélectionnées",
+    listingShowLess: "Afficher moins",
+    listingMorePhotos: "+{count} de plus",
+    listingSavedAsDraftAfterEdit:
+      "Les modifications ont été enregistrées comme brouillon. Soumettez l’annonce à l’examen lorsqu’elle est complète.",
+    listingChangedRefresh:
+      "Cette annonce a été modifiée dans une autre session. Actualisez la page et réessayez.",
+    listingRequiredFieldsUnavailable:
+      "Impossible d’enregistrer l’annonce. Vérifiez les champs obligatoires et réessayez.",
+    reportOtherDetailsRequired:
+      "Ajoutez de 10 à 600 caractères de détails lorsque vous choisissez Autre.",
+    reportDetailsCharacterCount: "{count}/600 caractères",
+    adminReportDecisionSummaryLabel: "Résumé privé de la décision",
+    adminReportDecisionSummaryDescription:
+      "Obligatoire. Expliquez le résultat du signalement au personnel de modération en 10 à 1 000 caractères.",
+    adminReportDecisionSummaryPlaceholder:
+      "Indiquez pourquoi ces signalements sont résolus ou rejetés…",
+    adminReportDecisionSummaryValidation:
+      "Saisissez un résumé privé de 10 à 1 000 caractères.",
+    adminRemoveListingFeedbackLabel: "Message au vendeur",
+    adminRemoveListingFeedbackDescription:
+      "Obligatoire. Expliquez le retrait et les prochaines étapes en 10 à 3 000 caractères.",
+    adminRemoveListingFeedbackPlaceholder:
+      "Expliquez pourquoi l’annonce a été retirée…",
+    adminRemoveListingFeedbackValidation:
+      "Saisissez un message au vendeur de 10 à 3 000 caractères.",
+    adminRemoveListingPrivateSummaryLabel:
+      "Résumé privé de la décision (facultatif)",
+    adminRemoveListingPrivateSummaryDescription:
+      "Visible uniquement par le personnel de modération autorisé. Maximum de 1 000 caractères.",
+    adminForceNamePolicyReasonLabel: "Motif de politique",
+    adminForceNamePolicyReasonDescription:
+      "Obligatoire. Consignez le fondement de politique en 10 à 1 000 caractères.",
+    adminForceNameUserMessageLabel: "Message à l’utilisateur",
+    adminForceNameUserMessageDescription:
+      "Obligatoire. Expliquez ce qui doit changer en 10 à 1 000 caractères.",
+    adminForceNamePrivateNoteLabel:
+      "Note privée de modération (facultative)",
+    adminForceNamePrivateNoteDescription:
+      "Visible uniquement par le personnel de modération autorisé. Maximum de 4 000 caractères.",
+    adminDecisionPrivateFieldsNotice:
+      "Le texte privé de modération n’est jamais inclus dans les notifications aux utilisateurs.",
+    notificationProfileNameChangeRequiredTitle:
+      "Mettez à jour votre nom de profil",
+    notificationProfileNameChangeRequiredDescription:
+      "Un modérateur vous demande de mettre à jour votre nom de profil avant de continuer.",
+    notificationProfileNameChangeRequiredWithMessage: "{message}",
+    notificationListingRemovedTitle: "Annonce retirée",
+    notificationListingRemovedDescription:
+      "Un modérateur a retiré cette annonce après examen des signalements.",
+    notificationListingRemovedWithFeedback: "{feedback}",
     createListingDesc:
       "Commencez par ajouter les informations principales sur l'article. Les photos, le campus, l'état et l'aperçu des étiquettes sont inclus ici pour vous montrer à quoi l'annonce ressemblera sur la plateforme. Les annonces soumises passent maintenant par une révision de modération avant d'être mises en ligne.",
     createListingRestrictionsTitle: "Restrictions du marché",
@@ -1796,6 +1951,8 @@ export const translations = {
     reportDetailsLabel: "Détails",
     reportDetailsDescription:
       "Optionnel : ajoutez une courte explication avec tout contexte utile pour examiner le signalement.",
+    reportOtherDetailsDescription:
+      "Obligatoire pour Autre : ajoutez de 10 à 600 caractères de contexte pour l’équipe de modération.",
     reportDetailsPlaceholder:
       "Ajoutez du contexte, une description de preuve utile, ou les détails de ce qui s'est passé...",
     reportSubmit: "Envoyer le signalement",
@@ -1850,6 +2007,8 @@ export const translations = {
       "Votre conversation apparaîtra dans Messages après l'envoi du premier message.",
     sendFirstMessage: "Envoyer le premier message",
     messageInputPlaceholder: "Écrivez un message…",
+    messageBodyTooLong: "Limitez les messages à 2 000 caractères ou moins.",
+    messageBodyCharacterCount: "{count}/2 000 caractères",
     addMessageEmoji: "Ajouter un emoji",
     insertMessageEmoji: "Insérer",
     messageEmojiPickerLabel: "Choisir un emoji",
@@ -2428,6 +2587,9 @@ export const translations = {
     adminListingFeedbackTitle: "Commentaire au vendeur",
     adminListingFeedbackDescription:
       "Si vous refusez cette annonce, expliquez ce qui doit changer avant que le vendeur la soumette de nouveau.",
+    adminListingFeedbackRequiredMarker: "Obligatoire pour refuser",
+    adminListingFeedbackTooLong:
+      "Limitez le commentaire au vendeur à 3 000 caractères.",
     adminListingFeedbackPlaceholder:
       "Exemple : retirez un libellé interdit, ajoutez des photos plus claires, corrigez un prix ou des détails trompeurs, ou ajustez la catégorie avant de soumettre à nouveau...",
     adminListingDecisionLockedDescription:

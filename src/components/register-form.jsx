@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { cn } from "@/lib/utils";
@@ -20,13 +20,20 @@ import {
 import {
   Field,
   FieldDescription,
+  FieldError,
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { focusFirstInvalidField } from "@/lib/focus-first-invalid-field";
+import {
+  WRITE_FIELD_ERROR_CODES,
+  validateProfileIdentity,
+} from "@/lib/write-field-contracts.mjs";
 
 export function RegisterForm({ className, ...props }) {
   const { t } = useLanguage();
+  const formRef = useRef(null);
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -36,6 +43,7 @@ export function RegisterForm({ className, ...props }) {
     school: "",
   });
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [success, setSuccess] = useState("");
   const normalizedEmail = normalizeEmail(form.email);
   const showSchoolEmailHint = normalizedEmail.length > 0;
@@ -62,6 +70,15 @@ export function RegisterForm({ className, ...props }) {
     : "";
 
   function updateField(name, value) {
+    setFieldErrors((currentErrors) => {
+      if (!currentErrors[name]) {
+        return currentErrors;
+      }
+
+      const nextErrors = { ...currentErrors };
+      delete nextErrors[name];
+      return nextErrors;
+    });
     setForm((currentForm) => {
       if (name === "email") {
         return {
@@ -84,16 +101,30 @@ export function RegisterForm({ className, ...props }) {
     setSuccess("");
     const email = normalizeEmail(form.email);
     const school = getTorontoSchoolNameFromEmail(email);
+    const identity = validateProfileIdentity(form);
+    const nextFieldErrors = { ...identity.errors };
 
-    if (form.password !== form.confirmPassword) {
-      setError(t.passwordsDoNotMatch);
+    if (!email || !isValidTorontoSchoolEmail(email) || !school) {
+      nextFieldErrors.email = "invalid";
+    }
+
+    if (!form.password) {
+      nextFieldErrors.password = WRITE_FIELD_ERROR_CODES.required;
+    }
+
+    if (!form.confirmPassword || form.password !== form.confirmPassword) {
+      nextFieldErrors.confirmPassword = form.confirmPassword
+        ? "mismatch"
+        : WRITE_FIELD_ERROR_CODES.required;
+    }
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors);
+      focusFirstInvalidField(formRef.current);
       return;
     }
 
-    if (!isValidTorontoSchoolEmail(email) || !school) {
-      setError(getSchoolEmailError(email));
-      return;
-    }
+    setFieldErrors({});
 
     const supabase = createClient();
 
@@ -102,8 +133,8 @@ export function RegisterForm({ className, ...props }) {
       password: form.password,
       options: {
         data: {
-          first_name: form.firstName,
-          last_name: form.lastName,
+          first_name: identity.values.firstName,
+          last_name: identity.values.lastName,
         },
       },
     });
@@ -124,85 +155,124 @@ export function RegisterForm({ className, ...props }) {
           <CardDescription>{t.registerDescription}</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit}>
+          <form ref={formRef} onSubmit={handleSubmit} noValidate>
             <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="firstName">{t.firstName}</FieldLabel>
+              <p className="text-xs text-muted-foreground">{t.requiredFieldsLegend}</p>
+              <Field data-invalid={Boolean(fieldErrors.firstName)}>
+                <FieldLabel htmlFor="firstName">
+                  {t.firstName} <span aria-hidden="true">*</span>
+                </FieldLabel>
                 <Input
                   id="firstName"
                   type="text"
                   autoComplete="given-name"
                   placeholder="John"
                   required
+                  aria-required="true"
                   value={form.firstName}
                   onChange={(e) => updateField("firstName", e.target.value)}
+                  aria-invalid={Boolean(fieldErrors.firstName)}
+                  aria-describedby={fieldErrors.firstName ? "firstName-error" : undefined}
                 />
+                <FieldError id="firstName-error">
+                  {fieldErrors.firstName === WRITE_FIELD_ERROR_CODES.tooLong
+                    ? t.profileNameLengthError
+                    : fieldErrors.firstName
+                      ? t.profileFirstNameRequired
+                      : null}
+                </FieldError>
               </Field>
 
-              <Field>
-                <FieldLabel htmlFor="lastName">{t.lastName}</FieldLabel>
+              <Field data-invalid={Boolean(fieldErrors.lastName)}>
+                <FieldLabel htmlFor="lastName">
+                  {t.lastName} <span aria-hidden="true">*</span>
+                </FieldLabel>
                 <Input
                   id="lastName"
                   type="text"
                   autoComplete="family-name"
                   placeholder="Doe"
                   required
+                  aria-required="true"
                   value={form.lastName}
                   onChange={(e) => updateField("lastName", e.target.value)}
+                  aria-invalid={Boolean(fieldErrors.lastName)}
+                  aria-describedby={fieldErrors.lastName ? "lastName-error" : undefined}
                 />
+                <FieldError id="lastName-error">
+                  {fieldErrors.lastName === WRITE_FIELD_ERROR_CODES.tooLong
+                    ? t.profileNameLengthError
+                    : fieldErrors.lastName
+                      ? t.profileLastNameRequired
+                      : null}
+                </FieldError>
               </Field>
 
-              <Field>
-                <FieldLabel htmlFor="email">{t.schoolEmail}</FieldLabel>
+              <Field data-invalid={Boolean(fieldErrors.email || schoolEmailError)}>
+                <FieldLabel htmlFor="email">
+                  {t.schoolEmail} <span aria-hidden="true">*</span>
+                </FieldLabel>
                 <Input
                   id="email"
                   type="email"
                   autoComplete="email"
                   placeholder="john.doe@mail.utoronto.ca"
                   required
+                  aria-required="true"
                   value={form.email}
                   onChange={(e) => updateField("email", e.target.value)}
-                  aria-invalid={Boolean(schoolEmailError)}
+                  aria-invalid={Boolean(fieldErrors.email || schoolEmailError)}
+                  aria-describedby={fieldErrors.email || schoolEmailError ? "email-error" : undefined}
                 />
-                {schoolEmailError && (
-                  <p role="alert" className="text-sm text-red-600 dark:text-red-400">{schoolEmailError}</p>
-                )}
+                <FieldError id="email-error">
+                  {fieldErrors.email ? getSchoolEmailError(form.email) : schoolEmailError}
+                </FieldError>
               </Field>
 
-              <Field>
-                <FieldLabel htmlFor="password">{t.password}</FieldLabel>
+              <Field data-invalid={Boolean(fieldErrors.password || passwordBackendError)}>
+                <FieldLabel htmlFor="password">
+                  {t.password} <span aria-hidden="true">*</span>
+                </FieldLabel>
                 <Input
                   id="password"
                   type="password"
                   autoComplete="new-password"
                   required
+                  aria-required="true"
                   value={form.password}
                   onChange={(e) => updateField("password", e.target.value)}
-                  aria-invalid={Boolean(passwordBackendError)}
+                  aria-invalid={Boolean(fieldErrors.password || passwordBackendError)}
+                  aria-describedby={fieldErrors.password || passwordBackendError ? "password-error" : undefined}
                 />
-                {passwordBackendError ? (
-                  <p role="alert" className="text-sm text-red-600 dark:text-red-400">{passwordBackendError}</p>
-                ) : null}
+                <FieldError id="password-error">
+                  {fieldErrors.password ? t.registrationPasswordRequired : passwordBackendError}
+                </FieldError>
               </Field>
 
-              <Field>
+              <Field data-invalid={Boolean(fieldErrors.confirmPassword || passwordMismatchError)}>
                 <FieldLabel htmlFor="confirmPassword">
-                  {t.confirmPassword}
+                  {t.confirmPassword} <span aria-hidden="true">*</span>
                 </FieldLabel>
                 <Input
                   id="confirmPassword"
                   type="password"
                   autoComplete="new-password"
                   required
+                  aria-required="true"
                   value={form.confirmPassword}
                   onChange={(e) =>
                     updateField("confirmPassword", e.target.value)
                   }
-                  aria-invalid={passwordMismatchError}
+                  aria-invalid={Boolean(fieldErrors.confirmPassword || passwordMismatchError)}
+                  aria-describedby={fieldErrors.confirmPassword || passwordMismatchError ? "confirmPassword-error" : undefined}
                 />
-                {passwordMismatchError ? (
-                  <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>
-                ) : null}
+                <FieldError id="confirmPassword-error">
+                  {fieldErrors.confirmPassword === WRITE_FIELD_ERROR_CODES.required
+                    ? t.registrationConfirmPasswordRequired
+                    : fieldErrors.confirmPassword || passwordMismatchError
+                      ? t.passwordsDoNotMatch
+                      : null}
+                </FieldError>
               </Field>
 
               <Field>
@@ -211,7 +281,6 @@ export function RegisterForm({ className, ...props }) {
                   id="school"
                   type="text"
                   placeholder={t.schoolAutoFilledPlaceholder}
-                  required
                   value={form.school}
                   readOnly
                 />

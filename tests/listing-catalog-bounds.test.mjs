@@ -55,7 +55,7 @@ test("authenticated listing writes cannot forge ranking, price-history, or times
   assert.doesNotMatch(authenticatedGrantBlock, /\bprevious_price\b/i);
   assert.doesNotMatch(createForm, /submitted_for_review_at\s*:/i);
   assert.doesNotMatch(editForm, /previous_price\s*:/i);
-  assert.match(dashboardActions, /rpc\("transition_owned_listing_status"/i);
+  assert.match(dashboardActions, /transition_owned_listing_status_idempotent/i);
 });
 
 test("public catalog routes bound both listing rows and embedded images", async () => {
@@ -128,9 +128,11 @@ test("public catalog RPCs use indexed filters and enforce hard work caps", async
 });
 
 test("listing images are transactionally owner-bound and capped at ten", async () => {
-  const [migration, editForm, adminListing, adminReport, messages, conversation] =
+  const [migration, listingFoundation, recoveryFoundation, editForm, adminListing, adminReport, messages, conversation] =
     await Promise.all([
       source("supabase/migrations/20260812233309_enforce_listing_server_managed_fields.sql"),
+      source("supabase/migrations/20260816192729_stage6_listing_required_field_foundation.sql"),
+      source("supabase/migrations/20260816224214_stage6_listing_write_intent_recovery_foundation.sql"),
       source("src/components/edit-listing-form.jsx"),
       source("src/app/admin/listings/[listingId]/page.jsx"),
       source("src/app/admin/reports/[reportId]/page.jsx"),
@@ -148,15 +150,33 @@ test("listing images are transactionally owner-bound and capped at ten", async (
   assert.match(migration, /if current_image_count >= 10/i);
   assert.match(migration, /before insert or update of listing_id, storage_path, image_url, position/i);
 
-  const deleteIndex = editForm.indexOf('.from("listing_images")\n        .delete()');
-  const insertIndex = editForm.indexOf('.from("listing_images")\n        .insert(');
-  assert.ok(deleteIndex >= 0 && insertIndex > deleteIndex);
-  assert.match(editForm, /Upload replacements first while the old metadata and blobs remain fully[\s\S]*uploadedImages\.push/i);
-  assert.match(editForm, /restoreRemovedPhotoRows\(\)/);
-  assert.match(editForm, /Old blobs[\s\S]*remain in Storage until all replacement rows and ordering updates succeed/i);
-  const replacementInsertIndex = editForm.indexOf("for (const uploadedImage of uploadedImages)");
-  const oldStorageDeleteIndex = editForm.indexOf("const removedStoragePaths = removedPhotos");
-  assert.ok(replacementInsertIndex >= 0 && oldStorageDeleteIndex > replacementInsertIndex);
+  assert.match(
+    listingFoundation,
+    /function public\.save_owned_listing_draft_with_images_idempotent[\s\S]*security invoker/i,
+  );
+  assert.match(
+    listingFoundation,
+    /function listing_action_private\.replace_owned_listing_images_impl[\s\S]*order by image\.id[\s\S]*for update[\s\S]*from public\.listings listing[\s\S]*for update/i,
+  );
+  assert.match(listingFoundation, /function private\.prevent_referenced_listing_image_object_delete/i);
+  assert.match(listingFoundation, /order by object\.name[\s\S]*for key share/i);
+  assert.match(listingFoundation, /private\.listing_image_public_url\(item ->> 'storage_path'\)/i);
+  assert.doesNotMatch(editForm, /\.from\("listing_images"\)[\s\S]{0,120}\.(?:insert|update|delete)/i);
+  assert.match(
+    recoveryFoundation,
+    /function public\.reserve_owned_listing_image_uploads[\s\S]*security invoker/i,
+  );
+  assert.match(
+    recoveryFoundation,
+    /function public\.commit_owned_listing_edit_intent[\s\S]*security invoker/i,
+  );
+  const reservationIndex = editForm.indexOf('"reserve_owned_listing_image_uploads"');
+  const replacementIndex = editForm.indexOf('"commit_owned_listing_edit_intent"');
+  const cleanupIndex = editForm.indexOf("drainOwnedListingImageCleanup");
+  assert.ok(
+    reservationIndex >= 0 && replacementIndex > reservationIndex && cleanupIndex >= 0,
+    "edit uploads must be reserved, then committed atomically, with durable cleanup",
+  );
 
   assert.match(adminListing, /limit\(LISTING_IMAGE_LIMIT, \{ referencedTable: "listing_images" \}\)/);
   assert.match(adminReport, /limit\(MESSAGE_LISTING_IMAGE_LIMIT, \{ referencedTable: "listings\.listing_images" \}\)/);

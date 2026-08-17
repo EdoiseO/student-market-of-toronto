@@ -26,5 +26,5 @@ export async function requireAdminPageAction(action, label) {
   if (actorStatus.error || actorStatus.available === false) redirect("/");
   if (isUserBanned(actorStatus.data)) redirect("/banned");
 
-  return { admin, language, role, t: translations[language] ?? translations.en, user };
+  return { admin, supabase, language, role, t: translations[language] ?? translations.en, user };
 }

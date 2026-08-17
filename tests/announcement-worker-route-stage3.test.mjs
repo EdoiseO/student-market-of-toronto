@@ -29,6 +29,12 @@ test("worker endpoint is independently invokable and bounded by the worker modul
 
 test("scheduler secret and activation dependency are documented without a Pro-only config", () => {
   assert.match(envExample, /^CRON_SECRET=$/m);
-  assert.match(readme, /invoke that endpoint at least every five minutes/i);
-  assert.match(readme, /Vercel Hobby requires a Supabase or other external scheduler/i);
+  assert.match(
+    readme,
+    /invoke (?:that endpoint|both endpoints) at\s+least every five minutes/i,
+  );
+  assert.match(
+    readme,
+    /Vercel Hobby requires a Supabase\s+or other external scheduler/i,
+  );
 });

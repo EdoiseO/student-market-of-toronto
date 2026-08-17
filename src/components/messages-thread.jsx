@@ -91,8 +91,14 @@ import {
   buildMessageMediaUploadPlan,
   cleanupExpiredMessageMediaUploads,
   releaseMessageMediaUploadReservations,
-  reserveMessageMediaUploads,
+  reserveMessageMediaUploadsIdempotent,
 } from "@/lib/message-media-reservations.mjs";
+import {
+  callMessageMutationWithReplay,
+  createMessageSendOperationId,
+  getMessageOperationOutcome,
+  isStorageObjectAlreadyPresent,
+} from "@/lib/message-send-idempotency.mjs";
 import {
   addMessageReaction,
   applyMessageReactionChange,
@@ -102,6 +108,12 @@ import {
 } from "@/lib/message-reactions.mjs";
 import { subscribeToConversationMessageInserts } from "@/lib/message-realtime.mjs";
 import { subscribeToNotificationUpdates } from "@/lib/notification-realtime.mjs";
+import { focusFirstInvalidField } from "@/lib/focus-first-invalid-field";
+import {
+  MESSAGE_BODY_MAX_LENGTH,
+  countUnicodeCodePoints,
+  validateMessageBody,
+} from "@/lib/write-field-contracts.mjs";
 import { createClient } from "@/utils/supabase/client";
 
 function formatPrice(price, language) {
@@ -180,10 +192,13 @@ export function MessagesThread({
   const hasNewerMessagesRef = React.useRef(false);
   const [pendingReactionKeys, setPendingReactionKeys] = React.useState(() => new Set());
   const [draft, setDraft] = React.useState("");
+  const [messageBodyError, setMessageBodyError] = React.useState("");
   const [isSending, setIsSending] = React.useState(false);
+  const [unresolvedSendIntent, setUnresolvedSendIntent] = React.useState(null);
   const [pendingAttachments, setPendingAttachments] = React.useState([]);
   const pendingAttachmentsRef = React.useRef([]);
   const composerRef = React.useRef(null);
+  const composerFormRef = React.useRef(null);
   const composerSelectionRef = React.useRef({ start: 0, end: 0 });
   const mediaInputRef = React.useRef(null);
   const [reportMessageTarget, setReportMessageTarget] = React.useState(null);
@@ -476,8 +491,14 @@ export function MessagesThread({
     : getListingMessagingUnavailableText(conversation.listing.status, t);
   const blockReason = getMessagingBlockReason(blockState, t);
   const hasListingLink = Boolean(conversation.listing.slug);
+  const isSendIntentLocked = Boolean(unresolvedSendIntent);
   const isMediaSelectionAvailable =
-    isMessagingAvailable && !isConversationClosed && !blockReason && !isSending;
+    isMessagingAvailable && !isConversationClosed && !blockReason && !isSending
+    && !isSendIntentLocked;
+  const draftValidation = validateMessageBody(draft, {
+    allowEmpty: pendingAttachments.length > 0,
+  });
+  const draftCharacterCount = countUnicodeCodePoints(draft);
   const { isDragActive, dropzoneProps } = useFileDropzone(addPendingMediaFiles);
 
   React.useEffect(() => {
@@ -835,19 +856,285 @@ export function MessagesThread({
     };
   }, [conversation.hasUnreadMessages, conversation.id, currentUserId, supabase]);
 
+  async function cleanupAbortedSendIntent(intent) {
+    const storagePaths = intent.uploadPlan.map((item) => item.storagePath);
+
+    if (storagePaths.length > 0) {
+      const { error: cleanupError } = await supabase.storage
+        .from(MESSAGE_MEDIA_BUCKET)
+        .remove(storagePaths);
+
+      if (cleanupError) {
+        console.error("Failed to clean up aborted message media:", cleanupError.message);
+        return false;
+      }
+
+      const { error: releaseError } = await releaseMessageMediaUploadReservations(
+        supabase,
+        storagePaths,
+      );
+
+      if (releaseError) {
+        console.error("Failed to release aborted message reservations:", releaseError.message);
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  async function commitCompletedSendIntent(intent, createdMessage) {
+    const attachmentPayload = intent.uploadPlan.map((item) => item.payload);
+    const uploadedPaths = intent.uploadPlan.map((item) => item.storagePath);
+
+    if (createdMessage) {
+      let signedRows = [];
+
+      if (uploadedPaths.length > 0) {
+        const { data: signedUrlRows, error: signedUrlsError } = await supabase.storage
+          .from(MESSAGE_MEDIA_BUCKET)
+          .createSignedUrls(uploadedPaths, 60 * 60);
+
+        if (signedUrlsError) {
+          console.error("Failed to sign sent message media:", signedUrlsError.message);
+        } else {
+          signedRows = signedUrlRows ?? [];
+        }
+      }
+
+      if (hasNewerMessagesRef.current) {
+        setHasNewerMessages(true);
+      } else {
+        setMessages((currentMessages) =>
+          upsertConversationMessage(currentMessages, {
+            ...createdMessage,
+            attachments: attachmentPayload.map((attachment, index) => ({
+              id: `${createdMessage.id}-${index}`,
+              message_id: createdMessage.id,
+              ...attachment,
+              signedUrl: signedRows[index]?.signedUrl ?? null,
+            })),
+            reactions: [],
+          }),
+        );
+      }
+    }
+
+    setUnresolvedSendIntent(null);
+    clearPendingAttachments();
+    setDraft("");
+    setMessageBodyError("");
+
+    const { error: unhideError } = await supabase.from("conversation_user_state").upsert(
+      {
+        conversation_id: conversation.id,
+        user_id: currentUserId,
+        hidden_at: null,
+      },
+      { onConflict: "conversation_id,user_id" },
+    );
+
+    if (unhideError && !isConversationUserStateTableMissing(unhideError)) {
+      console.error("Failed to restore hidden conversation after send:", unhideError.message);
+    }
+  }
+
+  function showMessageSendFailure(error, hasAttachments) {
+    if (isConversationClosedWriteError(error)) {
+      void refreshConversationModerationState();
+      toast.error(t.conversationClosedComposerLabel);
+    } else if (isListingMessagingUnavailableError(error)) {
+      toast.error(
+        getListingMessagingUnavailableText(
+          getListingMessagingUnavailableStatusFromError(error),
+          t,
+        ),
+      );
+    } else if (isMessageAttachmentSetupMissing(error)) {
+      toast.error(t.mediaMessageSetupRequired);
+    } else {
+      toast.error(hasAttachments ? t.mediaUploadError : t.messageSendError);
+    }
+
+    console.error("Failed to send message:", error?.message ?? error);
+  }
+
+  async function reconcileFailedSendIntent(intent, originalError) {
+    const attachmentPayload = intent.uploadPlan.map((item) => item.payload);
+    const abortResult = await callMessageMutationWithReplay(() =>
+      supabase.rpc("abort_message_send_operation", {
+        p_operation_id: intent.operationId,
+        p_conversation_id: intent.conversationId,
+        p_body: intent.body,
+        p_attachments: attachmentPayload,
+      }),
+    );
+
+    if (abortResult.ambiguous || abortResult.error) {
+      setUnresolvedSendIntent(intent);
+      showMessageSendFailure(abortResult.error ?? originalError, attachmentPayload.length > 0);
+      return false;
+    }
+
+    const outcome = getMessageOperationOutcome(abortResult.data);
+
+    if (outcome.status === "completed") {
+      await commitCompletedSendIntent(intent, outcome.message);
+      return true;
+    }
+
+    const cleanupConfirmed = await cleanupAbortedSendIntent(intent);
+    setUnresolvedSendIntent(cleanupConfirmed ? null : intent);
+    showMessageSendFailure(originalError, attachmentPayload.length > 0);
+    return cleanupConfirmed;
+  }
+
+  async function executeMessageSendIntent(intent) {
+    const attachmentPayload = intent.uploadPlan.map((item) => item.payload);
+    setIsSending(true);
+
+    if (intent.uploadPlan.length > 0) {
+      const expiredCleanupResult = await cleanupExpiredMessageMediaUploads(supabase);
+
+      if (expiredCleanupResult.error && !isMessageAttachmentSetupMissing(expiredCleanupResult.error)) {
+        console.error(
+          "Failed to clean up expired message media reservations:",
+          expiredCleanupResult.error.message,
+        );
+      }
+
+      const reservationResult = await callMessageMutationWithReplay(() =>
+        reserveMessageMediaUploadsIdempotent(supabase, {
+          operationId: intent.operationId,
+          conversationId: intent.conversationId,
+          body: intent.body,
+          uploadPlan: intent.uploadPlan,
+        }),
+      );
+
+      if (reservationResult.ambiguous) {
+        setUnresolvedSendIntent(intent);
+        showMessageSendFailure(reservationResult.error, true);
+        setIsSending(false);
+        return;
+      }
+
+      if (reservationResult.error) {
+        await reconcileFailedSendIntent(intent, reservationResult.error);
+        setIsSending(false);
+        return;
+      }
+    }
+
+    for (const item of intent.uploadPlan) {
+      if (intent.uploadedPaths.includes(item.storagePath)) {
+        continue;
+      }
+
+      let uploadResult;
+
+      try {
+        uploadResult = await supabase.storage
+          .from(MESSAGE_MEDIA_BUCKET)
+          .upload(item.storagePath, item.file, {
+            cacheControl: "3600",
+            contentType: item.file.type,
+            upsert: false,
+          });
+      } catch (error) {
+        setUnresolvedSendIntent(intent);
+        showMessageSendFailure(error, true);
+        setIsSending(false);
+        return;
+      }
+
+      if (uploadResult.error && !isStorageObjectAlreadyPresent(uploadResult.error)) {
+        await reconcileFailedSendIntent(intent, uploadResult.error);
+        setIsSending(false);
+        return;
+      }
+
+      const uploadedPath = uploadResult.data?.path ?? item.storagePath;
+
+      if (uploadedPath !== item.storagePath) {
+        await reconcileFailedSendIntent(
+          intent,
+          new Error("Uploaded message media path did not match its reservation."),
+        );
+        setIsSending(false);
+        return;
+      }
+
+      intent.uploadedPaths.push(item.storagePath);
+    }
+
+    const sendResult = await callMessageMutationWithReplay(() =>
+      supabase.rpc("send_conversation_message_idempotent", {
+        p_operation_id: intent.operationId,
+        p_conversation_id: intent.conversationId,
+        p_body: intent.body,
+        p_attachments: attachmentPayload,
+      }),
+    );
+
+    if (sendResult.ambiguous) {
+      setUnresolvedSendIntent(intent);
+      showMessageSendFailure(sendResult.error, attachmentPayload.length > 0);
+      setIsSending(false);
+      return;
+    }
+
+    if (sendResult.error) {
+      await reconcileFailedSendIntent(intent, sendResult.error);
+      setIsSending(false);
+      return;
+    }
+
+    const outcome = getMessageOperationOutcome(sendResult.data);
+    await commitCompletedSendIntent(intent, outcome.message);
+    setIsSending(false);
+  }
+
+  async function handleDiscardUnresolvedSend() {
+    if (!unresolvedSendIntent || isSending) {
+      return;
+    }
+
+    setIsSending(true);
+    await reconcileFailedSendIntent(
+      unresolvedSendIntent,
+      new Error("Message send was cancelled."),
+    );
+    setIsSending(false);
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
 
-    if (
-      isSending ||
-      isConversationClosed ||
-      (!draft.trim() && pendingAttachments.length === 0)
-    ) {
+    if (isSending) {
+      return;
+    }
+
+    if (unresolvedSendIntent) {
+      await executeMessageSendIntent(unresolvedSendIntent);
+      return;
+    }
+
+    const bodyResult = validateMessageBody(draft, {
+      allowEmpty: pendingAttachments.length > 0,
+    });
+
+    if (isConversationClosed || !bodyResult.ok) {
       if (isConversationClosed) {
         toast.error(t.conversationClosedComposerLabel);
+      } else if (bodyResult.error === "too_long") {
+        setMessageBodyError(t.messageBodyTooLong);
+        focusFirstInvalidField(composerFormRef.current);
       }
       return;
     }
+
+    setMessageBodyError("");
 
     const latestBlockState = await getUserBlockState(
       supabase,
@@ -873,7 +1160,6 @@ export function MessagesThread({
     }
 
     setIsSending(true);
-
     const { data: conversationRow, error: conversationStatusError } = await supabase
       .from("conversations")
       .select(MESSAGE_CONVERSATION_SELECT)
@@ -898,182 +1184,23 @@ export function MessagesThread({
       }
     }
 
-    const attachmentsToSend = [...pendingAttachments];
-    const uploadedPaths = [];
-    let reservedPaths = [];
-    let messageWasCreated = false;
-
-    try {
-      const uploadPlan = buildMessageMediaUploadPlan({
-        attachments: attachmentsToSend,
-        conversationId: conversation.id,
-        userId: currentUserId,
-        randomUUID: () => crypto.randomUUID(),
-        sanitizeFileName: sanitizeMessageAttachmentFileName,
-      });
-      const attachmentPayload = uploadPlan.map((item) => item.payload);
-
-      if (uploadPlan.length > 0) {
-        const expiredCleanupResult = await cleanupExpiredMessageMediaUploads(supabase);
-
-        if (expiredCleanupResult.error && !isMessageAttachmentSetupMissing(expiredCleanupResult.error)) {
-          console.error(
-            "Failed to clean up expired message media reservations:",
-            expiredCleanupResult.error.message,
-          );
-        }
-
-        // Record the exact planned paths before the RPC. If the response is lost
-        // after the database commits, the catch path can still release them.
-        reservedPaths = uploadPlan.map((item) => item.storagePath);
-        const { error: reservationError } = await reserveMessageMediaUploads(
-          supabase,
-          conversation.id,
-          uploadPlan,
-        );
-
-        if (reservationError) {
-          throw reservationError;
-        }
-      }
-
-      for (const item of uploadPlan) {
-        const { data: uploadedObject, error: uploadError } = await supabase.storage
-          .from(MESSAGE_MEDIA_BUCKET)
-          .upload(item.storagePath, item.file, {
-            cacheControl: "3600",
-            contentType: item.file.type,
-            upsert: false,
-          });
-
-        if (uploadError) {
-          throw uploadError;
-        }
-
-        const uploadedPath = uploadedObject?.path ?? item.storagePath;
-
-        if (uploadedPath !== item.storagePath) {
-          throw new Error("Uploaded message media path did not match its reservation.");
-        }
-
-        uploadedPaths.push(uploadedPath);
-      }
-
-      const messageOperation = attachmentPayload.length > 0
-        ? supabase.rpc("send_conversation_message_with_attachments", {
-            p_conversation_id: conversation.id,
-            p_body: draft,
-            p_attachments: attachmentPayload,
-          })
-        : supabase.rpc("send_conversation_message", {
-            p_conversation_id: conversation.id,
-            p_body: draft,
-          });
-      const { data, error } = await messageOperation;
-
-      if (error) {
-        throw error;
-      }
-
-      messageWasCreated = true;
-      reservedPaths = [];
-      const createdMessage = Array.isArray(data) ? data[0] : data;
-
-      if (createdMessage) {
-        let signedRows = [];
-
-        if (uploadedPaths.length > 0) {
-          const { data: signedUrlRows, error: signedUrlsError } = await supabase.storage
-            .from(MESSAGE_MEDIA_BUCKET)
-            .createSignedUrls(uploadedPaths, 60 * 60);
-
-          if (signedUrlsError) {
-            console.error("Failed to sign sent message media:", signedUrlsError.message);
-          } else {
-            signedRows = signedUrlRows ?? [];
-          }
-        }
-
-        if (hasNewerMessagesRef.current) {
-          setHasNewerMessages(true);
-        } else {
-          setMessages((currentMessages) =>
-            upsertConversationMessage(currentMessages, {
-              ...createdMessage,
-              attachments: attachmentPayload.map((attachment, index) => ({
-                id: `${createdMessage.id}-${index}`,
-                message_id: createdMessage.id,
-                ...attachment,
-                signedUrl: signedRows[index]?.signedUrl ?? null,
-              })),
-              reactions: [],
-            }),
-          );
-        }
-      }
-
-      clearPendingAttachments();
-      setDraft("");
-    } catch (error) {
-      if (!messageWasCreated && uploadedPaths.length > 0) {
-        const { error: cleanupError } = await supabase.storage
-          .from(MESSAGE_MEDIA_BUCKET)
-          .remove(uploadedPaths);
-
-        if (cleanupError) {
-          console.error("Failed to clean up unsent message media:", cleanupError.message);
-        }
-      }
-
-      if (!messageWasCreated && reservedPaths.length > 0) {
-        const { error: releaseError } = await releaseMessageMediaUploadReservations(
-          supabase,
-          reservedPaths,
-        );
-
-        if (releaseError) {
-          console.error(
-            "Failed to release unsent message media reservations:",
-            releaseError.message,
-          );
-        }
-      }
-
-      if (isConversationClosedWriteError(error)) {
-        await refreshConversationModerationState();
-        toast.error(t.conversationClosedComposerLabel);
-      } else if (isListingMessagingUnavailableError(error)) {
-        toast.error(
-          getListingMessagingUnavailableText(
-            getListingMessagingUnavailableStatusFromError(error),
-            t,
-          ),
-        );
-      } else if (isMessageAttachmentSetupMissing(error)) {
-        toast.error(t.mediaMessageSetupRequired);
-      } else {
-        toast.error(attachmentsToSend.length > 0 ? t.mediaUploadError : t.messageSendError);
-      }
-
-      console.error("Failed to send message:", error?.message ?? error);
-      setIsSending(false);
-      return;
-    }
-
-    const { error: unhideError } = await supabase.from("conversation_user_state").upsert(
-      {
-        conversation_id: conversation.id,
-        user_id: currentUserId,
-        hidden_at: null,
-      },
-      { onConflict: "conversation_id,user_id" },
-    );
-
-    if (unhideError && !isConversationUserStateTableMissing(unhideError)) {
-      console.error("Failed to restore hidden conversation after send:", unhideError.message);
-    }
+    const uploadPlan = buildMessageMediaUploadPlan({
+      attachments: [...pendingAttachments],
+      conversationId: conversation.id,
+      userId: currentUserId,
+      randomUUID: () => crypto.randomUUID(),
+      sanitizeFileName: sanitizeMessageAttachmentFileName,
+    });
+    const intent = {
+      operationId: createMessageSendOperationId(),
+      conversationId: conversation.id,
+      body: bodyResult.value,
+      uploadPlan,
+      uploadedPaths: [],
+    };
 
     setIsSending(false);
+    await executeMessageSendIntent(intent);
   }
 
   function handleComposerKeyDown(event) {
@@ -1084,7 +1211,9 @@ export function MessagesThread({
     event.preventDefault();
 
     if (
-      (!draft.trim() && pendingAttachments.length === 0) ||
+      !validateMessageBody(draft, {
+        allowEmpty: pendingAttachments.length > 0,
+      }).ok ||
       isSending ||
       isConversationClosed
     ) {
@@ -1102,7 +1231,14 @@ export function MessagesThread({
   }
 
   function handleDraftChange(event) {
-    setDraft(event.target.value);
+    const nextDraft = event.target.value;
+    const nextValidation = validateMessageBody(nextDraft, {
+      allowEmpty: pendingAttachments.length > 0,
+    });
+    setDraft(nextDraft);
+    setMessageBodyError(
+      nextValidation.error === "too_long" ? t.messageBodyTooLong : "",
+    );
     rememberComposerSelection(event);
   }
 
@@ -1119,13 +1255,19 @@ export function MessagesThread({
       emoji,
       selectionStart: selection.start,
       selectionEnd: selection.end,
+      maxLength: MESSAGE_BODY_MAX_LENGTH,
     });
 
     if (!result.inserted) {
+      if (countUnicodeCodePoints(draft) >= MESSAGE_BODY_MAX_LENGTH) {
+        setMessageBodyError(t.messageBodyTooLong);
+        focusFirstInvalidField(composerFormRef.current);
+      }
       return;
     }
 
     setDraft(result.value);
+    setMessageBodyError("");
     composerSelectionRef.current = {
       start: result.selectionStart,
       end: result.selectionEnd,
@@ -1696,7 +1838,7 @@ export function MessagesThread({
           </div>
         </div>
       ) : (
-      <form onSubmit={handleSubmit} className="sticky bottom-0 z-20 shrink-0 border-t border-zinc-200 bg-white/95 px-2.5 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-sm dark:border-border dark:bg-card/95 md:px-4 md:py-3">
+      <form ref={composerFormRef} onSubmit={handleSubmit} className="sticky bottom-0 z-20 shrink-0 border-t border-zinc-200 bg-white/95 px-2.5 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-sm dark:border-border dark:bg-card/95 md:px-4 md:py-3">
         <div
           {...dropzoneProps}
           className={`relative mx-auto max-w-4xl rounded-[1.1rem] border bg-zinc-50/70 p-1.5 transition-colors dark:bg-muted/20 ${
@@ -1771,7 +1913,7 @@ export function MessagesThread({
                     className="absolute right-1 top-1 size-11 rounded-full bg-black/75 text-white hover:bg-black md:size-8 md:min-h-8 md:min-w-8"
                     aria-label={`${t.removeAttachment}: ${attachment.file.name}`}
                     onClick={() => removePendingAttachment(attachment.id)}
-                    disabled={isSending}
+                    disabled={isSending || isSendIntentLocked}
                   >
                     <X className="size-3.5" />
                   </Button>
@@ -1783,6 +1925,7 @@ export function MessagesThread({
             </div>
           ) : null}
           <Textarea
+            id="conversation-message-body"
             ref={composerRef}
             value={draft}
             onChange={handleDraftChange}
@@ -1793,14 +1936,27 @@ export function MessagesThread({
             placeholder={t.messageInputPlaceholder}
             rows={1}
             className="min-h-11 max-h-28 resize-none overflow-y-auto border-0 bg-transparent px-2 py-2.5 text-base leading-5 shadow-none [field-sizing:content] focus-visible:ring-0"
-            maxLength={2000}
-            disabled={!isMessagingAvailable || Boolean(blockReason) || isSending}
+            aria-invalid={Boolean(messageBodyError)}
+            aria-describedby="conversation-message-body-count conversation-message-body-error"
+            disabled={
+              !isMessagingAvailable || Boolean(blockReason) || isSending || isSendIntentLocked
+            }
           />
+
+          <p
+            id="conversation-message-body-error"
+            role={messageBodyError ? "alert" : undefined}
+            className="min-h-4 px-2 text-xs text-red-600 dark:text-red-400"
+          >
+            {messageBodyError}
+          </p>
 
           <div className="mt-0.5 flex items-center justify-between gap-3 border-t border-zinc-200 px-1 pt-1.5 dark:border-border">
             <div className="flex items-center gap-2">
               <MessageEmojiPicker
-                disabled={!isMessagingAvailable || Boolean(blockReason) || isSending}
+                disabled={
+                  !isMessagingAvailable || Boolean(blockReason) || isSending || isSendIntentLocked
+                }
                 onSelect={handleInsertComposerEmoji}
                 labels={{
                   addEmoji: t.addMessageEmoji,
@@ -1821,6 +1977,7 @@ export function MessagesThread({
                       !isMessagingAvailable ||
                       Boolean(blockReason) ||
                       isSending ||
+                      isSendIntentLocked ||
                       pendingAttachments.length >= MAX_MESSAGE_ATTACHMENTS
                     }
                     aria-label={t.attachMedia}
@@ -1834,10 +1991,25 @@ export function MessagesThread({
                 </TooltipContent>
               </Tooltip>
 
-              <p className="text-xs text-zinc-500 dark:text-muted-foreground">
-                {draft.length}/2000
+              <p id="conversation-message-body-count" className="text-xs text-zinc-500 dark:text-muted-foreground">
+                {t.messageBodyCharacterCount.replace(
+                  "{count}",
+                  String(draftCharacterCount),
+                )}
               </p>
             </div>
+
+            {isSendIntentLocked ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={isSending}
+                onClick={handleDiscardUnresolvedSend}
+              >
+                {t.cancel}
+              </Button>
+            ) : null}
 
             <Button
               type="submit"
@@ -1845,11 +2017,13 @@ export function MessagesThread({
                 !isMessagingAvailable ||
                 Boolean(blockReason) ||
                 isSending ||
-                (!draft.trim() && pendingAttachments.length === 0)
+                (!isSendIntentLocked && !draftValidation.ok)
               }
               size="icon-lg"
               className="size-11 rounded-full"
-              aria-label={isSending ? t.sendingMessage : t.sendMessage}
+              aria-label={
+                isSending ? t.sendingMessage : isSendIntentLocked ? t.retry : t.sendMessage
+              }
             >
               <SendHorizontal className="size-4.5" />
             </Button>
@@ -1867,10 +2041,7 @@ export function MessagesThread({
         }}
         subjectType="message"
         subjectId={reportMessageTarget?.id ?? null}
-        messageId={reportMessageTarget?.id ?? null}
-        conversationId={conversation.id}
         currentUserId={currentUserId}
-        reportedUserId={reportMessageTarget?.sender_id ?? null}
       />
 
       <AlertDialog open={isHideDialogOpen} onOpenChange={setIsHideDialogOpen}>

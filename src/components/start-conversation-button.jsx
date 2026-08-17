@@ -29,6 +29,16 @@ import {
   isListingMessagingUnavailableError,
 } from "@/lib/messages";
 import { getMessagingBlockReason, getUserBlockState } from "@/lib/blocks";
+import { focusFirstInvalidField } from "@/lib/focus-first-invalid-field";
+import {
+  callMessageMutationWithReplay,
+  createMessageSendOperationId,
+  getMessageOperationOutcome,
+} from "@/lib/message-send-idempotency.mjs";
+import {
+  countUnicodeCodePoints,
+  validateMessageBody,
+} from "@/lib/write-field-contracts.mjs";
 import { createClient } from "@/utils/supabase/client";
 
 export function StartConversationButton({
@@ -45,7 +55,9 @@ export function StartConversationButton({
   const [isStarting, setIsStarting] = React.useState(false);
   const [isComposerOpen, setIsComposerOpen] = React.useState(false);
   const [draft, setDraft] = React.useState("");
+  const [messageBodyError, setMessageBodyError] = React.useState("");
   const [isSendingFirstMessage, setIsSendingFirstMessage] = React.useState(false);
+  const [unresolvedFirstMessageIntent, setUnresolvedFirstMessageIntent] = React.useState(null);
   const [isLoadingBlockState, setIsLoadingBlockState] = React.useState(
     Boolean(currentUserId && sellerId && currentUserId !== sellerId),
   );
@@ -56,6 +68,9 @@ export function StartConversationButton({
     available: true,
   });
   const messagingBlockReason = getMessagingBlockReason(blockState, t);
+  const formRef = React.useRef(null);
+  const draftValidation = validateMessageBody(draft);
+  const draftCharacterCount = countUnicodeCodePoints(draft);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -292,15 +307,141 @@ export function StartConversationButton({
     setIsComposerOpen(true);
   }
 
-  async function handleSendFirstMessage(event) {
-    event.preventDefault();
+  async function completeFirstMessageIntent(intent) {
+    const { error: unhideError } = await supabase.from("conversation_user_state").upsert(
+      {
+        conversation_id: intent.conversationId,
+        user_id: currentUserId,
+        hidden_at: null,
+      },
+      { onConflict: "conversation_id,user_id" },
+    );
 
-    if (!draft.trim() || isSendingFirstMessage) {
+    if (unhideError && !isConversationUserStateTableMissing(unhideError)) {
+      console.error("Failed to restore hidden conversation after send:", unhideError.message);
+    }
+
+    setUnresolvedFirstMessageIntent(null);
+    setDraft("");
+    setMessageBodyError("");
+    setIsComposerOpen(false);
+    router.push(`/messages/${intent.conversationId}`);
+  }
+
+  async function abortFirstMessageIntent(intent, originalError) {
+    const abortResult = await callMessageMutationWithReplay(() =>
+      supabase.rpc("abort_message_send_operation", {
+        p_operation_id: intent.operationId,
+        p_conversation_id: intent.conversationId,
+        p_body: intent.body,
+        p_attachments: [],
+      }),
+    );
+
+    if (abortResult.ambiguous || abortResult.error) {
+      setUnresolvedFirstMessageIntent(intent);
+      toast.error(t.messageSendError);
+      console.error(
+        "Failed to reconcile first message:",
+        abortResult.error?.message ?? originalError?.message,
+      );
+      return false;
+    }
+
+    const outcome = getMessageOperationOutcome(abortResult.data);
+
+    if (outcome.status === "completed") {
+      await completeFirstMessageIntent(intent);
+      return true;
+    }
+
+    const { error: cleanupError } = await supabase
+      .from("conversations")
+      .delete()
+      .eq("id", intent.conversationId)
+      .is("last_message_at", null);
+
+    if (cleanupError) {
+      console.error("Failed to clean up confirmed empty conversation:", cleanupError.message);
+    }
+
+    setUnresolvedFirstMessageIntent(null);
+    toast.error(
+      isListingMessagingUnavailableError(originalError)
+        ? getListingMessagingUnavailableText(
+            getListingMessagingUnavailableStatusFromError(originalError),
+            t,
+          )
+        : t.messageSendError,
+    );
+    return false;
+  }
+
+  async function executeFirstMessageIntent(intent) {
+    setIsSendingFirstMessage(true);
+    const sendResult = await callMessageMutationWithReplay(() =>
+      supabase.rpc("send_conversation_message_idempotent", {
+        p_operation_id: intent.operationId,
+        p_conversation_id: intent.conversationId,
+        p_body: intent.body,
+        p_attachments: [],
+      }),
+    );
+
+    if (sendResult.ambiguous) {
+      setUnresolvedFirstMessageIntent(intent);
+      setIsSendingFirstMessage(false);
+      toast.error(t.messageSendError);
+      return;
+    }
+
+    if (sendResult.error) {
+      await abortFirstMessageIntent(intent, sendResult.error);
+      setIsSendingFirstMessage(false);
+      return;
+    }
+
+    await completeFirstMessageIntent(intent);
+    setIsSendingFirstMessage(false);
+  }
+
+  async function handleDiscardFirstMessageIntent() {
+    if (!unresolvedFirstMessageIntent || isSendingFirstMessage) {
       return;
     }
 
     setIsSendingFirstMessage(true);
+    await abortFirstMessageIntent(
+      unresolvedFirstMessageIntent,
+      new Error("First message send was cancelled."),
+    );
+    setIsSendingFirstMessage(false);
+  }
 
+  async function handleSendFirstMessage(event) {
+    event.preventDefault();
+
+    if (isSendingFirstMessage) {
+      return;
+    }
+
+    if (unresolvedFirstMessageIntent) {
+      await executeFirstMessageIntent(unresolvedFirstMessageIntent);
+      return;
+    }
+
+    const bodyResult = validateMessageBody(draft);
+
+    if (!bodyResult.ok) {
+      setMessageBodyError(
+        bodyResult.error === "too_long" ? t.messageBodyTooLong : "",
+      );
+      focusFirstInvalidField(formRef.current);
+      return;
+    }
+
+    setMessageBodyError("");
+    setIsSendingFirstMessage(true);
     const canMessageListing = await ensureListingMessagingAvailable();
 
     if (!canMessageListing) {
@@ -308,14 +449,10 @@ export function StartConversationButton({
       return;
     }
 
-    const body = draft.trim();
     const { data: conversationData, error: conversationError } = await supabase.rpc(
       "create_or_get_listing_conversation",
-      {
-        p_listing_id: listingId,
-      },
+      { p_listing_id: listingId },
     );
-
     const conversation = Array.isArray(conversationData) ? conversationData[0] : conversationData;
 
     if (conversationError || !conversation?.id) {
@@ -335,52 +472,13 @@ export function StartConversationButton({
       return;
     }
 
-    const { error: sendError } = await supabase.rpc("send_conversation_message", {
-      p_conversation_id: conversation.id,
-      p_body: body,
-    });
-
-    if (sendError) {
-      const { error: cleanupError } = await supabase
-        .from("conversations")
-        .delete()
-        .eq("id", conversation.id)
-        .is("last_message_at", null);
-
-      if (cleanupError) {
-        console.error("Failed to clean up empty conversation:", cleanupError.message);
-      }
-
-      setIsSendingFirstMessage(false);
-      toast.error(
-        isListingMessagingUnavailableError(sendError)
-          ? getListingMessagingUnavailableText(
-              getListingMessagingUnavailableStatusFromError(sendError),
-              t,
-            )
-          : t.messageSendError,
-      );
-      console.error("Failed to send first message:", sendError.message);
-      return;
-    }
-
-    const { error: unhideError } = await supabase.from("conversation_user_state").upsert(
-      {
-        conversation_id: conversation.id,
-        user_id: currentUserId,
-        hidden_at: null,
-      },
-      { onConflict: "conversation_id,user_id" },
-    );
-
-    if (unhideError && !isConversationUserStateTableMissing(unhideError)) {
-      console.error("Failed to restore hidden conversation after send:", unhideError.message);
-    }
-
+    const intent = {
+      operationId: createMessageSendOperationId(),
+      conversationId: conversation.id,
+      body: bodyResult.value,
+    };
     setIsSendingFirstMessage(false);
-    setDraft("");
-    setIsComposerOpen(false);
-    router.push(`/messages/${conversation.id}`);
+    await executeFirstMessageIntent(intent);
   }
 
   return (
@@ -395,9 +493,16 @@ export function StartConversationButton({
         <span>{isStarting ? t.startingConversation : t.chatWithSeller}</span>
       </Button>
 
-      <Sheet open={isComposerOpen} onOpenChange={setIsComposerOpen}>
+      <Sheet
+        open={isComposerOpen}
+        onOpenChange={(open) => {
+          if (open || !unresolvedFirstMessageIntent) {
+            setIsComposerOpen(open);
+          }
+        }}
+      >
         <SheetContent side="right" className="w-full sm:max-w-xl">
-          <form className="flex h-full flex-col" onSubmit={handleSendFirstMessage}>
+          <form ref={formRef} className="flex h-full flex-col" onSubmit={handleSendFirstMessage}>
             <div className="flex flex-1 flex-col gap-6 px-6 py-6">
               <SheetHeader className="gap-2 p-0 text-left">
                 <SheetTitle>{t.firstMessageSheetTitle}</SheetTitle>
@@ -409,13 +514,38 @@ export function StartConversationButton({
 
               <div className="flex-1">
                 <Textarea
+                  id="first-message-body"
                   value={draft}
-                  onChange={(event) => setDraft(event.target.value)}
+                  onChange={(event) => {
+                    const nextDraft = event.target.value;
+                    const nextValidation = validateMessageBody(nextDraft);
+                    setDraft(nextDraft);
+                    setMessageBodyError(
+                      nextValidation.error === "too_long" ? t.messageBodyTooLong : "",
+                    );
+                  }}
                   placeholder={t.messageInputPlaceholder}
                   rows={6}
-                  maxLength={2000}
                   className="h-40 min-h-32 max-h-[min(40svh,20rem)] rounded-xl"
+                  aria-invalid={Boolean(messageBodyError)}
+                  aria-describedby="first-message-body-count first-message-body-error"
+                  disabled={isSendingFirstMessage || Boolean(unresolvedFirstMessageIntent)}
                 />
+                <div className="mt-2 flex items-start justify-between gap-3 text-xs">
+                  <p
+                    id="first-message-body-error"
+                    role={messageBodyError ? "alert" : undefined}
+                    className="min-h-4 text-red-600 dark:text-red-400"
+                  >
+                    {messageBodyError}
+                  </p>
+                  <p id="first-message-body-count" className="shrink-0 text-muted-foreground">
+                    {t.messageBodyCharacterCount.replace(
+                      "{count}",
+                      String(draftCharacterCount),
+                    )}
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -424,7 +554,13 @@ export function StartConversationButton({
                 type="button"
                 variant="outline"
                 className="rounded-xl"
-                onClick={() => setIsComposerOpen(false)}
+                onClick={() => {
+                  if (unresolvedFirstMessageIntent) {
+                    void handleDiscardFirstMessageIntent();
+                  } else {
+                    setIsComposerOpen(false);
+                  }
+                }}
                 disabled={isSendingFirstMessage}
               >
                 {t.cancel}
@@ -432,9 +568,16 @@ export function StartConversationButton({
               <Button
                 type="submit"
                 className="rounded-xl"
-                disabled={isSendingFirstMessage || !draft.trim()}
+                disabled={
+                  isSendingFirstMessage ||
+                  (!unresolvedFirstMessageIntent && !draftValidation.ok)
+                }
               >
-                {isSendingFirstMessage ? t.sendingMessage : t.sendFirstMessage}
+                {isSendingFirstMessage
+                  ? t.sendingMessage
+                  : unresolvedFirstMessageIntent
+                    ? t.retry
+                    : t.sendFirstMessage}
               </Button>
             </SheetFooter>
           </form>

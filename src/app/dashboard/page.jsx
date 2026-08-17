@@ -21,6 +21,7 @@ const DASHBOARD_LISTING_SELECT = `
   price,
   category,
   status,
+  content_revision,
   retired_at,
   moderation_feedback,
   moderation_reviewed_at,
@@ -40,6 +41,7 @@ const DASHBOARD_LISTING_FALLBACK_SELECT = `
   price,
   category,
   status,
+  content_revision,
   location,
   created_at,
   listing_images (
@@ -63,17 +65,22 @@ function normalizeDashboardListing(
   dashboardStatus = listing.status,
   messageCount = 0,
 ) {
+  const numericPrice = listing.price === null || listing.price === undefined
+    ? null
+    : Number(listing.price);
+
   return {
     id: listing.id,
     slug: listing.slug,
     title: listing.title,
     meta: listing.location ?? "",
     imageUrl: getPrimaryImageUrl(listing.listing_images),
-    price: `$${Number(listing.price).toFixed(2)}`,
-    priceValue: Number(listing.price),
+    price: Number.isFinite(numericPrice) ? `$${numericPrice.toFixed(2)}` : "—",
+    priceValue: Number.isFinite(numericPrice) ? numericPrice : null,
     createdAt: listing.created_at,
     category: normalizeCategoryValue(listing.category),
     status: listing.status,
+    contentRevision: Number(listing.content_revision) || 1,
     dashboardStatus,
     moderationFeedback: listing.moderation_feedback ?? null,
     moderationReviewedAt: listing.moderation_reviewed_at ?? null,

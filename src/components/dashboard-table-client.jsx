@@ -635,6 +635,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                       slug={item.slug}
                       title={item.title}
                       status={item.dashboardStatus}
+                      contentRevision={item.contentRevision}
                       submittedForReviewAt={item.submittedForReviewAt}
                       moderationReviewedAt={item.moderationReviewedAt}
                     />
@@ -742,6 +743,7 @@ export function DashboardTableClient({ currentTab, ownedItems, favouriteItems, f
                         slug={item.slug}
                         title={item.title}
                         status={item.dashboardStatus}
+                        contentRevision={item.contentRevision}
                         submittedForReviewAt={item.submittedForReviewAt}
                         moderationReviewedAt={item.moderationReviewedAt}
                       />

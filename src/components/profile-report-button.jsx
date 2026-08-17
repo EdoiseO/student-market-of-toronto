@@ -158,7 +158,6 @@ export function ProfileReportButton({ profileId, currentUserId = null }) {
         subjectType={REPORT_SUBJECT_TYPES.profile}
         subjectId={profileId}
         currentUserId={currentUserId}
-        reportedUserId={profileId}
       />
     </>
   );

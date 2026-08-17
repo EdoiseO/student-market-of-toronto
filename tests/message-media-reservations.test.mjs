@@ -7,7 +7,7 @@ import {
   cleanupExpiredMessageMediaUploads,
   isOwnedMessageMediaStoragePath,
   releaseMessageMediaUploadReservations,
-  reserveMessageMediaUploads,
+  reserveMessageMediaUploadsIdempotent,
 } from "../src/lib/message-media-reservations.mjs";
 
 const reservationMigrationUrl = new URL(
@@ -257,7 +257,7 @@ test("releaseMessageMediaUploadReservations deduplicates paths and skips empty r
   ]);
 });
 
-test("reserveMessageMediaUploads sends exact planned metadata to the database", async () => {
+test("idempotent reservation binds one operation, body, and exact planned metadata", async () => {
   const calls = [];
   const supabase = {
     rpc: async (...args) => {
@@ -277,12 +277,22 @@ test("reserveMessageMediaUploads sends exact planned metadata to the database", 
     },
   ];
 
-  await reserveMessageMediaUploads(supabase, "conversation", plan);
+  await reserveMessageMediaUploadsIdempotent(supabase, {
+    operationId: "operation-id",
+    conversationId: "conversation",
+    body: "Hello",
+    uploadPlan: plan,
+  });
 
   assert.deepEqual(calls, [
     [
-      "reserve_message_media_uploads",
-      { p_conversation_id: "conversation", p_attachments: [plan[0].payload] },
+      "reserve_message_media_uploads_idempotent",
+      {
+        p_operation_id: "operation-id",
+        p_conversation_id: "conversation",
+        p_body: "Hello",
+        p_attachments: [plan[0].payload],
+      },
     ],
   ]);
 });

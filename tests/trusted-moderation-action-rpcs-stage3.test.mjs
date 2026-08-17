@@ -20,6 +20,13 @@ const migration = await readFile(
   ),
   "utf8",
 );
+const stage6ModerationFoundation = await readFile(
+  new URL(
+    "../supabase/migrations/20260816193317_moderation_decision_requirements_foundation.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 test("trusted moderation RPCs resolve live actors and remove broad service writes", () => {
   assert.match(migration, /auth\.uid\(\)/);
@@ -98,10 +105,10 @@ test("admin routes use explicit action permissions and trusted RPC attribution",
   assert.match(reportsRoute, /MODERATION_ACTIONS\.decideReports/);
   assert.match(reportsRoute, /MODERATION_ACTIONS\.decideListings/);
   assert.match(reportsRoute, /MODERATION_ACTIONS\.triageReports/);
-  assert.match(reportsRoute, /supabase\.rpc\("decide_report_set"/);
-  assert.match(reportsRoute, /"remove_reported_listing"/);
-  assert.match(reportsRoute, /"begin_force_name_operation"/);
-  assert.match(reportsRoute, /"complete_force_name_operation"/);
+  assert.match(reportsRoute, /supabase\.rpc\("decide_report_set_with_summary"/);
+  assert.match(reportsRoute, /"remove_reported_listing_with_rationale"/);
+  assert.match(reportsRoute, /"begin_force_name_operation_with_rationale"/);
+  assert.match(reportsRoute, /"complete_force_name_operation_with_rationale"/);
   assert.match(reportsRoute, /"abort_force_name_operation"/);
   assert.match(reportsRoute, /UUID_PATTERN\.test\(operationId\)/);
   assert.match(reportsClient, /forceNameOperationRef/);
@@ -325,6 +332,20 @@ test(
     const forceAbortRaceSubject = "99999999-9999-4999-8999-999999999999";
     const forceCompleteRaceReport = "aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa";
     const forceAbortRaceReport = "bbbbbbbb-1111-4111-8111-bbbbbbbbbbbb";
+    const stage6DecisionReport = "cccccccc-1111-4111-8111-cccccccccccc";
+    const stage6DecisionRequest = "dddddddd-1111-4111-8111-dddddddddddd";
+    const stage6NoteRequest = "eeeeeeee-1111-4111-8111-eeeeeeeeeeee";
+    const stage6RejectedListing = "ffffffff-1111-4111-8111-ffffffffffff";
+    const stage6ApprovedListing = "12121212-1111-4111-8111-121212121212";
+    const stage6RejectRequest = "13131313-1111-4111-8111-131313131313";
+    const stage6ApproveRequest = "14141414-1111-4111-8111-141414141414";
+    const stage6LegacyForceSubject = "15151515-1111-4111-8111-151515151515";
+    const stage6LegacyForceReport = "16161616-1111-4111-8111-161616161616";
+    const stage6LegacyForceRequest = "17171717-1111-4111-8111-171717171717";
+    const stage6ForceRaceSubject = "18181818-1111-4111-8111-181818181818";
+    const stage6ForceRaceReport = "19191919-1111-4111-8111-191919191919";
+    const stage6ForceRaceRequest = "20202020-1111-4111-8111-202020202020";
+    const stage6ForceRacePeerRequest = "21212121-1111-4111-8111-212121212121";
 
     try {
       command("initdb", ["-D", data, "-A", "trust", "--no-locale"]);
@@ -337,6 +358,7 @@ test(
       sql(BOOTSTRAP_SQL);
       sql(foundation);
       sql(migration);
+      sql(stage6ModerationFoundation);
 
       // These test-only definers create the exact historical deadlock shape:
       // one session holds the actor row before retrying begin, while another
@@ -405,7 +427,35 @@ test(
         revoke all on function public.test_hold_actor_then_begin_force_name(uuid[],uuid,jsonb,jsonb,text)
           from public,anon,authenticated,service_role;
         grant execute on function public.test_hold_actor_then_begin_force_name(uuid[],uuid,jsonb,jsonb,text)
-          to authenticated;`);
+          to authenticated;
+
+        create function public.test_hold_actor_subject_then_begin_force_name_rationale(
+          p_reports uuid[],p_subject uuid,p_desired jsonb,p_rollback jsonb,
+          p_policy_reason text,p_user_message text,p_private_note text,p_request uuid
+        ) returns uuid language plpgsql security definer set search_path=''
+        as $body$
+        declare result_id uuid;
+        begin
+          perform 1 from auth.users account where account.id=auth.uid() for update;
+          perform 1 from auth.users account where account.id=p_subject for update;
+          perform pg_sleep(0.3);
+          select operation_id into result_id
+          from moderation_decision_private.begin_force_name_operation_with_rationale_impl(
+            p_reports,p_subject,p_desired,p_rollback,p_policy_reason,
+            p_user_message,p_private_note,p_request
+          );
+          return result_id;
+        end
+        $body$;
+        alter function public.test_hold_actor_subject_then_begin_force_name_rationale(
+          uuid[],uuid,jsonb,jsonb,text,text,text,uuid
+        ) owner to postgres;
+        revoke all on function public.test_hold_actor_subject_then_begin_force_name_rationale(
+          uuid[],uuid,jsonb,jsonb,text,text,text,uuid
+        ) from public,anon,authenticated,service_role;
+        grant execute on function public.test_hold_actor_subject_then_begin_force_name_rationale(
+          uuid[],uuid,jsonb,jsonb,text,text,text,uuid
+        ) to authenticated;`);
 
       sql(`insert into auth.users(id,raw_app_meta_data) values
         ('${admin}','{"role":"admin"}'),
@@ -421,7 +471,10 @@ test(
         ('${banCompleteRaceSubject}','{}'),
         ('${banAbortRaceSubject}','{}'),
         ('${forceCompleteRaceSubject}','{}'),
-        ('${forceAbortRaceSubject}','{}');
+        ('${forceAbortRaceSubject}','{}'),
+        ('${stage6ForceRaceSubject}','{}');
+        insert into auth.users(id,raw_app_meta_data)
+          values ('${stage6LegacyForceSubject}','{}');
         update auth.users set role='admin' where id='${mixedRoleActor}';
         insert into reports(id,reported_user_id,subject_type,subject_id,status)
           values ('${report}','${subject}','profile','${subject}','open');
@@ -429,7 +482,9 @@ test(
           values
             ('${listing}','${subject}','listing','Listing','inactive','2026-08-16T10:00:00Z'),
             ('${secondListing}','${subject}','listing-two','Listing Two','inactive','2026-08-16T10:00:00Z'),
-            ('${failedNotificationListing}','${subject}','listing-failed','Listing Failed','inactive','2026-08-16T10:00:00Z');
+            ('${failedNotificationListing}','${subject}','listing-failed','Listing Failed','inactive','2026-08-16T10:00:00Z'),
+            ('${stage6RejectedListing}','${subject}','stage6-reject','Stage 6 reject','inactive','2026-08-16T12:00:00Z'),
+            ('${stage6ApprovedListing}','${subject}','stage6-approve','Stage 6 approve','inactive','2026-08-16T12:30:00Z');
         insert into reports(id,reported_user_id,subject_type,subject_id,listing_id,status) values
           ('${listingReportOne}','${subject}','listing','${listing}','${listing}','open'),
           ('${listingReportTwo}','${subject}','listing','${listing}','${listing}','open');
@@ -440,11 +495,23 @@ test(
           ('${forceReportTwo}','${forceSubject}','profile','${forceSubject}','open'),
           ('${forceCompleteRaceReport}','${forceCompleteRaceSubject}','profile','${forceCompleteRaceSubject}','open'),
           ('${forceAbortRaceReport}','${forceAbortRaceSubject}','profile','${forceAbortRaceSubject}','open');
+        insert into reports(id,reported_user_id,subject_type,subject_id,status)
+          values ('${stage6DecisionReport}','${subject}','profile','${subject}','open');
+        insert into reports(id,reported_user_id,subject_type,subject_id,status)
+          values ('${stage6LegacyForceReport}','${stage6LegacyForceSubject}',
+            'profile','${stage6LegacyForceSubject}','open');
+        insert into reports(id,reported_user_id,subject_type,subject_id,status)
+          values ('${stage6ForceRaceReport}','${stage6ForceRaceSubject}',
+            'profile','${stage6ForceRaceSubject}','open');
         insert into profiles(id,first_name,last_name,school)
           values
             ('${forceSubject}','Unsafe','Name','School'),
             ('${forceCompleteRaceSubject}','Unsafe','Complete','School'),
             ('${forceAbortRaceSubject}','Unsafe','Abort','School');`);
+      sql(`insert into profiles(id,first_name,last_name,school)
+        values
+          ('${stage6LegacyForceSubject}','Legacy','Unsafe','School'),
+          ('${stage6ForceRaceSubject}','Race','Unsafe','School');`);
 
       assert.match(
         asUser(
@@ -579,6 +646,24 @@ test(
             and metadata->>'moderation_operation_id'='listing-1';`),
         "1",
       );
+      for (const whitespaceExpression of [
+        "E'\\t\\r\\n'",
+        "convert_from(decode('c2a0','hex'),'UTF8')",
+        "convert_from(decode('e28083','hex'),'UTF8')",
+        "convert_from(decode('efbbbf','hex'),'UTF8')",
+      ]) {
+        assert.match(
+          asUser(
+            admin,
+            `select decide_report_set_with_summary(
+              array['${stage6DecisionReport}'::uuid],
+              'dismissed',${whitespaceExpression},gen_random_uuid()
+            );`,
+            true,
+          ),
+          /report_decision_summary_invalid/,
+        );
+      }
       assert.equal(
         sql(`select user_id='${subject}'
             and metadata->>'listing_slug'='listing'
@@ -1168,6 +1253,353 @@ test(
       assert.equal(
         sql(`select count(*) from moderation_audit_events
           where event_type='listing.moderation_decided' and resource_id='${listing}';`),
+        "1",
+      );
+      assert.equal(
+        asUser(
+          admin,
+          `select decide_report_set_with_summary(
+            array['${stage6DecisionReport}'::uuid],
+            'dismissed',
+            convert_from(decode('efbbbf','hex'),'UTF8')
+              ||E'Private line one\rPrivate line two'
+              ||convert_from(decode('e28083','hex'),'UTF8'),
+            '${stage6DecisionRequest}'
+          );`,
+        ),
+        "1",
+      );
+      assert.equal(
+        asUser(
+          admin,
+          `select decide_report_set_with_summary(
+            array['${stage6DecisionReport}'::uuid],
+            'dismissed',
+            E'Private line one\nPrivate line two',
+            '${stage6DecisionRequest}'
+          );`,
+        ),
+        "1",
+      );
+      assert.match(
+        asUser(
+          admin,
+          `select decide_report_set_with_summary(
+            array['${stage6DecisionReport}'::uuid],
+            'dismissed',
+            'A conflicting private decision summary',
+            '${stage6DecisionRequest}'
+          );`,
+          true,
+        ),
+        /moderation_request_id_payload_conflict/,
+      );
+      const stage6DecisionAuditId = sql(`select id from moderation_audit_events
+        where request_id='${stage6DecisionRequest}' order by occurred_at desc limit 1;`);
+      assert.equal(
+        asUser(
+          admin,
+          `select action='report_dismissed'
+             and private_note=E'Private line one\nPrivate line two'
+           from get_moderation_decision_records(array['${stage6DecisionAuditId}'::uuid]);`,
+        ),
+        "t",
+      );
+      sql(`update auth.users set banned_until=now()+interval '1 hour' where id='${admin}';`);
+      assert.match(
+        asUser(
+          admin,
+          `select * from get_moderation_decision_records(
+            array['${stage6DecisionAuditId}'::uuid]
+          );`,
+          true,
+        ),
+        /moderation_actor_is_banned/,
+      );
+      sql(`update auth.users set banned_until=null where id='${admin}';`);
+      sql(`update auth.users set raw_app_meta_data='{"role":"moderator"}'::jsonb,
+        banned_until=null where id='${moderator}';`);
+      assert.match(
+        asUser(
+          moderator,
+          `select * from get_moderation_decision_records(
+            array['${stage6DecisionAuditId}'::uuid]
+          );`,
+          true,
+        ),
+        /moderation_audit_access_required/,
+      );
+      assert.match(
+        asUser(
+          subject,
+          `select * from get_moderation_decision_records(
+            array['${stage6DecisionAuditId}'::uuid]
+          );`,
+          true,
+        ),
+        /moderation_audit_access_required|moderation_action_not_permitted/,
+      );
+      assert.match(
+        sql(`update moderation_decision_private.records
+          set private_note='tampered' where audit_event_id='${stage6DecisionAuditId}';`, true),
+        /moderation_decision_record_is_immutable/,
+      );
+      assert.equal(
+        asUser(
+          admin,
+          `select save_report_moderator_note(
+            '${stage6DecisionReport}',E'Case note line one\r\nCase note line two','${stage6NoteRequest}'
+          );`,
+        ),
+        "t",
+      );
+      assert.equal(
+        asUser(
+          admin,
+          `select save_report_moderator_note(
+            '${stage6DecisionReport}',E'Case note line one\nCase note line two','${stage6NoteRequest}'
+          );`,
+        ),
+        "t",
+      );
+      assert.equal(
+        asUser(
+          admin,
+          `select moderator_notes=E'Case note line one\nCase note line two'
+           from get_report_moderator_notes(array['${stage6DecisionReport}'::uuid]);`,
+        ),
+        "t",
+      );
+      assert.equal(
+        sql(`select not (metadata ? 'private_note')
+          and position('Case note' in summary)=0
+          from moderation_audit_events where request_id='${stage6NoteRequest}';`),
+        "t",
+      );
+      assert.match(
+        asUser(
+          subject,
+          `select * from get_report_moderator_notes(
+            array['${stage6DecisionReport}'::uuid]
+          );`,
+          true,
+        ),
+        /moderation_action_not_permitted/,
+      );
+      assert.match(
+        service(
+          `select * from moderation_decision_private.report_notes;`,
+          true,
+        ),
+        /permission denied for schema moderation_decision_private/,
+      );
+      assert.equal(
+        asUser(
+          admin,
+          `select status||':'||moderation_feedback
+          from decide_listing_moderation_with_rationale(
+            '${stage6RejectedListing}',1,'2026-08-16T12:00:00Z',
+            'rejected',E'Seller feedback line one\r\nSeller feedback line two','${stage6RejectRequest}'
+          );`,
+        ),
+        "rejected:Seller feedback line one\nSeller feedback line two",
+      );
+      for (const whitespaceExpression of [
+        "E'\\t\\r\\n'",
+        "convert_from(decode('c2a0','hex'),'UTF8')",
+        "convert_from(decode('e28083','hex'),'UTF8')",
+        "convert_from(decode('efbbbf','hex'),'UTF8')",
+      ]) {
+        assert.match(
+          asUser(
+            admin,
+            `select status from decide_listing_moderation_with_rationale(
+              '${stage6RejectedListing}',1,'2026-08-16T12:00:00Z',
+              'rejected',${whitespaceExpression},gen_random_uuid()
+            );`,
+            true,
+          ),
+          /listing_moderation_rationale_invalid/,
+        );
+      }
+      assert.equal(
+        asUser(
+          admin,
+          `select status||':'||moderation_feedback
+          from decide_listing_moderation_with_rationale(
+            '${stage6RejectedListing}',1,'2026-08-16T12:00:00Z',
+            'rejected',E'Seller feedback line one\nSeller feedback line two','${stage6RejectRequest}'
+          );`,
+        ),
+        "rejected:Seller feedback line one\nSeller feedback line two",
+      );
+      assert.equal(
+        sql(`select metadata->>'feedback'=E'Seller feedback line one\nSeller feedback line two'
+          from notifications where listing_id='${stage6RejectedListing}';`),
+        "t",
+      );
+      assert.equal(
+        asUser(
+          admin,
+          `select status from decide_listing_moderation_with_rationale(
+            '${stage6ApprovedListing}',1,'2026-08-16T12:30:00Z',
+            'approved',E'Private approval\r\nreviewed','${stage6ApproveRequest}'
+          );`,
+        ),
+        "active",
+      );
+      const stage6ApprovalAuditId = sql(`select id from moderation_audit_events
+        where request_id='${stage6ApproveRequest}' order by occurred_at desc limit 1;`);
+      assert.equal(
+        asUser(
+          admin,
+          `select action='listing_approved'
+            and user_message=E'Private approval\nreviewed'
+          from get_moderation_decision_records(array['${stage6ApprovalAuditId}'::uuid]);`,
+        ),
+        "t",
+      );
+      assert.equal(
+        sql(`select not (metadata ? 'feedback')
+          from notifications where listing_id='${stage6ApprovedListing}';`),
+        "t",
+      );
+
+      // Cross-actor regression for the Stage 6 rationale completion wrapper.
+      // The peer holds actor B -> subject, then tries to begin while actor A
+      // completes the already-pending operation. Completion must wait on the
+      // subject without holding the operation row, preserving the canonical
+      // actor -> subject -> operation order and avoiding a 40P01 cycle.
+      assert.match(
+        asUser(
+          admin,
+          `select operation_id from begin_force_name_operation_with_rationale(
+            array['${stage6ForceRaceReport}'::uuid],
+            '${stage6ForceRaceSubject}',
+            ${desiredNameMetadata},
+            '{}'::jsonb,
+            convert_from(decode('c2a0e28083efbbbf','hex'),'UTF8')||E'\t\n',
+            'Choose a real name before continuing to use marketplace features.',
+            null,
+            gen_random_uuid()
+          );`,
+          true,
+        ),
+        /force_name_decision_rationale_invalid/,
+      );
+      const stage6ForceRaceOperationId = asUser(
+        admin,
+        `select operation_id from begin_force_name_operation_with_rationale(
+          array['${stage6ForceRaceReport}'::uuid],
+          '${stage6ForceRaceSubject}',
+          ${desiredNameMetadata},
+          '{}'::jsonb,
+          'The profile name violates the student identity policy.',
+          'Choose a real name before continuing to use marketplace features.',
+          'Cross-actor lock-order regression.',
+          '${stage6ForceRaceRequest}'
+        );`,
+      );
+      sql(`update auth.users set raw_app_meta_data=${desiredNameMetadata}
+        where id='${stage6ForceRaceSubject}';`);
+      const heldStage6ForceRaceBegin = asyncAsUser(
+        protectedAdmin,
+        `select test_hold_actor_subject_then_begin_force_name_rationale(
+          array['${stage6ForceRaceReport}'::uuid],
+          '${stage6ForceRaceSubject}',
+          ${desiredNameMetadata},
+          '{}'::jsonb,
+          'The profile name violates the student identity policy.',
+          'Choose a real name before continuing to use marketplace features.',
+          'Peer operation must serialize behind the pending decision.',
+          '${stage6ForceRacePeerRequest}'
+        );`,
+      );
+      await delay(60);
+      const stage6ForceRaceResults = await Promise.allSettled([
+        heldStage6ForceRaceBegin,
+        asyncAsUser(
+          admin,
+          `select complete_force_name_operation_with_rationale(
+            '${stage6ForceRaceOperationId}'
+          );`,
+        ),
+      ]);
+      assert.equal(stage6ForceRaceResults[1].status, "fulfilled");
+      assert.equal(stage6ForceRaceResults[1].value, "1");
+      assert.equal(stage6ForceRaceResults[0].status, "rejected");
+      assert.match(
+        stage6ForceRaceResults[0].reason.message,
+        /force_name_change_operation_in_progress/,
+      );
+      for (const result of stage6ForceRaceResults) {
+        if (result.status === "rejected") {
+          assert.doesNotMatch(result.reason.message, /deadlock detected|40P01/i);
+        }
+      }
+      assert.equal(
+        sql(`select count(*) from moderation_decision_private.records
+          where request_id='${stage6ForceRaceRequest}'
+            and action='profile_name_change_required';`),
+        "1",
+      );
+      assert.equal(
+        sql(`select count(*) from notifications
+          where user_id='${stage6ForceRaceSubject}'
+            and type='profile_name_change_required';`),
+        "1",
+      );
+
+      const legacyForceOperationId = asUser(
+        admin,
+        `select operation_id from begin_force_name_operation(
+          array['${stage6LegacyForceReport}'::uuid],
+          '${stage6LegacyForceSubject}',
+          '{"force_name_change":true}'::jsonb,
+          '{}'::jsonb,
+          '${stage6LegacyForceRequest}'
+        );`,
+      );
+      sql(`update auth.users set raw_app_meta_data='{"force_name_change":true}'::jsonb
+        where id='${stage6LegacyForceSubject}';`);
+      assert.equal(
+        asUser(admin, `select complete_force_name_operation('${legacyForceOperationId}');`),
+        "1",
+      );
+      const legacyForceReplayRows = asUser(
+        admin,
+        `select operation_id||':'||operation_status
+        from begin_force_name_operation_with_rationale(
+          array['${stage6LegacyForceReport}'::uuid],
+          '${stage6LegacyForceSubject}',
+          '{"force_name_change":true}'::jsonb,
+          '{}'::jsonb,
+          'The profile name violates the student identity policy.',
+          'Choose a real name before continuing to use marketplace features.',
+          E'Legacy operation\r\nbackfilled after completion.',
+          '${stage6LegacyForceRequest}'
+        );`,
+      );
+      assert.equal(legacyForceReplayRows, `${legacyForceOperationId}:completed`);
+      assert.equal(
+        asUser(
+          admin,
+          `select complete_force_name_operation_with_rationale('${legacyForceOperationId}');`,
+        ),
+        "1",
+      );
+      assert.equal(
+        sql(`select count(*) from moderation_decision_private.records
+          where request_id='${stage6LegacyForceRequest}'
+            and action='profile_name_change_required';`),
+        "1",
+      );
+      assert.equal(
+        sql(`select count(*) from notifications
+          where user_id='${stage6LegacyForceSubject}'
+            and type='profile_name_change_required'
+            and metadata->>'user_message'=
+              'Choose a real name before continuing to use marketplace features.';`),
         "1",
       );
       assert.equal(

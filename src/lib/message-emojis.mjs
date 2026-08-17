@@ -52,7 +52,7 @@ export function insertMessageEmoji({
   );
   const nextValue = `${safeValue.slice(0, start)}${safeEmoji}${safeValue.slice(end)}`;
 
-  if (!safeEmoji || nextValue.length > maxLength) {
+  if (!safeEmoji || Array.from(nextValue).length > maxLength) {
     return {
       inserted: false,
       value: safeValue,

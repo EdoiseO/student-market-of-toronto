@@ -51,9 +51,14 @@ export function buildMessageMediaUploadPlan({
   });
 }
 
-export async function reserveMessageMediaUploads(supabase, conversationId, uploadPlan) {
-  return supabase.rpc("reserve_message_media_uploads", {
+export async function reserveMessageMediaUploadsIdempotent(
+  supabase,
+  { operationId, conversationId, body, uploadPlan },
+) {
+  return supabase.rpc("reserve_message_media_uploads_idempotent", {
+    p_operation_id: operationId,
     p_conversation_id: conversationId,
+    p_body: body,
     p_attachments: uploadPlan.map((item) => item.payload),
   });
 }

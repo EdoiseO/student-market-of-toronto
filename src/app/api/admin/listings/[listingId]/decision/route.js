@@ -12,6 +12,10 @@ import {
   parseListingSubmissionTimestamp,
 } from "@/lib/listing-integrity.mjs";
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
+import {
+  countUnicodeCodePoints,
+  normalizeWriteText,
+} from "@/lib/write-field-contracts.mjs";
 import { createClient } from "@/utils/supabase/server";
 
 const UUID_PATTERN =
@@ -82,7 +86,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: "Unsupported moderation action." }, { status: 400 });
     }
 
-    const sellerFeedback = typeof feedback === "string" ? feedback.trim() : "";
+    const sellerFeedback = normalizeWriteText(feedback);
     const reviewedContentRevision = parseListingContentRevision(expectedContentRevision);
     const reviewedSubmissionTimestamp = parseListingSubmissionTimestamp(
       expectedSubmittedForReviewAt,
@@ -95,7 +99,10 @@ export async function POST(request, { params }) {
       );
     }
 
-    if (action === "rejected" && (!sellerFeedback || sellerFeedback.length > 3000)) {
+    if (
+      countUnicodeCodePoints(sellerFeedback) > 3000 ||
+      (action === "rejected" && !sellerFeedback)
+    ) {
       return NextResponse.json(
         { error: "Seller feedback is required when rejecting a listing." },
         { status: 400 },
@@ -103,13 +110,13 @@ export async function POST(request, { params }) {
     }
 
     const { data: decisionResult, error: decisionError } = await supabase.rpc(
-      "decide_listing_moderation",
+      "decide_listing_moderation_with_rationale",
       {
         p_listing_id: listingId,
         p_expected_content_revision: reviewedContentRevision,
         p_expected_submitted_for_review_at: reviewedSubmissionTimestamp,
         p_action: action,
-        p_feedback: action === "rejected" ? sellerFeedback : null,
+        p_feedback: sellerFeedback || null,
         p_request_id: operationId.trim(),
       },
     );

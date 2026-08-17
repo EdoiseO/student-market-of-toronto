@@ -2,8 +2,9 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { EllipsisIcon } from "lucide-react"
+import { toast } from "sonner"
 
 import { createClient } from "@/utils/supabase/client"
 
@@ -33,7 +34,23 @@ import {
   isListingApprovalSetupMissing,
   isPendingListingApproval,
 } from "@/lib/listing-approval"
-import { OWNED_LISTING_STATUS_ACTIONS } from "@/lib/listing-integrity.mjs"
+import {
+  hasConflictingUnresolvedListingWrite,
+  isAmbiguousListingWriteError,
+  OWNED_LISTING_STATUS_ACTIONS,
+  parseListingRequiredFieldViolation,
+  replayAmbiguousListingWrite,
+  shouldRetainUnresolvedListingWrite,
+} from "@/lib/listing-integrity.mjs"
+import {
+  LISTING_WRITE_ACTIONS,
+  abortOwnedListingWriteIntent,
+  clearListingWriteJournal,
+  drainOwnedListingImageCleanup,
+  hashListingWriteSignature,
+  listingWriteJournalKey,
+  prepareListingWriteJournal,
+} from "@/lib/listing-write-recovery.mjs"
 import { translations } from "@/lib/translations"
 
 export function DashboardListingActions({
@@ -41,6 +58,7 @@ export function DashboardListingActions({
   slug,
   title = "",
   status,
+  contentRevision = 1,
   submittedForReviewAt = null,
   moderationReviewedAt = null,
 }) {
@@ -52,6 +70,8 @@ export function DashboardListingActions({
   const [isDeleting, setIsDeleting] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isActionSheetOpen, setIsActionSheetOpen] = useState(false)
+  const pendingStatusOperationRef = useRef(null)
+  const pendingRetirementOperationRef = useRef(null)
   const isPendingReview = isPendingListingApproval({
     status,
     submittedForReviewAt,
@@ -77,22 +97,62 @@ export function DashboardListingActions({
       return
     }
 
-    const { error } = await supabase.rpc("transition_owned_listing_status", {
-      p_listing_id: id,
-      p_action: action,
-    })
+    if (pendingRetirementOperationRef.current) {
+      setIsUpdatingStatus(false)
+      toast.error(t.errorGeneric)
+      return
+    }
+
+    if (hasConflictingUnresolvedListingWrite(pendingStatusOperationRef.current, action)) {
+      setIsUpdatingStatus(false)
+      toast.error(t.errorGeneric)
+      return
+    }
+    if (pendingStatusOperationRef.current?.action !== action) {
+      pendingStatusOperationRef.current = {
+        action,
+        signature: action,
+        operationId: crypto.randomUUID(),
+        unresolvedDbOperation: null,
+      }
+    }
+    const operation = pendingStatusOperationRef.current
+    const statusWrite = await replayAmbiguousListingWrite(() => supabase.rpc(
+      "transition_owned_listing_status_idempotent",
+      {
+        p_operation_id: operation.operationId,
+        p_listing_id: id,
+        p_action: action,
+      },
+    ))
+    const { error } = statusWrite
 
     setIsUpdatingStatus(false)
 
     if (error) {
+      const unresolvedStatus = shouldRetainUnresolvedListingWrite(
+        operation,
+        "transition",
+        statusWrite,
+      )
+      operation.unresolvedDbOperation = unresolvedStatus ? "transition" : null
+      if (!unresolvedStatus && !isAmbiguousListingWriteError(error)) {
+        pendingStatusOperationRef.current = null
+      }
       if (isListingApprovalSetupMissing(error)) {
         console.error("Listing approval setup is incomplete:", error.message)
+        toast.error(t.listingApprovalSetupRequired)
+      } else if (parseListingRequiredFieldViolation(error).length > 0) {
+        toast.error(t.listingRequiredFieldsUnavailable)
       } else {
         console.error("Failed to update listing status:", error.message)
+        toast.error(t.errorGeneric)
       }
       return
     }
 
+    operation.unresolvedDbOperation = null
+    pendingStatusOperationRef.current = null
     router.refresh()
   }
 
@@ -110,44 +170,88 @@ export function DashboardListingActions({
       return
     }
 
-    const { data: images, error: imagesError } = await supabase
-      .from("listing_images")
-      .select("storage_path")
-      .eq("listing_id", id)
-
-    if (imagesError) {
-      console.error("Failed to load listing images before delete:", imagesError.message)
+    if (pendingStatusOperationRef.current) {
       setIsDeleting(false)
+      toast.error(t.errorGeneric)
       return
     }
 
-    const imagePaths = (images ?? [])
-      .map((image) => image.storage_path)
-      .filter(Boolean)
-
-    if (imagePaths.length > 0) {
-      const { error: storageError } = await supabase.storage
-        .from("listing-images")
-        .remove(imagePaths)
-
-      if (storageError) {
-        console.error("Failed to remove listing image files:", storageError.message)
-        setIsDeleting(false)
-        return
-      }
-    }
-
-    const { error: deleteError } = await supabase.rpc("retire_owned_listing", {
-      p_listing_id: id,
+    const signatureHash = await hashListingWriteSignature(JSON.stringify({
+      action: LISTING_WRITE_ACTIONS.retire,
+      listingId: id,
+      contentRevision,
+    }))
+    const journalKey = listingWriteJournalKey(LISTING_WRITE_ACTIONS.retire, id)
+    const imageBucket = supabase.storage.from("listing-images")
+    const prepared = await prepareListingWriteJournal({
+      supabase,
+      bucket: imageBucket,
+      storage: globalThis.localStorage,
+      key: journalKey,
+      action: LISTING_WRITE_ACTIONS.retire,
+      signatureHash,
+      listingId: id,
+      expectedContentRevision: contentRevision,
     })
-
-    setIsDeleting(false)
-
-    if (deleteError) {
-      console.error("Failed to delete listing:", deleteError.message)
+    if (prepared.error) {
+      console.error("Failed to prepare listing retirement:", prepared.error.message)
+      setIsDeleting(false)
+      toast.error(t.errorGeneric)
+      return
+    }
+    if (prepared.previousCompleted) {
+      pendingRetirementOperationRef.current = null
+      setIsDeleting(false)
+      setIsDeleteDialogOpen(false)
+      router.refresh()
       return
     }
 
+    const operation = prepared.entry
+    pendingRetirementOperationRef.current = operation
+    const retireWrite = await replayAmbiguousListingWrite(() => supabase.rpc(
+      "commit_owned_listing_retire_intent",
+      {
+        p_operation_id: operation.operationId,
+        p_signature_hash: signatureHash,
+      },
+    ))
+    if (retireWrite.error) {
+      if (!retireWrite.hadAmbiguousAttempt) {
+        const aborted = await abortOwnedListingWriteIntent(
+          supabase,
+          operation.operationId,
+          signatureHash,
+        )
+        if (!aborted.error) {
+          clearListingWriteJournal(
+            globalThis.localStorage,
+            journalKey,
+            operation.operationId,
+          )
+          pendingRetirementOperationRef.current = null
+        }
+      }
+      console.error("Failed to retire listing:", retireWrite.error.message)
+      setIsDeleting(false)
+      toast.error(t.errorGeneric)
+      return
+    }
+
+    const cleanupResult = await drainOwnedListingImageCleanup({
+      supabase,
+      bucket: imageBucket,
+    })
+    if (cleanupResult.error) {
+      console.error("Failed to remove retired listing image files:", cleanupResult.error.message)
+      setIsDeleting(false)
+      toast.error(t.errorGeneric)
+      return
+    }
+
+    clearListingWriteJournal(globalThis.localStorage, journalKey, operation.operationId)
+    pendingRetirementOperationRef.current = null
+    setIsDeleting(false)
     setIsDeleteDialogOpen(false)
     router.refresh()
   }
