@@ -29,7 +29,7 @@ const stage6ModerationFoundation = await readFile(
 );
 const moderatorNoteTimelineMigration = await readFile(
   new URL(
-    "../supabase/migrations/20260817053000_append_only_report_moderator_notes.sql",
+    "../supabase/migrations/20260817121744_append_only_report_moderator_notes.sql",
     import.meta.url,
   ),
   "utf8",

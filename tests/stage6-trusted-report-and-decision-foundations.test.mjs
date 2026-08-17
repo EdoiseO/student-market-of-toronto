@@ -94,7 +94,7 @@ test("Unicode code-point boundaries match report and action-specific decision co
 test("Stage 6 moderation rationale foundation is append-only, bounded, private, and reviewable", async () => {
   const [sql, noteTimelineSql, route, listingRoute, reportUi, listingUi, notifications, auditPage, reportPage, translations] = await Promise.all([
     read("../supabase/migrations/20260816193317_moderation_decision_requirements_foundation.sql"),
-    read("../supabase/migrations/20260817053000_append_only_report_moderator_notes.sql"),
+    read("../supabase/migrations/20260817121744_append_only_report_moderator_notes.sql"),
     read("../src/app/api/admin/reports/actions/route.js"),
     read("../src/app/api/admin/listings/[listingId]/decision/route.js"),
     read("../src/components/admin-report-review-content.jsx"),
