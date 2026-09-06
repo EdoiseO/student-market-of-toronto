@@ -7,6 +7,10 @@ import { getUserStatusRow, isUserBanned } from "@/lib/user-status";
 export async function proxy(request) {
   let response = NextResponse.next({ request });
 
+  const path = request.nextUrl.pathname;
+  const isRecoveryRoute =
+    ((path === "/reset-password" || path === "/forget-password") && ["GET", "HEAD"].includes(request.method)) ||
+    (path === "/api/auth/recovery" && ["GET", "POST"].includes(request.method));
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY,
@@ -16,6 +20,13 @@ export async function proxy(request) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
+          // Forward refreshed cookies to the downstream Server Components as
+          // well as the browser; otherwise layout can repeat an expired-token
+          // refresh whose cookie writes it cannot persist.
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          const previousCookies = response.cookies.getAll();
+          response = NextResponse.next({ request });
+          previousCookies.forEach((cookie) => response.cookies.set(cookie.name, cookie.value, cookie));
           cookiesToSet.forEach(({ name, value, options }) => {
             response.cookies.set(name, value, options);
           });
@@ -29,7 +40,14 @@ export async function proxy(request) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const path = request.nextUrl.pathname;
+  // Keep ordinary session refresh above this exception. Recovery never
+  // authorizes marketplace access, and bypasses only eligibility gates.
+  if (isRecoveryRoute) {
+    response.headers.set("Cache-Control", "no-store, max-age=0");
+    response.headers.set("Referrer-Policy", "no-referrer");
+    return response;
+  }
+
   const isBannedRoute = path === "/banned";
   const isAccountStandingRoute = path === "/dashboard/standing";
   const isAccountDeleteRoute =

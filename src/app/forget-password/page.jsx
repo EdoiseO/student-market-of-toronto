@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { AuthPageBrand } from "@/components/auth-page-brand";
 import { Button } from "@/components/ui/button";
@@ -20,27 +20,36 @@ import {
 } from "@/components/ui/field";
 import { useLanguage } from "@/context/LanguageContext";
 import { Input } from "@/components/ui/input";
-import { createClient } from "@/utils/supabase/client";
 
 export default function ForgotPasswordPage() {
-  const supabase = createClient();
   const { t } = useLanguage();
 
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const pending = useRef(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${appUrl}/auth/callback?next=/reset-password`,
-    });
-
-    if (error) {
-      setMessage(error.message);
-    } else {
+    if (pending.current) return;
+    pending.current = true;
+    setBusy(true);
+    setMessage("");
+    setFailed(false);
+    try {
+      const response = await fetch("/api/auth/recovery", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "request", email }),
+      });
+      if (!response.ok) throw new Error("Reset request unavailable");
       setMessage(t.checkEmailResetLink);
+    } catch {
+      setFailed(true);
+      setMessage(t.recoveryUnavailable);
+    } finally {
+      pending.current = false;
+      setBusy(false);
     }
   }
 
@@ -54,7 +63,7 @@ export default function ForgotPasswordPage() {
             <CardDescription>{t.forgotPasswordDescription}</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} aria-busy={busy}>
               <FieldGroup>
                 <Field>
                   <FieldLabel htmlFor="email">{t.email}</FieldLabel>
@@ -66,14 +75,16 @@ export default function ForgotPasswordPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    disabled={busy}
                   />
                   {message ? (
-                    <p role="status" className="text-sm text-zinc-600 dark:text-muted-foreground">{message}</p>
+                    <p role={failed ? "alert" : "status"} className="text-sm text-zinc-600 dark:text-muted-foreground">{message}</p>
                   ) : null}
                 </Field>
 
                 <Field>
-                  <Button type="submit" className="w-full">{t.sendResetLink}</Button>
+                  <Button type="submit" className="w-full" disabled={busy}>{busy ? t.sendingResetLink : t.sendResetLink}</Button>
+                  <p role="status" className="sr-only">{busy ? t.sendingResetLink : ""}</p>
                   <FieldDescription className="text-center">
                     {t.rememberedPassword} <Link href="/login">{t.backToLogin}</Link>
                   </FieldDescription>
