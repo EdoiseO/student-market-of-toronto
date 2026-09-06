@@ -20,6 +20,21 @@ const fullChainMigrations = await Promise.all(
     sql: await readFile(new URL(name, migrationDirectory), "utf8"),
   })),
 );
+const demoMigrationName = "20260906160016_registered_demo_account_emails.sql";
+const pendingSeptemberNames = [
+  "20260906144154_current_moderation_read_authority.sql",
+  "20260906150000_browser_bound_password_recovery.sql",
+];
+const migrationOrders = [
+  { name:"fresh PostgreSQL applies every current repository migration in order", migrations:fullChainMigrations },
+  {
+    name:"already-live demo identity migration survives both older pending September migrations",
+    migrations:[
+      ...fullChainMigrations.filter((migration) => !pendingSeptemberNames.includes(migration.name)),
+      ...pendingSeptemberNames.map((name) => fullChainMigrations.find((migration) => migration.name === name)),
+    ],
+  },
+];
 const accountDeleteRoute = await readFile(
   new URL("../src/app/api/account/delete/route.js", import.meta.url),
   "utf8",
@@ -432,6 +447,7 @@ grant execute on function auth.role() to anon, authenticated, service_role;
 create table auth.users (
   id uuid primary key,
   email text unique,
+  deleted_at timestamptz,
   raw_app_meta_data jsonb not null default '{}',
   raw_user_meta_data jsonb not null default '{}',
   role text,
@@ -623,6 +639,8 @@ as $body$
 $body$;
 create or replace function private.toronto_school_name_for_email(text) returns text
 language sql immutable as $body$ select 'Toronto School'::text $body$;
+-- Match the deployed helper owner before applying its registry-backed replacement.
+alter function private.toronto_school_name_for_email(text) owner to postgres;
 create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = ''
 as $body$ begin
@@ -661,8 +679,8 @@ grant execute on all functions in schema public to authenticated, service_role;
 create publication supabase_realtime;
 `;
 
-test(
-  "fresh PostgreSQL applies every current repository migration in order",
+for (const migrationOrder of migrationOrders) test(
+  migrationOrder.name,
   { skip: !postgresAvailable, timeout: 120_000 },
   async (t) => {
     const fixture = createPostgresFixture(t);
@@ -679,9 +697,39 @@ test(
 
     try {
       sql(FULL_CHAIN_BOOTSTRAP_SQL, "full-chain bootstrap");
-      for (const migration of fullChainMigrations) {
+      assert.ok(fullChainMigrationNames.includes(demoMigrationName));
+      for (const name of pendingSeptemberNames) assert.ok(fullChainMigrationNames.includes(name));
+      const demoUser = "12345678-1234-4234-8234-123456789012";
+      const demoEmail = `student-${demoUser}@example.com`;
+      const demoSnapshot = () => sql(`select jsonb_build_object(
+        'helper',(select jsonb_build_object('oid',oid,'owner',proowner,'acl',proacl,
+          'definition',pg_get_functiondef(oid)) from pg_proc
+          where oid='private.toronto_school_name_for_email(text)'::regprocedure),
+        'registry',(select jsonb_agg(to_jsonb(identity) order by user_id)
+          from private.demo_account_identities identity),
+        'trigger',(select pg_get_triggerdef(oid) from pg_trigger
+          where tgrelid='auth.users'::regclass and tgname='a0_guard_registered_demo_identity_email'));`);
+      let registeredSnapshot;
+      for (const migration of migrationOrder.migrations) {
         sql(migration.sql, migration.name);
+        if (migration.name === demoMigrationName) {
+          sql(`insert into auth.users(id,email,raw_user_meta_data,role)
+            values ('${demoUser}','synthetic-demo@georgebrown.ca',
+              '{"first_name":"Synthetic","last_name":"Student"}','authenticated');
+            insert into private.demo_account_identities(user_id,demo_email,school)
+            values ('${demoUser}','${demoEmail}','George Brown College');
+            update auth.users set email='${demoEmail}' where id='${demoUser}';`,
+          "synthetic registered identity after demo migration");
+          registeredSnapshot = demoSnapshot();
+        } else if (registeredSnapshot && pendingSeptemberNames.includes(migration.name)) {
+          assert.equal(demoSnapshot(),registeredSnapshot,`${migration.name} preserves the applied helper/registry/trigger`);
+        }
       }
+      assert.equal(demoSnapshot(),registeredSnapshot);
+      assert.equal(sql(`select private.toronto_school_name_for_email('${demoEmail}');`),"George Brown College");
+      assert.equal(sql(`select provolatile='s' and prosecdef and proconfig=array['search_path=""']
+        from pg_proc where oid='private.toronto_school_name_for_email(text)'::regprocedure;`),"t");
+      assert.equal(sql("select count(*) from pg_policies where schemaname='private' and tablename='demo_account_identities';"),"0");
 
       assert.ok(fullChainMigrationNames.includes("20260817121744_append_only_report_moderator_notes.sql"));
       if (fullChainMigrationNames.includes("20260906144154_current_moderation_read_authority.sql")) {
@@ -767,9 +815,12 @@ test(
 
       sqlFailure(`
         update auth.users
-        set email = 'seller@example.com'
+        set email = 'seller@unsupported.invalid'
         where id = '${seller}';
       `, /unsupported_toronto_school_email/, "unsupported Auth email changes are rejected");
+      sqlFailure(`
+        update auth.users set email='seller@example.com' where id='${seller}';
+      `, /demo_email_requires_registered_existing_account/, "reserved demo emails require a registered matching UUID");
       sql(`
         update auth.users
         set email = 'seller@yorku.ca'
