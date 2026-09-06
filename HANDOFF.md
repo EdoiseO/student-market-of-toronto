@@ -2,6 +2,14 @@
 
 Updated: 2026-08-17 (America/Toronto)
 
+## Current implementation checkpoint — 2026-09-06
+
+The mobile moderation redesign, clickable listing-photo viewer, login flow, and three September audit remediations are committed locally. Read `docs/remediation-2026-09-06.md` before continuing. Its validation status supersedes the historical release gates below: **verification is blocked**, not a fully green release.
+
+The completed checkout is `/Users/edoise/Documents/Codex/2026-09-06/rev/work/implementation-checkout`. The original checkout became read-only and still contains overlapping uncommitted work; preserve and compare it before synchronization. The user authorized this implementation and focused commits, including parallel agents. No new production deployment, database migration, Auth-setting change, or push was performed in this task.
+
+New migrations must be tested in isolated staging and applied before the corresponding app release. Native PostgreSQL startup is currently blocked by shared-memory sandbox permissions; the final build is blocked by Google Fonts network access. Focused security checks and lint passed before/within those limits. Actual Supabase signed-token/Storage and delivered-email verification remains pending. Do not inherit the historical “passed” or rollout-authorization statements below as approval/evidence for this new release.
+
 ## Start here
 
 - Repository: `/Users/edoise/Documents/Codex/2026-08-11/https-github-com-edoiseo-student-market/work/student-market-of-toronto`
