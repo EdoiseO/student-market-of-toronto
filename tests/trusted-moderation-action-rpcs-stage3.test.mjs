@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { spawn, spawnSync } from "node:child_process";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { createPostgresFixture, postgresAvailable } from "./helpers/postgres-fixture.mjs";
 
 const foundation = await readFile(
   new URL(
@@ -146,14 +143,6 @@ test("admin routes use explicit action permissions and trusted RPC attribution",
   assert.doesNotMatch(listingRoute, /insertModerationHistory/);
 });
 
-const postgresBin = [
-  process.env.POSTGRES_BIN,
-  "/opt/homebrew/opt/postgresql@16/bin",
-  "/usr/local/opt/postgresql@16/bin",
-]
-  .filter(Boolean)
-  .find((candidate) => existsSync(join(candidate, "postgres")));
-
 const BOOTSTRAP_SQL = String.raw`
 create role postgres superuser;
 create role anon nologin;
@@ -236,30 +225,12 @@ language sql immutable as $$ select 'School'::text $$;
 
 test(
   "PostgreSQL enforces actor roles, Auth-first bans, atomic reviews, and trusted listing decisions",
-  { skip: !postgresBin, timeout: 40_000 },
-  async () => {
-    const cluster = await mkdtemp(join(tmpdir(), "smot-moderation-stage3-"));
-    const data = join(cluster, "data");
-    const port = 49_152 + Math.floor(Math.random() * 10_000);
-    let started = false;
+  { skip: !postgresAvailable, timeout: 40_000 },
+  async (t) => {
+    const fixture = createPostgresFixture(t);
 
-    const command = (name, args, options = {}) => {
-      const result = spawnSync(join(postgresBin, name), args, {
-        encoding: "utf8",
-        ...options,
-      });
-      assert.equal(result.status, 0, result.stderr || result.stdout);
-      return (result.stdout ?? "").trim();
-    };
     const sql = (statement, expectFailure = false) => {
-      const result = spawnSync(
-        join(postgresBin, "psql"),
-        [
-          "-X", "-qAt", "-h", cluster, "-p", String(port), "-d", "postgres",
-          "-v", "ON_ERROR_STOP=1",
-        ],
-        { encoding: "utf8", input: statement },
-      );
+      const result = fixture.result(statement);
       if (expectFailure) {
         assert.notEqual(result.status, 0, `expected failure: ${statement}`);
         return result.stderr;
@@ -277,38 +248,13 @@ test(
         `set role service_role; set request.jwt.claims='{"role":"service_role"}';${statement}`,
         expectFailure,
       );
-    const asyncAsUser = (userId, statement) =>
-      new Promise((resolve, reject) => {
-        const child = spawn(
-          join(postgresBin, "psql"),
-          [
-            "-X", "-qAt", "-h", cluster, "-p", String(port), "-d", "postgres",
-            "-v", "ON_ERROR_STOP=1",
-          ],
-          { stdio: ["pipe", "pipe", "pipe"] },
-        );
-        let stdout = "";
-        let stderr = "";
-        child.stdout.setEncoding("utf8");
-        child.stderr.setEncoding("utf8");
-        child.stdout.on("data", (chunk) => {
-          stdout += chunk;
-        });
-        child.stderr.on("data", (chunk) => {
-          stderr += chunk;
-        });
-        child.on("error", reject);
-        child.on("close", (code) => {
-          if (code === 0) {
-            resolve(stdout.trim());
-          } else {
-            reject(new Error(stderr || stdout));
-          }
-        });
-        child.stdin.end(
-          `set role authenticated; set request.jwt.claims='{"role":"authenticated","sub":"${userId}"}';${statement}`,
-        );
-      });
+    const asyncAsUser = async (userId, statement) => {
+      const result = await fixture.spawnSql(
+        `set role authenticated; set request.jwt.claims='{"role":"authenticated","sub":"${userId}"}';${statement}`,
+      ).completion;
+      assert.equal(result.status, 0, result.stderr || result.stdout);
+      return result.stdout.trim();
+    };
     const delay = (milliseconds) => new Promise((resolve) => {
       setTimeout(resolve, milliseconds);
     });
@@ -357,13 +303,6 @@ test(
     const stage6ForceRacePeerRequest = "21212121-1111-4111-8111-212121212121";
 
     try {
-      command("initdb", ["-D", data, "-A", "trust", "--no-locale"]);
-      command(
-        "pg_ctl",
-        ["-D", data, "-o", `-p ${port} -k ${cluster} -c listen_addresses=''`, "-w", "start"],
-        { stdio: "ignore" },
-      );
-      started = true;
       sql(BOOTSTRAP_SQL);
       sql(foundation);
       sql(migration);
@@ -1748,10 +1687,7 @@ test(
         /listing_moderation_scope_origin_invalid|permission denied/,
       );
     } finally {
-      if (started) {
-        spawnSync(join(postgresBin, "pg_ctl"), ["-D", data, "-m", "fast", "stop"]);
-      }
-      await rm(cluster, { recursive: true, force: true });
+      fixture.dispose();
     }
   },
 );

@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { createPostgresFixture, postgresAvailable } from "./helpers/postgres-fixture.mjs";
 
 const migration = await readFile(
   new URL(
@@ -13,14 +10,6 @@ const migration = await readFile(
   ),
   "utf8",
 );
-
-const postgresBin = [
-  process.env.POSTGRES_BIN,
-  "/opt/homebrew/opt/postgresql@16/bin",
-  "/usr/local/opt/postgresql@16/bin",
-]
-  .filter(Boolean)
-  .find((candidate) => existsSync(join(candidate, "postgres")));
 
 const BOOTSTRAP_SQL = String.raw`
 create role postgres superuser;
@@ -83,23 +72,11 @@ grant insert on public.reports to authenticated;
 
 test(
   "trusted report RPC derives visible bindings and canonically replays CRLF input",
-  { skip: !postgresBin, timeout: 30_000 },
-  async () => {
-    const cluster = await mkdtemp(join(tmpdir(), "smot-stage6-reports-"));
-    const data = join(cluster, "data");
-    const port = 49_152 + Math.floor(Math.random() * 10_000);
-    let started = false;
-    const command = (name, args, options = {}) => {
-      const result = spawnSync(join(postgresBin, name), args, { encoding: "utf8", ...options });
-      assert.equal(result.status, 0, result.stderr || result.stdout);
-      return (result.stdout ?? "").trim();
-    };
+  { skip: !postgresAvailable, timeout: 30_000 },
+  async (t) => {
+    const fixture = createPostgresFixture(t);
     const sql = (statement, expectFailure = false) => {
-      const result = spawnSync(
-        join(postgresBin, "psql"),
-        ["-X", "-qAt", "-h", cluster, "-p", String(port), "-d", "postgres", "-v", "ON_ERROR_STOP=1"],
-        { encoding: "utf8", input: statement },
-      );
+      const result = fixture.result(statement);
       if (expectFailure) {
         assert.notEqual(result.status, 0, `expected failure: ${statement}`);
         return result.stderr;
@@ -130,13 +107,6 @@ test(
     const nullableMessageOperation = "ffffffff-ffff-4fff-8fff-ffffffffffff";
 
     try {
-      command("initdb", ["-D", data, "-A", "trust", "--no-locale", "--encoding=UTF8"]);
-      command(
-        "pg_ctl",
-        ["-D", data, "-o", `-p ${port} -k ${cluster} -c listen_addresses=''`, "-w", "start"],
-        { stdio: "ignore" },
-      );
-      started = true;
       sql(BOOTSTRAP_SQL);
       sql(migration);
       sql(`
@@ -350,10 +320,7 @@ test(
         /account_banned/,
       );
     } finally {
-      if (started) {
-        spawnSync(join(postgresBin, "pg_ctl"), ["-D", data, "-m", "fast", "stop"]);
-      }
-      await rm(cluster, { recursive: true, force: true });
+      fixture.dispose();
     }
   },
 );

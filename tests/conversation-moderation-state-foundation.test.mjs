@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { createPostgresFixture, postgresAvailable } from "./helpers/postgres-fixture.mjs";
 
 const migrationUrl = new URL(
   "../supabase/migrations/20260816061558_conversation_moderation_state_foundation.sql",
@@ -189,68 +186,22 @@ test("Realtime removal is guarded and does not alter message or reaction guards"
   );
 });
 
-const postgresBin = [
-  process.env.POSTGRES_BIN,
-  "/opt/homebrew/opt/postgresql@16/bin",
-  "/usr/local/opt/postgresql@16/bin",
-]
-  .filter(Boolean)
-  .find((candidate) => existsSync(join(candidate, "postgres")));
-
 test(
   "Realtime removal preserves unrelated publication members and is idempotent",
-  { skip: !postgresBin },
-  async () => {
+  { skip: !postgresAvailable },
+  async (t) => {
     const sqlSource = await migrationSource();
     const publicationBlock = sqlSource.slice(
       sqlSource.indexOf("-- Keep conversation moderation state out of Postgres Changes."),
     );
     assert.match(publicationBlock, /alter publication supabase_realtime drop table/i);
 
-    const cluster = await mkdtemp(join(tmpdir(), "smot-conversation-realtime-"));
-    const data = join(cluster, "data");
-    const port = 49_152 + Math.floor(Math.random() * 10_000);
-    let started = false;
+    const fixture = createPostgresFixture(t);
 
-    const command = (name, args, options = {}) => {
-      const result = spawnSync(join(postgresBin, name), args, {
-        encoding: "utf8",
-        ...options,
-      });
-      assert.equal(result.status, 0, result.stderr || result.stdout);
-      return (result.stdout ?? "").trim();
-    };
     const query = (statement) =>
-      command("psql", [
-        "-X",
-        "-qAt",
-        "-h",
-        cluster,
-        "-p",
-        String(port),
-        "-d",
-        "postgres",
-        "-v",
-        "ON_ERROR_STOP=1",
-        "-c",
-        statement,
-      ]);
+      fixture.sql(statement);
 
     try {
-      command("initdb", ["-D", data, "-A", "trust", "--no-locale"]);
-      command(
-        "pg_ctl",
-        [
-          "-D",
-          data,
-          "-o",
-          `-p ${port} -k ${cluster} -c listen_addresses='' -c wal_level=logical`,
-          "-w",
-          "start",
-        ],
-        { stdio: "ignore" },
-      );
-      started = true;
 
       query(`
         create table public.conversation_moderation_state (conversation_id uuid primary key);
@@ -280,10 +231,7 @@ test(
         "keep_realtime",
       );
     } finally {
-      if (started) {
-        spawnSync(join(postgresBin, "pg_ctl"), ["-D", data, "-m", "fast", "stop"]);
-      }
-      await rm(cluster, { recursive: true, force: true });
+      fixture.dispose();
     }
   },
 );

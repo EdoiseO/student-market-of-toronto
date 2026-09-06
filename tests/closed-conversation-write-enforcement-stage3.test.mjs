@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
-import { spawn, spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { createPostgresFixture, postgresAvailable } from "./helpers/postgres-fixture.mjs";
 
 const migrationUrl = new URL(
   "../supabase/migrations/20260816081757_enforce_closed_conversation_writes.sql",
@@ -97,14 +94,6 @@ test("reaction removals preserve cleanup semantics but still require open state 
   assert.ok(assertion.indexOf("conversation_write_actor_banned") < optionalActiveChecks);
 });
 
-const postgresBin = [
-  process.env.POSTGRES_BIN,
-  "/opt/homebrew/opt/postgresql@16/bin",
-  "/usr/local/opt/postgresql@16/bin",
-]
-  .filter(Boolean)
-  .find((candidate) => existsSync(join(candidate, "postgres")));
-
 const BUYER = "11111111-1111-4111-8111-111111111111";
 const SELLER = "22222222-2222-4222-8222-222222222222";
 const OUTSIDER = "33333333-3333-4333-8333-333333333333";
@@ -124,42 +113,13 @@ function jwtFor(role, sub = null) {
 
 test(
   "PostgreSQL enforces close/reopen/expiry, actor, media, reaction, scope, and lock boundaries",
-  { skip: !postgresBin, timeout: 30_000 },
-  async () => {
+  { skip: !postgresAvailable, timeout: 30_000 },
+  async (t) => {
     const migration = await migrationSource();
-    const cluster = await mkdtemp(join(tmpdir(), "smot-closed-conversation-"));
-    const data = join(cluster, "data");
-    const port = 49_152 + Math.floor(Math.random() * 10_000);
-    const psqlPath = join(postgresBin, "psql");
-    let started = false;
-
-    const command = (name, args, options = {}) => {
-      const result = spawnSync(join(postgresBin, name), args, {
-        encoding: "utf8",
-        ...options,
-      });
-      assert.equal(result.status, 0, result.stderr || result.stdout);
-      return (result.stdout ?? "").trim();
-    };
-
-    const psqlArgs = [
-      "-X",
-      "-qAt",
-      "-h",
-      cluster,
-      "-p",
-      String(port),
-      "-d",
-      "postgres",
-      "-v",
-      "ON_ERROR_STOP=1",
-    ];
+    const fixture = createPostgresFixture(t);
 
     const execute = (statement, { allowFailure = false } = {}) => {
-      const result = spawnSync(psqlPath, psqlArgs, {
-        input: statement,
-        encoding: "utf8",
-      });
+      const result = fixture.result(statement);
       if (!allowFailure) {
         assert.equal(result.status, 0, result.stderr || result.stdout);
       }
@@ -189,20 +149,6 @@ test(
     };
 
     try {
-      command("initdb", ["-D", data, "-A", "trust", "--no-locale"]);
-      command(
-        "pg_ctl",
-        [
-          "-D",
-          data,
-          "-o",
-          `-p ${port} -k ${cluster} -c listen_addresses=''`,
-          "-w",
-          "start",
-        ],
-        { stdio: "ignore" },
-      );
-      started = true;
 
       execute(`
         create role postgres superuser;
@@ -643,32 +589,16 @@ test(
         set status = 'open', closed_until = null
         where conversation_id = '${CONVERSATION}';
       `);
-      const locker = spawn(psqlPath, psqlArgs, { stdio: ["pipe", "pipe", "pipe"] });
-      let lockerOutput = "";
-      locker.stdout.setEncoding("utf8");
-      locker.stdout.on("data", (chunk) => {
-        lockerOutput += chunk;
-      });
+      const locker = fixture.spawnSql();
       locker.stdin.write(`begin;
         update public.conversation_moderation_state
         set status = 'closed', closed_until = null
         where conversation_id = '${CONVERSATION}';
         select 'STATE_LOCKED';\n`);
 
-      await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error("state lock was not acquired")), 3_000);
-        const check = () => {
-          if (lockerOutput.includes("STATE_LOCKED")) {
-            clearTimeout(timeout);
-            resolve();
-          } else {
-            setTimeout(check, 10);
-          }
-        };
-        check();
-      });
+      await locker.waitForOutput("STATE_LOCKED");
 
-      const waitingSend = spawn(psqlPath, psqlArgs, { stdio: ["pipe", "pipe", "pipe"] });
+      const waitingSend = fixture.spawnSql();
       let waitingOutput = "";
       let waitingError = "";
       let waitingExited = false;
@@ -697,17 +627,13 @@ test(
       assert.equal(waitingExited, false, "sender must wait for the moderation state lock");
 
       locker.stdin.end("commit;\n\\q\n");
-      await new Promise((resolve, reject) => {
-        locker.once("exit", (code) => (code === 0 ? resolve() : reject(new Error("locker failed"))));
-      });
-      const waitingCode = await new Promise((resolve) => waitingSend.once("exit", resolve));
+      const lockerResult = await locker.completion;
+      assert.equal(lockerResult.status, 0, lockerResult.stderr || "locker failed");
+      const { status: waitingCode } = await waitingSend.completion;
       assert.notEqual(waitingCode, 0, waitingOutput);
       assert.match(waitingError, /conversation_write_closed/i);
     } finally {
-      if (started) {
-        spawnSync(join(postgresBin, "pg_ctl"), ["-D", data, "-m", "fast", "stop"]);
-      }
-      await rm(cluster, { recursive: true, force: true });
+      fixture.dispose();
     }
   },
 );

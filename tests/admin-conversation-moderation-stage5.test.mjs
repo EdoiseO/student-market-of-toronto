@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { createPostgresFixture, postgresAvailable } from "./helpers/postgres-fixture.mjs";
 
 import {
   normalizeAdminConversationFilter,
@@ -29,33 +26,6 @@ const safeParticipantMessageMigrationUrl = new URL(
   "../supabase/migrations/20260816184707_participant_safe_conversation_moderation_messages_stage5.sql",
   import.meta.url,
 );
-
-const postgresCandidates = [
-  process.env.POSTGRES_BIN,
-  "/opt/homebrew/opt/postgresql@16/bin",
-  "/opt/homebrew/opt/postgresql@17/bin",
-  "/usr/local/opt/postgresql@16/bin",
-  "/usr/lib/postgresql/16/bin",
-].filter(Boolean);
-
-function getPostgresBin() {
-  return postgresCandidates.find((candidate) => existsSync(join(candidate, "postgres"))) ?? null;
-}
-
-function run(binary, args, options = {}) {
-  const result = spawnSync(binary, args, {
-    encoding: "utf8",
-    ...options,
-  });
-
-  if (result.status !== 0) {
-    throw new Error(
-      `${binary} ${args.join(" ")} failed:\n${result.stdout ?? ""}\n${result.stderr ?? ""}`,
-    );
-  }
-
-  return result.stdout;
-}
 
 test("conversation command validation is strict, role-aware, and retry-stable", () => {
   const valid = {
@@ -217,50 +187,14 @@ test("admin back links use destination-specific copy and registry routes", async
 });
 
 test("PostgreSQL enforces bounded reads, exact replay, report atomicity, and role limits", { timeout: 120_000 }, async (t) => {
-  const postgresBin = getPostgresBin();
-
-  if (!postgresBin) {
-    t.skip("PostgreSQL 16+ binaries are unavailable in this environment.");
+  if (!postgresAvailable) {
+    t.skip("PostgreSQL binaries are unavailable in this environment.");
     return;
   }
-
-  const cluster = await mkdtemp(join(tmpdir(), "smot-admin-conversation5-"));
-  const dataDirectory = join(cluster, "data");
-  const socketDirectory = join(cluster, "socket");
-  const logPath = join(cluster, "postgres.log");
-  const port = String(56_000 + (process.pid % 1000));
-  const initdb = join(postgresBin, "initdb");
-  const pgCtl = join(postgresBin, "pg_ctl");
-  const psql = join(postgresBin, "psql");
-  let started = false;
-
+  const fixture = createPostgresFixture(t);
+  const query = fixture.sql;
+  const apply = fixture.apply;
   try {
-    run(initdb, ["-D", dataDirectory, "-A", "trust", "--no-locale"]);
-    await import("node:fs/promises").then(({ mkdir }) => mkdir(socketDirectory));
-    run(pgCtl, [
-      "-D",
-      dataDirectory,
-      "-l",
-      logPath,
-      "-o",
-      `-k ${socketDirectory} -p ${port}`,
-      "-w",
-      "start",
-    ]);
-    started = true;
-
-    const env = {
-      ...process.env,
-      PGHOST: socketDirectory,
-      PGPORT: port,
-      PGDATABASE: "postgres",
-      PGUSER: process.env.USER,
-    };
-    const query = (sql, extra = []) =>
-      run(psql, ["-X", "-q", "-v", "ON_ERROR_STOP=1", "-At", ...extra, "-c", sql], { env });
-    const apply = (url) =>
-      run(psql, ["-X", "-v", "ON_ERROR_STOP=1", "-f", url.pathname], { env });
-
     query(`
       create extension if not exists pgcrypto;
       create role postgres superuser nologin;
@@ -779,11 +713,6 @@ test("PostgreSQL enforces bounded reads, exact replay, report atomicity, and rol
       /permission denied for schema conversation_admin_private/i,
     );
   } finally {
-    if (started) {
-      spawnSync(pgCtl, ["-D", dataDirectory, "-m", "fast", "stop"], {
-        encoding: "utf8",
-      });
-    }
-    await rm(cluster, { recursive: true, force: true });
+    fixture.dispose();
   }
 });
