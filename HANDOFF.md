@@ -1,16 +1,16 @@
 # Student Market of Toronto handoff
 
-Updated: 2026-08-17 (America/Toronto)
+Updated: 2026-09-06 (America/Toronto)
 
 ## Current implementation checkpoint — 2026-09-06
 
 The approved redesign/security implementation and exact already-applied demo-email migration are committed and synchronized into the original application checkout. All earlier dirty/untracked implementation work remains preserved in stash `e4003da7e2dfbb9b08fac21c22cc9143e90130b7`; do not blindly apply or drop it.
 
-Current local validation: `npm run test:security` **322/322 passed**, lint passed, production build passed, dependency audit zero vulnerabilities, and demo migration integration **15/15 passed**, including fresh and already-live migration orders. Final browser QA covered 24 responsive/locale cases, both language switches, and six listing/report photo open/zoom/Escape/focus checks with no failures after waiting for dialog close completion. Detailed evidence/limits are in `docs/remediation-2026-09-06.md`. Hosted signed-token/Storage/Realtime, dedicated inbox-backed Auth delivery, CI and full device/accessibility gates remain pending; do not declare the release verified in production.
+Current local validation: `npm run test:security` **322/322 passed**, lint passed, production build passed, dependency audit zero vulnerabilities, and demo migration integration **15/15 passed**, including fresh and already-live migration orders. Final browser QA covered 24 responsive/locale cases, both language switches, and six listing/report photo open/zoom/Escape/focus checks with no failures after waiting for dialog close completion. The final release check also passed Linux/macOS CI, five preview HTTP controls, and the guarded migration transaction rehearsal. See `docs/security/release-check-2026-09-06.md`. Hosted signed-token/Storage/Realtime, dedicated inbox-backed Auth delivery and full device/accessibility gates remain pending; do not declare the release verified in production.
 
 Read `docs/security/registered-demo-identities.md` before database deployment. Exact migration `20260906160016` is already live and must not be reapplied/renamed. Our older `20260906144154` and `20260906150000` migrations remain pending. Preserve the private registry and STABLE definer school helper, and deliberately reconcile the three older pre-repository history entries without blind repair. New demo addresses are recorded in `/Users/edoise/Documents/Codex/2026-09-06/student-market-demo-cleanup/demo-accounts.csv`; existing passwords still apply, but those accounts cannot receive recovery emails. No affected saved login fixture was found. No cleanup backup or live mapping was imported into Git.
 
-The user authorized implementation, focused commits, and parallel agents. This integration made no remote changes or push/deployment. The separate cleanup task's applied migration is acknowledged above. The historical rollout authorization and August validation statements below do not authorize this new release.
+The user explicitly authorized a final security check followed by production rollout. The implementation branch was pushed and draft PR #76 opened; production deployment, pending migrations and Auth settings remain unchanged. No new deployment approval is needed once the remaining checks pass. Staging environment selection and an inbox-backed recovery test account were requested and remain pending. The separate cleanup task's applied migration is acknowledged above; the August statements below are historical.
 
 ## Start here
 
