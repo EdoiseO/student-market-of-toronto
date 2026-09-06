@@ -1,3 +1,4 @@
+import { getAdminQueueReturnHref } from "@/lib/admin-queue-navigation.mjs";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -33,7 +34,11 @@ function userDetailHref(userId, page) {
 export default async function AdminUserDetailPage({ params, searchParams }) {
   const { userId } = await params;
   if (!UUID_PATTERN.test(userId)) notFound();
-  const requestedPage = parsePage((await searchParams)?.page);
+  const query = await searchParams;
+  const requestedPage = parsePage(query?.page);
+  const queuePath = typeof query?.returnTo === "string" && /^\/admin\/users(?:[?#]|$)/.test(query.returnTo)
+    ? "/admin/users" : "/admin/enforcement";
+  const returnHref = getAdminQueueReturnHref(query?.returnTo, queuePath);
   const cookieStore = await cookies();
   const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
   const t = translations[language] ?? translations.en;
@@ -98,8 +103,9 @@ export default async function AdminUserDetailPage({ params, searchParams }) {
   const canReadPrivateAuthDetails = currentUserRole === "admin";
 
   return (
-    <main className="min-h-screen min-w-0 overflow-x-clip bg-zinc-100 px-3 py-4 dark:bg-background sm:px-5 lg:p-8">
+    <main className="min-h-screen min-w-0 bg-zinc-100 px-4 py-4 dark:bg-background sm:px-5 lg:p-8">
       <AdminUserDetailContent
+        returnHref={returnHref}
         user={{
           id: userId,
           email: canReadPrivateAuthDetails ? targetUser.email ?? "" : null,

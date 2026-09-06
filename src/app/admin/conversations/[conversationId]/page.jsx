@@ -1,3 +1,4 @@
+import { getAdminQueueReturnHref } from "@/lib/admin-queue-navigation.mjs";
 import { AlertTriangle, ArrowLeft } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
@@ -75,6 +76,7 @@ export default async function AdminConversationDetailPage({ params, searchParams
   const supabase = createClient(cookieStore);
   const admin = createAdminClient();
   const cursor = parseCursor(query);
+  const returnHref = getAdminQueueReturnHref(query?.returnTo, "/admin/conversations");
 
   const {
     data: { user },
@@ -161,7 +163,7 @@ export default async function AdminConversationDetailPage({ params, searchParams
     hasOlderMessages && oldestMessage
       ? `/admin/conversations/${conversationId}?beforeCreatedAt=${encodeURIComponent(
           oldestMessage.createdAt,
-        )}&beforeMessageId=${encodeURIComponent(oldestMessage.id)}`
+        )}&beforeMessageId=${encodeURIComponent(oldestMessage.id)}&returnTo=${encodeURIComponent(returnHref)}`
       : null;
 
   return (
@@ -170,6 +172,7 @@ export default async function AdminConversationDetailPage({ params, searchParams
       messages={messagesWithSignedEvidence}
       hasOlderMessages={hasOlderMessages}
       olderMessagesHref={olderMessagesHref}
+      returnHref={returnHref}
       role={role}
       language={language}
       t={t}

@@ -99,7 +99,8 @@ test("directory search is globally truthful within a bounded newest-account wind
   assert.match(page, /p_page_size: perPage/);
   assert.match(page, /directoryUser\.force_name_change === true/);
   assert.doesNotMatch(page, /auth\.admin\.listUsers/);
-  assert.match(content, /<form[\s\S]*?method="get"/);
+  assert.match(content, /<AdminQueueFilters action="\/admin\/users"/);
+  assert.match(read("src/components/admin-queue-filters.jsx"), /<form[\s\S]*?method="get"/);
   assert.match(content, /adminUsersSearchScope/);
   assert.match(migration, /limit 5000/i);
   assert.match(migration, /'scopeLimit', 5000/);

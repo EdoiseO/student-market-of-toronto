@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { ClientFormattedDateTime } from "@/components/client-formatted-date-time";
+import { ListingReviewImages } from "@/components/listing-review-images";
 import { ListingDescriptionContent } from "@/components/listing-description-content";
 import { ProfileAvatar } from "@/components/profile-avatar";
 import { Badge } from "@/components/ui/badge";
@@ -43,7 +44,7 @@ import {
 } from "@/lib/write-field-contracts.mjs";
 
 const REPORT_EVIDENCE_PANEL_CLASS =
-  "flex flex-col overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card xl:h-[clamp(28rem,60vh,34rem)]";
+  "flex flex-col overflow-hidden rounded-2xl sm:rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card xl:h-[clamp(28rem,60vh,34rem)]";
 
 function DecisionTextField({
   id,
@@ -181,8 +182,8 @@ function ModeratorNotesCard({
   handleSaveModeratorNotes,
 }) {
   return (
-    <Card id="moderator-notes" className="scroll-mt-24 rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-      <CardHeader className="border-b border-zinc-200 px-7 py-6 dark:border-border">
+    <Card id="moderator-notes" className="scroll-mt-24 rounded-2xl sm:rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
+      <CardHeader className="border-b border-zinc-200 px-4 py-4 sm:px-7 sm:py-6 dark:border-border">
         <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
           {t.adminModeratorNotesTitle}
         </CardTitle>
@@ -192,7 +193,7 @@ function ModeratorNotesCard({
             : t.adminModeratorNotesSetupDescription}
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4 px-7 py-6">
+      <CardContent className="space-y-4 px-4 py-4 sm:px-7 sm:py-6">
         {notesAvailable ? (
           <>
             <div className="space-y-3 rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-border dark:bg-muted/20">
@@ -294,6 +295,8 @@ export function AdminReportReviewContent({
   moderatorNoteHistoryNextHref = null,
   currentUserId,
   canForceProfileNameChange = false,
+  canDecide = true,
+  returnHref = "/admin/reports",
 }) {
   const router = useRouter();
   const { t, language } = useLanguage();
@@ -447,7 +450,7 @@ export function AdminReportReviewContent({
       );
     }
 
-    router.push("/admin/reports");
+    router.push(returnHref);
     router.refresh();
   }
 
@@ -531,7 +534,7 @@ export function AdminReportReviewContent({
         ? t.adminListingRemovedAndAllResolved
         : t.adminListingRemovedAndResolved,
     );
-    router.push("/admin/reports");
+    router.push(returnHref);
     router.refresh();
   }
 
@@ -611,7 +614,7 @@ export function AdminReportReviewContent({
 
     forceNameOperationRef.current = null;
     toast.success(t.adminForceNameChangeSuccess);
-    router.push("/admin/reports");
+    router.push(returnHref);
     router.refresh();
   }
 
@@ -670,8 +673,8 @@ export function AdminReportReviewContent({
 
   return (
     <div className="flex flex-col gap-4">
-      <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-        <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+      <Card className="rounded-2xl sm:rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
+        <CardHeader className="border-b border-zinc-200 px-4 py-4 sm:px-6 sm:py-5 dark:border-border">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
@@ -695,10 +698,10 @@ export function AdminReportReviewContent({
                   </Badge>
                 ) : null}
               </div>
-              <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">
+              <h1 className="break-words text-2xl font-bold tracking-tight text-zinc-950 dark:text-foreground [overflow-wrap:anywhere]">
                 {reviewTitle}
-              </CardTitle>
-              <CardDescription>{reviewDescription}</CardDescription>
+              </h1>
+              <CardDescription className="hidden sm:block">{reviewDescription}</CardDescription>
             </div>
             <div className="text-right text-xs text-muted-foreground">
               <p>{t.reportedAt}</p>
@@ -707,7 +710,8 @@ export function AdminReportReviewContent({
           </div>
         </CardHeader>
 
-        <CardContent className="grid gap-4 px-6 py-5 md:grid-cols-2 xl:grid-cols-6">
+        <details className="min-w-0 border-t border-border"><summary className="min-h-11 cursor-pointer px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-6">{t.adminQueueContext}</summary>
+        <CardContent className="grid gap-4 px-4 py-4 sm:px-6 sm:py-5 md:grid-cols-2 xl:grid-cols-6">
           <ReviewMetadata label={t.reporter}>{report.reporter.name}</ReviewMetadata>
           <ReviewMetadata label={t.adminReportedUser}>{report.reportedUser.name}</ReviewMetadata>
           <ReviewMetadata label={t.adminReason}>
@@ -730,22 +734,24 @@ export function AdminReportReviewContent({
             </div>
           ) : null}
         </CardContent>
+        </details>
       </Card>
 
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.8fr)]">
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,0.8fr)]">
         <div className="min-w-0 space-y-5 xl:space-y-6">
           {isMessageReport ? (
           <section className={REPORT_EVIDENCE_PANEL_CLASS}>
-            <div className="border-b border-zinc-200 px-6 py-4 dark:border-border">
+            <div className="border-b border-zinc-200 px-4 py-4 sm:px-6 dark:border-border">
               <p className="text-lg font-semibold text-zinc-950 dark:text-foreground">
                 {t.adminConversationContextLabel}
               </p>
               <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
-                {t.adminConversationContextDescription}
+                {conversation?.contextLimited ? t.adminReportContextLimited : t.adminConversationContextDescription}
               </p>
+              {conversation?.canReadFullConversation ? <Button asChild variant="outline" className="mt-3 min-h-11 whitespace-normal"><Link href={`/admin/conversations/${conversation.id}`}>{t.adminReportFullConversation}</Link></Button> : null}
             </div>
 
-            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto bg-zinc-50/70 px-6 py-5 dark:bg-muted/20">
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto bg-zinc-50/70 px-4 py-4 sm:px-6 sm:py-5 dark:bg-muted/20">
               {messages.map((message) => {
                 const isBuyer = message.sender_id === conversation.buyer.id;
                 const sender = isBuyer ? conversation.buyer : conversation.seller;
@@ -797,7 +803,7 @@ export function AdminReportReviewContent({
           </section>
           ) : isProfileReport ? (
           <section className={REPORT_EVIDENCE_PANEL_CLASS}>
-            <div className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+            <div className="border-b border-zinc-200 px-4 py-4 sm:px-6 sm:py-5 dark:border-border">
               <p className="text-lg font-semibold text-zinc-950 dark:text-foreground">
                 {reviewTitle}
               </p>
@@ -806,14 +812,14 @@ export function AdminReportReviewContent({
               </p>
             </div>
 
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-zinc-50/70 px-6 py-5 dark:bg-muted/20">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-zinc-50/70 px-4 py-4 sm:px-6 sm:py-5 dark:bg-muted/20">
               <Card className="rounded-[1.75rem] border-zinc-200 bg-white py-0 shadow-none dark:bg-card dark:ring-border">
-                <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
-                  <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">
+                <CardHeader className="border-b border-zinc-200 px-4 py-4 sm:px-6 sm:py-5 dark:border-border">
+                  <CardTitle className="break-words text-2xl text-zinc-950 dark:text-foreground [overflow-wrap:anywhere]">
                     {t.adminReportedProfileTitle}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="px-6 py-6">
+                <CardContent className="px-4 py-4 sm:px-6 sm:py-6">
                   <Link href={`/profile/${profileTarget?.id}`} className="flex items-center gap-4 rounded-2xl bg-zinc-50 p-4 transition hover:bg-background dark:bg-muted/40 dark:hover:bg-background">
                     <ProfileAvatar
                       name={profileTarget?.name}
@@ -834,12 +840,12 @@ export function AdminReportReviewContent({
               </Card>
 
               <Card className="rounded-[1.75rem] border-zinc-200 bg-white py-0 shadow-none dark:bg-card dark:ring-border">
-                <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
-                  <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">
+                <CardHeader className="border-b border-zinc-200 px-4 py-4 sm:px-6 sm:py-5 dark:border-border">
+                  <CardTitle className="break-words text-2xl text-zinc-950 dark:text-foreground [overflow-wrap:anywhere]">
                     {t.profileDescriptionTitle}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="px-6 py-6">
+                <CardContent className="px-4 py-4 sm:px-6 sm:py-6">
                   <p className="whitespace-pre-line text-sm leading-6 text-zinc-600 dark:text-muted-foreground">
                     {profileTarget?.bio || t.profileNoBio}
                   </p>
@@ -851,7 +857,7 @@ export function AdminReportReviewContent({
           </section>
           ) : (
           <section className={REPORT_EVIDENCE_PANEL_CLASS}>
-            <div className="border-b border-zinc-200 px-6 py-5 dark:border-border">
+            <div className="border-b border-zinc-200 px-4 py-4 sm:px-6 sm:py-5 dark:border-border">
               <p className="text-lg font-semibold text-zinc-950 dark:text-foreground">
                 {t.adminListingReviewTitle}
               </p>
@@ -859,25 +865,11 @@ export function AdminReportReviewContent({
                 {t.adminListingReviewDescription}
               </p>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto bg-zinc-50/70 px-6 py-5 dark:bg-muted/20">
+            <div className="min-h-0 flex-1 overflow-y-auto bg-zinc-50/70 px-4 py-4 sm:px-6 sm:py-5 dark:bg-muted/20">
               <div className="space-y-5">
                 <div className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 dark:border-border dark:bg-card">
                   <div className="flex items-start gap-4">
-                    <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted">
-                      {listingReview?.listing?.imageUrl ? (
-                        <Image
-                          src={listingReview.listing.imageUrl}
-                          alt={listingReview.listing.title}
-                          fill
-                          sizes="96px"
-                          placeholder="blur"
-                          blurDataURL={REMOTE_IMAGE_BLUR_DATA_URL}
-                          className="object-cover"
-                        />
-                      ) : (
-                        <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
-                      )}
-                    </div>
+                    <ListingReviewImages images={listingReview?.listing?.images} imageUrl={listingReview?.listing?.imageUrl} title={listingReview?.listing?.title} />
                     <div className="min-w-0 flex-1">
                       <p className="text-xl font-semibold text-zinc-950 dark:text-foreground">
                         {listingReview?.listing?.title}
@@ -891,12 +883,12 @@ export function AdminReportReviewContent({
 
                 {listingReview?.listing?.description ? (
                   <Card className="rounded-[1.75rem] border-zinc-200 bg-white py-0 shadow-none dark:bg-card dark:ring-border">
-                    <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
-                      <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">
+                    <CardHeader className="border-b border-zinc-200 px-4 py-4 sm:px-6 sm:py-5 dark:border-border">
+                      <CardTitle className="break-words text-2xl text-zinc-950 dark:text-foreground [overflow-wrap:anywhere]">
                         {t.description}
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="px-6 py-6">
+                    <CardContent className="px-4 py-4 sm:px-6 sm:py-6">
                       <ListingDescriptionContent description={listingReview.listing.description} className="whitespace-normal leading-6 text-sm" />
                     </CardContent>
                   </Card>
@@ -920,16 +912,18 @@ export function AdminReportReviewContent({
           />
         </div>
 
-        <div className="space-y-5 xl:space-y-6">
+        <details className="min-w-0 rounded-2xl border border-border bg-card">
+          <summary className="min-h-11 cursor-pointer p-4 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{t.adminGroupedReports} · {t.adminQueueContext}</summary>
+          <div className="min-w-0 space-y-4 border-t border-border p-3">
 
-          <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-            <CardHeader className="border-b border-zinc-200 px-7 py-6 dark:border-border">
+          <Card className="rounded-2xl sm:rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
+            <CardHeader className="border-b border-zinc-200 px-4 py-4 sm:px-7 sm:py-6 dark:border-border">
               <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
                 {t.adminRelatedReportsTitle}
               </CardTitle>
               <CardDescription>{t.adminRelatedReportsDescription}</CardDescription>
             </CardHeader>
-            <CardContent className="flex min-h-44 flex-col justify-center gap-4 px-7 py-6">
+            <CardContent className="flex min-h-44 flex-col justify-center gap-4 px-4 py-4 sm:px-7 sm:py-6">
               {sortedRelatedReports.length > 0 ? (
                 sortedRelatedReports.map((relatedReport) => {
                   const isCurrentReport = relatedReport.id === report.id;
@@ -1006,13 +1000,13 @@ export function AdminReportReviewContent({
           </Card>
 
           {isProfileReport ? (
-            <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-              <CardHeader className="border-b border-zinc-200 px-7 py-6 dark:border-border">
+            <Card className="rounded-2xl sm:rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
+              <CardHeader className="border-b border-zinc-200 px-4 py-4 sm:px-7 sm:py-6 dark:border-border">
                 <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
                   {t.adminReportedProfileTitle}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-5 px-7 py-6">
+              <CardContent className="space-y-5 px-4 py-4 sm:px-7 sm:py-6">
                 <Link href={`/profile/${profileTarget?.id}`} className="flex items-center gap-3 rounded-xl transition hover:bg-zinc-50/80 dark:hover:bg-muted/40">
                   <ProfileAvatar
                     name={profileTarget?.name}
@@ -1040,13 +1034,13 @@ export function AdminReportReviewContent({
             </Card>
           ) : (
             <>
-              <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-                <CardHeader className="border-b border-zinc-200 px-7 py-6 dark:border-border">
+              <Card className="rounded-2xl sm:rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
+                <CardHeader className="border-b border-zinc-200 px-4 py-4 sm:px-7 sm:py-6 dark:border-border">
                   <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
                     {t.aboutListing}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="flex min-h-44 items-center px-7 py-6">
+                <CardContent className="flex min-h-44 items-center px-4 py-4 sm:px-7 sm:py-6">
                   <Link href={`/listings/${listingTarget.slug}`} className="w-full rounded-2xl bg-zinc-50 p-5 transition hover:bg-background dark:bg-muted/40 dark:hover:bg-background">
                     <div className="flex min-h-24 items-center gap-4">
                       <div className="relative h-18 w-18 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted">
@@ -1077,13 +1071,13 @@ export function AdminReportReviewContent({
                 </CardContent>
               </Card>
 
-              <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-                <CardHeader className="border-b border-zinc-200 px-7 py-6 dark:border-border">
+              <Card className="rounded-2xl sm:rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
+                <CardHeader className="border-b border-zinc-200 px-4 py-4 sm:px-7 sm:py-6 dark:border-border">
                   <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
                     {isMessageReport ? t.adminParticipantsTitle : t.seller}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="flex min-h-52 flex-col justify-center gap-0 px-7 py-6">
+                <CardContent className="flex min-h-52 flex-col justify-center gap-0 px-4 py-4 sm:px-7 sm:py-6">
                   {(isMessageReport ? [conversation.buyer, conversation.seller] : [listingReview?.seller])
                     .filter(Boolean)
                     .map((participant, index) => (
@@ -1107,18 +1101,19 @@ export function AdminReportReviewContent({
               </Card>
             </>
           )}
-        </div>
+          </div>
+        </details>
       </div>
 
-      {hasOpenRelatedReports ? (
-        <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-          <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border sm:px-7 sm:py-6">
+      {canDecide && hasOpenRelatedReports ? (
+        <Card className="rounded-2xl sm:rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
+          <CardHeader className="border-b border-zinc-200 px-4 py-4 sm:px-6 sm:py-5 dark:border-border sm:px-7 sm:py-6">
             <CardTitle className="text-lg text-zinc-950 dark:text-foreground">
               {t.adminReportDecisionDetailsTitle}
             </CardTitle>
             <CardDescription>{t.adminDecisionPrivateFieldsNotice}</CardDescription>
           </CardHeader>
-          <CardContent className={`grid items-start gap-x-6 gap-y-7 px-6 py-6 sm:px-7 sm:py-7 ${
+          <CardContent className={`grid items-start gap-x-6 gap-y-7 px-4 py-4 sm:px-6 sm:py-6 sm:px-7 sm:py-7 ${
             canRemoveListing || canForceNameChange ? "lg:grid-cols-2" : "lg:grid-cols-1"
           }`}>
             <DecisionTextField
@@ -1214,7 +1209,7 @@ export function AdminReportReviewContent({
               </>
             ) : null}
           </CardContent>
-          <CardFooter className="border-zinc-200 bg-muted/20 px-6 py-5 dark:border-border sm:px-7 sm:py-6">
+          <CardFooter className="border-zinc-200 bg-muted/20 px-4 py-4 sm:px-6 sm:py-5 dark:border-border sm:px-7 sm:py-6">
             <ReportDecisionActions
               t={t}
               canRemoveListing={canRemoveListing}

@@ -1,3 +1,4 @@
+import { getAdminQueueReturnHref } from "@/lib/admin-queue-navigation.mjs";
 import { ArrowLeft, Flag, MessageSquareWarning } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
@@ -6,7 +7,6 @@ import { notFound, redirect } from "next/navigation";
 import { AdminReportReviewContent } from "@/components/admin-report-review-content";
 import { Button } from "@/components/ui/button";
 import {
-  MESSAGE_CONVERSATION_SELECT,
   MESSAGE_LISTING_IMAGE_LIMIT,
   getConversationDisplayName,
 } from "@/lib/messages";
@@ -16,9 +16,12 @@ import {
   getModerationDisplayName,
   getUserModerationRole,
   isModerationRole,
+  isNameChangeRequired,
   isReportsTableMissing,
 } from "@/lib/moderation";
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
+import { loadReportConversationContext } from "@/lib/admin-report-context.mjs";
+import { getUserStatusRow, isAuthUserBanned, isUserBanned } from "@/lib/user-status";
 import { translations } from "@/lib/translations";
 import { createClient } from "@/utils/supabase/server";
 
@@ -34,6 +37,7 @@ function getPrimaryListingImageUrl(listingImages) {
 export default async function AdminReportReviewPage({ params, searchParams }) {
   const resolvedParams = await params;
   const resolvedSearchParams = await searchParams;
+  const returnHref = getAdminQueueReturnHref(resolvedSearchParams?.returnTo, "/admin/reports");
   const requestedNoteHistoryCount = Math.min(
     MODERATOR_NOTE_HISTORY_MAX_VISIBLE,
     Math.max(
@@ -46,7 +50,8 @@ export default async function AdminReportReviewPage({ params, searchParams }) {
   const t = translations[language] || translations.en;
   const supabase = createClient(cookieStore);
   const admin = createAdminClient();
-  const dataClient = admin ?? supabase;
+  // Report data keeps the caller's RLS boundary, including role changes mid-request.
+  const dataClient = supabase;
 
   const {
     data: { user },
@@ -56,13 +61,17 @@ export default async function AdminReportReviewPage({ params, searchParams }) {
     redirect("/login");
   }
 
-  const accessUser = admin
-    ? await getLatestAuthUser(admin, user.id, "report review access")
-    : user;
+  if (!admin) redirect("/");
+  const accessUser = await getLatestAuthUser(admin, user.id, "report review access");
 
   if (!accessUser || !isModerationRole(getUserModerationRole(accessUser))) {
     redirect("/");
   }
+
+  const actorStatus = await getUserStatusRow(admin, user.id);
+  if (actorStatus.error || actorStatus.available !== true) redirect("/");
+  if (isAuthUserBanned(accessUser) || isUserBanned(actorStatus.data)) redirect("/banned");
+  if (isNameChangeRequired(accessUser)) redirect("/dashboard/profile");
 
   const { data: reportRow, error: reportError } = await dataClient
     .from("reports")
@@ -188,31 +197,9 @@ export default async function AdminReportReviewPage({ params, searchParams }) {
   if (reportRow.subject_type === REPORT_SUBJECT_TYPES.message) {
     reviewIcon = MessageSquareWarning;
 
-    const { data: conversationRow, error: conversationError } = await dataClient
-      .from("conversations")
-      .select(MESSAGE_CONVERSATION_SELECT)
-      .order("position", { referencedTable: "listings.listing_images", ascending: true })
-      .limit(MESSAGE_LISTING_IMAGE_LIMIT, { referencedTable: "listings.listing_images" })
-      .eq("id", reportRow.conversation_id)
-      .maybeSingle();
-
-    if (conversationError) {
-      console.error("Failed to load moderation conversation review:", conversationError.message);
-    }
-
-    if (!conversationRow) {
-      notFound();
-    }
-
-    const { data: messageRows, error: messagesError } = await dataClient
-      .from("messages")
-      .select("id, sender_id, body, created_at")
-      .eq("conversation_id", conversationRow.id)
-      .order("created_at", { ascending: true });
-
-    if (messagesError) {
-      console.error("Failed to load moderation conversation messages:", messagesError.message);
-    }
+    const context = await loadReportConversationContext(supabase, reportRow.id);
+    if (!context) notFound();
+    const conversationRow = context.conversation;
 
     const listing = Array.isArray(conversationRow.listings)
       ? conversationRow.listings[0]
@@ -226,6 +213,8 @@ export default async function AdminReportReviewPage({ params, searchParams }) {
 
     conversation = {
       id: conversationRow.id,
+      contextLimited: true,
+      canReadFullConversation: context.can_read_full_conversation === true,
       listing: {
         id: listing?.id,
         slug: listing?.slug,
@@ -250,7 +239,7 @@ export default async function AdminReportReviewPage({ params, searchParams }) {
       },
     };
 
-    messages = messageRows ?? [];
+    messages = context.messages;
     reportMessage = messages.find((message) => message.id === reportRow.message_id) ?? null;
   } else if (reportRow.subject_type === REPORT_SUBJECT_TYPES.listing) {
     const { data: listingRow, error: listingError } = await dataClient
@@ -291,6 +280,7 @@ export default async function AdminReportReviewPage({ params, searchParams }) {
         description: listingRow.description ?? "",
         location: listingRow.location ?? t.torontoMeetup,
         imageUrl: getPrimaryListingImageUrl(listingRow.listing_images),
+        images: (listingRow.listing_images ?? []).slice().sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((image) => image.image_url).filter(Boolean),
         status: listingRow.status,
       },
       seller: sellerProfile
@@ -412,17 +402,17 @@ export default async function AdminReportReviewPage({ params, searchParams }) {
     ? `/admin/reports/${reportRow.id}?notes=${Math.min(
         MODERATOR_NOTE_HISTORY_MAX_VISIBLE,
         requestedNoteHistoryCount + MODERATOR_NOTE_HISTORY_PAGE_SIZE,
-      )}#moderator-notes`
+      )}&returnTo=${encodeURIComponent(returnHref)}#moderator-notes`
     : null;
 
   const ReviewIcon = reviewIcon;
 
   return (
-    <main className="bg-zinc-100 px-5 pt-3 pb-5 dark:bg-background md:px-6 md:pt-3 md:pb-6 lg:px-7 lg:pt-4 lg:pb-7">
+    <main className="bg-zinc-100 px-4 pt-3 pb-5 dark:bg-background md:px-6 md:pt-3 md:pb-6 lg:px-7 lg:pt-4 lg:pb-7">
       <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Button asChild variant="ghost" className="h-9 rounded-full px-3">
-            <Link href="/admin/reports">
+          <Button asChild variant="ghost" className="min-h-11 rounded-full px-3">
+            <Link href={returnHref}>
               <ArrowLeft className="size-4" />
               <span>{t.backToAdminReports}</span>
             </Link>
@@ -444,6 +434,8 @@ export default async function AdminReportReviewPage({ params, searchParams }) {
         moderatorNoteHistory={moderatorNoteHistory}
         moderatorNoteHistoryNextHref={moderatorNoteHistoryNextHref}
         currentUserId={user.id}
+        returnHref={returnHref}
+        canDecide={canPerformModerationAction(getUserModerationRole(accessUser), MODERATION_ACTIONS.decideReports)}
         canForceProfileNameChange={getUserModerationRole(accessUser) === "admin"}
       />
       </div>

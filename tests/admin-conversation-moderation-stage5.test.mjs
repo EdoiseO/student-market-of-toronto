@@ -152,9 +152,9 @@ test("conversation navigation and search controls are visible and ordered", asyn
     navigation.indexOf('key: "conversations"') < navigation.indexOf('key: "enforcement"'),
     "Conversations must appear before Enforcement",
   );
-  assert.match(registry, /\{t\.adminConversationsSearchAction\}/);
+  assert.match(registry, /<AdminQueueFilters action="\/admin\/conversations"/);
   assert.doesNotMatch(registry, /\{t\.search\}/);
-  assert.match(registry, /sm:grid-cols-\[minmax\(0,1fr\)_auto\]/);
+  assert.match(registry, /searchLabel=\{t\.adminConversationsSearchLabel\}/);
   assert.equal(
     (translations.match(/\badminConversationsSearchAction:/g) ?? []).length,
     2,
@@ -174,13 +174,12 @@ test("admin back links use destination-specific copy and registry routes", async
     ]);
 
   for (const overviewSurface of [conversationRegistry, enforcement, users]) {
-    assert.match(overviewSurface, /href="\/admin"/);
-    assert.match(overviewSurface, /backToAdminOverview/);
+    assert.match(overviewSurface, /AdminQueueHeader/);
     assert.doesNotMatch(overviewSurface, /backToAdminReports/);
   }
 
-  assert.match(listingReview, /<Link href="\/admin\/listings">[\s\S]*?backToAdminListings/);
-  assert.match(reportReview, /<Link href="\/admin\/reports">[\s\S]*?backToAdminReports/);
+  assert.match(listingReview, /getAdminQueueReturnHref[\s\S]*?"\/admin\/listings"[\s\S]*?<Link href=\{returnHref\}>[\s\S]*?backToAdminListings/);
+  assert.match(reportReview, /getAdminQueueReturnHref[\s\S]*?"\/admin\/reports"[\s\S]*?<Link href=\{returnHref\}>[\s\S]*?backToAdminReports/);
   assert.equal((translations.match(/\bbackToAdminOverview:/g) ?? []).length, 2);
   assert.equal((translations.match(/\bbackToAdminReports:/g) ?? []).length, 2);
   assert.equal((translations.match(/\bbackToAdminListings:/g) ?? []).length, 2);

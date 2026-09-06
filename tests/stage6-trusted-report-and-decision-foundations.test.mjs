@@ -161,7 +161,7 @@ test("Stage 6 moderation rationale foundation is append-only, bounded, private, 
   const reportEvidenceIndex = reportUi.indexOf("{isMessageReport ? (", reportEvidenceColumnIndex);
   const moderatorNotesIndex = reportUi.indexOf("<ModeratorNotesCard", reportEvidenceIndex);
   const reportContextColumnIndex = reportUi.indexOf(
-    '<div className="space-y-5 xl:space-y-6">',
+    '<details className="min-w-0 rounded-2xl border border-border bg-card">',
     moderatorNotesIndex,
   );
   const relatedReportsIndex = reportUi.indexOf("adminRelatedReportsTitle", reportContextColumnIndex);
@@ -209,18 +209,18 @@ test("Stage 6 moderation rationale foundation is append-only, bounded, private, 
   assert.match(reportUi, /canRemoveListing \|\| canForceNameChange \? "lg:grid-cols-2" : "lg:grid-cols-1"/);
   assert.match(reportUi, /min-h-32 resize-y rounded-xl/);
   assert.match(reportUi, /space-y-5 xl:space-y-6/);
-  assert.match(reportUi, /flex min-h-44 flex-col justify-center gap-4 px-7 py-6/);
-  assert.match(reportUi, /flex min-h-44 items-center px-7 py-6/);
-  assert.match(reportUi, /flex min-h-52 flex-col justify-center gap-0 px-7 py-6/);
+  assert.match(reportUi, /flex min-h-44 flex-col justify-center gap-4 px-4 py-4 sm:px-7 sm:py-6/);
+  assert.match(reportUi, /flex min-h-44 items-center px-4 py-4 sm:px-7 sm:py-6/);
+  assert.match(reportUi, /flex min-h-52 flex-col justify-center gap-0 px-4 py-4 sm:px-7 sm:py-6/);
   assert.match(reportUi, /flex min-h-20 items-center gap-3 rounded-xl/);
   assert.match(reportUi, /<CardFooter[\s\S]*?<ReportDecisionActions/);
   assert.equal(
-    (reportUi.match(/router\.push\("\/admin\/reports"\)/g) ?? []).length,
+    (reportUi.match(/router\.push\(returnHref\)/g) ?? []).length,
     3,
     "all successful report actions must return to the reports registry",
   );
   assert.doesNotMatch(reportUi, /router\.push\("\/admin"\)/);
-  assert.match(reportPage, /<Link href="\/admin\/reports">/);
+  assert.match(reportPage, /getAdminQueueReturnHref[\s\S]*?"\/admin\/reports"[\s\S]*?<Link href=\{returnHref\}>/);
   assert.doesNotMatch(reportPage, /<Link href="\/admin">/);
   assert.equal((translations.match(/adminReportDecisionDetailsTitle:/g) ?? []).length, 2);
   assert.equal((translations.match(/adminDecisionActionSaveHint:/g) ?? []).length, 2);
@@ -229,7 +229,9 @@ test("Stage 6 moderation rationale foundation is append-only, bounded, private, 
   assert.match(listingRoute, /normalizeWriteText\(feedback\)/);
   assert.match(listingRoute, /countUnicodeCodePoints\(sellerFeedback\)/);
   assert.match(listingUi, /adminListingFeedbackRequiredMarker/);
-  assert.match(listingUi, /aria-required=\{isPendingReview \? "true" : "false"\}/);
+  // Feedback is optional for approval and validated when requesting changes.
+  assert.match(listingUi, /if \(!normalizedFeedback\)/);
+  assert.match(listingUi, /aria-describedby="listing-moderation-feedback-description listing-moderation-feedback-error"/);
   assert.match(listingUi, /aria-invalid=\{Boolean\(feedbackError\)\}/);
   assert.match(listingUi, /listing-moderation-feedback-error/);
   assert.equal((translations.match(/adminListingFeedbackRequiredMarker:/g) ?? []).length, 2);

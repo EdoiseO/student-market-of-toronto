@@ -351,19 +351,21 @@ function ZoomableMessageImage({
   );
 }
 
-export function MessageMediaGallery({ attachments }) {
+export function MessageMediaGallery({ attachments, preview = "grid", label, openLabel }) {
   const { t } = useLanguage();
+  const openingButtonRef = React.useRef(null);
   const [isOpen, setIsOpen] = React.useState(false);
   const [activeIndex, setActiveIndex] = React.useState(0);
   const [activeZoomScale, setActiveZoomScale] = React.useState(MIN_IMAGE_ZOOM);
   const activeAttachment = attachments[activeIndex];
   const hasMultipleAttachments = attachments.length > 1;
 
-  function openAttachment(index) {
+  function openAttachment(index, button) {
     if (!attachments[index]?.signedUrl) {
       return;
     }
 
+    openingButtonRef.current = button;
     setActiveIndex(index);
     setActiveZoomScale(MIN_IMAGE_ZOOM);
     setIsOpen(true);
@@ -413,19 +415,19 @@ export function MessageMediaGallery({ attachments }) {
         role="group"
         className={cn(
           "grid w-full overflow-hidden bg-zinc-100 dark:bg-zinc-950",
-          attachments.length === 1
+          preview === "single" || attachments.length === 1
             ? "grid-cols-1"
             : "grid-cols-2 gap-px",
         )}
-        aria-label={t.sharedMedia}
+        aria-label={label || t.sharedMedia}
       >
-        {attachments.map((attachment, index) => {
+        {(preview === "single" ? attachments.slice(0, 1) : attachments).map((attachment, index) => {
           const isAvailable = Boolean(attachment.signedUrl);
           const isVideo = isVideoAttachment(attachment);
           const isLastOddAttachment = attachments.length === 3 && index === 2;
           const attachmentClassName = cn(
             "group/media relative min-h-28 overflow-hidden bg-zinc-200 text-left outline-none focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring dark:bg-zinc-900",
-            attachments.length === 1 ? "aspect-[4/3] max-h-52" : "aspect-square",
+            preview === "single" ? "aspect-square min-h-0" : attachments.length === 1 ? "aspect-[4/3] max-h-52" : "aspect-square",
             isLastOddAttachment ? "col-span-2 aspect-[2/1]" : undefined,
           );
 
@@ -465,10 +467,11 @@ export function MessageMediaGallery({ attachments }) {
                 attachmentClassName,
                 "cursor-zoom-in",
               )}
-              aria-label={`${t.openAttachment}: ${attachment.file_name}`}
-              onClick={() => openAttachment(index)}
+              aria-label={`${openLabel || t.openAttachment}: ${attachment.file_name}`}
+              onClick={(event) => openAttachment(index, event.currentTarget)}
             >
               <AttachmentPreview attachment={attachment} />
+              {preview === "single" && hasMultipleAttachments ? <span className="absolute bottom-2 left-2 rounded-md bg-black/70 px-2 py-1 text-xs font-medium tabular-nums text-white">1 / {attachments.length}</span> : null}
               <span className="absolute right-2 top-2 flex size-8 items-center justify-center rounded-full bg-black/65 text-white opacity-90 shadow-sm backdrop-blur-sm">
                 <Maximize2 className="size-4" aria-hidden="true" />
               </span>
@@ -480,12 +483,13 @@ export function MessageMediaGallery({ attachments }) {
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-[100] bg-black/95 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <DialogPrimitive.Content
+          onCloseAutoFocus={(event) => { event.preventDefault(); openingButtonRef.current?.focus(); }}
           aria-describedby={undefined}
           className="fixed inset-0 z-[101] flex h-[100dvh] w-screen flex-col overflow-hidden bg-black text-white outline-none"
           onKeyDown={handleKeyDown}
         >
           <DialogPrimitive.Title className="sr-only">
-            {t.sharedMedia}
+            {label || t.sharedMedia}
           </DialogPrimitive.Title>
 
           <div className="flex min-h-14 shrink-0 items-center justify-between gap-3 px-3 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-5">
@@ -569,12 +573,12 @@ export function MessageMediaGallery({ attachments }) {
           </div>
 
           {hasMultipleAttachments ? (
-            <div className="flex shrink-0 justify-center gap-2 overflow-x-auto px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
+            <div className="flex shrink-0 gap-2 overflow-x-auto px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
               {attachments.map((attachment, index) => (
                 <button
                   key={`${attachment.id}-viewer-thumbnail`}
                   type="button"
-                  aria-label={`${t.openAttachment}: ${attachment.file_name}`}
+                  aria-label={`${openLabel || t.openAttachment}: ${attachment.file_name}`}
                   aria-current={activeIndex === index ? "true" : undefined}
                   disabled={!attachment.signedUrl}
                   onClick={() => selectAttachment(index)}

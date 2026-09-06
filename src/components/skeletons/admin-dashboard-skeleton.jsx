@@ -222,45 +222,12 @@ function AdminReviewWorkspaceSkeleton({ messageRows = false }) {
 }
 
 function AdminRegistryFilterSkeleton({ variant }) {
-  if (variant === "reports") {
-    return (
-      <div className="grid items-end gap-3 rounded-3xl border border-border bg-card p-4 shadow-sm sm:grid-cols-2 xl:grid-cols-[minmax(260px,1.7fr)_repeat(3,minmax(150px,1fr))_minmax(170px,0.8fr)]">
-        {Array.from({ length: 5 }, (_, index) => (
-          <div key={index} className="grid min-w-0 gap-1.5">
-            <Skeleton className="h-3 w-24" />
-            <Skeleton className="h-12 w-full rounded-xl" />
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (variant === "listings") {
-    return (
-      <div className="grid gap-2 rounded-3xl border border-border bg-card p-3 shadow-sm sm:grid-cols-[minmax(0,1fr)_auto_auto]">
-        <Skeleton className="h-10 w-full rounded-xl" />
-        <Skeleton className="h-10 w-full rounded-xl sm:w-40" />
-        <Skeleton className="h-10 w-full rounded-xl sm:w-28" />
-      </div>
-    );
-  }
-
-  return null;
+  if (!variant) return null;
+  return <div className="space-y-3"><div className="flex min-w-0 gap-2"><Skeleton className="h-11 min-w-0 flex-1 rounded-xl" /><Skeleton className="h-11 w-24 shrink-0 rounded-xl" /></div><div className="flex flex-wrap gap-2">{Array.from({ length: 3 }, (_, index) => <Skeleton key={index} className="h-11 w-20 rounded-full" />)}</div></div>;
 }
 
 function AdminRegistryRowSkeleton() {
-  return (
-    <div className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-border p-3 sm:p-4">
-      <div className="min-w-0 flex-1 space-y-2">
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-4 w-40 max-w-[66%]" />
-          <Skeleton className="h-6 w-16 rounded-full" />
-        </div>
-        <Skeleton className="h-3.5 w-4/5" />
-      </div>
-      <Skeleton className="h-3 w-20 shrink-0" />
-    </div>
-  );
+  return <div className="min-w-0 space-y-3 border-b border-border p-4 last:border-b-0"><Skeleton className="h-5 w-3/4" /><div className="flex flex-wrap gap-2"><Skeleton className="h-5 w-20 rounded-md" /><Skeleton className="h-5 w-24" /></div></div>;
 }
 
 function AdminReportWorkspaceSkeleton() {
@@ -421,14 +388,14 @@ export function AdminUsersSkeleton() {
 
 export function AdminBoundedRecordsSkeleton({ ariaLabel, filterVariant = null, rows = 6 }) {
   return (
-    <main aria-busy="true" aria-label={ariaLabel} className="min-h-screen bg-zinc-100 p-3 dark:bg-background sm:p-5 md:p-6">
+    <main aria-busy="true" aria-label={ariaLabel} className="min-h-screen bg-zinc-100 p-4 dark:bg-background sm:p-5 md:p-6">
       <div className="mx-auto w-full max-w-[1100px] animate-pulse space-y-4">
-        <header className="rounded-3xl border border-border bg-card p-5 shadow-sm sm:p-6">
+        <header className="py-2 sm:rounded-2xl sm:border sm:border-border sm:bg-card sm:p-5">
           <Skeleton className="h-8 w-48 max-w-full" />
-          <Skeleton className="mt-3 h-4 w-[36rem] max-w-full" />
+          <Skeleton className="mt-3 hidden h-4 w-[36rem] max-w-full sm:block" />
         </header>
         <AdminRegistryFilterSkeleton variant={filterVariant} />
-        <section className="space-y-2 rounded-3xl border border-border bg-card p-3 shadow-sm sm:p-4">
+        <section className="rounded-2xl border border-border bg-card">
           {Array.from({ length: rows }, (_, index) => (
             <AdminRegistryRowSkeleton key={index} />
           ))}

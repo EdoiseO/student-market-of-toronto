@@ -247,7 +247,7 @@ function LiftBanDialog({ user, onComplete, t, language }) {
   );
 }
 
-export function AdminUserDetailContent({ user, currentUserId, currentUserRole, sanctions, page, pageCount, summaries, recentReports, recentListings, loadError }) {
+export function AdminUserDetailContent({ user, currentUserId, currentUserRole, sanctions, page, pageCount, summaries, recentReports, recentListings, loadError, returnHref = "/admin/enforcement" }) {
   const { t, language } = useLanguage();
   const router = useRouter();
   const [result, setResult] = React.useState(null);
@@ -263,7 +263,7 @@ export function AdminUserDetailContent({ user, currentUserId, currentUserRole, s
   return (
     <div className="mx-auto flex w-full max-w-[1280px] min-w-0 flex-col gap-4">
       <header className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:rounded-3xl sm:p-6">
-        <Button asChild variant="ghost" size="sm" className="-ml-2 rounded-full"><Link href="/admin/enforcement"><ArrowLeftIcon aria-hidden="true" className="size-4" />{fallback(t, "adminEnforcementTitle", "Enforcement")}</Link></Button>
+        <Button asChild variant="ghost" size="sm" className="-ml-2 rounded-full"><Link href={returnHref}><ArrowLeftIcon aria-hidden="true" className="size-4" />{t.adminQueueBack}</Link></Button>
         <div className="mt-4 flex min-w-0 flex-wrap items-start justify-between gap-3">
           <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h1 className="break-words text-2xl font-bold tracking-tight sm:text-3xl">{user.name}</h1>{user.role ? <Badge variant="outline">{user.role}</Badge> : null}{user.isBanned ? <Badge variant="destructive">{fallback(t, "adminUserAccountBanned", "Banned")}</Badge> : <Badge variant="secondary">{fallback(t, "adminUserAccountActive", "Active")}</Badge>}</div>{user.email ? <p className="mt-1 break-all text-sm text-muted-foreground">{user.email}</p> : null}<p className="text-sm text-muted-foreground">{user.school}</p></div>
           {canIssue ? <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto"><IssueDialog type="warning" userId={user.id} onComplete={complete} t={t} currentUserRole={currentUserRole} /><IssueDialog type="strike" userId={user.id} onComplete={complete} t={t} currentUserRole={currentUserRole} /></div> : null}
