@@ -10,6 +10,13 @@ const migration = await readFile(
   ),
   "utf8",
 );
+const publicationCleanupMigration = await readFile(
+  new URL(
+    "../supabase/migrations/20260907180439_remove_notifications_from_realtime.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const realtimeClient = await readFile(
   new URL("../src/lib/notification-realtime.mjs", import.meta.url),
   "utf8",
@@ -53,7 +60,7 @@ test("migration publishes only the bounded content-free signal projection", () =
 });
 
 test(
-  "PostgreSQL routes bounded invalidations through RLS without exposing or deleting signal rows",
+  "PostgreSQL removes legacy notification publication while preserving recipient-safe invalidations",
   { skip: !postgresAvailable, timeout: 30_000 },
   async (t) => {
     const fixture = createPostgresFixture(t);
@@ -87,13 +94,29 @@ test(
       sql(migration);
       sql(migration, false);
 
+      // Reproduce the live legacy membership that the signal migration alone retains.
+      const publicationMembers = () => sql(`
+        select string_agg(tablename, ',' order by tablename)
+        from pg_publication_tables
+        where pubname='supabase_realtime' and schemaname='public';
+      `);
       assert.equal(
-        sql(`
-          select string_agg(tablename, ',' order by tablename)
-          from pg_publication_tables
-          where pubname='supabase_realtime' and schemaname='public';
-        `),
-        "notification_realtime_signals,unrelated_realtime_member",
+        publicationMembers(),
+        "announcement_deliveries,message_reactions,messages,notification_realtime_signals,notifications,unrelated_realtime_member",
+      );
+      sql(publicationCleanupMigration);
+      sql(publicationCleanupMigration);
+      assert.equal(
+        publicationMembers(),
+        "announcement_deliveries,message_reactions,messages,notification_realtime_signals,unrelated_realtime_member",
+      );
+      assert.equal(
+        service("select id || ':' || type from notifications where id=0;"),
+        "0:messages",
+      );
+      assert.equal(
+        sql("select tablename from pg_publication_tables where pubname='unrelated_publication';"),
+        "notifications",
       );
 
       service(`insert into notifications(id,user_id,type) values (1,'${recipientA}','messages');`);
@@ -158,6 +181,10 @@ test(
         ),
         /permission denied/i,
       );
+
+      sql("drop publication supabase_realtime;");
+      sql(publicationCleanupMigration);
+      assert.equal(sql("select count(*) from pg_publication where pubname='supabase_realtime';"), "0");
     } finally {
       fixture.dispose();
     }
@@ -192,7 +219,14 @@ create table public.notification_preferences(
   primary key(user_id,notification_type)
 );
 create table public.unrelated_realtime_member(id bigint primary key);
-create publication supabase_realtime for table public.unrelated_realtime_member;
+create table public.messages(id bigint primary key);
+create table public.message_reactions(id bigint primary key);
+create table public.announcement_deliveries(id bigint primary key);
+insert into public.notifications(id,user_id,type)
+values (0,'cccccccc-cccc-4ccc-8ccc-cccccccccccc','messages');
+create publication supabase_realtime for table public.notifications, public.messages,
+  public.message_reactions, public.announcement_deliveries, public.unrelated_realtime_member;
+create publication unrelated_publication for table public.notifications;
 grant select,insert,update,delete on notifications to service_role;
 grant select,insert,update,delete on notification_preferences to service_role;
 `;
