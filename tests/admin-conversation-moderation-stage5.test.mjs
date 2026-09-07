@@ -127,7 +127,7 @@ test("Stage 5 surfaces use only bounded trusted RPCs and stable operation IDs", 
   assert.doesNotMatch(route, /\.from\(["'](?:conversations|conversation_moderation_state|reports)["']\).*\.(?:insert|update|delete)/s);
   assert.match(registryPage, /admin\.rpc\("admin_list_conversations"/);
   assert.match(detailPage, /admin\.rpc\("admin_get_conversation_message_page"/);
-  assert.match(detailPage, /createSignedUrls\(attachmentPaths, 60 \* 30\)/);
+  assert.doesNotMatch(detailPage, /createSignedUrls?\(/);
   assert.match(detailComponent, /crypto\.randomUUID\(\)/);
   assert.match(detailComponent, /resolveSourceReport/);
   assert.match(safeNotificationSql, /'user_message', new\.user_message/i);

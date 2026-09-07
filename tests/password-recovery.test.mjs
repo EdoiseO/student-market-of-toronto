@@ -9,6 +9,7 @@ import {
   hashRecoveryBrowserSecret, hasRecoveryOrigin, isRecoveryVerifier, validateRecoverySubmission,
 } from "../src/lib/password-recovery.mjs";
 import { createPostgresFixture, postgresAvailable } from "./helpers/postgres-fixture.mjs";
+import * as privateMedia from "../src/lib/private-message-media.mjs";
 
 const email = "student@utoronto.ca";
 const user = { id: "11111111-1111-4111-8111-111111111111", email, aud: "authenticated", role: "authenticated" };
@@ -159,7 +160,7 @@ async function loadProxy(dependencies) {
   // Run the production proxy unchanged apart from resolving its imports to
   // controlled fixtures, including the real NextResponse implementation.
   const binding = `recoveryProxy_${randomUUID().replaceAll("-", "")}`;
-  globalThis[binding] = { ...dependencies, NextResponse };
+  globalThis[binding] = { ...dependencies, ...privateMedia, NextResponse };
   const moduleUrl = (exports) => "data:text/javascript;base64," + Buffer.from(
     exports.map((name) => `export const ${name} = globalThis[${JSON.stringify(binding)}].${name};`).join("\n"),
   ).toString("base64");
@@ -168,6 +169,7 @@ async function loadProxy(dependencies) {
     "next/server": moduleUrl(["NextResponse"]),
     "@/lib/moderation": moduleUrl(["isNameChangeRequired"]),
     "@/lib/user-status": moduleUrl(["getUserStatusRow", "isUserBanned"]),
+    "@/lib/private-message-media.mjs": moduleUrl(["PRIVATE_MESSAGE_MEDIA_HEADERS", "PRIVATE_MESSAGE_MEDIA_PREFIX"]),
   };
   let source = await readFile(new URL("../src/proxy.js", import.meta.url), "utf8");
   for (const [specifier, replacement] of Object.entries(replacements)) source = source.replace(JSON.stringify(specifier), JSON.stringify(replacement));
