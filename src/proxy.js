@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 
+import { PRIVATE_MESSAGE_MEDIA_HEADERS, PRIVATE_MESSAGE_MEDIA_PREFIX } from "@/lib/private-message-media.mjs";
 import { isNameChangeRequired } from "@/lib/moderation";
 import { getUserStatusRow, isUserBanned } from "@/lib/user-status";
 
@@ -42,6 +43,15 @@ export async function proxy(request) {
 
   // Keep ordinary session refresh above this exception. Recovery never
   // authorizes marketplace access, and bypasses only eligibility gates.
+  // The media route applies current attachment RLS and returns API errors.
+  // Do not replace it with account-gate HTML redirects or cacheable responses.
+  if (path.startsWith(PRIVATE_MESSAGE_MEDIA_PREFIX)) {
+    for (const [name, value] of Object.entries(PRIVATE_MESSAGE_MEDIA_HEADERS)) {
+      response.headers.set(name, value);
+    }
+    return response;
+  }
+
   if (isRecoveryRoute) {
     response.headers.set("Cache-Control", "no-store, max-age=0");
     response.headers.set("Referrer-Policy", "no-referrer");

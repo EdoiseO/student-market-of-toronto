@@ -108,6 +108,7 @@ function AttachmentPreview({ attachment, compact = false }) {
   return (
     <Image
       src={attachment.signedUrl}
+      unoptimized={attachment.requiresAuthentication === true}
       alt=""
       fill
       sizes={compact ? "64px" : "(max-width: 639px) 36vw, 176px"}

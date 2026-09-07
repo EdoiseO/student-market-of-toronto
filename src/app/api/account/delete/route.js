@@ -256,16 +256,14 @@ export async function POST(request) {
     }
 
     const listingIds = (ownedListings ?? []).map((listing) => listing.id);
-    const messageAttachmentsResult = await admin
-      .from("message_attachments")
-      .select("storage_path")
-      .eq("uploader_id", user.id);
+    // Includes both copies while legacy media relocation is interrupted. The
+    // RPC requires the durable retirement barrier installed above.
+    const messageAttachmentsResult = await admin.rpc("list_message_media_account_cleanup", {
+      p_user_id: user.id,
+    });
 
-    if (
-      messageAttachmentsResult.error &&
-      !isSkippableCleanupError(messageAttachmentsResult.error)
-    ) {
-      throw messageAttachmentsResult.error;
+    if (messageAttachmentsResult.error || !Array.isArray(messageAttachmentsResult.data)) {
+      throw messageAttachmentsResult.error ?? new Error("Message media cleanup paths are unavailable.");
     }
 
     const attachedMessageMediaPaths = (messageAttachmentsResult.data ?? []).map(

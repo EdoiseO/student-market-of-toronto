@@ -57,6 +57,7 @@ import {
   isConversationEffectivelyClosed,
   normalizeConversationModerationState,
 } from "@/lib/conversation-moderation.mjs";
+import { withPrivateMessageMediaUrl } from "@/lib/private-message-media.mjs";
 import { REMOTE_IMAGE_BLUR_DATA_URL } from "@/lib/image-config";
 import {
   getMessagingBlockReason,
@@ -252,29 +253,9 @@ export function MessagesThread({
     }
 
     const attachmentRows = attachmentsResult.data ?? [];
-    let signedRows = [];
-
-    if (attachmentRows.length > 0) {
-      const signedUrlsResult = await supabase.storage
-        .from(MESSAGE_MEDIA_BUCKET)
-        .createSignedUrls(
-          attachmentRows.map((attachment) => attachment.storage_path),
-          60 * 60,
-        );
-
-      if (signedUrlsResult.error) {
-        console.error("Failed to sign message history media:", signedUrlsResult.error.message);
-      } else {
-        signedRows = signedUrlsResult.data ?? [];
-      }
-    }
-
-    const attachmentsByMessageId = attachmentRows.reduce((byMessageId, attachment, index) => {
+    const attachmentsByMessageId = attachmentRows.reduce((byMessageId, attachment) => {
       byMessageId[attachment.message_id] ??= [];
-      byMessageId[attachment.message_id].push({
-        ...attachment,
-        signedUrl: signedRows[index]?.signedUrl ?? null,
-      });
+      byMessageId[attachment.message_id].push(withPrivateMessageMediaUrl(attachment));
       return byMessageId;
     }, {});
     const reactionsByMessageId = (reactionsResult.data ?? []).reduce((byMessageId, reaction) => {
@@ -625,24 +606,7 @@ export function MessagesThread({
             );
           }
         } else if (attachmentRows?.length) {
-          const { data: signedRows, error: signedUrlsError } = await supabase.storage
-            .from(MESSAGE_MEDIA_BUCKET)
-            .createSignedUrls(
-              attachmentRows.map((attachment) => attachment.storage_path),
-              60 * 60,
-            );
-
-          if (signedUrlsError) {
-            console.error(
-              "Failed to sign incoming message attachments:",
-              signedUrlsError.message,
-            );
-          }
-
-          attachments = attachmentRows.map((attachment, index) => ({
-            ...attachment,
-            signedUrl: signedRows?.[index]?.signedUrl ?? null,
-          }));
+          attachments = attachmentRows.map(withPrivateMessageMediaUrl);
         }
 
         if (!isActive) {
@@ -884,21 +848,22 @@ export function MessagesThread({
   }
 
   async function commitCompletedSendIntent(intent, createdMessage) {
-    const attachmentPayload = intent.uploadPlan.map((item) => item.payload);
-    const uploadedPaths = intent.uploadPlan.map((item) => item.storagePath);
-
     if (createdMessage) {
-      let signedRows = [];
-
-      if (uploadedPaths.length > 0) {
-        const { data: signedUrlRows, error: signedUrlsError } = await supabase.storage
-          .from(MESSAGE_MEDIA_BUCKET)
-          .createSignedUrls(uploadedPaths, 60 * 60);
-
-        if (signedUrlsError) {
-          console.error("Failed to sign sent message media:", signedUrlsError.message);
-        } else {
-          signedRows = signedUrlRows ?? [];
+      let attachments = [];
+      if (intent.uploadPlan.length > 0) {
+        // Use committed attachment identifiers, not synthetic IDs. A failed
+        // display refresh must never turn an already committed send into a retry.
+        try {
+          const { data, error } = await supabase
+            .from("message_attachments")
+            .select("id, message_id, storage_path, file_name, mime_type, size_bytes, created_at")
+            .eq("message_id", createdMessage.id)
+            .order("created_at", { ascending: true });
+          if (error) throw error;
+          attachments = (data ?? []).map(withPrivateMessageMediaUrl);
+        } catch {
+          console.error("Sent message attachment details could not be refreshed.");
+          router.refresh();
         }
       }
 
@@ -908,12 +873,7 @@ export function MessagesThread({
         setMessages((currentMessages) =>
           upsertConversationMessage(currentMessages, {
             ...createdMessage,
-            attachments: attachmentPayload.map((attachment, index) => ({
-              id: `${createdMessage.id}-${index}`,
-              message_id: createdMessage.id,
-              ...attachment,
-              signedUrl: signedRows[index]?.signedUrl ?? null,
-            })),
+            attachments,
             reactions: [],
           }),
         );
@@ -1036,8 +996,9 @@ export function MessagesThread({
       try {
         uploadResult = await supabase.storage
           .from(MESSAGE_MEDIA_BUCKET)
-          .upload(item.storagePath, item.file, {
-            cacheControl: "3600",
+          .upload(item.storagePath, await item.file.arrayBuffer(), {
+            cacheControl: "0",
+            headers: { "Cache-Control": "private, no-store, max-age=0" },
             contentType: item.file.type,
             upsert: false,
           });

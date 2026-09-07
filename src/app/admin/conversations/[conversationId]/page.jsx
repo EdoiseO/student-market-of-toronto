@@ -1,3 +1,4 @@
+import { withPrivateMessageMediaUrl } from "@/lib/private-message-media.mjs";
 import { getAdminQueueReturnHref } from "@/lib/admin-queue-navigation.mjs";
 import { AlertTriangle, ArrowLeft } from "lucide-react";
 import { cookies } from "next/headers";
@@ -132,31 +133,9 @@ export default async function AdminConversationDetailPage({ params, searchParams
   const { messages, hasOlderMessages } = normalizeAdminConversationMessagePage(
     messageResult.data ?? [],
   );
-  const attachmentPaths = messages.flatMap((message) =>
-    message.attachments.map((attachment) => attachment.storage_path).filter(Boolean),
-  );
-  let signedUrlsByPath = new Map();
-
-  if (attachmentPaths.length > 0) {
-    const { data: signedRows, error: signedUrlsError } = await admin.storage
-      .from("message-media")
-      .createSignedUrls(attachmentPaths, 60 * 30);
-
-    if (signedUrlsError) {
-      console.error("Failed to sign admin conversation evidence:", signedUrlsError.message);
-    } else {
-      signedUrlsByPath = new Map(
-        attachmentPaths.map((path, index) => [path, signedRows?.[index]?.signedUrl ?? null]),
-      );
-    }
-  }
-
   const messagesWithSignedEvidence = messages.map((message) => ({
     ...message,
-    attachments: message.attachments.map((attachment) => ({
-      ...attachment,
-      signedUrl: signedUrlsByPath.get(attachment.storage_path) ?? null,
-    })),
+    attachments: message.attachments.map(withPrivateMessageMediaUrl),
   }));
   const oldestMessage = messagesWithSignedEvidence[0] ?? null;
   const olderMessagesHref =
