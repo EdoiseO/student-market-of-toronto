@@ -8,9 +8,9 @@ Built with **Next.js 16, React 19, Tailwind CSS 4, and Supabase** (Auth, Postgre
 
 ## Release status
 
-**6 September 2026:** this branch includes the mobile moderation redesign, clickable review photos, streamlined sign-in feedback, and the latest security remediations. The live demo still serves the previous release.
+**7 September 2026:** this branch includes the mobile moderation redesign, clickable review photos, streamlined sign-in feedback, and the latest security remediations. Four database migrations and the production Auth redirect configuration are now applied and verified. The live application still serves the previous release; PR #76 has not been merged.
 
-At implementation commit `acedbfe`, all **322 security tests** passed, along with lint, the production build, and Linux/macOS CI; the dependency audit reported zero vulnerabilities. These results describe that revision and do not certify production. Hosted authorization, Storage, Realtime, delivered recovery email, and remaining device/accessibility checks must finish before rollout. See the [dated release check](docs/security/release-check-2026-09-06.md) for evidence and outstanding work.
+At runtime revision `37699ab`, all **341 security tests** and the production build passed. Hosted staging checks verified current database authorization, recovery email delivery and completion, preservation of another signed-in account, and normal school-domain eligibility. The strict Storage check **failed** because a cached private image remained downloadable after demotion. Production custom SMTP, further recovery/session and Realtime checks, remaining device/accessibility checks, and required PR review are still outstanding. See the [dated release check](docs/security/release-check-2026-09-07.md) for revision-specific evidence and limitations.
 
 ## Product features
 
@@ -135,7 +135,7 @@ public/                  Static application assets
 
 ## Implementation notes and documentation
 
-Notification preferences are stored, but they do not by themselves establish a working marketplace email-delivery pipeline. The announcement worker currently supports in-app delivery only; Auth email is configured separately. Seller-sold notification delivery also remains unverified. The [release check](docs/security/release-check-2026-09-06.md) tracks the remaining hosted validation; do not infer deployment status from a passing local build or a preview screenshot.
+Notification preferences are stored, but they do not by themselves establish a working marketplace email-delivery pipeline. The announcement worker currently supports in-app delivery only; Auth email is configured separately. Seller-sold notification delivery also remains unverified. Production still uses Supabase's restricted built-in Auth email sender; custom SMTP is required for general student recovery delivery. The [release check](docs/security/release-check-2026-09-07.md) tracks the remaining hosted validation; do not infer deployment status from a passing local build or a preview screenshot.
 
 - [Redesign and security remediation report](docs/remediation-2026-09-06.md): implementation scope, local evidence, and known limits.
 - [Password recovery](docs/password-recovery.md): browser binding, configuration, and delivery tests.

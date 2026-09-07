@@ -1,8 +1,24 @@
 # Student Market of Toronto handoff
 
-Updated: 2026-09-06 (America/Toronto)
+Updated: 2026-09-07 (America/Toronto)
 
-## Current implementation checkpoint — 2026-09-06
+## Current implementation checkpoint — 2026-09-07
+
+Production database rollout is complete; the application release is not. Exact versions `20260906144154`, `20260906150000`, `20260907180439`, and `20260907190013` were applied with guarded transactions and verified source hashes. History now has 58 rows; the original 54 rows, all nine demo-registry identities, and the school-validation helper were preserved. Do not replay the executed rollout wrappers or repair history blindly. The already-live demo migration `20260906160016` remains unchanged.
+
+Production Auth now uses the canonical Vercel Site URL and narrow `/auth/callback` and `/reset-password?state=*` redirects. The school hook, confirmation policy (off), and built-in SMTP were preserved. No production user password or account was changed. Custom SMTP is still required for general student recovery delivery.
+
+An isolated free Supabase project in Phillips Org contains the production schema without production records and the release migrations. Hosted current-role Data API authorization passed, including retained-token demotion and staff boundaries. **The strict Storage gate failed:** a warmed private image returned a CDN HIT after demotion. Separate fresh-request and signing denials passed, but do not replace the failed assertion. Immediate cached-media revocation and existing signed capability lifetime remain unresolved.
+
+Two controlled staging recovery emails were delivered. The first submission expired at the provider; the second successfully changed the fixture password, revoked the old refresh session, rejected replay, and preserved a different account's browser session. Same-account hosted cookie clearing and production student-inbox delivery remain outstanding. The personal test inbox is an isolated fixture, not a production school-domain exception. Ordinary non-school/signup-positive controls passed.
+
+Local runtime revision `37699ab` passed 341/341 security tests and the production build. The subsequent `6910212` hosted-harness fix selects the actual composite-key reaction column and preserves the authorization assertions; its focused checks passed. See `docs/security/release-check-2026-09-07.md` for precise evidence and remaining checks. Recheck GitHub for CI on the current head.
+
+PR #76 is open and requires independent approval. Do not bypass repository review protections. Production still serves application revision `6a98cb1866a587c656309356d753f0b2386ddfe1`. The user has already authorized rollout after checks pass; another deployment permission request is unnecessary. Keep the reverted portfolio unchanged and preserve unrelated stash `e4003da7e2dfbb9b08fac21c22cc9143e90130b7`.
+
+Operational receipts, frozen executed SQL wrappers, and cache diagnostics are outside Git under `/Users/edoise/Documents/Codex/2026-09-06/rev/outputs/`. Staging credentials, inbox mappings, code-bearing links, and fixture manifests are in the private staging directory under that workspace; never import them into Git. Keep fixtures available until the outstanding recovery test is finished, then use trusted cleanup workflows.
+
+## Historical implementation checkpoint — 2026-09-06
 
 The approved redesign/security implementation and exact already-applied demo-email migration are committed and synchronized into the original application checkout. All earlier dirty/untracked implementation work remains preserved in stash `e4003da7e2dfbb9b08fac21c22cc9143e90130b7`; do not blindly apply or drop it.
 

@@ -1,5 +1,7 @@
 # Final release security check — 6 September 2026
 
+**Historical checkpoint.** The [7 September release check](release-check-2026-09-07.md) supersedes the deployment status and pending-work list below. Production database/Auth changes and hosted test results have since been recorded there; the application remains unreleased.
+
 The implementation at `acedbfe99301f0f3652c964a355bffeb1793f01b` passed another security review and local validation. All 76 changed files relative to production commit `6a98cb1866a587c656309356d753f0b2386ddfe1` were reviewed, with no new reportable security findings. This was a release-diff review, not a fresh whole-repository audit. The implementation is pushed in [draft PR #76](https://github.com/EdoiseO/student-market-of-toronto/pull/76).
 
 - Security tests: 322 passed, zero failed, skipped or cancelled.

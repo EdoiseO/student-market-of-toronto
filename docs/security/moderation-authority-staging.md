@@ -1,6 +1,8 @@
 # Isolated moderation-authority platform check
 
-This is a release gate, not a production probe. Native PostgreSQL regressions exercise real RLS and the migration chain, but do not verify Supabase Auth token issuance, PostgREST, Storage downloads, or URL signing. The platform check remains **pending** until the harness below passes against a disposable Supabase deployment with the complete current schema and migration chain. No existing development branch was available during implementation.
+This is a release gate, not a production probe. Native PostgreSQL regressions exercise real RLS and the migration chain, but do not verify Supabase Auth token issuance, PostgREST, Storage downloads, or URL signing. The harness must pass against a disposable Supabase deployment with the complete current schema and migration chain.
+
+**7 September 2026 result: failed Storage revocation gate.** A free isolated project in Phillips Org now contains the production schema without production records, plus the four release migrations and synthetic fixtures. Moderator/participant positive controls, unrelated staff denials, bounded report context, and same-token Data API denials after committed demotion passed. The unchanged authenticated Storage URL returned `200`, `CF-Cache-Status: HIT`, and `Cache-Control: public, max-age=3600` after demotion. Separate requests with a fresh cache query and new URL signing were denied. Those diagnostics establish a narrower origin authorization result; they do not turn the strict same-URL assertion into a pass. See the [release check](release-check-2026-09-07.md).
 
 The harness refuses production project `bmnfynufuqjwjmtlfdxf`, does not load project `.env` files, requires a target-specific acknowledgement, and creates only four accounts marked with a unique fixture run ID. It never prints keys, passwords, tokens, message bodies, or signed URLs. Auth admin creation confirms the synthetic email without sending an email.
 
@@ -50,7 +52,7 @@ The harness signs in synthetic users once and holds their real issued access tok
 - A staff token also cannot manufacture the notification.
 - The same original moderator token follows later current-account changes to staff, forced-name restriction, and restored moderator authority.
 - Participant access survives those changes.
-- A media URL issued before demotion remains valid within its short TTL. This is an explicit capability limitation, not evidence of an RLS bypass.
+- A media URL issued before demotion remains usable during the run. This is a retained bearer capability. The harness does not measure its expiry or the lifetime of a cached response; signed-token expiry alone is not a verified cache-revocation deadline.
 
 The script emits a nonsecret JSON result. A failure is a failed release gate; retain the assertion and deployment versions for diagnosis. Do not change a denied read to an allowed expectation to get a pass.
 
