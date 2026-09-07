@@ -9,6 +9,21 @@ export async function checkDemoBrowser(page, config, labels) {
     mockedRecoveryRequests: 0,
   };
   const require = (condition, code) => { if (!condition) throw new Error(`CHECK:${code}`); };
+  // The CLI executes this function in a VM without Node's URL global. Requests
+  // already carry browser-canonical absolute URLs; match exact origin boundaries.
+  const belongsTo = (value, origin) => value === origin || value.startsWith(origin + "/");
+  const pathname = (value, origin) => value.slice(origin.length).split(/[?#]/, 1)[0] || "/";
+  const queryValue = (value, key) => {
+    const query = value.includes("?") ? value.slice(value.indexOf("?") + 1).split("#", 1)[0] : "";
+    for (const part of query.split("&")) {
+      const equals = part.indexOf("=");
+      const name = equals < 0 ? part : part.slice(0, equals);
+      if (decodeURIComponent(name.replace(/\+/g, " ")) === key) {
+        return decodeURIComponent((equals < 0 ? "" : part.slice(equals + 1)).replace(/\+/g, " "));
+      }
+    }
+    return "";
+  };
   const onConsole = (message) => {
     if (message.type() === "error") report.consoleErrors++;
     if (message.type() === "warning") report.consoleWarnings++;
@@ -19,8 +34,10 @@ export async function checkDemoBrowser(page, config, labels) {
   page.on("pageerror", onError);
   const guard = async (route) => {
     const request = route.request();
-    const url = new URL(request.url());
-    if (url.origin === config.origin && url.pathname === "/api/auth/recovery" && request.method() === "POST") {
+    const url = request.url();
+    const origin = config.allowedOrigins.find((allowed) => belongsTo(url, allowed));
+    const path = origin ? pathname(url, origin) : "";
+    if (origin === config.origin && path === "/api/auth/recovery" && request.method() === "POST") {
       const body = request.postDataJSON();
       if (body?.action === "request" && body.email === "browser-fixture@example.invalid") {
         report.mockedRecoveryRequests++;
@@ -31,12 +48,14 @@ export async function checkDemoBrowser(page, config, labels) {
       report.blockedMutations++;
       return route.abort("blockedbyclient");
     }
-    if (!config.allowedOrigins.includes(url.origin)) {
+    if (!origin) {
       report.blockedOrigins++;
       return route.abort("blockedbyclient");
     }
-    const optimizedSource = url.pathname === "/_next/image" ? url.searchParams.get("url") || "" : "";
-    if (/\/storage\/v1\/(?:object|render\/image)\/(?:sign|authenticated)\/message-media\//.test(url.pathname) ||
+    let optimizedSource = "";
+    try { optimizedSource = path === "/_next/image" ? queryValue(url, "url") : ""; }
+    catch { report.blockedOrigins++; return route.abort("blockedbyclient"); }
+    if (/\/storage\/v1\/(?:object|render\/image)\/(?:sign|authenticated)\/message-media\//.test(path) ||
         /(?:\/api\/message-media\/|\/message-media\/)/.test(optimizedSource)) {
       report.directPrivateRequests++;
       return route.abort("blockedbyclient");
@@ -70,10 +89,10 @@ export async function checkDemoBrowser(page, config, labels) {
     require(await image.evaluate((element) => element.naturalWidth > 0), "IMAGE_NOT_LOADED");
   };
   const gateway = (value) => {
-    const url = new URL(value, config.origin);
-    require(url.origin === config.origin && /^\/api\/message-media\/[0-9a-f-]+$/i.test(url.pathname) &&
-      !url.search && !url.hash, "PRIVATE_MEDIA_NOT_USING_GATEWAY");
-    return url.toString();
+    const url = value.startsWith("/") ? config.origin + value : value;
+    require(belongsTo(url, config.origin) && /^\/api\/message-media\/[0-9a-f-]+$/i.test(url.slice(config.origin.length)),
+      "PRIVATE_MEDIA_NOT_USING_GATEWAY");
+    return url;
   };
   const capture = async (name, width) => {
     if (!config.screenshots || width !== 390) return;
@@ -83,7 +102,7 @@ export async function checkDemoBrowser(page, config, labels) {
   };
   const navigate = async (path) => {
     await page.goto(config.origin + path, { waitUntil: "domcontentloaded", timeout: 30000 });
-    require(new URL(page.url()).pathname === path, "UNEXPECTED_REDIRECT_OR_MISSING_SESSION");
+    require(page.url() === config.origin + path, "UNEXPECTED_REDIRECT_OR_MISSING_SESSION");
   };
   const imageDialog = async (opening, t, privateImage, screenshotName, width) => {
     await opening.waitFor({ state: "visible", timeout: 15000 });
