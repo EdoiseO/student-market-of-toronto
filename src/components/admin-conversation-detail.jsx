@@ -36,17 +36,7 @@ import {
   ADMIN_CONVERSATION_REASON_CODES,
 } from "@/lib/admin-conversations.mjs";
 import { cn } from "@/lib/utils";
-
-function formatDate(value, language) {
-  if (!value) {
-    return "—";
-  }
-
-  return new Intl.DateTimeFormat(language === "fr" ? "fr-CA" : "en-CA", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
+import { formatModerationDateTime as formatDate } from "@/lib/moderation-date-time.mjs";
 
 function getPersonName(person, fallback) {
   return [person?.firstName, person?.lastName].filter(Boolean).join(" ").trim() || fallback;
