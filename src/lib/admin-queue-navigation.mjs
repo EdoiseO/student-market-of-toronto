@@ -13,3 +13,10 @@ export function getAdminQueueReturnHref(value, queuePath) {
 export function adminReviewHref(detailPath, queueHref, recordId) {
   return `${detailPath}?${new URLSearchParams({ returnTo: `${queueHref}#record-${recordId}` })}`;
 }
+
+// returnHref is the queue target already validated by getAdminQueueReturnHref.
+export function adminUserHistoryHref(userId, page, returnHref) {
+  const params = new URLSearchParams({ returnTo: returnHref });
+  if (page > 1) params.set("page", String(page));
+  return `/admin/users/${encodeURIComponent(userId)}?${params}`;
+}

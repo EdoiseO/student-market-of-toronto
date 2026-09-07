@@ -1,4 +1,4 @@
-import { getAdminQueueReturnHref } from "@/lib/admin-queue-navigation.mjs";
+import { adminUserHistoryHref, getAdminQueueReturnHref } from "@/lib/admin-queue-navigation.mjs";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -25,10 +25,6 @@ const HISTORY_PAGE_SIZE = 20;
 function parsePage(value) {
   const parsed = Number.parseInt(Array.isArray(value) ? value[0] : value, 10);
   return Number.isSafeInteger(parsed) && parsed > 0 && parsed <= 1_000_000 ? parsed : 1;
-}
-
-function userDetailHref(userId, page) {
-  return page > 1 ? `/admin/users/${userId}?page=${page}` : `/admin/users/${userId}`;
 }
 
 export default async function AdminUserDetailPage({ params, searchParams }) {
@@ -87,7 +83,7 @@ export default async function AdminUserDetailPage({ params, searchParams }) {
   }
   const sanctionCount = sanctionsResult.count ?? 0;
   const pageCount = Math.max(1, Math.ceil(sanctionCount / HISTORY_PAGE_SIZE));
-  if (!sanctionsResult.error && requestedPage > pageCount) redirect(userDetailHref(userId, pageCount));
+  if (!sanctionsResult.error && requestedPage > pageCount) redirect(adminUserHistoryHref(userId, pageCount, returnHref));
 
   const identityIds = [...new Set((sanctionsResult.data ?? []).flatMap((row) => [row.issued_by_user_id_snapshot, row.reviewed_by_user_id_snapshot]).filter(Boolean))];
   const identityProfiles = identityIds.length

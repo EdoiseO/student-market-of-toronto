@@ -19,6 +19,10 @@ import {
   isNameChangeRequired,
   isReportsTableMissing,
 } from "@/lib/moderation";
+import {
+  MODERATION_ACTIONS,
+  canPerformModerationAction,
+} from "@/lib/moderation-policy.mjs";
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { loadReportConversationContext } from "@/lib/admin-report-context.mjs";
 import { getUserStatusRow, isAuthUserBanned, isUserBanned } from "@/lib/user-status";
