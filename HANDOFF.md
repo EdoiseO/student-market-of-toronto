@@ -2,6 +2,18 @@
 
 Updated: 2026-09-07 (America/Toronto)
 
+## Latest implementation and hosted checkpoint — 2026-09-07
+
+The gateway application runtime at `f1d1814` passed local and isolated Vercel production builds. Subsequent commits through `f27d8c7` add the exact gateway migration, relocation worker, integration checks and fixed-session HTTP verifier. All five private attachment consumers use authenticated same-origin delivery; public listing photos retain the shared gallery. New migration `20260907202430_route_private_message_media_through_gateway.sql` is applied and source-verified only in staging (nine migration-history entries). Production still has 58 entries and serves `6a98cb1`; it has not received this new migration or application update.
+
+Hosted evidence now includes 35/35 fixed-session media assertions, six large-image/video/range assertions, four retained-token Realtime phases and 18/18 actual delivered HTTPS recovery assertions. Same-account cookie expiration and old-session revocation passed; the earlier delivered flow preserving a different signed-in account remains valid evidence. The owner-inbox fixture is staging-only, with no production school-domain exception. Email-provider setup and public student delivery remain deliberately deferred.
+
+Local integration checkpoint `838649a` passed 381/381 tests without skips; nine subsequent HTTP-harness offline tests also passed. Full lint at `f27d8c7` passed, with zero dependency-audit vulnerabilities. Record current-head full-suite/CI after the remaining harness work. Legacy Storage/optimizer cache retirement and browser/device verification are still in progress. The relocation worker stopped before activation/deletion on a provider cache-header inconsistency; the original source and failure receipts are preserved. Do not mark that gate passed before exact old-URL replays.
+
+Inspected old Vercel immutable deployments and default/branch aliases require SSO. Keep that protection: historical server code can still mint signed URLs with its service client, so a one-time purge alone does not retire it. A read-only production inventory found 11 attachments and 11 matching private objects; refresh and freeze it during the coordinated cutover. Required independent GitHub approval remains a hard gate. Finish all authorized work and current-head CI before reporting any outstanding approval/hardware dependency; do not bypass review or ask for another generic deployment approval.
+
+See [the current release report and cutover sequence](docs/security/release-check-2026-09-07.md). Private fixtures, new recovery credentials, provider links and signed URLs remain outside Git. The historical checkpoints below are superseded wherever this section records later evidence. Preserve the reverted portfolio and unrelated stash.
+
 ## Current demo scope checkpoint — 2026-09-07
 
 The user authorized continuing the demo release and **DELIBERATELY DEFERRED** custom SMTP, a branded sender, and general student-inbox delivery. This scope checkpoint supersedes earlier statements that custom SMTP/student-inbox proof blocks the current demo. It does not claim delivery is implemented or verified. A suitable sender and actual institutional-inbox verification remain prerequisites before real student onboarding. Do not open a new provider-selection loop, create a custom email system, buy a domain, or provision a paid email service for this demo.
