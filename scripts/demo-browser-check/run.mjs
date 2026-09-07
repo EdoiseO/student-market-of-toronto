@@ -25,6 +25,8 @@ for (const [key, route] of [["listingPath", "listings"], ["conversationPath", "c
 for (const key of ["privateImageName", "privateVideoName"]) {
   if (typeof config[key] !== "string" || !config[key] || /[\r\n]/.test(config[key])) throw new Error(`Missing synthetic ${key}.`);
 }
+if (config.deploymentId !== undefined && !/^dpl_[A-Za-z0-9]+$/.test(config.deploymentId)) throw new Error("Use the exact observed public Next deployment ID, without URL parameters.");
+if (config.suppressVercelToolbar !== undefined && typeof config.suppressVercelToolbar !== "boolean") throw new Error("suppressVercelToolbar must be a boolean.");
 if (!Array.isArray(config.allowedOrigins) || !config.allowedOrigins.includes(config.origin) || config.allowedOrigins.some((value) => {
   const url = new URL(value);
   return url.origin !== value || !["http:", "https:"].includes(url.protocol) || url.hostname === "bmnfynufuqjwjmtlfdxf.supabase.co";

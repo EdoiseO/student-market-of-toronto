@@ -5,14 +5,24 @@ export async function checkDemoBrowser(page, config, labels) {
     scope: "Desktop Playwright viewport emulation; synthetic staging fixtures only",
     candidate: config.candidate, cases: [], screenshots: [],
     consoleErrors: 0, consoleWarnings: 0, hydrationWarnings: 0, pageErrors: 0,
+    pageErrorDetails: [],
     blockedMutations: 0, blockedOrigins: 0, directPrivateRequests: 0,
-    mockedRecoveryRequests: 0,
+    mockedRecoveryRequests: 0, suppressedDeploymentToolbarRequests: 0,
   };
   const require = (condition, code) => { if (!condition) throw new Error(`CHECK:${code}`); };
   // The CLI executes this function in a VM without Node's URL global. Requests
   // already carry browser-canonical absolute URLs; match exact origin boundaries.
   const belongsTo = (value, origin) => value === origin || value.startsWith(origin + "/");
   const pathname = (value, origin) => value.slice(origin.length).split(/[?#]/, 1)[0] || "/";
+  const isGatewayUrl = (value) => {
+    if (!belongsTo(value, config.origin)) return false;
+    const relative = value.slice(config.origin.length);
+    const queryAt = relative.indexOf("?");
+    const path = queryAt < 0 ? relative : relative.slice(0, queryAt);
+    const query = queryAt < 0 ? "" : relative.slice(queryAt);
+    return /^\/api\/message-media\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(path) &&
+      (!query || (config.deploymentId && query === `?dpl=${config.deploymentId}`));
+  };
   const queryValue = (value, key) => {
     const query = value.includes("?") ? value.slice(value.indexOf("?") + 1).split("#", 1)[0] : "";
     for (const part of query.split("&")) {
@@ -29,12 +39,28 @@ export async function checkDemoBrowser(page, config, labels) {
     if (message.type() === "warning") report.consoleWarnings++;
     if (/hydrat|server rendered|did not match|didn't match/i.test(message.text())) report.hydrationWarnings++;
   };
-  const onError = () => { report.pageErrors++; };
+  const onError = (error) => {
+    report.pageErrors++;
+    const hydration = /Minified React error #418\b|hydrat|server rendered|did not match|didn't match/i.test(error.message);
+    if (hydration) report.hydrationWarnings++;
+    const current = page.url();
+    const surface = current === config.origin + config.listingPath ? "listing" :
+      current === config.origin + config.conversationPath ? "private-media" :
+        current === config.origin + "/forget-password" ? "recovery" : "other";
+    if (report.pageErrorDetails.length < 64) report.pageErrorDetails.push({ surface, kind: hydration ? "hydration" : "unclassified" });
+  };
   page.on("console", onConsole);
   page.on("pageerror", onError);
   const guard = async (route) => {
     const request = route.request();
     const url = request.url();
+    // Optional preview-only instrumentation: suppress this exact provider script
+    // before it loads telemetry. Never ignore application console/page errors.
+    if (config.suppressVercelToolbar && request.method() === "GET" &&
+        url === "https://vercel.live/_next-live/feedback/feedback.js") {
+      report.suppressedDeploymentToolbarRequests++;
+      return route.fulfill({ status: 200, contentType: "application/javascript", body: "" });
+    }
     const origin = config.allowedOrigins.find((allowed) => belongsTo(url, allowed));
     const path = origin ? pathname(url, origin) : "";
     if (origin === config.origin && path === "/api/auth/recovery" && request.method() === "POST") {
@@ -55,7 +81,8 @@ export async function checkDemoBrowser(page, config, labels) {
     let optimizedSource = "";
     try { optimizedSource = path === "/_next/image" ? queryValue(url, "url") : ""; }
     catch { report.blockedOrigins++; return route.abort("blockedbyclient"); }
-    if (/\/storage\/v1\/(?:object|render\/image)\/(?:sign|authenticated)\/message-media\//.test(path) ||
+    if ((origin === config.origin && path.startsWith("/api/message-media/") && !isGatewayUrl(url)) ||
+        /\/storage\/v1\/(?:object|render\/image)\/(?:sign|authenticated)\/message-media\//.test(path) ||
         /(?:\/api\/message-media\/|\/message-media\/)/.test(optimizedSource)) {
       report.directPrivateRequests++;
       return route.abort("blockedbyclient");
@@ -90,8 +117,7 @@ export async function checkDemoBrowser(page, config, labels) {
   };
   const gateway = (value) => {
     const url = value.startsWith("/") ? config.origin + value : value;
-    require(belongsTo(url, config.origin) && /^\/api\/message-media\/[0-9a-f-]+$/i.test(url.slice(config.origin.length)),
-      "PRIVATE_MEDIA_NOT_USING_GATEWAY");
+    require(isGatewayUrl(url), "PRIVATE_MEDIA_NOT_USING_GATEWAY");
     return url;
   };
   const capture = async (name, width) => {
@@ -104,12 +130,27 @@ export async function checkDemoBrowser(page, config, labels) {
     await page.goto(config.origin + path, { waitUntil: "domcontentloaded", timeout: 30000 });
     require(page.url() === config.origin + path, "UNEXPECTED_REDIRECT_OR_MISSING_SESSION");
   };
+  // Server HTML is already visible before React attaches event handlers. Wait
+  // for the exact control's handler rather than a network-idle heuristic.
+  const hydrated = async (control, handler) => {
+    const element = await control.elementHandle();
+    try {
+      await page.waitForFunction(({ element, handler }) => element && Object.keys(element).some((key) =>
+        key.startsWith("__reactProps$") && typeof element[key]?.[handler] === "function"),
+      { element, handler }, { timeout: 15000 });
+    } finally { await element?.dispose(); }
+  };
+  let phase = "setup";
   const imageDialog = async (opening, t, privateImage, screenshotName, width) => {
+    phase = "thumbnail-readiness";
     await opening.waitFor({ state: "visible", timeout: 15000 });
+    await opening.scrollIntoViewIfNeeded();
     await loaded(opening.locator("img"));
     if (privateImage) gateway(await opening.locator("img").getAttribute("src"));
+    await hydrated(opening, "onClick");
     await opening.focus();
     await page.keyboard.press("Enter");
+    phase = "dialog-open";
     const dialog = page.getByRole("dialog");
     await dialog.waitFor({ state: "visible" });
     require(await dialog.evaluate((element) => {
@@ -118,9 +159,11 @@ export async function checkDemoBrowser(page, config, labels) {
         Math.abs(bounds.width - innerWidth) <= 1 && Math.abs(bounds.height - innerHeight) <= 1;
     }), "VIEWER_NOT_FULLSCREEN");
     const image = dialog.locator('img[alt]:not([alt=""])').first();
+    phase = "dialog-image-load";
     await loaded(image);
     if (privateImage) gateway(await image.getAttribute("src"));
     const reset = dialog.getByRole("button", { name: t.resetImageZoom, exact: true });
+    phase = "dialog-zoom";
     const before = parseInt(await reset.innerText(), 10);
     await dialog.getByRole("button", { name: t.zoomImageIn, exact: true }).click();
     require(parseInt(await reset.innerText(), 10) > before, "ZOOM_DID_NOT_INCREASE");
@@ -128,6 +171,7 @@ export async function checkDemoBrowser(page, config, labels) {
     await reset.click();
     require(parseInt(await reset.innerText(), 10) === before, "ZOOM_DID_NOT_RESET");
     // Exercise Radix's actual keyboard containment and close-focus restoration.
+    phase = "dialog-focus-containment";
     for (let step = 0; step < 10; step++) {
       await page.keyboard.press("Tab");
       require(await dialog.evaluate((element) => element.contains(document.activeElement)), "FOCUS_ESCAPED_DIALOG");
@@ -137,7 +181,14 @@ export async function checkDemoBrowser(page, config, labels) {
     await measure();
     await capture(screenshotName, width);
     await page.keyboard.press("Escape");
+    phase = "dialog-close-focus";
     await dialog.waitFor({ state: "hidden" });
+    // Radix restores focus after the closing transition, which can complete
+    // just after the content becomes hidden. Require the actual opener.
+    const opener = await opening.elementHandle();
+    try {
+      await page.waitForFunction((element) => element === document.activeElement, opener, { timeout: 2000 });
+    } finally { await opener?.dispose(); }
     require(await opening.evaluate((element) => element === document.activeElement), "FOCUS_NOT_RESTORED");
   };
   try {
@@ -149,12 +200,16 @@ export async function checkDemoBrowser(page, config, labels) {
         await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
         for (const kind of ["recovery", "listing", "private-media"]) {
           const item = { language, width, kind, result: "NOT_RUN" };
+          phase = "navigation";
           try {
             if (kind === "recovery") {
               await navigate("/forget-password");
+              phase = "recovery-request";
               await page.getByText(t.recoveryDemoNoticeTitle, { exact: true }).waitFor();
               require(await page.locator("#recovery-demo-notice").innerText() === t.recoveryDemoNotice, "DEMO_NOTICE_LOCALE_MISMATCH");
               require(await page.locator("#email").getAttribute("aria-describedby") === "recovery-demo-notice", "NOTICE_NOT_DESCRIBING_EMAIL");
+              await hydrated(page.locator("#email"), "onChange");
+              await hydrated(page.locator("form"), "onSubmit");
               await page.locator("#email").fill("browser-fixture@example.invalid");
               await page.getByRole("button", { name: t.sendResetLink, exact: true }).click();
               await page.getByRole("status").filter({ hasText: t.checkEmailResetLink }).waitFor();
@@ -168,13 +223,16 @@ export async function checkDemoBrowser(page, config, labels) {
               await navigate(config.conversationPath);
               const opening = page.getByRole("button", { name: `${t.openAttachment}: ${config.privateImageName}`, exact: true });
               await imageDialog(opening, t, true, `${language}-private-viewer`, width);
+              phase = "video-metadata";
               const video = page.getByLabel(config.privateVideoName, { exact: true });
               await video.waitFor({ state: "visible", timeout: 15000 });
+              await video.scrollIntoViewIfNeeded();
               await page.waitForFunction((name) => {
                 const video = [...document.querySelectorAll("video")].find((element) => element.getAttribute("aria-label") === name);
                 return video && video.readyState >= 1 && Number.isFinite(video.duration) && video.duration > 2;
               }, config.privateVideoName, { timeout: 15000 });
               const videoUrl = gateway(await video.evaluate((element) => element.currentSrc));
+              phase = "video-seek";
               const seeking = await video.evaluate(async (element) => {
                 const target = element.duration / 2;
                 await new Promise((resolve, reject) => {
@@ -187,6 +245,7 @@ export async function checkDemoBrowser(page, config, labels) {
               require(seeking.controls && Math.abs(seeking.actual - seeking.target) < 0.5, "VIDEO_SEEK_FAILED");
               // This supplements actual element seeking; it does not claim the
               // browser necessarily needed a new range after buffering the clip.
+              phase = "video-range";
               const ranged = await page.request.get(videoUrl, { headers: { Range: "bytes=0-0" }, maxRedirects: 0 });
               try {
                 require(ranged.status() === 206, "GATEWAY_SINGLE_BYTE_RANGE_STATUS");
@@ -202,6 +261,7 @@ export async function checkDemoBrowser(page, config, labels) {
             item.result = "PASS";
           } catch (error) {
             item.result = "FAIL";
+            item.phase = phase;
             item.reason = error.message.startsWith("CHECK:") ? error.message.slice(6) : "BROWSER_ACTION_FAILED_INSPECT_PRIVATE_SESSION";
           }
           report.cases.push(item);

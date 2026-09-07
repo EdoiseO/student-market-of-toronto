@@ -16,6 +16,8 @@ This optional CLI harness exercises the rendered candidate with **synthetic stag
 
 Copy `example.json` into the private working directory and replace every placeholder. It contains identifiers and origins only, never passwords, cookies, tokens or signed URLs. Set `screenshots` to `false` if synthetic-only visual content cannot be assured. Keep configuration and outputs outside the repository.
 
+If the deployed Next build appends its public `dpl` identifier to image URLs, set optional `deploymentId` to that exact observed `dpl_…` value. The harness accepts only that single matching parameter; tokens, codes, signatures, other parameters and fragments still fail. On a Vercel preview, optional `suppressVercelToolbar: true` replaces only the exact GET `https://vercel.live/_next-live/feedback/feedback.js` with empty JavaScript and records a separate suppression count. This prevents provider toolbar telemetry from interfering with application checks; it does not ignore application console errors, page errors or unexpected origins.
+
 Check `command -v npx` and use the existing installed CLI path (the current task has one at `/Users/edoise/.npm/_npx/31e32ef8478fbf80/node_modules/@playwright/cli/playwright-cli.js`). Keep all CLI commands in the same private working directory; session discovery depends on it. The example assumes `QA_CLI`, `QA_REPO` and `QA_OUTPUT` are absolute paths and `QA_SESSION` is a fresh `smt-demo-qa-*` name:
 
 ```sh
@@ -49,6 +51,8 @@ The 18 cases cover EN/FR at 390, 768 and 1440 CSS pixels (844 pixels high, or 90
 | Private attachments | The same image and keyboard checks; private thumbnail/fullscreen/video URL uses the authenticated gateway without query tokens; video metadata loads, controls exist and seeking reaches its target; a separate read-only single-byte request verifies range and cache headers. |
 
 The run also counts console errors, page errors, hydration warnings, unexpected origins, attempted browser mutations and direct private Storage/optimizer requests. A clean run requires all 18 cases and zero counts for those errors. Other console warnings are counted for manual review. Language cookies and localStorage are synchronized before initialization; this establishes clean EN/FR rendering, not the behavior of the interactive language switch.
+
+The harness scrolls lazy media into view, waits up to 15 seconds for the tested React controls' handlers to attach, and waits up to two seconds for the exact opener to regain focus after the dialog closes. These are bounded checks of actual readiness and focus, not fixed sleeps. A missing handler or missing focus restoration still fails. This run exercises the hydrated interface; it does not assess interactions attempted before hydration.
 
 If a fixture is missing, media has an unsupported codec, session authority expires, or a required origin was omitted, record the run as blocked by setup and correct that specific prerequisite. Do not relabel a failed run as passing. For a product failure, retain the sanitized case/reason and inspect the disposable session privately. Fix the candidate, rebuild and repeat only affected checks followed by one complete final-candidate run. Do not relax the assertions to conceal a real failure.
 
