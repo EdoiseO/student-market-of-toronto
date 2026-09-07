@@ -8,7 +8,7 @@ Built with **Next.js 16, React 19, Tailwind CSS 4, and Supabase** (Auth, Postgre
 
 ## Release status
 
-**6 September 2026:** this branch includes the mobile moderation redesign, clickable review photos, streamlined sign-in feedback, and the latest security remediations. The live demo still serves the previous release. The updated portfolio case study is also a separate review draft.
+**6 September 2026:** this branch includes the mobile moderation redesign, clickable review photos, streamlined sign-in feedback, and the latest security remediations. The live demo still serves the previous release.
 
 At implementation commit `acedbfe`, all **322 security tests** passed, along with lint, the production build, and Linux/macOS CI; the dependency audit reported zero vulnerabilities. These results describe that revision and do not certify production. Hosted authorization, Storage, Realtime, delivered recovery email, and remaining device/accessibility checks must finish before rollout. See the [dated release check](docs/security/release-check-2026-09-06.md) for evidence and outstanding work.
 
@@ -90,7 +90,7 @@ Schedule both endpoints at least every five minutes in the deployed environment,
 | `/api/internal/announcements/worker` | Bounded in-app announcement delivery and retry processing |
 | `/api/internal/listing-images/cleanup` | Removal of database-leased, unreferenced listing objects and recovery-ledger maintenance |
 
-Both require the server-side service role key. Configure a scheduler that supports the required interval and authorization header; the application does not start a scheduler itself. Use isolated data for development worker runs.
+Both require the server-side service role key. Configure an external scheduler that supports the required interval and authorization header; the application does not start a scheduler itself. Use isolated data for development worker runs.
 
 ## Checks and tests
 
