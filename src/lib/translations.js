@@ -1321,8 +1321,11 @@ export const translations = {
       "Enter both your first and last name to continue.",
     forgotPasswordTitle: "Forgot Password",
     forgotPasswordDescription:
-      "Enter your email below and we'll send you a password reset link.",
-    checkEmailResetLink: "If an account uses this email, we’ll send a reset link. Complete the reset in this browser within 5 minutes of this request.",
+      "Enter your account email to request a password reset link.",
+    recoveryDemoNoticeTitle: "Demo email limits",
+    recoveryDemoNotice:
+      "This demo can send password reset emails only to an approved test inbox. Delivery to other addresses is not available yet.",
+    checkEmailResetLink: "If an account uses this email and its inbox is approved for demo email delivery, check for a reset link. Complete the reset in this browser within 5 minutes of this request.",
     sendResetLink: "Send Reset Link",
     rememberedPassword: "Remembered your password?",
     backToLogin: "Back to login",
@@ -2829,9 +2832,12 @@ export const translations = {
       "Saisissez votre prénom et votre nom de famille pour continuer.",
     forgotPasswordTitle: "Mot de passe oublié",
     forgotPasswordDescription:
-      "Saisissez votre e-mail ci-dessous et nous vous enverrons un lien de réinitialisation du mot de passe.",
+      "Saisissez l’e-mail de votre compte pour demander un lien de réinitialisation.",
+    recoveryDemoNoticeTitle: "Limites des e-mails de la démo",
+    recoveryDemoNotice:
+      "La démo peut envoyer des e-mails de réinitialisation uniquement à une boîte de réception de test autorisée. L’envoi aux autres adresses n’est pas encore disponible.",
     checkEmailResetLink:
-      "Si un compte utilise cet e-mail, nous enverrons un lien de réinitialisation. Terminez la réinitialisation dans ce navigateur dans les 5 minutes suivant cette demande.",
+      "Si un compte utilise cet e-mail et que sa boîte de réception est autorisée pour les e-mails de la démo, vérifiez si vous avez reçu un lien. Terminez la réinitialisation dans ce navigateur dans les 5 minutes suivant cette demande.",
     sendResetLink: "Envoyer le lien de réinitialisation",
     rememberedPassword: "Vous vous souvenez de votre mot de passe ?",
     backToLogin: "Retour à la connexion",

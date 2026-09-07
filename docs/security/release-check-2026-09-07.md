@@ -2,6 +2,12 @@
 
 **Database rollout complete; application release held.** [PR #76](https://github.com/EdoiseO/student-market-of-toronto/pull/76) is open and requires independent approval. The production application remains at `6a98cb1866a587c656309356d753f0b2386ddfe1`. This checkpoint supersedes the deployment status in the [6 September report](release-check-2026-09-06.md).
 
+## Current demo scope checkpoint — 7 September 2026
+
+The user authorized proceeding with the demo release. Custom SMTP, a branded sender, and general student-inbox delivery are **DELIBERATELY DEFERRED**. These are prerequisites before real student onboarding, not blockers for this limited demo and not verified capabilities. Keep the existing restricted built-in sender and approved owner-inbox staging fixture. No custom email system, paid service, domain purchase, or new provider choice is needed for this scope.
+
+The English/French recovery request page states the delivery limit without showing a personal address. Its conditional success copy does not confirm account existence. The PKCE/session isolation, five-minute deadline, school hook and existing confirmation policy are unchanged. This scope decision does not waive the failed private-media/cache security gate, hosted recovery/HTTPS and account-state checks, Realtime verification, device/accessibility checks, current-head CI or independent PR approval. It makes no new hosted validation claim; the receipts below retain their original scope.
+
 ## Production changes verified
 
 Guarded transactions applied the exact tracked source and original timestamps below. Native rehearsals verified preservation and failure behavior before execution. Read-only production checks then verified history, definitions, grants, policies, and publication membership.
@@ -46,12 +52,13 @@ Two real recovery emails were delivered to an approved owner inbox attached only
 
 The first flow rejected a foreign browser without changing its ordinary session. Its legitimate submission later failed because the provider PKCE flow had expired five minutes after the email request. The second flow completed within that deadline and verified password replacement, old-password rejection, revocation of the prior refresh session, replay rejection, a cleaned address bar, and preservation of a different signed-in account.
 
-Remaining release work:
+Remaining demo-release work:
 
 1. Resolve and verify the private-media cache limitation, including existing assets and any promised revocation deadline.
 2. Finish the hosted same-recovered-account cookie-clearing case with another approved email, plus actual HTTPS cookie behavior and remaining account-state cases. Do not replace delivered PKCE verification with an incompatible admin-generated implicit link.
-3. Configure production custom SMTP and verify delivery to a controlled student inbox. The built-in sender permits organization-member inboxes only; owner-inbox success is not proof of general student delivery. Decide any signup confirmation policy deliberately. [Supabase SMTP guidance](https://supabase.com/docs/guides/auth/auth-smtp)
-4. Complete actual Realtime delivery and the previously documented authenticated device/accessibility checks. The authority harness does not cover those flows.
-5. Obtain green checks on the current head and the required independent PR approval. Merge without bypassing review protections, deploy the application, and verify the canonical production release and live workflows.
+3. Complete actual Realtime delivery and the previously documented authenticated device/accessibility checks. The authority harness does not cover those flows.
+4. Obtain green checks on the current head and the required independent PR approval. Merge without bypassing review protections, deploy the application, and verify the canonical production release and live workflows.
+
+**Deliberately deferred until before real student onboarding:** configure custom SMTP and a suitable sender, then verify delivery to a controlled institutional inbox. The built-in sender permits organization-member inboxes only; owner-inbox success is not proof of general student delivery. Any future signup-confirmation change is a separate product decision. This deferred work is excluded from the current demo gates above. [Supabase SMTP guidance](https://supabase.com/docs/guides/auth/auth-smtp)
 
 Rollout is already authorized once these checks pass. Keep restrictive database boundaries in place while completing the application release. Retain private staging fixtures for the pending recovery test, then remove them through trusted cleanup workflows and record disposal. Do not publish passwords, tokens, signed URLs, inbox mappings, or private backups with this report.

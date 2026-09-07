@@ -2,7 +2,17 @@
 
 Updated: 2026-09-07 (America/Toronto)
 
-## Current implementation checkpoint — 2026-09-07
+## Current demo scope checkpoint — 2026-09-07
+
+The user authorized continuing the demo release and **DELIBERATELY DEFERRED** custom SMTP, a branded sender, and general student-inbox delivery. This scope checkpoint supersedes earlier statements that custom SMTP/student-inbox proof blocks the current demo. It does not claim delivery is implemented or verified. A suitable sender and actual institutional-inbox verification remain prerequisites before real student onboarding. Do not open a new provider-selection loop, create a custom email system, buy a domain, or provision a paid email service for this demo.
+
+Keep the existing built-in sender and approved owner-inbox staging fixture. The English/French recovery request form explains the demo delivery limit, shows no personal address, and uses a conditional response that does not reveal account existence. Preserve the browser-bound PKCE protocol, five-minute provider deadline, existing school guards and confirmation policy. The personal staging fixture creates no production email-domain exception; registered demo addresses still cannot receive mail.
+
+The private-media/cache security issue, hosted recovery/HTTPS checks, Realtime verification, remaining device/accessibility coverage, current-head CI and required independent PR review remain release gates. Existing deployment and manifest-owned disposable-fixture cleanup authorization still apply. Use the approved staging setup for the remaining recovery checks within the existing email authorization and provider quota. See [the current release check](docs/security/release-check-2026-09-07.md).
+
+This checkpoint changes documentation and recovery-page copy only. No live Auth settings, email, account, password or deployment was changed by it. The database/application state below remains the preceding verified checkpoint until a later rollout receipt supersedes it.
+
+## Previous implementation checkpoint — 2026-09-07 (before demo scope decision)
 
 Production database rollout is complete; the application release is not. Exact versions `20260906144154`, `20260906150000`, `20260907180439`, and `20260907190013` were applied with guarded transactions and verified source hashes. History now has 58 rows; the original 54 rows, all nine demo-registry identities, and the school-validation helper were preserved. Do not replay the executed rollout wrappers or repair history blindly. The already-live demo migration `20260906160016` remains unchanged.
 

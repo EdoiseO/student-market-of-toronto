@@ -65,12 +65,19 @@ export default function ForgotPasswordPage() {
           <CardContent>
             <form onSubmit={handleSubmit} aria-busy={busy}>
               <FieldGroup>
+                <div className="rounded-lg border bg-muted/40 p-3 text-sm">
+                  <p className="font-medium">{t.recoveryDemoNoticeTitle}</p>
+                  <p id="recovery-demo-notice" className="mt-1 leading-relaxed text-muted-foreground">
+                    {t.recoveryDemoNotice}
+                  </p>
+                </div>
                 <Field>
                   <FieldLabel htmlFor="email">{t.email}</FieldLabel>
                   <Input
                     id="email"
                     type="email"
                     autoComplete="email"
+                    aria-describedby="recovery-demo-notice"
                     placeholder="m@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
