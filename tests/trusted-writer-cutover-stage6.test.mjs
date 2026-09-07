@@ -864,13 +864,23 @@ for (const migrationOrder of migrationOrders) test(
         );
       `, /listing_image_reservation_metadata_mismatch/, "reserved listing uploads reject size mismatches");
       sql(`
+        begin;
         set request.jwt.claims = '{"role":"authenticated","sub":"${seller}"}';
+        set storage.operation = 'storage.object.upload';
+        insert into storage.objects(bucket_id,name,owner_id,metadata)
+        values (
+          'listing-images','${reservedListingPath}','${seller}',
+          '{"mimetype":"image/webp","contentLength":375}'::jsonb
+        );
+        rollback;
+        set request.jwt.claims = '{"role":"service_role"}';
+        set storage.operation = 'storage.object.upload';
         insert into storage.objects(bucket_id,name,owner_id,metadata)
         values (
           'listing-images','${reservedListingPath}','${seller}',
           '{"mimetype":"image/webp","size":"100"}'::jsonb
         );
-      `, "reserved listing uploads accept exact metadata");
+      `, "reserved listing preflight and completion accept exact final metadata");
 
       sql(`
         insert into message_send_private.operations(
