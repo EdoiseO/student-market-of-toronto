@@ -1322,7 +1322,7 @@ export const translations = {
     forgotPasswordTitle: "Forgot Password",
     forgotPasswordDescription:
       "Enter your email below and we'll send you a password reset link.",
-    checkEmailResetLink: "If an account uses this email, we’ll send a reset link. Open it in this browser within 15 minutes.",
+    checkEmailResetLink: "If an account uses this email, we’ll send a reset link. Complete the reset in this browser within 5 minutes of this request.",
     sendResetLink: "Send Reset Link",
     rememberedPassword: "Remembered your password?",
     backToLogin: "Back to login",
@@ -2831,7 +2831,7 @@ export const translations = {
     forgotPasswordDescription:
       "Saisissez votre e-mail ci-dessous et nous vous enverrons un lien de réinitialisation du mot de passe.",
     checkEmailResetLink:
-      "Si un compte utilise cet e-mail, nous enverrons un lien de réinitialisation. Ouvrez-le dans ce navigateur sous 15 minutes.",
+      "Si un compte utilise cet e-mail, nous enverrons un lien de réinitialisation. Terminez la réinitialisation dans ce navigateur dans les 5 minutes suivant cette demande.",
     sendResetLink: "Envoyer le lien de réinitialisation",
     rememberedPassword: "Vous vous souvenez de votre mot de passe ?",
     backToLogin: "Retour à la connexion",
