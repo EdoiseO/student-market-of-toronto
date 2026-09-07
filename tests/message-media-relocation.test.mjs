@@ -5,7 +5,7 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { UPLOAD_OPTIONS, assertNoStore, assertPrivateOutsideGit, boundedBytes, planDigest, relocateOne, validateInventory, validatePlan, validateTarget } from "../scripts/relocate-message-media.mjs";
+import { UPLOAD_OPTIONS, assertNoStore, assertPrivateOutsideGit, assertTargetMetadata, boundedBytes, planDigest, relocateOne, validateInventory, validatePlan, validateTarget } from "../scripts/relocate-message-media.mjs";
 
 const id = "10000000-0000-4000-8000-000000000001";
 const directory = "20000000-0000-4000-8000-000000000001/30000000-0000-4000-8000-000000000001/";
@@ -15,17 +15,19 @@ const bytes = Buffer.from("synthetic exact image bytes");
 const sha256 = createHash("sha256").update(bytes).digest("hex");
 const item = { attachmentId: id, sourcePath, sizeBytes: bytes.length, mimeType: "image/png", sha256 };
 const content = () => ({ bytes, mimeType: item.mimeType, cacheControl: "private, no-store, max-age=0", cacheStatus: "BYPASS" });
+const metadata = () => ({ id, name: targetPath, bucketId: "message-media", size: item.sizeBytes, contentType: item.mimeType, cacheControl: "private, no-store, max-age=0" });
 const env = { SMOT_MEDIA_URL: "https://disposablefixture.supabase.co", SMOT_MEDIA_TARGET_ACK: "disposable:disposablefixture", SMOT_MEDIA_SERVICE_ROLE_KEY: "unused-private-fixture-key" };
 const target = validateTarget(["plan", "/unused/inventory.json", "/unused/ledger.json"], env);
 const inventory = { version: 1, project: target.project, url: target.origin, attachmentIds: [id] };
 
-function simulation({ state = "prepared", targetContent = null, sourceContent = content(), failAt } = {}) {
+function simulation({ state = "prepared", targetContent = null, sourceContent = content(), targetMetadata = metadata(), failAt } = {}) {
   const calls = [];
   let physical = state === "prepared" ? sourcePath : targetPath;
   const driver = {
     async describe() { calls.push("describe"); },
     async begin() { calls.push("begin"); return { attachment_id: id, source_path: sourcePath, target_path: targetPath, mime_type: item.mimeType, size_bytes: item.sizeBytes, state }; },
     async download(path) { calls.push(path === targetPath ? "read-target" : "read-source"); return path === targetPath ? targetContent : sourceContent; },
+    async info(path) { calls.push("info"); assert.equal(path, targetPath); if (failAt === "info") throw new Error("metadata unavailable"); return targetMetadata; },
     async upload(path, buffer, mimeType) {
       calls.push("upload"); assert.equal(path, targetPath); assert.ok(buffer instanceof ArrayBuffer);
       assert.deepEqual(Buffer.from(buffer), bytes); assert.equal(mimeType, item.mimeType);
@@ -55,6 +57,7 @@ test("relocation uploads exact ArrayBuffer, verifies and activates before deleti
   await relocateOne(item, progress, driver, () => snapshots.push({ ...progress }));
   assert.equal(progress.state, "retired");
   assert.ok(calls.indexOf("verify") < calls.indexOf("remove-source"));
+  assert.ok(calls.indexOf("info") < calls.indexOf("verify"));
   assert.ok(calls.indexOf("resolve") < calls.indexOf("remove-source"));
   assert.equal(calls.filter((call) => call === "upload").length, 1);
   assert.equal(snapshots[0].targetPath, targetPath);
@@ -93,17 +96,40 @@ test("relocation resumes activation after source removal and permits an idempote
   assert.equal(progress.state, "retired");
 });
 
-test("wrong source or target bytes, unsafe caching and activation failure preserve the source", async () => {
+test("wrong bytes, unsafe stored metadata, metadata outage and activation failure preserve the source", async () => {
   const wrong = { ...content(), bytes: Buffer.from("different bytes") };
   for (const options of [
     { sourceContent: wrong }, { targetContent: wrong },
-    { targetContent: { ...content(), cacheControl: "public, max-age=3600" } },
-    { targetContent: { ...content(), cacheStatus: "HIT" } }, { failAt: "verify" },
+    { targetMetadata: { ...metadata(), cacheControl: "public, max-age=3600" } },
+    { targetMetadata: { ...metadata(), cacheControl: "public, private, no-store, max-age=0" } },
+    { targetMetadata: { ...metadata(), name: sourcePath } },
+    { targetMetadata: { ...metadata(), size: item.sizeBytes + 1 } },
+    { targetMetadata: { ...metadata(), contentType: "video/mp4" } },
+    { failAt: "info" }, { failAt: "verify" },
   ]) {
     const { driver, calls } = simulation(options);
     await assert.rejects(relocateOne(item, {}, driver, () => {}));
     assert.equal(calls.includes("remove-source"), false);
     if (options.targetContent) assert.equal(calls.includes("upload"), false);
+  }
+});
+
+test("provider cache headers and HIT are recorded separately from verified persisted no-store metadata", async () => {
+  const targetContent = { ...content(), cacheControl: "public, private, no-store, max-age=0", cacheStatus: "HIT" };
+  const { driver, calls } = simulation({ targetContent });
+  const progress = {};
+  const snapshots = [];
+  await relocateOne(item, progress, driver, () => snapshots.push(structuredClone(progress)));
+  assert.equal(progress.state, "retired");
+  assert.equal(calls.includes("upload"), false, "Reuse the exact previously prepared target");
+  assert.equal(progress.targetStorage.metadataCacheControl, "private, no-store, max-age=0");
+  assert.equal(progress.targetStorage.responseCacheControl, targetContent.cacheControl);
+  assert.equal(progress.targetStorage.responseCacheStatus, "HIT");
+  assert.equal(progress.targetStorage.persistedMetadataVerified, true);
+  assert.ok(snapshots.some((snapshot) => snapshot.targetStorage?.persistedMetadataVerified === false));
+  assert.ok(calls.indexOf("info") < calls.indexOf("verify") && calls.indexOf("verify") < calls.indexOf("remove-source"));
+  for (const changed of [{ bucketId: "public-bucket" }, { id: "missing" }, { cacheControl: null }]) {
+    assert.throws(() => assertTargetMetadata({ ...metadata(), ...changed }, item, targetPath));
   }
 });
 

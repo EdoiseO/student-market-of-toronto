@@ -111,12 +111,15 @@ export async function boundedBytes(response, limit) {
   } finally { await reader.cancel().catch(() => {}); }
 }
 
-export function assertContent(content, item, requireNoStore = false) {
+export function assertContent(content, item) {
   need(content && content.bytes.length === item.sizeBytes && content.mimeType === item.mimeType && hash(content.bytes) === item.sha256, "frozen_content_mismatch");
-  if (requireNoStore) {
-    assertNoStore(content.cacheControl);
-    need(!["HIT", "STALE", "UPDATING", "REVALIDATED"].includes(content.cacheStatus), "target_response_served_from_cache");
-  }
+}
+
+export function assertTargetMetadata(metadata, item, path) {
+  need(metadata && metadata.name === path && metadata.bucketId === "message-media" &&
+    UUID.test(metadata.id || "") && Number(metadata.size) === item.sizeBytes && metadata.contentType === item.mimeType,
+  "target_storage_metadata_mismatch");
+  assertNoStore(metadata.cacheControl);
 }
 
 // Dependency injection keeps resume/delete ordering testable without a network.
@@ -145,7 +148,24 @@ export async function relocateOne(item, progress, driver, save) {
       target = await driver.download(targetPath, item.sizeBytes, false);
     }
   }
-  assertContent(target, item, true);
+  assertContent(target, item);
+  const metadata = await driver.info(targetPath);
+  // Hosted Storage can prepend "public" and report HIT even when its persisted
+  // cacheControl is private/no-store. The authenticated application gateway is
+  // the browser response boundary; never relabel these service bytes as an
+  // uncached origin response or use their headers as proof of legacy revocation.
+  progress.targetStorage = {
+    observedAt: new Date().toISOString(),
+    objectId: metadata?.id ?? null,
+    metadataCacheControl: metadata?.cacheControl ?? null,
+    responseCacheControl: target.cacheControl,
+    responseCacheStatus: target.cacheStatus,
+    persistedMetadataVerified: false,
+  };
+  save();
+  assertTargetMetadata(metadata, item, targetPath);
+  progress.targetStorage.persistedMetadataVerified = true;
+  save();
   const verified = await driver.verify(item.attachmentId, item.sha256, hash(target.bytes));
   need(["active", "retired"].includes(verified), "activation_receipt_invalid");
   const resolved = await driver.resolve(item.attachmentId);
@@ -196,10 +216,12 @@ function makeDriver(target, key, signal) {
     resolve: async (id) => single(await rpc("resolve_message_media_attachment", { p_attachment_id: id })),
     verify: (id, sourceHash, targetHash) => rpc("verify_message_media_relocation", { p_attachment_id: id, p_source_sha256: sourceHash, p_target_sha256: targetHash }),
     finish: (id) => rpc("finish_message_media_relocation", { p_attachment_id: id }),
+    info: (path) => checked(client.storage.from("message-media").info(path), "target_storage_metadata_read_failed"),
     async download(path, size, allowMissing) {
       need(validPath(path) && Number.isInteger(size) && size > 0 && size <= MAX_BYTES, "bounded_download_input_required");
       // SDK's ordinary /object route, with its supported cacheNonce parameter.
-      // This is an origin verification request, not a claim about old cached URLs.
+      // This verifies bytes at the selected location, not an origin-cache bypass
+      // or a claim about old cached URLs. Hosted Storage may still report HIT.
       const url = new URL("/storage/v1/object/message-media/" + path.split("/").map(encodeURIComponent).join("/"), target.origin);
       url.searchParams.set("cacheNonce", randomUUID());
       const response = await fetchWithDeadline(url, { headers: { apikey: key, Authorization: "Bearer " + key }, cache: "no-store" });
@@ -279,7 +301,7 @@ async function main() {
         await relocateOne(item, ledger.progress[item.attachmentId], driver, () => atomicSave(target.ledgerPath, ledger));
       }
       console.log(JSON.stringify({ result: "retired", project: target.project, attachments: ledger.plan.attachments.length,
-        planSha256: ledger.planSha256, remainingBoundary: "Prior cached bytes and signed capabilities need separate hosted revocation evidence." }));
+        planSha256: ledger.planSha256, remainingBoundary: "Storage may cache service responses; browser delivery requires the authenticated no-store gateway. Prior cached URLs need separate exact-URL revocation evidence." }));
     }
   } catch (error) {
     console.error(JSON.stringify({ result: "failed", stage, code: error instanceof RelocationError ? error.code : "unexpected_failure_redacted",
