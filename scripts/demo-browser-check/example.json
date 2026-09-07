@@ -1,0 +1,11 @@
+{
+  "origin": "http://localhost:3220",
+  "candidate": "0000000000000000000000000000000000000000",
+  "syntheticFixturesOnly": true,
+  "listingPath": "/admin/listings/replace-with-synthetic-id",
+  "conversationPath": "/admin/conversations/replace-with-synthetic-id",
+  "privateImageName": "synthetic-image.png",
+  "privateVideoName": "synthetic-video.mp4",
+  "allowedOrigins": ["http://localhost:3220", "https://replace-with-staging-ref.supabase.co"],
+  "screenshots": true
+}
