@@ -133,7 +133,14 @@ const request = async (path, token, method = "GET", body) => {
   const data = contentType.includes("json") ? await response.json() : await response.arrayBuffer();
   return {status:response.status,ok:response.ok,data};
 };
-const query = (table, filter) => "/rest/v1/" + table + "?select=id&" + filter;
+// Reactions have a composite primary key; each probe only needs a row identifier.
+const probeColumns = {
+  conversations:"id",
+  messages:"id",
+  message_attachments:"id",
+  message_reactions:"message_id",
+};
+const query = (table, filter) => "/rest/v1/" + table + "?select=" + probeColumns[table] + "&" + filter;
 const paths = [
   query("conversations","id=eq." + conversationId),
   query("messages","conversation_id=eq." + conversationId),
