@@ -23,7 +23,7 @@ export default function HomePageContent({ listingSections }) {
           </div>
         </section>
 
-        {listingSections.map((section) => (
+        {listingSections.map((section, sectionIndex) => (
           <section
             key={section.title}
             id={section.slug}
@@ -61,6 +61,7 @@ export default function HomePageContent({ listingSections }) {
                       imageSizes="(max-width: 767px) calc((100vw - 5rem) / 2), (max-width: 1023px) calc((100vw - 27rem) / 2), (max-width: 1279px) calc((100vw - 29rem) / 3), (max-width: 1535px) 16vw, 220px"
                       href={`/listings/${item.slug}`}
                       compact
+                      prioritizeImage={sectionIndex === 0 && itemIndex < 2}
                     />
                   </div>
                 ))}

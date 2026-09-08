@@ -31,6 +31,7 @@ export function CardImage({
   href = "#",
   compact = false,
   rail = false,
+  prioritizeImage = false,
 }) {
   const { t } = useLanguage();
   const images = React.useMemo(() => {
@@ -120,6 +121,8 @@ export function CardImage({
               alt={imageAlt}
               fill
               sizes={imageSizes}
+              loading={prioritizeImage && activeImageIndex === 0 ? "eager" : "lazy"}
+              fetchPriority={prioritizeImage && activeImageIndex === 0 ? "high" : "auto"}
               placeholder="blur"
               blurDataURL={REMOTE_IMAGE_BLUR_DATA_URL}
               className="object-cover animate-in fade-in duration-500 ease-out"
