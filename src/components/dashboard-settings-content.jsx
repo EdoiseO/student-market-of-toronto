@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useNotifications } from "@/components/notification-provider";
 import { SignOutButton } from "@/components/sign-out-button";
 import { Switch } from "@/components/ui/switch";
 import { useLanguage } from "@/context/LanguageContext";
@@ -54,6 +55,7 @@ export function DashboardSettingsContent({
   notificationPreferencesAvailable,
 }) {
   const { t } = useLanguage();
+  const { feed: notificationFeed } = useNotifications();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const supabase = React.useMemo(() => createClient(), []);
@@ -205,6 +207,7 @@ export function DashboardSettingsContent({
       }
 
       setSavedNotificationPreferences(notificationPreferences);
+      notificationFeed.invalidate();
       toast.success(t.settingsNotificationPreferencesSaved);
       router.refresh();
     } catch (error) {

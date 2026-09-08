@@ -8,7 +8,7 @@ import { MODERATION_ACTIONS } from "@/lib/moderation-policy.mjs";
 const PAGE_SIZE = 25;
 
 export default async function AdminListingsPage({ searchParams }) {
-  const { admin, language, t } = await requireAdminPageAction(MODERATION_ACTIONS.readListings, "admin listing registry");
+  const { admin, language, t } = await requireAdminPageAction(MODERATION_ACTIONS.readListings);
   const params = await searchParams;
   const page = Math.max(1, Number.parseInt(params?.page, 10) || 1);
   const queueStatus = ["pending", "approved", "rejected"].includes(params?.status) ? params.status : "pending";

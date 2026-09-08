@@ -1,7 +1,6 @@
 import { withPrivateMessageMediaUrl } from "@/lib/private-message-media.mjs";
 import { getAdminQueueReturnHref } from "@/lib/admin-queue-navigation.mjs";
 import { AlertTriangle, ArrowLeft } from "lucide-react";
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -19,7 +18,7 @@ import {
 } from "@/lib/moderation-policy.mjs";
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { translations } from "@/lib/translations";
-import { createClient } from "@/utils/supabase/server";
+import { getServerSession } from "@/lib/server-session";
 
 function parseCursor(searchParams) {
   const beforeCreatedAt =
@@ -71,17 +70,12 @@ export default async function AdminConversationDetailPage({ params, searchParams
     notFound();
   }
 
-  const cookieStore = await cookies();
+  const { cookieStore, user } = await getServerSession();
   const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
   const t = translations[language] || translations.en;
-  const supabase = createClient(cookieStore);
   const admin = createAdminClient();
   const cursor = parseCursor(query);
   const returnHref = getAdminQueueReturnHref(query?.returnTo, "/admin/conversations");
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   if (!user) {
     redirect("/login");

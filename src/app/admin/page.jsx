@@ -1,17 +1,11 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { AlertTriangle, Ban, CircleAlert, Clock3, FileWarning, Gavel, MessageSquareOff, ShieldAlert } from "lucide-react";
 
+import { requireAdminPageAction } from "@/lib/admin-page-access";
 import { ClientFormattedDateTime } from "@/components/client-formatted-date-time";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getUserModerationRole } from "@/lib/moderation";
 import { MODERATION_ACTIONS, canPerformModerationAction } from "@/lib/moderation-policy.mjs";
-import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
-import { translations } from "@/lib/translations";
-import { getUserStatusRow, isUserBanned } from "@/lib/user-status";
-import { createClient } from "@/utils/supabase/server";
 
 const ATTENTION_LIMIT = 4;
 const TIMELINE_LIMIT = 10;
@@ -29,9 +23,9 @@ async function rowsQuery(query, label) {
   const { data, error } = await query;
   if (error) {
     console.error(`Failed to load ${label}:`, error.message);
-    return [];
+    return { rows: [], available: false };
   }
-  return data ?? [];
+  return { rows: data ?? [], available: true };
 }
 
 function MetricCard({ icon: Icon, label, metric, href }) {
@@ -47,22 +41,7 @@ function MetricCard({ icon: Icon, label, metric, href }) {
 }
 
 export default async function AdminPage() {
-  const cookieStore = await cookies();
-  const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
-  const t = translations[language] || translations.en;
-  const supabase = createClient(cookieStore);
-  const admin = createAdminClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
-  if (!admin) redirect("/");
-
-  const accessUser = await getLatestAuthUser(admin, user.id, "admin overview access");
-  const role = getUserModerationRole(accessUser);
-  if (!accessUser || !canPerformModerationAction(role, MODERATION_ACTIONS.viewDashboard)) redirect("/");
-  const actorStatus = await getUserStatusRow(admin, user.id);
-  if (actorStatus.error || actorStatus.available === false) redirect("/");
-  if (isUserBanned(actorStatus.data)) redirect("/banned");
+  const { admin, language, role, t } = await requireAdminPageAction(MODERATION_ACTIONS.viewDashboard);
 
   const canReadReports = canPerformModerationAction(role, MODERATION_ACTIONS.readReports);
   const canReadListings = canPerformModerationAction(role, MODERATION_ACTIONS.readListings);
@@ -72,28 +51,33 @@ export default async function AdminPage() {
   const now = new Date().toISOString();
   const unavailable = { value: null, available: false };
 
-  const [openReports, pendingListings, activeStrikes, unacknowledgedWarnings, closedChats, activeRestrictions] = await Promise.all([
+  const unavailableRows = { rows: [], available: false };
+  const [openReports, pendingListings, activeStrikes, unacknowledgedWarnings, closedChats, activeRestrictions, reports, listings, reviews, conversations, audit] = await Promise.all([
     canReadReports ? countQuery(admin.from("reports").select("id", { count: "exact", head: true }).eq("status", "open"), "open report count") : unavailable,
     canReadListings ? countQuery(admin.from("listings").select("id", { count: "exact", head: true }).eq("status", "inactive").not("submitted_for_review_at", "is", null), "pending listing count") : unavailable,
     canReadUsers ? countQuery(admin.from("moderation_sanctions").select("id", { count: "exact", head: true }).eq("sanction_type", "strike").is("revoked_at", null).or(`expires_at.is.null,expires_at.gt.${now}`), "active strike count") : unavailable,
     canReadUsers ? countQuery(admin.from("moderation_sanctions").select("id", { count: "exact", head: true }).eq("sanction_type", "warning").eq("acknowledgement_required", true).is("acknowledged_at", null).is("revoked_at", null).or(`expires_at.is.null,expires_at.gt.${now}`), "unacknowledged warning count") : unavailable,
     canReadConversations ? countQuery(admin.from("conversation_effective_moderation_state").select("conversation_id", { count: "exact", head: true }).eq("effective_status", "closed"), "closed conversation count") : unavailable,
     canReadUsers ? countQuery(admin.from("moderation_sanctions").select("id", { count: "exact", head: true }).is("revoked_at", null).neq("restrictions", "{}").or(`expires_at.is.null,expires_at.gt.${now}`), "active restriction count") : unavailable,
+    canReadReports ? rowsQuery(admin.from("reports").select("id, subject_type, reason, created_at").eq("status", "open").order("created_at", { ascending: false }).limit(ATTENTION_LIMIT), "report attention queue") : unavailableRows,
+    canReadListings ? rowsQuery(admin.from("listings").select("id, title, submitted_for_review_at").eq("status", "inactive").not("submitted_for_review_at", "is", null).order("submitted_for_review_at", { ascending: true, nullsFirst: false }).limit(ATTENTION_LIMIT), "listing attention queue") : unavailableRows,
+    canReadUsers ? rowsQuery(admin.from("moderation_sanctions").select("id, subject_user_id_snapshot, sanction_type, review_requested_at").eq("review_status", "pending").order("review_requested_at", { ascending: true }).limit(ATTENTION_LIMIT), "review attention queue") : unavailableRows,
+    canReadConversations ? rowsQuery(admin.from("conversation_effective_moderation_state").select("conversation_id, closed_until, changed_at").eq("effective_status", "closed").order("changed_at", { ascending: false }).limit(ATTENTION_LIMIT), "conversation attention queue") : unavailableRows,
+    canReadAudit ? rowsQuery(admin.from("moderation_audit_events").select("id, event_type, summary, occurred_at").order("occurred_at", { ascending: false }).order("id", { ascending: false }).limit(TIMELINE_LIMIT), "moderation audit timeline") : unavailableRows,
   ]);
 
-  const [reportRows, listingRows, reviewRows, conversationRows, auditRows] = await Promise.all([
-    canReadReports ? rowsQuery(admin.from("reports").select("id, subject_type, reason, created_at").eq("status", "open").order("created_at", { ascending: false }).limit(ATTENTION_LIMIT), "report attention queue") : [],
-    canReadListings ? rowsQuery(admin.from("listings").select("id, title, submitted_for_review_at").eq("status", "inactive").not("submitted_for_review_at", "is", null).order("submitted_for_review_at", { ascending: true, nullsFirst: false }).limit(ATTENTION_LIMIT), "listing attention queue") : [],
-    canReadUsers ? rowsQuery(admin.from("moderation_sanctions").select("id, subject_user_id_snapshot, sanction_type, review_requested_at").eq("review_status", "pending").order("review_requested_at", { ascending: true }).limit(ATTENTION_LIMIT), "review attention queue") : [],
-    canReadConversations ? rowsQuery(admin.from("conversation_effective_moderation_state").select("conversation_id, closed_until, changed_at").eq("effective_status", "closed").order("changed_at", { ascending: false }).limit(ATTENTION_LIMIT), "conversation attention queue") : [],
-    canReadAudit ? rowsQuery(admin.from("moderation_audit_events").select("id, event_type, summary, occurred_at").order("occurred_at", { ascending: false }).order("id", { ascending: false }).limit(TIMELINE_LIMIT), "moderation audit timeline") : [],
-  ]);
+  const attentionUnavailable = [
+    canReadReports && reports,
+    canReadListings && listings,
+    canReadUsers && reviews,
+    canReadConversations && conversations,
+  ].some((queue) => queue && !queue.available);
 
   const attention = [
-    ...reportRows.map((row) => ({ id: `report:${row.id}`, title: row.reason, description: row.subject_type, href: `/admin/reports/${row.id}`, createdAt: row.created_at, kind: t.adminAttentionReport })),
-    ...listingRows.map((row) => ({ id: `listing:${row.id}`, title: row.title ?? t.listing, description: t.adminAttentionListing, href: `/admin/listings/${row.id}`, createdAt: row.submitted_for_review_at, kind: t.adminAttentionListing })),
-    ...reviewRows.map((row) => ({ id: `review:${row.id}`, title: `${row.sanction_type} · ${row.subject_user_id_snapshot}`, description: t.adminAttentionAppeal, href: `/admin/users/${row.subject_user_id_snapshot}`, createdAt: row.review_requested_at, kind: t.adminAttentionAppeal })),
-    ...conversationRows.map((row) => ({ id: `conversation:${row.conversation_id}`, title: t.adminAttentionClosedChat, description: row.closed_until ? t.adminAttentionTemporaryClose : t.adminAttentionIndefiniteClose, href: `/admin/conversations/${row.conversation_id}`, createdAt: row.changed_at, kind: t.adminAttentionClosedChat })),
+    ...reports.rows.map((row) => ({ id: `report:${row.id}`, title: row.reason, description: row.subject_type, href: `/admin/reports/${row.id}`, createdAt: row.created_at, kind: t.adminAttentionReport })),
+    ...listings.rows.map((row) => ({ id: `listing:${row.id}`, title: row.title ?? t.listing, description: t.adminAttentionListing, href: `/admin/listings/${row.id}`, createdAt: row.submitted_for_review_at, kind: t.adminAttentionListing })),
+    ...reviews.rows.map((row) => ({ id: `review:${row.id}`, title: `${row.sanction_type} · ${row.subject_user_id_snapshot}`, description: t.adminAttentionAppeal, href: `/admin/users/${row.subject_user_id_snapshot}`, createdAt: row.review_requested_at, kind: t.adminAttentionAppeal })),
+    ...conversations.rows.map((row) => ({ id: `conversation:${row.conversation_id}`, title: t.adminAttentionClosedChat, description: row.closed_until ? t.adminAttentionTemporaryClose : t.adminAttentionIndefiniteClose, href: `/admin/conversations/${row.conversation_id}`, createdAt: row.changed_at, kind: t.adminAttentionClosedChat })),
   ].sort((a, b) => new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime()).slice(0, 12);
 
   const metrics = [
@@ -122,11 +106,12 @@ export default async function AdminPage() {
           <section className="min-w-0 rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-5" aria-labelledby="attention-title">
             <div className="flex items-center gap-2"><AlertTriangle className="size-5" /><h2 id="attention-title" className="text-lg font-semibold">{t.adminNeedsAttention}</h2></div><p className="mt-1 text-sm text-muted-foreground">{t.adminNeedsAttentionDescription}</p>
             <div className="mt-4 space-y-2">
-              {attention.length ? attention.map((item) => <Link key={item.id} href={item.href} className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-border p-3 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><div className="min-w-0"><p className="truncate text-sm font-medium">{item.title}</p><p className="truncate text-xs text-muted-foreground">{item.description}</p></div><div className="shrink-0 text-right"><Badge variant="outline" className="max-w-28 truncate">{item.kind}</Badge><ClientFormattedDateTime value={item.createdAt} language={language} className="mt-1 block text-[11px] text-muted-foreground" /></div></Link>) : <div className="rounded-2xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">{t.adminNeedsAttentionEmpty}</div>}
+              {attentionUnavailable ? <p role="status" className="rounded-2xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">{attention.length ? t.adminNeedsAttentionPartial : t.adminNeedsAttentionUnavailable}</p> : null}
+              {attention.length ? attention.map((item) => <Link key={item.id} href={item.href} className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-border p-3 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><div className="min-w-0"><p className="truncate text-sm font-medium">{item.title}</p><p className="truncate text-xs text-muted-foreground">{item.description}</p></div><div className="shrink-0 text-right"><Badge variant="outline" className="max-w-28 truncate">{item.kind}</Badge><ClientFormattedDateTime value={item.createdAt} language={language} className="mt-1 block text-[11px] text-muted-foreground" /></div></Link>) : attentionUnavailable ? null : <div className="rounded-2xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">{t.adminNeedsAttentionEmpty}</div>}
             </div>
           </section>
 
-          {canReadAudit ? <section className="min-w-0 rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-5" aria-labelledby="timeline-title"><div className="flex items-center justify-between gap-2"><div className="flex items-center gap-2"><ShieldAlert className="size-5" /><h2 id="timeline-title" className="text-lg font-semibold">{t.adminRecentEnforcement}</h2></div><Button asChild variant="ghost" size="sm"><Link href="/admin/audit">{t.viewAll}</Link></Button></div><div className="mt-4 space-y-3">{auditRows.length ? auditRows.map((event) => <div key={event.id} className="border-l-2 border-border pl-3"><p className="text-sm font-medium">{event.summary}</p><p className="mt-0.5 text-xs text-muted-foreground">{event.event_type} · <ClientFormattedDateTime value={event.occurred_at} language={language} /></p></div>) : <p className="text-sm text-muted-foreground">{t.adminRecentEnforcementEmpty}</p>}</div></section> : null}
+          {canReadAudit ? <section className="min-w-0 rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-5" aria-labelledby="timeline-title"><div className="flex items-center justify-between gap-2"><div className="flex items-center gap-2"><ShieldAlert className="size-5" /><h2 id="timeline-title" className="text-lg font-semibold">{t.adminRecentEnforcement}</h2></div><Button asChild variant="ghost" size="sm"><Link href="/admin/audit">{t.viewAll}</Link></Button></div><div className="mt-4 space-y-3">{!audit.available ? <p role="status" className="text-sm text-muted-foreground">{t.adminRecentEnforcementUnavailable}</p> : audit.rows.length ? audit.rows.map((event) => <div key={event.id} className="border-l-2 border-border pl-3"><p className="text-sm font-medium">{event.summary}</p><p className="mt-0.5 text-xs text-muted-foreground">{event.event_type} · <ClientFormattedDateTime value={event.occurred_at} language={language} /></p></div>) : <p className="text-sm text-muted-foreground">{t.adminRecentEnforcementEmpty}</p>}</div></section> : null}
         </div>
       </div>
     </main>

@@ -1,11 +1,10 @@
-import { cookies } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { AppLayoutShell } from "@/components/app-layout-shell";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { getUserModerationRole } from "@/lib/moderation";
-import { createClient } from "@/utils/supabase/server";
+import { getServerSession } from "@/lib/server-session";
 import { LanguageProvider } from "@/context/LanguageContext";
 import "./globals.css";
 
@@ -30,13 +29,8 @@ export const metadata = {
 };
 
 export default async function RootLayout({ children }) {
-  const cookieStore = await cookies();
+  const { cookieStore, supabase, user } = await getServerSession();
   const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
-
-  const supabase = createClient(cookieStore);
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   let profile = null;
 

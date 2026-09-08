@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { NavUser } from "@/components/nav-user";
 import { SearchSidebarFilters } from "@/components/search-sidebar-filters";
 import { SignOutButton } from "@/components/sign-out-button";
@@ -29,13 +28,6 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
-import {
-  MESSAGE_NOTIFICATION_TYPE,
-  MESSAGE_NOTIFICATION_ROW_TYPES,
-  isNotificationPreferencesTableMissing,
-  normalizeMessageNotificationPreferences,
-  subscribeToNotificationUpdates,
-} from "@/lib/notifications";
 import { isModerationRole } from "@/lib/moderation";
 import {
   ChevronRightIcon,
@@ -52,84 +44,15 @@ import {
   FileTextIcon,
 } from "lucide-react";
 import { getTranslatedCategoryTitle } from "@/lib/categories";
-import { createClient } from "@/utils/supabase/client";
+import { useNotifications } from "@/components/notification-provider";
 
 export function AppSidebar({ user, ...props }) {
-  const supabase = React.useMemo(() => createClient(), []);
   const pathname = usePathname();
-  const userId = user?.id ?? null;
   const categoriesOpen = pathname?.startsWith("/categories/") ?? false;
   const showLoggedInSections = Boolean(user);
   const showModerationItem = isModerationRole(user?.role);
   const { t, language } = useLanguage();
-  const [hasUnreadNotifications, setHasUnreadNotifications] = React.useState(false);
-
-  const fetchUnreadNotifications = React.useCallback(async () => {
-    if (!userId) {
-      setHasUnreadNotifications(false);
-      return;
-    }
-
-    const { data: messageNotificationPreferencesRow, error: messageNotificationPreferencesError } =
-      await supabase
-        .from("notification_preferences")
-        .select("email_enabled, in_app_enabled")
-        .eq("user_id", userId)
-        .eq("notification_type", MESSAGE_NOTIFICATION_TYPE)
-        .maybeSingle();
-
-    if (
-      messageNotificationPreferencesError &&
-      !isNotificationPreferencesTableMissing(messageNotificationPreferencesError)
-    ) {
-      console.error(
-        "Failed to load sidebar notification preferences:",
-        messageNotificationPreferencesError.message,
-      );
-    }
-
-    const messageNotificationPreferences = normalizeMessageNotificationPreferences(
-      messageNotificationPreferencesRow,
-    );
-
-    if (!messageNotificationPreferences.inApp) {
-      setHasUnreadNotifications(false);
-      return;
-    }
-
-    const { count, error } = await supabase
-      .from("notifications")
-      .select("id", { count: "exact", head: true })
-      .in("type", MESSAGE_NOTIFICATION_ROW_TYPES)
-      .is("read_at", null);
-
-    if (error) {
-      console.error("Failed to load sidebar unread notifications count:", error.message);
-      return;
-    }
-
-    setHasUnreadNotifications((count ?? 0) > 0);
-  }, [supabase, userId]);
-
-  React.useEffect(() => {
-    fetchUnreadNotifications();
-  }, [fetchUnreadNotifications]);
-
-  React.useEffect(() => {
-    if (!userId) {
-      return undefined;
-    }
-
-    return subscribeToNotificationUpdates({
-      supabase,
-      userId,
-      channelName: `sidebar-notifications-${userId}`,
-      notificationPreferenceTypes: [MESSAGE_NOTIFICATION_TYPE],
-      onChange: () => {
-        fetchUnreadNotifications();
-      },
-    });
-  }, [fetchUnreadNotifications, supabase, userId]);
+  const { hasUnreadMessages: hasUnreadNotifications } = useNotifications();
 
   function renderMenuItemContent(item) {
     return (

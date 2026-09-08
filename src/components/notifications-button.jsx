@@ -14,17 +14,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/context/LanguageContext";
 import {
   MESSAGE_NOTIFICATION_ROW_TYPES,
-  NOTIFICATION_WITH_MESSAGE_SELECT,
-  buildNotificationPreferencesMap,
   getEnabledNotificationRowTypes,
   groupNotificationsByConversation,
   isEnforcementNotificationType,
-  isNotificationPreferencesTableMissing,
   isMessageNotificationType,
   normalizeGroupedNotificationRow,
-  subscribeToNotificationUpdates,
-  NOTIFICATION_PREFERENCE_TYPES,
 } from "@/lib/notifications";
+import { useNotifications } from "@/components/notification-provider";
 import { createClient } from "@/utils/supabase/client";
 
 export function NotificationsButton({ user, enabled = true }) {
@@ -32,131 +28,27 @@ export function NotificationsButton({ user, enabled = true }) {
   const supabase = React.useMemo(() => createClient(), []);
   const { t, language } = useLanguage();
   const [isOpen, setIsOpen] = React.useState(false);
-  const [isLoading, setIsLoading] = React.useState(false);
   const [isMarkingAllRead, setIsMarkingAllRead] = React.useState(false);
   const [dismissingNotificationKey, setDismissingNotificationKey] = React.useState(null);
-  const [notifications, setNotifications] = React.useState([]);
-  const [unreadCount, setUnreadCount] = React.useState(0);
-  const [notificationPreferences, setNotificationPreferences] = React.useState(
-    buildNotificationPreferencesMap(),
-  );
+  const {
+    preferences: notificationPreferences,
+    unreadCount,
+    rows,
+    previewLoaded,
+    previewError,
+    isLoading,
+    feed,
+  } = useNotifications();
   const headerActionButtonClassName = "rounded-lg px-2 text-xs";
-
   const hasAnyInAppNotificationsEnabled =
     getEnabledNotificationRowTypes(notificationPreferences).length > 0;
-
-  const fetchNotifications = React.useCallback(async () => {
-    if (!enabled || !user?.id) {
-      return;
-    }
-
-    setIsLoading(true);
-
-    const { data: notificationPreferenceRows, error: notificationPreferencesError } =
-      await supabase
-        .from("notification_preferences")
-        .select("notification_type, email_enabled, in_app_enabled")
-        .eq("user_id", user.id)
-        .in("notification_type", NOTIFICATION_PREFERENCE_TYPES);
-
-    if (
-      notificationPreferencesError &&
-      !isNotificationPreferencesTableMissing(notificationPreferencesError)
-    ) {
-      console.error("Failed to load notification preferences:", notificationPreferencesError.message);
-    }
-
-    const normalizedNotificationPreferences = buildNotificationPreferencesMap(
-      notificationPreferenceRows,
-    );
-    const enabledNotificationRowTypes = getEnabledNotificationRowTypes(
-      normalizedNotificationPreferences,
-    );
-
-    setNotificationPreferences(normalizedNotificationPreferences);
-
-    if (enabledNotificationRowTypes.length === 0) {
-      setNotifications([]);
-      setUnreadCount(0);
-      setIsLoading(false);
-      return;
-    }
-
-    const [notificationsResult, unreadCountResult] = await Promise.all([
-      supabase
-        .from("notifications")
-        .select(NOTIFICATION_WITH_MESSAGE_SELECT)
-        .eq("user_id", user.id)
-        .in("type", enabledNotificationRowTypes)
-        .is("dismissed_at", null)
-        .is("read_at", null)
-        .order("created_at", { ascending: false })
-        .limit(24),
-      supabase
-        .from("notifications")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .in("type", enabledNotificationRowTypes)
-        .is("dismissed_at", null)
-        .is("read_at", null),
-    ]);
-
-    if (notificationsResult.error) {
-      console.error("Failed to load notifications:", notificationsResult.error.message);
-      setIsLoading(false);
-      return;
-    }
-
-    if (unreadCountResult.error) {
-      console.error("Failed to load unread notifications count:", unreadCountResult.error.message);
-    }
-
-    const normalizedNotifications = groupNotificationsByConversation(
-      (notificationsResult.data ?? []).map((notification) =>
-        normalizeGroupedNotificationRow(notification, user.id, t, language),
-      ),
-    ).slice(0, 8);
-
-    setNotifications(normalizedNotifications);
-    setUnreadCount(unreadCountResult.count ?? 0);
-    setIsLoading(false);
-  }, [enabled, language, supabase, t, user]);
+  const notifications = React.useMemo(() => !enabled ? [] : groupNotificationsByConversation(
+    rows.map((row) => normalizeGroupedNotificationRow(row, user?.id, t, language)),
+  ).slice(0, 8), [enabled, language, rows, t, user?.id]);
 
   React.useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
-
-  React.useEffect(() => {
-    if (enabled && isOpen) {
-      fetchNotifications();
-    }
-  }, [enabled, fetchNotifications, isOpen]);
-
-  React.useEffect(() => {
-    if (!enabled || !user?.id) {
-      return undefined;
-    }
-
-    return subscribeToNotificationUpdates({
-      supabase,
-      userId: user.id,
-      channelName: `notifications-button-${user.id}`,
-      onChange: () => {
-        fetchNotifications();
-      },
-    });
-  }, [enabled, fetchNotifications, supabase, user?.id]);
-
-  function removeNotificationFromState(notification) {
-    setNotifications((currentNotifications) =>
-      currentNotifications.filter(
-        (currentNotification) => currentNotification.groupKey !== notification.groupKey,
-      ),
-    );
-    setUnreadCount((currentUnreadCount) =>
-      Math.max(0, currentUnreadCount - notification.unreadCount),
-    );
-  }
+    if (enabled && isOpen && user?.id) return feed.retainPreview();
+  }, [enabled, feed, isOpen, user?.id]);
 
   async function deleteNotificationGroup(notification) {
     if (!notification || dismissingNotificationKey === notification.groupKey) {
@@ -167,15 +59,35 @@ export function NotificationsButton({ user, enabled = true }) {
 
     if (isEnforcementNotificationType(notification.type)) {
       const lifecycleTimestamp = new Date().toISOString();
-      const { error } = await supabase
-        .from("notifications")
-        .update({
-          read_at: lifecycleTimestamp,
-          dismissed_at: lifecycleTimestamp,
-        })
-        .eq("user_id", user.id)
-        .eq("id", notification.id)
-        .is("dismissed_at", null);
+      const { error } = await feed.removeNotification(
+        notification,
+        async () => {
+          const result = await supabase
+            .from("notifications")
+            .update({
+              read_at: lifecycleTimestamp,
+              dismissed_at: lifecycleTimestamp,
+            })
+            .eq("user_id", user.id)
+            .eq("id", notification.id)
+            .is("read_at", null)
+            .is("dismissed_at", null)
+            .select("id,type");
+          if (result.error || result.data?.length) return result;
+
+          // Another tab may have read this notice since the preview loaded.
+          // Persist its dismissal without counting a second unread transition.
+          const dismissal = await supabase
+            .from("notifications")
+            .update({ dismissed_at: lifecycleTimestamp })
+            .eq("user_id", user.id)
+            .eq("id", notification.id)
+            .not("read_at", "is", null)
+            .is("dismissed_at", null);
+          return { ...dismissal, data: [] };
+        },
+        { markRead: true },
+      );
 
       setDismissingNotificationKey(null);
 
@@ -185,7 +97,6 @@ export function NotificationsButton({ user, enabled = true }) {
         return false;
       }
 
-      removeNotificationFromState(notification);
       return true;
     }
 
@@ -198,7 +109,10 @@ export function NotificationsButton({ user, enabled = true }) {
           .eq("conversation_id", notification.conversationId)
       : query.eq("user_id", user.id).eq("id", notification.id);
 
-    const { error } = await query;
+    const { error } = await feed.removeNotification(
+      notification,
+      query.select("id,type,read_at,dismissed_at"),
+    );
 
     setDismissingNotificationKey(null);
 
@@ -208,7 +122,6 @@ export function NotificationsButton({ user, enabled = true }) {
       return false;
     }
 
-    removeNotificationFromState(notification);
     return true;
   }
 
@@ -220,17 +133,21 @@ export function NotificationsButton({ user, enabled = true }) {
     }
 
     if (isEnforcementNotificationType(notification.type)) {
-      const { error } = await supabase
-        .from("notifications")
-        .update({ read_at: new Date().toISOString() })
-        .eq("user_id", user.id)
-        .eq("id", notification.id)
-        .is("read_at", null);
+      const { error } = await feed.removeNotification(
+        notification,
+        supabase
+          .from("notifications")
+          .update({ read_at: new Date().toISOString() })
+          .eq("user_id", user.id)
+          .eq("id", notification.id)
+          .is("read_at", null)
+          .is("dismissed_at", null)
+          .select("id,type"),
+        { markRead: true },
+      );
 
       if (error) {
         console.error("Failed to mark enforcement notification read:", error.message);
-      } else {
-        removeNotificationFromState(notification);
       }
     } else {
       await deleteNotificationGroup(notification);
@@ -261,12 +178,14 @@ export function NotificationsButton({ user, enabled = true }) {
       return;
     }
 
-    const { error } = await supabase
-      .from("notifications")
-      .update({ read_at: readAt })
-      .eq("user_id", user.id)
-      .in("type", enabledNotificationRowTypes)
-      .is("read_at", null);
+    const { error } = await feed.markAllRead(
+      supabase
+        .from("notifications")
+        .update({ read_at: readAt })
+        .eq("user_id", user.id)
+        .in("type", enabledNotificationRowTypes)
+        .is("read_at", null),
+    );
 
     setIsMarkingAllRead(false);
 
@@ -274,14 +193,6 @@ export function NotificationsButton({ user, enabled = true }) {
       console.error("Failed to mark all notifications read:", error.message);
       return;
     }
-
-    setNotifications((currentNotifications) =>
-      currentNotifications.map((notification) => ({
-        ...notification,
-        readAt: notification.readAt ?? readAt,
-      })),
-    );
-    setUnreadCount(0);
   }
 
   if (!user) {
@@ -335,7 +246,7 @@ export function NotificationsButton({ user, enabled = true }) {
               <Link href="/dashboard/settings">{t.settings}</Link>
             </Button>
           </div>
-        ) : isLoading ? (
+        ) : isLoading || !previewLoaded ? (
           <div role="status" aria-live="polite" className="space-y-3 px-3 py-3">
             <span className="sr-only">{t.loadingNotifications}</span>
             <div aria-hidden="true" className="space-y-3">
@@ -349,6 +260,13 @@ export function NotificationsButton({ user, enabled = true }) {
                 </div>
               ))}
             </div>
+          </div>
+        ) : previewError ? (
+          <div role="alert" className="px-3 py-8 text-center">
+            <p className="text-sm text-muted-foreground">{t.notificationsLoadError}</p>
+            <Button variant="outline" size="sm" className="mt-3" onClick={() => feed.refresh()}>
+              {t.retry}
+            </Button>
           </div>
         ) : notifications.length > 0 ? (
           notifications.map((notification) => (

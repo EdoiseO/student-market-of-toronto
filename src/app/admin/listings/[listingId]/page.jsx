@@ -1,7 +1,6 @@
 import { getAdminQueueReturnHref } from "@/lib/admin-queue-navigation.mjs";
 import { MODERATION_ACTIONS, canPerformModerationAction } from "@/lib/moderation-policy.mjs";
 import { ArrowLeft, ClipboardCheck } from "lucide-react";
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -10,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { getModerationDisplayName, getUserModerationRole, isModerationRole } from "@/lib/moderation";
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { translations } from "@/lib/translations";
-import { createClient } from "@/utils/supabase/server";
+import { getServerSession } from "@/lib/server-session";
 
 const LISTING_IMAGE_LIMIT = 10;
 
@@ -23,16 +22,11 @@ function getPrimaryListingImageUrl(listingImages) {
 export default async function AdminListingApprovalReviewPage({ params, searchParams }) {
   const resolvedParams = await params;
   const returnHref = getAdminQueueReturnHref((await searchParams)?.returnTo, "/admin/listings");
-  const cookieStore = await cookies();
+  const { cookieStore, supabase, user } = await getServerSession();
   const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
   const t = translations[language] || translations.en;
-  const supabase = createClient(cookieStore);
   const admin = createAdminClient();
   const dataClient = admin ?? supabase;
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   if (!user) {
     redirect("/login");

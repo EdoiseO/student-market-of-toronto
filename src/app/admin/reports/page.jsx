@@ -8,7 +8,7 @@ import { MODERATION_ACTIONS } from "@/lib/moderation-policy.mjs";
 const PAGE_SIZE = 25;
 
 export default async function AdminReportsPage({ searchParams }) {
-  const { admin, language, t } = await requireAdminPageAction(MODERATION_ACTIONS.readReports, "admin report registry");
+  const { admin, language, t } = await requireAdminPageAction(MODERATION_ACTIONS.readReports);
   const params = await searchParams;
   const page = Math.max(1, Number.parseInt(params?.page, 10) || 1);
   const status = Object.values(REPORT_STATUS_VALUES).includes(params?.status) ? params.status : "open";
