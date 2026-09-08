@@ -22,7 +22,7 @@ Set optional `publicListingPath` to the same approved synthetic listing's `/list
 
 If that public fixture contains a Google Maps embed, optional `suppressedMapEmbedUrl` may name its **exact observed** `https://www.google.com/maps?q=<encoded synthetic campus>&z=15&output=embed` URL. Only a matching GET document navigation in a direct child frame of the configured public listing page is replaced with empty HTML. Main-frame navigation, other methods/resources, changed queries, fragments and additional parameters retain the default rejection. Google is not added to `allowedOrigins`. The receipt counts `suppressedMapEmbedRequests` and marks Maps and its interactions not covered; this exclusion supports gallery verification only.
 
-Check `command -v npx` and use the existing installed CLI path (the current task has one at `/Users/edoise/.npm/_npx/31e32ef8478fbf80/node_modules/@playwright/cli/playwright-cli.js`). Keep all CLI commands in the same private working directory; session discovery depends on it. The example assumes `QA_CLI`, `QA_REPO` and `QA_OUTPUT` are absolute paths and `QA_SESSION` is a fresh `smt-demo-qa-*` name:
+Set `QA_CLI` to the entry point of the installed `@playwright/cli` package in your environment. Keep all CLI commands in the same private working directory; session discovery depends on it. The example assumes `QA_CLI`, `QA_REPO` and `QA_OUTPUT` are absolute paths and `QA_SESSION` is a fresh `smt-demo-qa-*` name:
 
 ```sh
 node "$QA_CLI" -s="$QA_SESSION" open http://localhost:3220/login
