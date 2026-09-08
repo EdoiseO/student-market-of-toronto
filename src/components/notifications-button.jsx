@@ -59,15 +59,35 @@ export function NotificationsButton({ user, enabled = true }) {
 
     if (isEnforcementNotificationType(notification.type)) {
       const lifecycleTimestamp = new Date().toISOString();
-      const { error } = await supabase
-        .from("notifications")
-        .update({
-          read_at: lifecycleTimestamp,
-          dismissed_at: lifecycleTimestamp,
-        })
-        .eq("user_id", user.id)
-        .eq("id", notification.id)
-        .is("dismissed_at", null);
+      const { error } = await feed.removeNotification(
+        notification,
+        async () => {
+          const result = await supabase
+            .from("notifications")
+            .update({
+              read_at: lifecycleTimestamp,
+              dismissed_at: lifecycleTimestamp,
+            })
+            .eq("user_id", user.id)
+            .eq("id", notification.id)
+            .is("read_at", null)
+            .is("dismissed_at", null)
+            .select("id,type");
+          if (result.error || result.data?.length) return result;
+
+          // Another tab may have read this notice since the preview loaded.
+          // Persist its dismissal without counting a second unread transition.
+          const dismissal = await supabase
+            .from("notifications")
+            .update({ dismissed_at: lifecycleTimestamp })
+            .eq("user_id", user.id)
+            .eq("id", notification.id)
+            .not("read_at", "is", null)
+            .is("dismissed_at", null);
+          return { ...dismissal, data: [] };
+        },
+        { markRead: true },
+      );
 
       setDismissingNotificationKey(null);
 
@@ -77,7 +97,6 @@ export function NotificationsButton({ user, enabled = true }) {
         return false;
       }
 
-      feed.removeNotification(notification);
       return true;
     }
 
@@ -90,7 +109,10 @@ export function NotificationsButton({ user, enabled = true }) {
           .eq("conversation_id", notification.conversationId)
       : query.eq("user_id", user.id).eq("id", notification.id);
 
-    const { error } = await query;
+    const { error } = await feed.removeNotification(
+      notification,
+      query.select("id,type,read_at,dismissed_at"),
+    );
 
     setDismissingNotificationKey(null);
 
@@ -100,7 +122,6 @@ export function NotificationsButton({ user, enabled = true }) {
       return false;
     }
 
-    feed.removeNotification(notification);
     return true;
   }
 
@@ -112,17 +133,21 @@ export function NotificationsButton({ user, enabled = true }) {
     }
 
     if (isEnforcementNotificationType(notification.type)) {
-      const { error } = await supabase
-        .from("notifications")
-        .update({ read_at: new Date().toISOString() })
-        .eq("user_id", user.id)
-        .eq("id", notification.id)
-        .is("read_at", null);
+      const { error } = await feed.removeNotification(
+        notification,
+        supabase
+          .from("notifications")
+          .update({ read_at: new Date().toISOString() })
+          .eq("user_id", user.id)
+          .eq("id", notification.id)
+          .is("read_at", null)
+          .is("dismissed_at", null)
+          .select("id,type"),
+        { markRead: true },
+      );
 
       if (error) {
         console.error("Failed to mark enforcement notification read:", error.message);
-      } else {
-        feed.removeNotification(notification);
       }
     } else {
       await deleteNotificationGroup(notification);
@@ -153,12 +178,14 @@ export function NotificationsButton({ user, enabled = true }) {
       return;
     }
 
-    const { error } = await supabase
-      .from("notifications")
-      .update({ read_at: readAt })
-      .eq("user_id", user.id)
-      .in("type", enabledNotificationRowTypes)
-      .is("read_at", null);
+    const { error } = await feed.markAllRead(
+      supabase
+        .from("notifications")
+        .update({ read_at: readAt })
+        .eq("user_id", user.id)
+        .in("type", enabledNotificationRowTypes)
+        .is("read_at", null),
+    );
 
     setIsMarkingAllRead(false);
 
@@ -166,8 +193,6 @@ export function NotificationsButton({ user, enabled = true }) {
       console.error("Failed to mark all notifications read:", error.message);
       return;
     }
-
-    feed.markAllRead();
   }
 
   if (!user) {

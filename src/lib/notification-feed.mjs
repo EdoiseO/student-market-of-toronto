@@ -14,6 +14,7 @@ function emptySnapshot() {
   return {
     preferences: buildNotificationPreferencesMap(),
     unreadCount: 0,
+    unreadMessageCount: 0,
     hasUnreadMessages: false,
     rows: [],
     previewLoaded: false,
@@ -31,6 +32,7 @@ export function createNotificationFeed({ supabase, userId, onError = console.err
   let revision = 0;
   let inFlight = null;
   let pendingRefresh = false;
+  let pendingMutations = 0;
   let refreshTimer = null;
   let previewConsumers = 0;
   let removeRealtime = () => {};
@@ -83,7 +85,10 @@ export function createNotificationFeed({ supabase, userId, onError = console.err
     if (unread.error) onError("Failed to load unread notification count:", unread.error);
     else patch.unreadCount = unread.count ?? 0;
     if (messages.error) onError("Failed to load unread message count:", messages.error);
-    else patch.hasUnreadMessages = (messages.count ?? 0) > 0;
+    else {
+      patch.unreadMessageCount = messages.count ?? 0;
+      patch.hasUnreadMessages = patch.unreadMessageCount > 0;
+    }
     if (preview) {
       patch.previewLoaded = true;
       patch.previewError = Boolean(preview.error);
@@ -95,6 +100,10 @@ export function createNotificationFeed({ supabase, userId, onError = console.err
 
   function refresh({ invalidate = false } = {}) {
     if (!active) return Promise.resolve();
+    if (pendingMutations > 0) {
+      pendingRefresh = true;
+      return inFlight ?? Promise.resolve();
+    }
     if (inFlight) {
       pendingRefresh ||= invalidate;
       return inFlight;
@@ -119,12 +128,12 @@ export function createNotificationFeed({ supabase, userId, onError = console.err
             if (includePreview) publish({ previewLoaded: true, previewError: true });
           }
         }
-      } while (isCurrent() && pendingRefresh);
+      } while (isCurrent() && pendingRefresh && pendingMutations === 0);
     })().finally(() => {
       if (isCurrent()) {
         inFlight = null;
         // An invalidation can arrive after the loop exits but before this callback.
-        if (pendingRefresh) return refresh();
+        if (pendingRefresh && pendingMutations === 0) return refresh();
         publish({ isLoading: false });
       }
     });
@@ -144,11 +153,32 @@ export function createNotificationFeed({ supabase, userId, onError = console.err
     }
   }
 
+  async function mutate(write, onSuccess) {
+    if (!active) return { error: new Error("Notification account is no longer active.") };
+    const mutationGeneration = generation;
+    const isCurrent = () => active && generation === mutationGeneration;
+    // Hold the count snapshot until the write's confirmed delta is applied. A
+    // Realtime refresh must not publish that delta first and subtract it twice.
+    pendingMutations += 1;
+    invalidate();
+    try {
+      const result = await (typeof write === "function" ? write() : write);
+      if (isCurrent() && !result.error) onSuccess(result);
+      return result;
+    } finally {
+      if (isCurrent()) {
+        pendingMutations -= 1;
+        invalidate();
+      }
+    }
+  }
+
   function stop() {
     active = false;
     generation += 1;
     inFlight = null;
     pendingRefresh = false;
+    pendingMutations = 0;
     clearTimeout(refreshTimer);
     refreshTimer = null;
     removeRealtime();
@@ -185,21 +215,40 @@ export function createNotificationFeed({ supabase, userId, onError = console.err
       void refresh({ invalidate: true });
       return () => { previewConsumers -= 1; };
     },
-    removeNotification(notification) {
-      if (!active) return;
-      invalidate();
-      publish({
-        rows: snapshot.rows.filter((row) => (
-          notification.conversationId && isMessageNotificationType(notification.type)
-            ? row.conversation_id !== notification.conversationId || !isMessageNotificationType(row.type)
-            : row.id !== notification.id
-        )),
+    removeNotification(notification, write, { markRead = false } = {}) {
+      return mutate(write, ({ data }) => {
+        const enabledTypes = getEnabledNotificationRowTypes(snapshot.preferences);
+        // DELETE returns the original lifecycle fields, including rows beyond
+        // the bounded preview. UPDATE callers target unread, undismissed rows.
+        const affectedRows = data ?? [];
+        let removedUnread = 0;
+        let removedMessages = 0;
+        for (const row of affectedRows) {
+          if (!markRead && row.read_at !== null) continue;
+          if ((markRead || row.dismissed_at === null) && enabledTypes.includes(row.type)) {
+            removedUnread += 1;
+          }
+          if (snapshot.preferences[MESSAGE_NOTIFICATION_TYPE].inApp && isMessageNotificationType(row.type)) {
+            removedMessages += 1;
+          }
+        }
+        const unreadMessageCount = Math.max(0, snapshot.unreadMessageCount - removedMessages);
+        publish({
+          rows: snapshot.rows.filter((row) => (
+            notification.conversationId && isMessageNotificationType(notification.type)
+              ? row.conversation_id !== notification.conversationId || !isMessageNotificationType(row.type)
+              : row.id !== notification.id
+          )),
+          unreadCount: Math.max(0, snapshot.unreadCount - removedUnread),
+          unreadMessageCount,
+          hasUnreadMessages: unreadMessageCount > 0,
+        });
       });
     },
-    markAllRead() {
-      if (!active) return;
-      invalidate();
-      publish({ rows: [], unreadCount: 0, hasUnreadMessages: false });
+    markAllRead(write) {
+      return mutate(write, () => {
+        publish({ rows: [], unreadCount: 0, unreadMessageCount: 0, hasUnreadMessages: false });
+      });
     },
     refresh,
     invalidate,
