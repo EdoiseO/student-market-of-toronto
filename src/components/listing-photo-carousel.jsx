@@ -262,6 +262,9 @@ export function ListingPhotoCarousel({ photos, title }) {
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-[100] bg-black/95 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <DialogPrimitive.Content
+          // Fullscreen viewers close through their explicit controls or Escape,
+          // not off-viewport pointer events from indirect input.
+          onPointerDownOutside={(event) => event.preventDefault()}
           aria-describedby={undefined}
           className="fixed inset-0 z-[101] flex h-[100dvh] w-screen flex-col overflow-hidden bg-black text-white outline-none"
           onKeyDown={handleViewerKeyDown}

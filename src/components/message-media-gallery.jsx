@@ -484,6 +484,9 @@ export function MessageMediaGallery({ attachments, preview = "grid", label, open
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-[100] bg-black/95 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <DialogPrimitive.Content
+          // Fullscreen viewers have no outside backdrop target. Keep indirect
+          // off-viewport pointer events from dismissing them before a control click.
+          onPointerDownOutside={(event) => event.preventDefault()}
           onCloseAutoFocus={(event) => { event.preventDefault(); openingButtonRef.current?.focus(); }}
           aria-describedby={undefined}
           className="fixed inset-0 z-[101] flex h-[100dvh] w-screen flex-col overflow-hidden bg-black text-white outline-none"

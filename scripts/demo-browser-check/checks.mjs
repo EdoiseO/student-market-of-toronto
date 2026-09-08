@@ -8,6 +8,9 @@ export async function checkDemoBrowser(page, config, labels) {
     pageErrorDetails: [],
     blockedMutations: 0, blockedOrigins: 0, directPrivateRequests: 0,
     mockedRecoveryRequests: 0, suppressedDeploymentToolbarRequests: 0,
+    suppressedMapEmbedRequests: 0,
+    injectedOutsidePointerChecks: 0,
+    injectedOutsidePointerAttempts: [],
   };
   const require = (condition, code) => { if (!condition) throw new Error(`CHECK:${code}`); };
   // The CLI executes this function in a VM without Node's URL global. Requests
@@ -60,6 +63,15 @@ export async function checkDemoBrowser(page, config, labels) {
         url === "https://vercel.live/_next-live/feedback/feedback.js") {
       report.suppressedDeploymentToolbarRequests++;
       return route.fulfill({ status: 200, contentType: "application/javascript", body: "" });
+    }
+    // Optional gallery-only exclusion: one reviewed synthetic listing iframe.
+    // Never allow Google's origin, main-frame navigation, or map subresources.
+    if (config.suppressedMapEmbedUrl && url === config.suppressedMapEmbedUrl &&
+        page.url() === config.origin + config.publicListingPath && request.method() === "GET" &&
+        request.resourceType() === "document" && request.isNavigationRequest() &&
+        request.frame() !== page.mainFrame() && request.frame().parentFrame() === page.mainFrame()) {
+      report.suppressedMapEmbedRequests++;
+      return route.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><title>Map excluded from gallery verification</title>" });
     }
     const origin = config.allowedOrigins.find((allowed) => belongsTo(url, allowed));
     const path = origin ? pathname(url, origin) : "";
@@ -141,7 +153,9 @@ export async function checkDemoBrowser(page, config, labels) {
     } finally { await element?.dispose(); }
   };
   let phase = "setup";
-  const imageDialog = async (opening, t, privateImage, screenshotName, width) => {
+  const imageDialog = async (opening, t, privateImage, screenshotName, width, options = {}) => {
+    const zoomable = options.zoomable !== false;
+    const restoreFocus = options.restoreFocus !== false;
     phase = "thumbnail-readiness";
     await opening.waitFor({ state: "visible", timeout: 15000 });
     await opening.scrollIntoViewIfNeeded();
@@ -162,14 +176,46 @@ export async function checkDemoBrowser(page, config, labels) {
     phase = "dialog-image-load";
     await loaded(image);
     if (privateImage) gateway(await image.getAttribute("src"));
-    const reset = dialog.getByRole("button", { name: t.resetImageZoom, exact: true });
-    phase = "dialog-zoom";
-    const before = parseInt(await reset.innerText(), 10);
-    await dialog.getByRole("button", { name: t.zoomImageIn, exact: true }).click();
-    require(parseInt(await reset.innerText(), 10) > before, "ZOOM_DID_NOT_INCREASE");
-    await measure();
-    await reset.click();
-    require(parseInt(await reset.innerText(), 10) === before, "ZOOM_DID_NOT_RESET");
+    // Model the observed iPhone Mirroring sentinel without claiming native input:
+    // dispatch on html, outside the fullscreen content, then use a real control.
+    // Require Radix's actual outside hook to run so missing listeners cannot pass.
+    phase = "dialog-injected-outside-pointer";
+    // The installed Radix listener is registered by an effect plus a zero-delay
+    // task. Let the opening render paint before the one injected pointer; cached
+    // images can otherwise complete before that listener exists.
+    await dialog.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const injected = await dialog.evaluate((element) => new Promise((resolve) => {
+      const pointer = new PointerEvent("pointerdown", {
+        bubbles: true, composed: true, cancelable: true,
+        pointerType: "mouse", isPrimary: true, button: 0, buttons: 1, clientX: -1, clientY: -1,
+      });
+      let outside;
+      const observe = (event) => { if (event.detail?.originalEvent === pointer) outside = event; };
+      document.documentElement.addEventListener("dismissableLayer.pointerDownOutside", observe);
+      document.documentElement.dispatchEvent(pointer);
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        document.documentElement.removeEventListener("dismissableLayer.pointerDownOutside", observe);
+        resolve({
+          isTrusted: pointer.isTrusted, outsideObserved: Boolean(outside),
+          outsidePrevented: outside?.defaultPrevented === true,
+          sameDialogOpen: element.isConnected && element.getAttribute("data-state") === "open" && element.getBoundingClientRect().height > 0,
+        });
+      }));
+    }));
+    report.injectedOutsidePointerAttempts.push({ surface: screenshotName, width, ...injected });
+    require(injected.isTrusted === false && injected.outsideObserved, "INJECTED_OUTSIDE_POINTER_NOT_EXERCISED");
+    require(injected.outsidePrevented && injected.sameDialogOpen, "FULLSCREEN_DISMISSED_BY_OUTSIDE_POINTER");
+    report.injectedOutsidePointerChecks++;
+    if (zoomable) {
+      const reset = dialog.getByRole("button", { name: t.resetImageZoom, exact: true });
+      phase = "dialog-zoom-after-injected-pointer";
+      require(parseInt(await reset.innerText(), 10) === 100, "INITIAL_ZOOM_NOT_RESET");
+      await dialog.getByRole("button", { name: t.zoomImageIn, exact: true }).click();
+      require(parseInt(await reset.innerText(), 10) === 150, "ZOOM_DID_NOT_REACH_150");
+      await measure();
+      await reset.click();
+      require(parseInt(await reset.innerText(), 10) === 100, "ZOOM_DID_NOT_RESET");
+    }
     // Exercise Radix's actual keyboard containment and close-focus restoration.
     phase = "dialog-focus-containment";
     for (let step = 0; step < 10; step++) {
@@ -180,16 +226,25 @@ export async function checkDemoBrowser(page, config, labels) {
     require(await dialog.evaluate((element) => element.contains(document.activeElement)), "REVERSE_FOCUS_ESCAPED_DIALOG");
     await measure();
     await capture(screenshotName, width);
+    const closed = async () => {
+      await dialog.waitFor({ state: "hidden" });
+      if (!restoreFocus) return;
+      // Radix restores focus after the closing transition. Require the opener.
+      const opener = await opening.elementHandle();
+      try {
+        await page.waitForFunction((element) => element === document.activeElement, opener, { timeout: 2000 });
+      } finally { await opener?.dispose(); }
+      require(await opening.evaluate((element) => element === document.activeElement), "FOCUS_NOT_RESTORED");
+    };
+    phase = "dialog-explicit-close-focus";
+    await dialog.getByRole("button", { name: options.closeLabel || t.closeSharedMedia, exact: true }).click();
+    await closed();
+    await opening.focus();
+    await page.keyboard.press("Enter");
+    await dialog.waitFor({ state: "visible" });
+    phase = "dialog-escape-close-focus";
     await page.keyboard.press("Escape");
-    phase = "dialog-close-focus";
-    await dialog.waitFor({ state: "hidden" });
-    // Radix restores focus after the closing transition, which can complete
-    // just after the content becomes hidden. Require the actual opener.
-    const opener = await opening.elementHandle();
-    try {
-      await page.waitForFunction((element) => element === document.activeElement, opener, { timeout: 2000 });
-    } finally { await opener?.dispose(); }
-    require(await opening.evaluate((element) => element === document.activeElement), "FOCUS_NOT_RESTORED");
+    await closed();
   };
   try {
     for (const language of ["en", "fr"]) {
@@ -219,10 +274,19 @@ export async function checkDemoBrowser(page, config, labels) {
               await navigate(config.listingPath);
               const opening = page.getByRole("button", { name: new RegExp(`^${t.adminListingOpenPhoto}:`) }).first();
               await imageDialog(opening, t, false, `${language}-listing-viewer`, width);
+              item.injectedOutsidePointer = "synthetic mouse/html/-1,-1; shared viewer remains open and actual zoom reaches 150%";
+              if (config.publicListingPath) {
+                await navigate(config.publicListingPath);
+                const publicOpening = page.getByRole("button", { name: /^View .+ photo 1 full size$/ }).first();
+                await imageDialog(publicOpening, t, false, `${language}-public-listing-viewer`, width,
+                  { zoomable: false, closeLabel: "Close full image", restoreFocus: false });
+                item.publicListingViewer = "injected outside pointer rejected; explicit Close, Escape and focus containment passed; no app zoom control";
+              }
             } else {
               await navigate(config.conversationPath);
               const opening = page.getByRole("button", { name: `${t.openAttachment}: ${config.privateImageName}`, exact: true });
               await imageDialog(opening, t, true, `${language}-private-viewer`, width);
+              item.injectedOutsidePointer = "synthetic mouse/html/-1,-1; private viewer remains open and actual zoom reaches 150%";
               phase = "video-metadata";
               const video = page.getByLabel(config.privateVideoName, { exact: true });
               await video.waitFor({ state: "visible", timeout: 15000 });
@@ -278,5 +342,8 @@ export async function checkDemoBrowser(page, config, labels) {
     !report.blockedMutations && !report.directPrivateRequests ? "PASS" : "FAIL";
   report.notCovered = ["real iOS/Android devices", "screen-reader speech and touch gestures",
     "delivered recovery email, hosted password changes or session revocation", "retained-token demotion/cache retirement", "Realtime authorization"];
+  if (!config.publicListingPath) report.notCovered.push("public ListingPhotoCarousel outside-pointer policy (no publicListingPath supplied)");
+  else report.notCovered.push("public ListingPhotoCarousel opener focus restoration; it has no existing restoration contract in this harness");
+  if (config.suppressedMapEmbedUrl) report.notCovered.push("Google Maps iframe and map interactions (exact configured embed replaced locally)");
   return report;
 }

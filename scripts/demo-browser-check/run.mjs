@@ -25,6 +25,15 @@ for (const [key, route] of [["listingPath", "listings"], ["conversationPath", "c
 for (const key of ["privateImageName", "privateVideoName"]) {
   if (typeof config[key] !== "string" || !config[key] || /[\r\n]/.test(config[key])) throw new Error(`Missing synthetic ${key}.`);
 }
+if (config.publicListingPath !== undefined && !/^\/listings\/[a-z0-9][a-z0-9-]*$/i.test(config.publicListingPath)) throw new Error("publicListingPath must name the approved synthetic listing slug without query parameters.");
+if (config.suppressedMapEmbedUrl !== undefined) {
+  const map = new URL(config.suppressedMapEmbedUrl);
+  const location = map.searchParams.get("q");
+  if (!config.publicListingPath || !location || location.length > 160 ||
+      config.suppressedMapEmbedUrl !== `https://www.google.com/maps?q=${encodeURIComponent(location)}&z=15&output=embed`) {
+    throw new Error("suppressedMapEmbedUrl must be the exact observed synthetic Google Maps iframe URL; additional parameters and fragments are forbidden.");
+  }
+}
 if (config.deploymentId !== undefined && !/^dpl_[A-Za-z0-9]+$/.test(config.deploymentId)) throw new Error("Use the exact observed public Next deployment ID, without URL parameters.");
 if (config.suppressVercelToolbar !== undefined && typeof config.suppressVercelToolbar !== "boolean") throw new Error("suppressVercelToolbar must be a boolean.");
 if (!Array.isArray(config.allowedOrigins) || !config.allowedOrigins.includes(config.origin) || config.allowedOrigins.some((value) => {
@@ -33,7 +42,7 @@ if (!Array.isArray(config.allowedOrigins) || !config.allowedOrigins.includes(con
 })) throw new Error("Use exact reviewed staging/public-fixture origins; production Supabase is forbidden.");
 await mkdir(output, { recursive: true, mode: 0o700 });
 const labelKeys = ["recoveryDemoNoticeTitle", "recoveryDemoNotice", "sendResetLink", "checkEmailResetLink",
-  "adminListingOpenPhoto", "openAttachment", "resetImageZoom", "zoomImageIn"];
+  "adminListingOpenPhoto", "openAttachment", "resetImageZoom", "zoomImageIn", "closeSharedMedia"];
 const labels = Object.fromEntries(["en", "fr"].map((language) => [language,
   Object.fromEntries(labelKeys.map((key) => [key, translations[language][key]])),
 ]));
