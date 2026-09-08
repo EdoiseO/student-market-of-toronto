@@ -4,6 +4,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, w
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { setTimeout as delay } from "node:timers/promises";
 import { createPostgresFixture, postgresAvailable, postgresBin, shellWord } from "./helpers/postgres-fixture.mjs";
 
 const native = { skip: !postgresAvailable, timeout: 45_000 };
@@ -116,19 +117,62 @@ esac`);
   assert.equal(existsSync(data), false);
 });
 
-test("PostgreSQL fixture kills a hanging startup controller and stops its owned server", native, (t) => {
-  const binDirectory = wrappedBinaries(t, `
+test("PostgreSQL fixture kills a hanging startup controller and stops its owned server", native, async (t) => {
+  const binDirectory = wrappedBinaries(t, (directory) => `
 case "$*" in
   *start*) ${shellWord(join(postgresBin, "pg_ctl"))} "$@" || exit "$?"
+    printf '%s\\n' "$PWD" > ${shellWord(join(directory, "ready-root"))}
+    head -n 1 "$2/postmaster.pid" > ${shellWord(join(directory, "ready-pid"))}
     while :; do :; done ;;
   *) exec ${shellWord(join(postgresBin, "pg_ctl"))} "$@" ;;
 esac`);
   let registeredCleanup;
-  const started = Date.now();
-  assert.throws(() => createPostgresFixture({ after: (cleanup) => { registeredCleanup = cleanup; } },
-    { binDirectory, startupTimeoutMs: 1_000 }), /ETIMEDOUT/);
-  assert.ok(Date.now() - started < 7_000);
-  assert.doesNotThrow(registeredCleanup);
+  try {
+    assert.throws(() => createPostgresFixture({ after: (cleanup) => { registeredCleanup = cleanup; } },
+      { binDirectory, startupTimeoutMs: 1_000 }), (error) => {
+      assert.match(error.message, /pg_ctl start:.*ETIMEDOUT/s);
+      assert.equal(error.actual?.code, "ETIMEDOUT");
+      return true;
+    });
+    // Prove initdb and the real server started before the injected controller hang.
+    const readyRoot = join(binDirectory, "ready-root");
+    const root = readFileSync(readyRoot, "utf8").trim();
+    const pid = Number(readFileSync(join(binDirectory, "ready-pid"), "utf8").trim());
+    assert.ok(Number.isSafeInteger(pid) && pid > 0);
+    assert.ok(Date.now() - statSync(readyRoot).mtimeMs < 7_000);
+    // The PID file can disappear just before the process exits and is reaped.
+    const exitDeadline = Date.now() + 2_000;
+    while (true) {
+      try { process.kill(pid, 0); } catch (error) {
+        assert.equal(error.code, "ESRCH");
+        break;
+      }
+      assert.ok(Date.now() < exitDeadline, "Owned postmaster did not exit");
+      await delay(20);
+    }
+    assertRemoved({ root, socketDirectory: join(root, "s"), port: 5432 });
+    assert.doesNotThrow(registeredCleanup);
+  } finally {
+    // Retry even on assertion failure, while the private controller still exists.
+    registeredCleanup?.();
+  }
+});
+
+test("PostgreSQL fixture gives initialization an independent timeout", native, (t) => {
+  const binDirectory = wrappedBinaries(t, `exec ${shellWord(join(postgresBin, "pg_ctl"))} "$@"`);
+  rmSync(join(binDirectory, "initdb"));
+  // Deterministically exceed the controller's one-second budget before initdb.
+  writeFileSync(join(binDirectory, "initdb"), `#!/bin/sh\nsleep 2\nexec ${shellWord(join(postgresBin, "initdb"))} "$@"\n`, { mode: 0o700 });
+  let registeredCleanup;
+  try {
+    const fixture = createPostgresFixture({ after: (cleanup) => { registeredCleanup = cleanup; } },
+      { binDirectory, startupTimeoutMs: 1_000 });
+    assert.equal(fixture.sql("select 1;"), "1");
+    fixture.dispose();
+    assertRemoved(fixture);
+  } finally {
+    registeredCleanup?.();
+  }
 });
 
 test("PostgreSQL fixture retains private data when stopping fails, then allows cleanup retry", native, (t) => {

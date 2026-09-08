@@ -33,13 +33,14 @@ const checkedTimeout = (value) => {
 
 export function createPostgresFixture(t, {
   prefix = "smot-pg-", username = "smot_fixture_admin", binDirectory = postgresBin,
-  startupTimeoutMs = 15_000, queryTimeoutMs = 30_000, shutdownTimeoutMs = 15_000,
+  initializationTimeoutMs = 15_000, startupTimeoutMs = 15_000,
+  queryTimeoutMs = 30_000, shutdownTimeoutMs = 15_000,
 } = {}) {
   assert.ok(binDirectory, "PostgreSQL binaries are unavailable");
   assert.match(username, /^[a-z_][a-z0-9_]*$/);
   assert.equal(basename(prefix), prefix, "Fixture prefix must be one path component");
   assert.doesNotMatch(prefix, /[\0\r\n]/);
-  for (const timeout of [startupTimeoutMs, queryTimeoutMs, shutdownTimeoutMs]) checkedTimeout(timeout);
+  for (const timeout of [initializationTimeoutMs, startupTimeoutMs, queryTimeoutMs, shutdownTimeoutMs]) checkedTimeout(timeout);
   const binaryDirectory = realpathSync(binDirectory);
   const root = realpathSync(mkdtempSync(join(realpathSync(tmpdir()), prefix)));
   chmodSync(root, 0o700);
@@ -161,7 +162,7 @@ export function createPostgresFixture(t, {
     initializationAttempted = true;
     success(commandResult("initdb", ["-D", data, "--auth-local=trust", "--auth-host=reject",
       "--no-locale", "--encoding=UTF8", `--username=${username}`],
-    { timeoutMs: startupTimeoutMs }), "initdb");
+    { timeoutMs: initializationTimeoutMs }), "initdb");
     chmodSync(data, 0o700);
     // unix_socket_directories is itself a PostgreSQL list: double embedded quotes.
     const socketSetting = '"' + socketDirectory.replaceAll('"', '""') + '"';
