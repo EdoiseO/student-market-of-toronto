@@ -179,7 +179,9 @@ test("listing images are transactionally owner-bound and capped at ten", async (
   );
 
   assert.match(adminListing, /limit\(LISTING_IMAGE_LIMIT, \{ referencedTable: "listing_images" \}\)/);
-  assert.match(adminReport, /limit\(MESSAGE_LISTING_IMAGE_LIMIT, \{ referencedTable: "listings\.listing_images" \}\)/);
+  assert.match(adminReport, /loadReportConversationContext\(supabase, reportRow.id\)/);
+  const reportContextMigration = await source("supabase/migrations/20260906144154_current_moderation_read_authority.sql");
+  assert.match(reportContextMigration, /from public\.listing_images photo[\s\S]*?where photo\.listing_id = listing\.id[\s\S]*?limit 1/i);
   assert.match(adminReport, /limit\(MESSAGE_LISTING_IMAGE_LIMIT, \{ referencedTable: "listing_images" \}\)/);
   assert.match(messages, /limit\(MESSAGE_LISTING_IMAGE_LIMIT, \{ referencedTable: "listings\.listing_images" \}\)/);
   assert.match(conversation, /limit\(MESSAGE_LISTING_IMAGE_LIMIT, \{ referencedTable: "listings\.listing_images" \}\)/);

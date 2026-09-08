@@ -132,6 +132,7 @@ export function RegisterForm({ className, ...props }) {
       email,
       password: form.password,
       options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
         data: {
           first_name: identity.values.firstName,
           last_name: identity.values.lastName,

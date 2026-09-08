@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
-import { spawn, spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { createPostgresFixture, postgresAvailable } from "./helpers/postgres-fixture.mjs";
 
 const migrationUrl = new URL(
   "../supabase/migrations/20260816192910_stage6_profile_registration_required_fields.sql",
@@ -32,40 +29,14 @@ test("profile registration migration keeps trusted functions private and exact",
   assert.doesNotMatch(migration, /grant execute on function private\./i);
 });
 
-const postgresBin = [
-  process.env.POSTGRES_BIN,
-  "/opt/homebrew/opt/postgresql@16/bin",
-  "/usr/local/opt/postgresql@16/bin",
-]
-  .filter(Boolean)
-  .find((candidate) => existsSync(join(candidate, "postgres")));
-
 test(
   "PostgreSQL enforces registration/profile names and changed bios without trapping legacy rows",
-  { skip: !postgresBin, timeout: 30_000 },
-  async () => {
-    const cluster = await mkdtemp(join(tmpdir(), "smot-stage6-profile-"));
-    const data = join(cluster, "data");
-    const port = 49_152 + Math.floor(Math.random() * 10_000);
-    let started = false;
+  { skip: !postgresAvailable, timeout: 30_000 },
+  async (t) => {
+    const fixture = createPostgresFixture(t);
 
-    const command = (name, args, options = {}) => {
-      const result = spawnSync(join(postgresBin, name), args, {
-        encoding: "utf8",
-        ...options,
-      });
-      assert.equal(result.status, 0, result.stderr || result.stdout);
-      return (result.stdout ?? "").trim();
-    };
     const sql = (statement, expectFailure = false) => {
-      const result = spawnSync(
-        join(postgresBin, "psql"),
-        [
-          "-X", "-qAt", "-h", cluster, "-p", String(port), "-d", "postgres",
-          "-v", "ON_ERROR_STOP=1",
-        ],
-        { encoding: "utf8", input: statement },
-      );
+      const result = fixture.result(statement);
 
       if (expectFailure) {
         assert.notEqual(result.status, 0, `expected failure: ${statement}`);
@@ -76,47 +47,14 @@ test(
       return result.stdout.trim();
     };
     const startSqlSession = (statement, marker) => {
-      const child = spawn(
-        join(postgresBin, "psql"),
-        [
-          "-X", "-qAt", "-h", cluster, "-p", String(port), "-d", "postgres",
-          "-v", "ON_ERROR_STOP=1",
-        ],
-        { stdio: ["pipe", "pipe", "pipe"] },
-      );
-      let stdout = "";
-      let stderr = "";
-      let resolveMarker;
-      let rejectMarker;
-      const markerReached = new Promise((resolve, reject) => {
-        resolveMarker = resolve;
-        rejectMarker = reject;
+      const child = fixture.spawnSql(statement);
+      const markerReached = child.waitForOutput(marker);
+      const completed = child.completion.then((result) => {
+        assert.equal(result.status, 0, result.stderr || result.stdout);
+        return result;
       });
-      const completed = new Promise((resolve, reject) => {
-        child.on("error", reject);
-        child.on("close", (code) => {
-          if (code === 0) {
-            resolve({ stdout, stderr });
-          } else {
-            reject(new Error(stderr || stdout || `psql exited ${code}`));
-          }
-        });
-      });
-      child.stdout.on("data", (chunk) => {
-        stdout += chunk.toString();
-        if (stdout.includes(marker)) {
-          resolveMarker();
-        }
-      });
-      child.stderr.on("data", (chunk) => {
-        stderr += chunk.toString();
-      });
-      child.on("close", (code) => {
-        if (!stdout.includes(marker)) {
-          rejectMarker(new Error(stderr || `marker ${marker} not reached; exit ${code}`));
-        }
-      });
-      child.stdin.end(statement);
+      // A marker failure must not produce an unhandled completion rejection.
+      completed.catch(() => {});
       return { markerReached, completed };
     };
 
@@ -125,16 +63,6 @@ test(
     const recoveryUser = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
     try {
-      command("initdb", ["-D", data, "-A", "trust", "--no-locale"]);
-      command(
-        "pg_ctl",
-        [
-          "-D", data, "-o", `-p ${port} -k ${cluster} -c listen_addresses=''`,
-          "-w", "start",
-        ],
-        { stdio: "ignore" },
-      );
-      started = true;
       sql(BOOTSTRAP_SQL);
       sql(`
         insert into auth.users(id,email,raw_user_meta_data,raw_app_meta_data)
@@ -584,10 +512,7 @@ test(
         "true",
       );
     } finally {
-      if (started) {
-        spawnSync(join(postgresBin, "pg_ctl"), ["-D", data, "-m", "fast", "stop"]);
-      }
-      await rm(cluster, { recursive: true, force: true });
+      fixture.dispose();
     }
   },
 );

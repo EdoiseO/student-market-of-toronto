@@ -27,14 +27,16 @@ test("worker endpoint is independently invokable and bounded by the worker modul
   assert.match(route, /Cache-Control.*no-store/s);
 });
 
-test("scheduler secret and activation dependency are documented without a Pro-only config", () => {
+test("scheduler activation, cadence, and bearer authorization are documented", () => {
   assert.match(envExample, /^CRON_SECRET=$/m);
+  // Check the operator requirements without coupling them to a hosting plan
+  // or the choice of "schedule" versus "invoke" in the README.
+  assert.match(readme, /at\s+least every five minutes/i);
+  assert.match(readme, /external scheduler/i);
+  assert.match(readme, /does not start a scheduler itself/i);
   assert.match(
     readme,
-    /invoke (?:that endpoint|both endpoints) at\s+least every five minutes/i,
+    /Authorization:\s*Bearer\s+<CRON_SECRET>/,
   );
-  assert.match(
-    readme,
-    /Vercel Hobby requires a Supabase\s+or other external scheduler/i,
-  );
+  assert.match(readme, /\|\s*`CRON_SECRET`\s*\|[^\n]*\|\s*Secret;/);
 });

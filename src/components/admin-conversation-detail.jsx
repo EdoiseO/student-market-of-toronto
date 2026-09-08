@@ -36,17 +36,7 @@ import {
   ADMIN_CONVERSATION_REASON_CODES,
 } from "@/lib/admin-conversations.mjs";
 import { cn } from "@/lib/utils";
-
-function formatDate(value, language) {
-  if (!value) {
-    return "—";
-  }
-
-  return new Intl.DateTimeFormat(language === "fr" ? "fr-CA" : "en-CA", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
+import { formatModerationDateTime as formatDate } from "@/lib/moderation-date-time.mjs";
 
 function getPersonName(person, fallback) {
   return [person?.firstName, person?.lastName].filter(Boolean).join(" ").trim() || fallback;
@@ -360,6 +350,7 @@ export function AdminConversationDetail({
   messages,
   hasOlderMessages,
   olderMessagesHref,
+  returnHref = "/admin/conversations",
   role,
   language,
   t,
@@ -370,11 +361,11 @@ export function AdminConversationDetail({
   const openReports = (detail.reports ?? []).filter((report) => report.status === "open");
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-zinc-100 px-3 py-4 dark:bg-background sm:px-5 md:p-6 lg:p-7">
+    <main className="min-h-screen bg-zinc-100 px-4 py-4 dark:bg-background sm:px-5 md:p-6 lg:p-7">
       <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-4">
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-          <Button asChild variant="ghost" className="h-10 rounded-full px-3">
-            <Link href="/admin/conversations">
+          <Button asChild variant="ghost" className="min-h-11 rounded-full px-3">
+            <Link href={returnHref}>
               <ArrowLeft className="size-4" />
               {t.adminConversationsBackAction}
             </Link>
@@ -442,6 +433,7 @@ export function AdminConversationDetail({
             </div>
           </div>
 
+          <details className="min-w-0 border-t border-border"><summary className="min-h-11 cursor-pointer p-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{t.adminQueueContext}</summary>
           <div className="grid gap-3 border-t border-border bg-muted/15 p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-4 lg:px-7">
             <ParticipantCard person={detail.buyer} label={t.adminConversationBuyerLabel} t={t} />
             <ParticipantCard person={detail.seller} label={t.adminConversationSellerLabel} t={t} />
@@ -467,6 +459,7 @@ export function AdminConversationDetail({
               ) : null}
             </div>
           </div>
+          </details>
         </header>
 
         <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.7fr)]">

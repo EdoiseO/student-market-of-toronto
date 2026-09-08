@@ -1,3 +1,4 @@
+import { adminUserHistoryHref, getAdminQueueReturnHref } from "@/lib/admin-queue-navigation.mjs";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -26,14 +27,14 @@ function parsePage(value) {
   return Number.isSafeInteger(parsed) && parsed > 0 && parsed <= 1_000_000 ? parsed : 1;
 }
 
-function userDetailHref(userId, page) {
-  return page > 1 ? `/admin/users/${userId}?page=${page}` : `/admin/users/${userId}`;
-}
-
 export default async function AdminUserDetailPage({ params, searchParams }) {
   const { userId } = await params;
   if (!UUID_PATTERN.test(userId)) notFound();
-  const requestedPage = parsePage((await searchParams)?.page);
+  const query = await searchParams;
+  const requestedPage = parsePage(query?.page);
+  const queuePath = typeof query?.returnTo === "string" && /^\/admin\/users(?:[?#]|$)/.test(query.returnTo)
+    ? "/admin/users" : "/admin/enforcement";
+  const returnHref = getAdminQueueReturnHref(query?.returnTo, queuePath);
   const cookieStore = await cookies();
   const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
   const t = translations[language] ?? translations.en;
@@ -82,7 +83,7 @@ export default async function AdminUserDetailPage({ params, searchParams }) {
   }
   const sanctionCount = sanctionsResult.count ?? 0;
   const pageCount = Math.max(1, Math.ceil(sanctionCount / HISTORY_PAGE_SIZE));
-  if (!sanctionsResult.error && requestedPage > pageCount) redirect(userDetailHref(userId, pageCount));
+  if (!sanctionsResult.error && requestedPage > pageCount) redirect(adminUserHistoryHref(userId, pageCount, returnHref));
 
   const identityIds = [...new Set((sanctionsResult.data ?? []).flatMap((row) => [row.issued_by_user_id_snapshot, row.reviewed_by_user_id_snapshot]).filter(Boolean))];
   const identityProfiles = identityIds.length
@@ -98,8 +99,9 @@ export default async function AdminUserDetailPage({ params, searchParams }) {
   const canReadPrivateAuthDetails = currentUserRole === "admin";
 
   return (
-    <main className="min-h-screen min-w-0 overflow-x-clip bg-zinc-100 px-3 py-4 dark:bg-background sm:px-5 lg:p-8">
+    <main className="min-h-screen min-w-0 bg-zinc-100 px-4 py-4 dark:bg-background sm:px-5 lg:p-8">
       <AdminUserDetailContent
+        returnHref={returnHref}
         user={{
           id: userId,
           email: canReadPrivateAuthDetails ? targetUser.email ?? "" : null,

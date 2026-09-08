@@ -1,4 +1,5 @@
-import { ArrowLeft, ShieldAlert, ShieldCheck, Users } from "lucide-react";
+import { AdminQueueHeader } from "@/components/admin-queue-header";
+import { ArrowLeft, ShieldAlert, Users } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -176,34 +177,9 @@ export default async function AdminUsersPage({ searchParams }) {
     });
 
   return (
-    <main className="min-h-screen bg-zinc-100 p-5 dark:bg-background md:p-6 lg:p-7">
-      <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-6 @container/main">
-        <div className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-          <div className="border-b border-zinc-200 px-5 py-5 dark:border-border md:px-6 lg:px-7">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 rounded-full bg-zinc-100 px-3 py-1 text-sm text-zinc-700 dark:bg-muted dark:text-muted-foreground">
-                  <ShieldCheck className="size-4" />
-                  <span>{t.adminDashboard}</span>
-                </div>
-                <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-foreground md:text-3xl lg:text-4xl">
-                  {t.adminUsers}
-                </h1>
-                <p className="max-w-3xl text-base text-zinc-600 dark:text-muted-foreground">
-                  {t.adminUsersPageHeaderDescription}
-                </p>
-              </div>
-
-              <Button asChild variant="outline" className="rounded-xl">
-                <Link href="/admin">
-                  <ArrowLeft className="size-4" />
-                  <span>{t.backToAdminOverview}</span>
-                </Link>
-              </Button>
-            </div>
-          </div>
-
-          <div className="p-5 md:p-8 md:pt-6">
+    <main className="min-h-screen bg-zinc-100 p-4 dark:bg-background md:p-6 lg:p-7">
+      <div className="mx-auto flex w-full min-w-0 max-w-[1280px] flex-col gap-4 @container/main">
+        <AdminQueueHeader title={t.adminUsers} description={t.adminUsersPageHeaderDescription} count={directory.total} t={t} />
             <AdminUsersManagement
               users={users}
               currentUserId={user.id}
@@ -218,8 +194,6 @@ export default async function AdminUsersPage({ searchParams }) {
                 nextHref: getDirectoryHref({ page: requestedPage + 1, query, role }),
               }}
             />
-          </div>
-        </div>
       </div>
     </main>
   );

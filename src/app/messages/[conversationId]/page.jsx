@@ -1,3 +1,4 @@
+import { withPrivateMessageMediaUrl } from "@/lib/private-message-media.mjs";
 import { ArrowLeft, MessageSquare } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
@@ -168,21 +169,7 @@ export default async function ConversationPage({ params }) {
         console.error("Failed to load message attachments:", attachmentsError.message);
       }
     } else if (attachmentRows?.length > 0) {
-      const { data: signedRows, error: signedUrlsError } = await supabase.storage
-        .from("message-media")
-        .createSignedUrls(
-          attachmentRows.map((attachment) => attachment.storage_path),
-          60 * 60,
-        );
-
-      if (signedUrlsError) {
-        console.error("Failed to sign message attachments:", signedUrlsError.message);
-      }
-
-      messageAttachments = attachmentRows.map((attachment, index) => ({
-        ...attachment,
-        signedUrl: signedRows?.[index]?.signedUrl ?? null,
-      }));
+      messageAttachments = attachmentRows.map(withPrivateMessageMediaUrl);
     }
 
     if (reactionsError) {

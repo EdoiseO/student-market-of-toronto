@@ -3,7 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search } from "lucide-react";
+import { AdminQueueFilters } from "@/components/admin-queue-filters";
+import { adminReviewHref } from "@/lib/admin-queue-navigation.mjs";
 import { toast } from "sonner";
 
 import { ClientFormattedDateTime } from "@/components/client-formatted-date-time";
@@ -480,29 +481,28 @@ function UserMobileList({
   onRoleUpdated,
   onBanUpdated,
   t,
+  queueHref,
 }) {
   return (
-    <div className="space-y-3 lg:hidden" role="list">
+    <div className="divide-y divide-border lg:hidden" role="list">
       {users.map((user) => (
         <article
           key={user.id}
-          className="space-y-3 rounded-2xl border border-border bg-background p-4"
+          id={`record-${user.id}`}
+          className="min-w-0 space-y-3 scroll-mt-40 p-4"
           role="listitem"
         >
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-medium text-foreground">{user.name}</p>
-              <p className="mt-1 break-all text-xs text-muted-foreground">{user.email}</p>
-            </div>
+          <div className="flex min-w-0 flex-wrap items-start gap-2">
+            <Link href={adminReviewHref(`/admin/users/${user.id}`, queueHref, user.id)} className="min-h-11 min-w-0 flex-1 break-words font-semibold underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{user.name}</Link>
             <Badge
               variant="outline"
-              className="shrink-0 rounded-full border-border bg-card px-2.5 py-0.5 text-foreground"
+              className="max-w-full whitespace-normal break-words rounded-full border-border bg-card px-2.5 py-0.5 text-foreground"
             >
               {getStatusLabel(user, t)}
             </Badge>
           </div>
 
-          <dl className="grid grid-cols-2 gap-3 rounded-xl bg-muted/35 p-3">
+          <dl className="grid min-w-0 grid-cols-1 gap-2 text-sm min-[380px]:grid-cols-2">
             <div className="min-w-0">
               <dt className="text-xs text-muted-foreground">{t.school}</dt>
               <dd className="mt-0.5 line-clamp-2 text-sm font-medium text-foreground">
@@ -533,11 +533,10 @@ function UserMobileList({
           </div>
 
           {hasMobileUserActions(user, currentUserId, currentUserRole) ? (
-            <div
-              className="flex flex-wrap items-center gap-2 border-t border-border pt-3"
-              role="group"
-              aria-label={t.actions}
-            >
+            <details className="min-w-0 border-t border-border">
+              <summary className="min-h-11 cursor-pointer content-center py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{t.actions}</summary>
+              <p className="mb-3 break-all text-xs text-muted-foreground">{user.email}</p>
+              <div className="flex min-w-0 flex-wrap gap-2 pb-1" role="group" aria-label={t.actions}>
               <Button asChild variant="outline" size="sm" className="min-w-32 flex-1 rounded-xl px-3">
                 <Link href={`/admin/users/${user.id}`}>
                   {t.adminEnforcementOpenUser ?? t.actions}
@@ -562,7 +561,8 @@ function UserMobileList({
                 onBanUpdated={onBanUpdated}
                 mobile
               />
-            </div>
+              </div>
+            </details>
           ) : null}
         </article>
       ))}
@@ -633,9 +633,13 @@ export function AdminUsersManagement({ users, currentUserId, currentUserRole, pa
     );
   }
 
+  const queueParams = new URLSearchParams({ page: String(pagination?.page ?? 1), role: pagination?.role ?? "all" });
+  if (pagination?.query) queueParams.set("q", pagination.query);
+  const queueHref = `/admin/users?${queueParams}`;
+
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-3">
+    <div className="min-w-0 space-y-4">
+      <div className="hidden gap-4 sm:grid sm:grid-cols-3">
         <SummaryCard
           title={t.students}
           value={pagination?.total ?? userRows.length}
@@ -653,29 +657,11 @@ export function AdminUsersManagement({ users, currentUserId, currentUserRole, pa
         />
       </div>
 
-      <Card className="rounded-3xl bg-card py-0 shadow-sm ring-border">
-        <CardContent className="space-y-6 px-6 py-6">
-          <form action="/admin/users" method="get" className="space-y-2">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-            <div className="relative w-full lg:max-w-sm">
-              <Search className="pointer-events-none absolute top-0 bottom-0 left-3 my-auto size-4 text-muted-foreground" />
-              <Input
-                name="q"
-                defaultValue={pagination?.query ?? ""}
-                placeholder={t.adminSearchUsersPlaceholder}
-                className="rounded-full bg-background pl-9"
-                aria-label={t.adminSearchUsersPlaceholder}
-                maxLength={100}
-              />
-            </div>
-              <NativeSelect name="role" defaultValue={pagination?.role ?? "all"} aria-label={t.role} className="w-full lg:w-52">
-                {roleFilterOptions.map((option) => <NativeSelectOption key={option.value} value={option.value}>{option.label}</NativeSelectOption>)}
-              </NativeSelect>
-              <Button type="submit" className="rounded-xl">{t.applyFilters}</Button>
-            </div>
-            <p className="text-xs text-muted-foreground">{t.adminUsersSearchScope}</p>
-          </form>
-
+      <AdminQueueFilters action="/admin/users" search={pagination?.query ?? ""} searchLabel={t.adminSearchUsersPlaceholder} fields={[
+        { name: "role", label: t.role, value: pagination?.role ?? "all", options: roleFilterOptions },
+      ]} hint={t.adminUsersSearchScope} />
+      <Card className="min-w-0 rounded-2xl bg-card py-0 shadow-none ring-border">
+        <CardContent className="min-w-0 space-y-4 px-0 py-0 sm:px-4 sm:py-4">
           {userRows.length > 0 ? (
             <>
               <UserMobileList
@@ -686,6 +672,7 @@ export function AdminUsersManagement({ users, currentUserId, currentUserRole, pa
                 onRoleUpdated={handleRoleUpdated}
                 onBanUpdated={handleBanUpdated}
                 t={t}
+                queueHref={queueHref}
               />
               <div className="hidden lg:block">
                 <Table>

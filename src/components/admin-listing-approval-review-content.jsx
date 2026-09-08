@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
+import { ListingReviewImages } from "@/components/listing-review-images";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -11,16 +11,8 @@ import { ListingDescriptionContent } from "@/components/listing-description-cont
 import { ProfileAvatar } from "@/components/profile-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useLanguage } from "@/context/LanguageContext";
-import { REMOTE_IMAGE_BLUR_DATA_URL } from "@/lib/image-config";
 import {
   getTranslatedListingApprovalStatus,
   isPendingListingApproval,
@@ -63,7 +55,7 @@ function getListingFeedbackResetValue(listing) {
   });
 }
 
-export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
+export function AdminListingApprovalReviewContent({ listing, currentUserId, canDecide = true, returnHref = "/admin/listings" }) {
   const router = useRouter();
   const supabase = React.useMemo(() => createClient(), []);
   const { t, language } = useLanguage();
@@ -76,6 +68,7 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
   const [feedbackError, setFeedbackError] = React.useState("");
   const [isProcessing, setIsProcessing] = React.useState(false);
   const decisionOperationRef = React.useRef(null);
+  const decisionPendingRef = React.useRef(false);
   const feedbackRef = React.useRef(null);
 
   const isPendingReview = isPendingListingApproval(listing);
@@ -99,57 +92,64 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
   ]);
 
   async function handleModerationDecision(action, nextFeedback = null) {
+    if (decisionPendingRef.current) return false;
+    decisionPendingRef.current = true;
     setIsProcessing(true);
-
-    const operationPayloadKey = JSON.stringify({
-      action,
-      feedback: nextFeedback,
-      expectedContentRevision: listing.contentRevision,
-      expectedSubmittedForReviewAt: listing.submittedForReviewAt,
-    });
-    if (decisionOperationRef.current?.payloadKey !== operationPayloadKey) {
-      decisionOperationRef.current = {
-        payloadKey: operationPayloadKey,
-        operationId: crypto.randomUUID(),
-      };
-    }
-
-    const { error: refreshSessionError } = await supabase.auth.refreshSession();
-
-    if (refreshSessionError) {
-      console.error("Failed to refresh moderation session before listing decision:", refreshSessionError.message);
-    }
-
-    const response = await fetch(`/api/admin/listings/${listing.id}/decision`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        operationId: decisionOperationRef.current.operationId,
+    try {
+      const operationPayloadKey = JSON.stringify({
         action,
         feedback: nextFeedback,
         expectedContentRevision: listing.contentRevision,
         expectedSubmittedForReviewAt: listing.submittedForReviewAt,
-      }),
-    });
+      });
+      if (decisionOperationRef.current?.payloadKey !== operationPayloadKey) {
+        decisionOperationRef.current = {
+          payloadKey: operationPayloadKey,
+          operationId: crypto.randomUUID(),
+        };
+      }
 
-    const payload = await response.json().catch(() => ({}));
+      const { error: refreshSessionError } = await supabase.auth.refreshSession();
 
-    setIsProcessing(false);
+      if (refreshSessionError) {
+        console.error("Failed to refresh moderation session before listing decision:", refreshSessionError.message);
+      }
 
-    if (!response.ok) {
-      console.error("Failed to moderate listing decision:", payload?.error);
-      toast.error(payload?.error || t.adminListingApprovalActionError);
+      const response = await fetch(`/api/admin/listings/${listing.id}/decision`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          operationId: decisionOperationRef.current.operationId,
+          action,
+          feedback: nextFeedback,
+          expectedContentRevision: listing.contentRevision,
+          expectedSubmittedForReviewAt: listing.submittedForReviewAt,
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        console.error("Failed to moderate listing decision:", payload?.error);
+        toast.error(payload?.error || t.adminListingApprovalActionError);
+        return false;
+      }
+
+      decisionOperationRef.current = null;
+      return true;
+    } catch {
+      toast.error(t.adminListingApprovalActionError);
       return false;
+    } finally {
+      decisionPendingRef.current = false;
+      setIsProcessing(false);
     }
-
-    decisionOperationRef.current = null;
-    return true;
   }
 
   async function handleApprove() {
-    if (!currentUserId || !listing?.id || isProcessing || !isPendingReview) {
+    if (!currentUserId || !listing?.id || isProcessing || !isPendingReview || !canDecide) {
       return;
     }
 
@@ -169,12 +169,12 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
     }
 
     toast.success(t.adminListingApproved);
-    router.push("/admin");
+    router.push(returnHref);
     router.refresh();
   }
 
   async function handleReject() {
-    if (!currentUserId || !listing?.id || isProcessing || !isPendingReview) {
+    if (!currentUserId || !listing?.id || isProcessing || !isPendingReview || !canDecide) {
       return;
     }
 
@@ -202,262 +202,58 @@ export function AdminListingApprovalReviewContent({ listing, currentUserId }) {
     }
 
     toast.success(t.adminListingRejected);
-    router.push("/admin");
+    router.push(returnHref);
     router.refresh();
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-        <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
-                  {getTranslatedListingApprovalStatus(listing.status, t, listing)}
-                </Badge>
-                {isListingResubmittedAfterEdit(listing) ? (
-                  <Badge variant="outline" className="rounded-full border-border bg-background px-2.5 py-0.5 text-foreground">
-                    {t.adminListingResubmittedBadge}
-                  </Badge>
-                ) : null}
-              </div>
-              <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">
-                {listing.title}
-              </CardTitle>
-              <CardDescription>{t.adminListingApprovalReviewDescription}</CardDescription>
-            </div>
-            <div className="text-right text-xs text-muted-foreground">
-              <p>{t.adminSubmittedForReviewAt}</p>
-              <ClientFormattedDateTime value={listing.submittedForReviewAt ?? listing.createdAt} language={language} />
-            </div>
-          </div>
-        </CardHeader>
-
-        <CardContent className="grid gap-4 px-6 py-5 md:grid-cols-2 xl:grid-cols-4">
-          <ReviewMetadata label={t.seller}>{listing.seller.name}</ReviewMetadata>
-            <ReviewMetadata label={t.status}>
-            {getTranslatedListingApprovalStatus(listing.status, t, listing)}
-          </ReviewMetadata>
-          {listing.reviewedBy ? (
-            <ReviewMetadata label={t.adminReviewedBy}>{listing.reviewedBy.name}</ReviewMetadata>
-          ) : null}
-          {listing.moderationReviewedAt ? (
-            <ReviewMetadata label={t.reviewedAt}>
-              <ClientFormattedDateTime value={listing.moderationReviewedAt} language={language} />
-            </ReviewMetadata>
-          ) : null}
-          {listing.moderationFeedback ? (
-            <div className="md:col-span-2 xl:col-span-4">
-              <ReviewMetadata label={t.adminFeedback}>{listing.moderationFeedback}</ReviewMetadata>
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.8fr)]">
-        <section className="flex flex-col rounded-[2rem] border border-zinc-200 bg-white shadow-sm dark:border-border dark:bg-card">
-          <div className="border-b border-zinc-200 px-6 py-5 dark:border-border">
-            <p className="text-lg font-semibold text-zinc-950 dark:text-foreground">
-              {t.adminListingApprovalContentTitle}
-            </p>
-            <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
-              {t.adminListingApprovalContentDescription}
-            </p>
-          </div>
-
-          <div className="space-y-4 bg-zinc-50/70 px-6 py-5 dark:bg-muted/20">
-            <div className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 shadow-none dark:border-border dark:bg-card">
-              <div className="grid grid-cols-[5rem_minmax(0,1fr)] items-center gap-4">
-                <div className="relative h-20 w-20 min-h-20 min-w-20 max-h-20 max-w-20 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-muted">
-                  {listing.imageUrl ? (
-                    <Image
-                      src={listing.imageUrl}
-                      alt={listing.title}
-                      fill
-                      sizes="80px"
-                      placeholder="blur"
-                      blurDataURL={REMOTE_IMAGE_BLUR_DATA_URL}
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="h-full w-full bg-zinc-100 dark:bg-muted" />
-                  )}
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <p className="text-xl font-semibold text-zinc-950 dark:text-foreground">
-                    {listing.title}
-                  </p>
-                  <p className="mt-1 text-sm text-zinc-500 dark:text-muted-foreground">
-                    {listing.location || t.torontoMeetup}
-                  </p>
-                  <p className="mt-2 text-base font-medium text-zinc-900 dark:text-foreground">
-                    {listing.price}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {listing.description ? (
-              <Card className="rounded-[1.75rem] border-zinc-200 bg-white py-0 shadow-none dark:bg-card dark:ring-border">
-                <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
-                  <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">
-                    {t.description}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="px-6 py-6">
-                  <ListingDescriptionContent description={listing.description} className="whitespace-normal leading-6 text-sm" />
-                </CardContent>
-              </Card>
-            ) : null}
-
-            <Card className="rounded-[1.75rem] border-zinc-200 bg-white py-0 shadow-none dark:bg-card dark:ring-border">
-              <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
-                <CardTitle className="text-2xl text-zinc-950 dark:text-foreground">
-                  {t.adminListingFeedbackTitle}
-                </CardTitle>
-                <CardDescription id="listing-moderation-feedback-description">
-                  {t.adminListingFeedbackDescription}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4 px-6 py-6">
-                <label
-                  htmlFor="listing-moderation-feedback"
-                  className="text-sm font-medium text-foreground"
-                >
-                  {t.adminListingFeedbackTitle}{" "}
-                  <span className="text-muted-foreground">
-                    ({t.adminListingFeedbackRequiredMarker})
-                  </span>
-                </label>
-                <div className="rounded-xl border border-zinc-200 bg-background p-3 shadow-sm dark:border-border dark:bg-background">
-                  <Textarea
-                    ref={feedbackRef}
-                    id="listing-moderation-feedback"
-                    value={feedback}
-                    onChange={(event) => {
-                      setFeedback(event.target.value);
-                      if (feedbackError) {
-                        setFeedbackError("");
-                      }
-                    }}
-                    placeholder={t.adminListingFeedbackPlaceholder}
-                    rows={6}
-                    className="h-40 min-h-32 max-h-80 resize-y border-0 bg-transparent px-2 py-2 shadow-none focus-visible:ring-0"
-                    disabled={!isPendingReview || isProcessing}
-                    aria-required={isPendingReview ? "true" : "false"}
-                    aria-invalid={Boolean(feedbackError)}
-                    aria-describedby="listing-moderation-feedback-description listing-moderation-feedback-error"
-                  />
-                </div>
-                <p
-                  id="listing-moderation-feedback-error"
-                  role={feedbackError ? "alert" : undefined}
-                  className="min-h-5 text-sm text-destructive"
-                >
-                  {feedbackError}
-                </p>
-                {!isPendingReview ? (
-                  <p className="text-sm text-zinc-500 dark:text-muted-foreground">
-                    {t.adminListingDecisionLockedDescription}
-                  </p>
-                ) : null}
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="border-t border-zinc-200 bg-background px-6 py-5 dark:border-border">
-            <div className="flex flex-wrap justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="rounded-xl"
-                onClick={handleReject}
-                disabled={isProcessing || !isPendingReview}
-              >
-                {t.adminRejectListing}
-              </Button>
-              <Button
-                type="button"
-                className="rounded-xl"
-                onClick={handleApprove}
-                disabled={isProcessing || !isPendingReview}
-              >
-                {t.adminApproveListing}
-              </Button>
-            </div>
-          </div>
-        </section>
-
-        <div className="space-y-4">
-          <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-            <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
-              <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
-                {t.seller}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 px-6 py-5">
-              <Link href={`/profile/${listing.seller.id}`} className="flex items-center gap-3 rounded-xl transition hover:bg-zinc-50/80 dark:hover:bg-muted/40">
-                <ProfileAvatar
-                  name={listing.seller.name}
-                  avatarPresetId={listing.seller.avatarPresetId}
-                  avatarUrl={listing.seller.avatarUrl}
-                  className="size-10 border border-zinc-200 dark:border-border"
-                />
-                <div>
-                  <p className="font-medium text-zinc-950 dark:text-foreground">{listing.seller.name}</p>
-                  <p className="text-sm text-zinc-500 dark:text-muted-foreground">{listing.seller.school}</p>
-                </div>
-              </Link>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-[2rem] border-zinc-200 bg-white py-0 shadow-sm dark:bg-card dark:ring-border">
-            <CardHeader className="border-b border-zinc-200 px-6 py-5 dark:border-border">
-              <CardTitle className="text-xl text-zinc-950 dark:text-foreground">
-                {t.adminListingHistoryTitle}
-              </CardTitle>
-              <CardDescription>{t.adminListingHistoryDescription}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 px-6 py-5">
-              {listing.history?.length > 0 ? (
-                listing.history.map((entry) => (
-                  <div
-                    key={entry.id}
-                    className="rounded-2xl border border-border bg-background p-4"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <Badge
-                        variant="outline"
-                        className="rounded-full border-border bg-muted px-2.5 py-0.5 text-foreground"
-                      >
-                        {getHistoryActionLabel(entry.action, t)}
-                      </Badge>
-                      <ClientFormattedDateTime
-                        value={entry.decidedAt}
-                        language={language}
-                        className="text-xs text-muted-foreground"
-                      />
-                    </div>
-                    <p className="mt-2 text-sm text-foreground">
-                      {t.adminReviewedBy}: {entry.decidedByName}
-                    </p>
-                    {entry.feedback ? (
-                      <div className="mt-3 rounded-xl border border-border bg-muted/40 px-3 py-2.5">
-                        <p className="text-sm leading-6 text-muted-foreground">{entry.feedback}</p>
-                      </div>
-                    ) : null}
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  {t.adminListingHistoryEmpty}
-                </p>
-              )}
-            </CardContent>
-          </Card>
+    <div className="min-w-0 space-y-4">
+      <header className="min-w-0 space-y-2 py-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="rounded-md bg-card">{getTranslatedListingApprovalStatus(listing.status, t, listing)}</Badge>
+          {isListingResubmittedAfterEdit(listing) ? <Badge variant="outline" className="rounded-md">{t.adminListingResubmittedBadge}</Badge> : null}
         </div>
+        <h1 className="break-words text-2xl font-bold leading-tight tracking-tight sm:text-3xl [overflow-wrap:anywhere]">{listing.title}</h1>
+        <p className="text-xs text-muted-foreground">{t.adminSubmittedForReviewAt}{" · "}<ClientFormattedDateTime value={listing.submittedForReviewAt ?? listing.createdAt} language={language} /></p>
+      </header>
+      <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,0.8fr)]">
+        <section aria-labelledby="listing-review-evidence" className="min-w-0 rounded-2xl border border-border bg-card p-4 sm:p-6">
+          <h2 id="listing-review-evidence" className="text-lg font-semibold">{t.adminListingApprovalContentTitle}</h2>
+          <div className="mt-4 flex min-w-0 items-start gap-4">
+            <ListingReviewImages images={listing.images} imageUrl={listing.imageUrl} title={listing.title} />
+            <div className="min-w-0 space-y-2"><p className="break-words text-xl font-semibold">{listing.price}</p><p className="break-words text-sm text-muted-foreground">{listing.location || t.torontoMeetup}</p></div>
+          </div>
+          {listing.description ? <div className="mt-5 border-t border-border pt-5"><h3 className="mb-2 text-sm font-semibold">{t.description}</h3><ListingDescriptionContent description={listing.description} className="break-words whitespace-normal text-sm leading-6" /></div> : null}
+        </section>
+        <details className="group min-w-0 rounded-2xl border border-border bg-card">
+          <summary className="min-h-11 cursor-pointer rounded-2xl p-4 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-5">{t.adminQueueContext}</summary>
+          <div className="min-w-0 space-y-5 border-t border-border p-4 sm:p-5">
+            <Link href={`/profile/${listing.seller.id}`} className="flex min-h-11 min-w-0 items-center gap-3 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <ProfileAvatar name={listing.seller.name} avatarPresetId={listing.seller.avatarPresetId} avatarUrl={listing.seller.avatarUrl} className="size-10 shrink-0" />
+              <div className="min-w-0"><p className="break-words font-medium">{listing.seller.name}</p><p className="break-words text-sm text-muted-foreground">{listing.seller.school}</p></div>
+            </Link>
+            {listing.reviewedBy ? <ReviewMetadata label={t.adminReviewedBy}>{listing.reviewedBy.name}</ReviewMetadata> : null}
+            {listing.moderationReviewedAt ? <ReviewMetadata label={t.reviewedAt}><ClientFormattedDateTime value={listing.moderationReviewedAt} language={language} /></ReviewMetadata> : null}
+            {listing.moderationFeedback ? <ReviewMetadata label={t.adminFeedback}><p className="break-words whitespace-pre-wrap">{listing.moderationFeedback}</p></ReviewMetadata> : null}
+            <div className="border-t border-border pt-4"><h2 className="text-sm font-semibold">{t.adminListingHistoryTitle}</h2>
+              {listing.history?.length > 0 ? <ol className="mt-3 divide-y divide-border">{listing.history.map((entry) => <li key={entry.id} className="space-y-2 py-3 first:pt-0"><div className="flex flex-wrap items-center gap-2"><Badge variant="outline">{getHistoryActionLabel(entry.action, t)}</Badge><ClientFormattedDateTime value={entry.decidedAt} language={language} className="text-xs text-muted-foreground" /></div><p className="break-words text-sm">{t.adminReviewedBy}: {entry.decidedByName}</p>{entry.feedback ? <p className="break-words whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{entry.feedback}</p> : null}</li>)}</ol> : <p className="mt-2 text-sm text-muted-foreground">{t.adminListingHistoryEmpty}</p>}
+            </div>
+          </div>
+        </details>
+        {canDecide ? <section aria-labelledby="listing-review-decision" aria-busy={isProcessing} className="min-w-0 rounded-2xl border border-border bg-card xl:col-span-2">
+          <div className="space-y-3 p-4 sm:p-6">
+            <h2 id="listing-review-decision" className="text-lg font-semibold">{t.adminListingFeedbackTitle}</h2>
+            <p id="listing-moderation-feedback-description" className="max-w-3xl text-sm leading-6 text-muted-foreground">{t.adminListingFeedbackDescription}</p>
+            <label htmlFor="listing-moderation-feedback" className="block text-sm font-medium">{t.adminListingFeedbackTitle} <span className="text-muted-foreground">({t.adminListingFeedbackRequiredMarker})</span></label>
+            <Textarea ref={feedbackRef} id="listing-moderation-feedback" value={feedback} onChange={(event) => { setFeedback(event.target.value); if (feedbackError) setFeedbackError(""); }} placeholder={t.adminListingFeedbackPlaceholder} rows={4} className="min-h-28 resize-y text-base" disabled={!isPendingReview || isProcessing} aria-invalid={Boolean(feedbackError)} aria-describedby="listing-moderation-feedback-description listing-moderation-feedback-error" />
+            <p id="listing-moderation-feedback-error" role={feedbackError ? "alert" : undefined} className="text-sm text-destructive">{feedbackError}</p>
+            {!isPendingReview ? <p className="text-sm text-muted-foreground">{t.adminListingDecisionLockedDescription}</p> : null}
+          </div>
+          <div className="flex flex-wrap justify-end gap-2 border-t border-border p-4 sm:px-6">
+            <Button type="button" variant="outline" className="min-h-11 flex-1 whitespace-normal sm:flex-none" onClick={handleReject} disabled={isProcessing || !isPendingReview}>{t.adminRejectListing}</Button>
+            <Button type="button" className="min-h-11 flex-1 whitespace-normal sm:flex-none" onClick={handleApprove} disabled={isProcessing || !isPendingReview}>{isProcessing ? t.saving : t.adminApproveListing}</Button>
+          </div>
+        </section> : null}
       </div>
     </div>
   );

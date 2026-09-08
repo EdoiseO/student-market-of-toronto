@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import {
   ClipboardCheck,
@@ -91,6 +92,11 @@ export function AdminNavigation({ role }) {
   const pathname = usePathname() ?? "/admin";
   const { t } = useLanguage();
   const items = getAdminNavigationItems(role, t);
+  const linksRef = useRef(null);
+  useEffect(() => {
+    const active = linksRef.current?.querySelector('[aria-current="page"]');
+    if (active) linksRef.current.scrollLeft = Math.max(0, active.offsetLeft - 12);
+  }, [pathname, role]);
 
   if (items.length === 0) {
     return null;
@@ -101,7 +107,7 @@ export function AdminNavigation({ role }) {
       aria-label={t.adminNavigationLabel}
       className="border-b border-border bg-background/95 px-3 py-2 backdrop-blur md:px-5"
     >
-      <div className="mx-auto flex w-full max-w-[1360px] gap-1 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div ref={linksRef} className="relative mx-auto flex w-full max-w-[1360px] gap-1 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {items.map((item) => {
           const Icon = item.icon;
           const active = item.exact
@@ -114,7 +120,7 @@ export function AdminNavigation({ role }) {
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex min-h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "flex min-h-11 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 active && "bg-foreground text-background hover:bg-foreground hover:text-background",
               )}
             >

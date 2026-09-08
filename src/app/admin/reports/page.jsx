@@ -1,21 +1,11 @@
 import { AdminBoundedRecords } from "@/components/admin-bounded-records";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { AdminQueueFilters } from "@/components/admin-queue-filters";
+import { adminReviewHref } from "@/lib/admin-queue-navigation.mjs";
 import { requireAdminPageAction } from "@/lib/admin-page-access";
-import { REPORT_REASON_VALUES, REPORT_STATUS_VALUES, REPORT_SUBJECT_TYPES } from "@/lib/moderation";
+import { REPORT_REASON_VALUES, REPORT_STATUS_VALUES, REPORT_SUBJECT_TYPES, getTranslatedReportReason, getTranslatedReportStatus, getTranslatedReportSubjectType } from "@/lib/moderation";
 import { MODERATION_ACTIONS } from "@/lib/moderation-policy.mjs";
 
 const PAGE_SIZE = 25;
-
-function FilterField({ label, children, className = "" }) {
-  return (
-    <label className={`grid min-w-0 gap-1.5 text-xs font-medium text-muted-foreground ${className}`}>
-      <span>{label}</span>
-      {children}
-    </label>
-  );
-}
 
 export default async function AdminReportsPage({ searchParams }) {
   const { admin, language, t } = await requireAdminPageAction(MODERATION_ACTIONS.readReports, "admin report registry");
@@ -32,47 +22,22 @@ export default async function AdminReportsPage({ searchParams }) {
   if (queryText) reportQuery = reportQuery.or(`reason.ilike.%${queryText}%,details.ilike.%${queryText}%`);
   const { data, error, count } = await reportQuery;
   if (error) console.error("Failed to load admin reports registry:", error.message);
-  const rows = (data ?? []).map((row) => ({ id: row.id, href: `/admin/reports/${row.id}`, title: row.reason, badge: row.status, description: row.details || row.subject_type, createdAt: row.created_at }));
   const filterParams = new URLSearchParams();
   filterParams.set("status", status); if (subject) filterParams.set("subject", subject); if (reason) filterParams.set("reason", reason); if (queryText) filterParams.set("q", queryText);
   const pageHref = (nextPage) => { const next = new URLSearchParams(filterParams); next.set("page", String(nextPage)); return `/admin/reports?${next}`; };
-  const filters = (
-    <form
-      method="get"
-      className="grid items-end gap-3 rounded-3xl border border-border bg-card p-4 shadow-sm sm:grid-cols-2 xl:grid-cols-[minmax(260px,1.7fr)_repeat(3,minmax(150px,1fr))_minmax(170px,0.8fr)]"
-    >
-      <FilterField label={t.adminSearchReportsPlaceholder}>
-        <Input
-          name="q"
-          defaultValue={queryText}
-          placeholder={t.adminSearchReportsPlaceholder}
-        />
-      </FilterField>
-      <FilterField label={t.adminFilterStatus}>
-        <NativeSelect className="w-full" name="status" defaultValue={status}>
-          <NativeSelectOption value="open">{t.adminEnforcementActive}</NativeSelectOption>
-          <NativeSelectOption value="resolved">{t.resolve}</NativeSelectOption>
-          <NativeSelectOption value="dismissed">{t.dismiss}</NativeSelectOption>
-        </NativeSelect>
-      </FilterField>
-      <FilterField label={t.adminFilterSubject}>
-        <NativeSelect className="w-full" name="subject" defaultValue={subject}>
-          <NativeSelectOption value="">{t.all}</NativeSelectOption>
-          {Object.values(REPORT_SUBJECT_TYPES).map((value) => (
-            <NativeSelectOption key={value} value={value}>{value}</NativeSelectOption>
-          ))}
-        </NativeSelect>
-      </FilterField>
-      <FilterField label={t.adminFilterReason}>
-        <NativeSelect className="w-full" name="reason" defaultValue={reason}>
-          <NativeSelectOption value="">{t.all}</NativeSelectOption>
-          {Object.values(REPORT_REASON_VALUES).map((value) => (
-            <NativeSelectOption key={value} value={value}>{value}</NativeSelectOption>
-          ))}
-        </NativeSelect>
-      </FilterField>
-      <Button type="submit" className="h-12 w-full">{t.applyFilters}</Button>
-    </form>
-  );
-  return <AdminBoundedRecords title={t.adminReports} description={t.adminReportsRegistryDescription} rows={rows} empty={error ? t.adminRegistryLoadError : t.adminNoReportsMatchFilters} language={language} filters={filters} pagination={{ page, totalPages: Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE)), label: t.adminReports, previousHref: pageHref(page - 1), nextHref: pageHref(page + 1), previous: t.previousPage, next: t.nextPage }} />;
+  const rows = (data ?? []).map((row) => ({
+    id: row.id,
+    href: adminReviewHref(`/admin/reports/${row.id}`, pageHref(page), row.id),
+    title: getTranslatedReportReason(row.reason, t, row.subject_type),
+    badge: getTranslatedReportStatus(row.status, t),
+    meta: getTranslatedReportSubjectType(row.subject_type, t),
+    description: row.details || null,
+    createdAt: row.created_at,
+  }));
+  const filters = <AdminQueueFilters action="/admin/reports" search={queryText} searchLabel={t.adminSearchReportsPlaceholder} maxLength={80} quickFilter="status" fields={[
+    { name: "status", label: t.adminFilterStatus, value: status, options: Object.values(REPORT_STATUS_VALUES).map((value) => ({ value, label: getTranslatedReportStatus(value, t) })) },
+    { name: "subject", label: t.adminFilterSubject, value: subject, options: [{ value: "", label: t.all }, ...Object.values(REPORT_SUBJECT_TYPES).map((value) => ({ value, label: getTranslatedReportSubjectType(value, t) }))] },
+    { name: "reason", label: t.adminFilterReason, value: reason, options: [{ value: "", label: t.all }, ...Object.values(REPORT_REASON_VALUES).map((value) => ({ value, label: getTranslatedReportReason(value, t) }))] },
+  ]} />;
+  return <AdminBoundedRecords title={t.adminReports} description={t.adminReportsRegistryDescription} rows={rows} empty={t.adminNoReportsMatchFilters} language={language} filters={filters} totalCount={count ?? 0} loadError={Boolean(error)} retryHref={pageHref(page)} clearHref={queryText || subject || reason || status !== "open" ? "/admin/reports" : undefined} pagination={{ page, totalPages: Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE)), label: t.adminReports, previousHref: pageHref(page - 1), nextHref: pageHref(page + 1), previous: t.previousPage, next: t.nextPage }} />;
 }

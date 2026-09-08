@@ -8,4 +8,5 @@ export const createClient = () =>
   createBrowserClient(
     supabaseUrl,
     supabaseKey,
+    { auth: { detectSessionInUrl: false } },
   );

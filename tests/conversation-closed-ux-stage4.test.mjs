@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { createPostgresFixture, postgresAvailable } from "./helpers/postgres-fixture.mjs";
 
 import {
   getConversationClosureExpiryDelay,
@@ -147,63 +144,17 @@ test("conversation transition notification trigger emits safe recipient-only sig
   );
 });
 
-const postgresBin = [
-  process.env.POSTGRES_BIN,
-  "/opt/homebrew/opt/postgresql@16/bin",
-  "/usr/local/opt/postgresql@16/bin",
-]
-  .filter(Boolean)
-  .find((candidate) => existsSync(join(candidate, "postgres")));
-
 test(
   "conversation notification trigger emits one safe signal per distinct surviving participant",
-  { skip: !postgresBin },
-  async () => {
+  { skip: !postgresAvailable },
+  async (t) => {
     const migration = await readFile(migrationUrl, "utf8");
-    const cluster = await mkdtemp(join(tmpdir(), "smot-conversation-ux-"));
-    const data = join(cluster, "data");
-    const port = 49_152 + Math.floor(Math.random() * 10_000);
-    let started = false;
+    const fixture = createPostgresFixture(t);
 
-    const command = (name, args, options = {}) => {
-      const result = spawnSync(join(postgresBin, name), args, {
-        encoding: "utf8",
-        ...options,
-      });
-      assert.equal(result.status, 0, result.stderr || result.stdout);
-      return (result.stdout ?? "").trim();
-    };
     const query = (statement) =>
-      command("psql", [
-        "-X",
-        "-qAt",
-        "-h",
-        cluster,
-        "-p",
-        String(port),
-        "-d",
-        "postgres",
-        "-v",
-        "ON_ERROR_STOP=1",
-        "-c",
-        statement,
-      ]);
+      fixture.sql(statement);
 
     try {
-      command("initdb", ["-D", data, "-A", "trust", "--no-locale"]);
-      command(
-        "pg_ctl",
-        [
-          "-D",
-          data,
-          "-o",
-          `-p ${port} -k ${cluster} -c listen_addresses=''`,
-          "-w",
-          "start",
-        ],
-        { stdio: "ignore" },
-      );
-      started = true;
 
       query(`
         create extension if not exists pgcrypto;
@@ -289,10 +240,7 @@ test(
         "f",
       );
     } finally {
-      if (started) {
-        spawnSync(join(postgresBin, "pg_ctl"), ["-D", data, "-m", "fast", "stop"]);
-      }
-      await rm(cluster, { recursive: true, force: true });
+      fixture.dispose();
     }
   },
 );

@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
@@ -21,29 +22,49 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
-export function LoginForm({ className, ...props }) {
+export function LoginForm({ className, authError = false, ...props }) {
   const { t } = useLanguage();
   const router = useRouter();
   const [formData, setFormData] = useState({ email: "", password: "" });
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [error, setError] = useState(authError ? t.authLinkInvalid : "");
+  const [phase, setPhase] = useState("idle");
+  const pending = useRef(false);
+  const busy = phase === "submitting" || phase === "navigating";
+  const buttonLabel = phase === "submitting" ? t.signingIn : phase === "navigating" ? t.openingMarketplace : t.login;
+
+  function continueToMarketplace() {
+    // Recovery action for a stalled client router: deliberately reload from
+    // the server without submitting the password a second time.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.assign("/");
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (pending.current) return;
+    pending.current = true;
+    setPhase("submitting");
     setError("");
-    setSuccess("");
-
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({
-      email: formData.email,
-      password: formData.password,
-    });
-
-    if (error) setError(error.message);
-    else {
-      setSuccess(t.loggedInSuccess);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithPassword({
+        email: formData.email.trim(),
+        password: formData.password,
+      });
+      if (error) {
+        setError(error.message);
+        setPhase("error");
+        pending.current = false;
+        return;
+      }
+      setFormData((current) => ({ ...current, password: "" }));
+      setPhase("navigating");
       router.replace("/");
       router.refresh();
+    } catch {
+      setError(t.signInUnavailable);
+      setPhase("error");
+      pending.current = false;
     }
   }
 
@@ -57,7 +78,7 @@ export function LoginForm({ className, ...props }) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} aria-busy={busy} aria-describedby={error ? "login-error" : undefined}>
             <FieldGroup>
               <Field>
                 <FieldLabel htmlFor="email">{t.email}</FieldLabel>
@@ -67,6 +88,7 @@ export function LoginForm({ className, ...props }) {
                   autoComplete="email"
                   placeholder="m@example.com"
                   required
+                  disabled={busy}
                   value={formData.email}
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
@@ -89,20 +111,23 @@ export function LoginForm({ className, ...props }) {
                   type="password"
                   autoComplete="current-password"
                   required
+                  disabled={busy}
                   value={formData.password}
                   onChange={(e) =>
                     setFormData({ ...formData, password: e.target.value })
                   }
                   aria-invalid={Boolean(error)}
                 />
-                {error ? <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
+                {error ? <p id="login-error" role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
               </Field>
 
               <Field>
-                <Button type="submit" className="w-full">{t.login}</Button>
-                {success && (
-                  <p role="status" className="text-sm text-green-600 dark:text-green-400">{success}</p>
-                )}
+                <Button type="submit" className="w-full" disabled={busy}>
+                  {busy ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : null}
+                  {buttonLabel}
+                </Button>
+                <p role="status" aria-live="polite" className="sr-only">{busy ? buttonLabel : ""}</p>
+                {phase === "navigating" ? <button type="button" onClick={continueToMarketplace} className="min-h-11 text-center text-sm underline">{t.continueToMarketplace}</button> : null}
                 <FieldDescription className="text-center">
                   {t.noAccount} <Link href="/register">{t.signUp}</Link>
                 </FieldDescription>

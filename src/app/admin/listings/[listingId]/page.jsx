@@ -1,3 +1,5 @@
+import { getAdminQueueReturnHref } from "@/lib/admin-queue-navigation.mjs";
+import { MODERATION_ACTIONS, canPerformModerationAction } from "@/lib/moderation-policy.mjs";
 import { ArrowLeft, ClipboardCheck } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
@@ -18,8 +20,9 @@ function getPrimaryListingImageUrl(listingImages) {
     .sort((firstImage, secondImage) => (firstImage.position ?? 0) - (secondImage.position ?? 0))[0]?.image_url;
 }
 
-export default async function AdminListingApprovalReviewPage({ params }) {
+export default async function AdminListingApprovalReviewPage({ params, searchParams }) {
   const resolvedParams = await params;
+  const returnHref = getAdminQueueReturnHref((await searchParams)?.returnTo, "/admin/listings");
   const cookieStore = await cookies();
   const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
   const t = translations[language] || translations.en;
@@ -104,6 +107,7 @@ export default async function AdminListingApprovalReviewPage({ params }) {
     }).format(Number(listingRow.price ?? 0)),
     location: listingRow.location ?? t.torontoMeetup,
     imageUrl: getPrimaryListingImageUrl(listingRow.listing_images),
+        images: (listingRow.listing_images ?? []).slice().sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((image) => image.image_url).filter(Boolean),
     status: listingRow.status,
     contentRevision: Number(listingRow.content_revision),
     createdAt: listingRow.created_at,
@@ -141,11 +145,11 @@ export default async function AdminListingApprovalReviewPage({ params }) {
   };
 
   return (
-    <main className="bg-zinc-100 px-5 pt-3 pb-5 dark:bg-background md:px-6 md:pt-3 md:pb-6 lg:px-7 lg:pt-4 lg:pb-7">
+    <main className="bg-zinc-100 px-4 pt-3 pb-5 dark:bg-background md:px-6 md:pt-3 md:pb-6 lg:px-7 lg:pt-4 lg:pb-7">
       <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Button asChild variant="ghost" className="h-9 rounded-full px-3">
-            <Link href="/admin/listings">
+          <Button asChild variant="ghost" className="min-h-11 rounded-full px-3">
+            <Link href={returnHref}>
               <ArrowLeft className="size-4" />
               <span>{t.backToAdminListings}</span>
             </Link>
@@ -156,7 +160,7 @@ export default async function AdminListingApprovalReviewPage({ params }) {
           </div>
         </div>
 
-        <AdminListingApprovalReviewContent listing={listing} currentUserId={user.id} />
+        <AdminListingApprovalReviewContent listing={listing} currentUserId={user.id} returnHref={returnHref} canDecide={canPerformModerationAction(getUserModerationRole(accessUser), MODERATION_ACTIONS.decideListings)} />
       </div>
     </main>
   );

@@ -1,0 +1,44 @@
+name: Security integration tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  security:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-14]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    env:
+      REQUIRE_POSTGRES: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install PostgreSQL binaries on Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-16
+          echo "POSTGRES_BIN=/usr/lib/postgresql/16/bin" >> "$GITHUB_ENV"
+      - name: Install PostgreSQL binaries on macOS
+        if: runner.os == 'macOS'
+        run: |
+          brew install postgresql@16
+          echo "POSTGRES_BIN=$(brew --prefix postgresql@16)/bin" >> "$GITHUB_ENV"
+      - run: npm ci
+      # Each test owns a private Unix-socket-only cluster. No database service,
+      # production database URL, or deployment secret is supplied to the tests.
+      - run: npm run test:security

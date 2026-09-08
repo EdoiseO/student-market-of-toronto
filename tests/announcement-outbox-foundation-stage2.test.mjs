@@ -1,11 +1,9 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { createPostgresFixture, postgresAvailable } from "./helpers/postgres-fixture.mjs";
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const migrationPath = join(
@@ -182,40 +180,14 @@ test("recipient visibility excludes targeting, actor, counter, and worker data",
   );
 });
 
-const postgresBin = [
-  process.env.POSTGRES_BIN,
-  "/opt/homebrew/opt/postgresql@16/bin",
-  "/usr/local/opt/postgresql@16/bin",
-]
-  .filter(Boolean)
-  .find((candidate) => existsSync(join(candidate, "postgres")));
-
 test(
   "isolated PostgreSQL roles enforce cancellation and immutable recipient state",
-  { skip: !postgresBin },
-  async () => {
-    const cluster = await mkdtemp(join(tmpdir(), "smot-announcement-stage2-"));
-    const data = join(cluster, "data");
-    const port = 49_152 + Math.floor(Math.random() * 10_000);
-    let started = false;
+  { skip: !postgresAvailable },
+  async (t) => {
+    const fixture = createPostgresFixture(t);
 
-    const command = (name, args, options = {}) => {
-      const result = spawnSync(join(postgresBin, name), args, {
-        encoding: "utf8",
-        ...options,
-      });
-      assert.equal(result.status, 0, result.stderr || result.stdout);
-      return (result.stdout ?? "").trim();
-    };
     const sql = (statement, expectFailure = false) => {
-      const result = spawnSync(
-        join(postgresBin, "psql"),
-        [
-          "-X", "-qAt", "-h", cluster, "-p", String(port), "-d", "postgres",
-          "-v", "ON_ERROR_STOP=1",
-        ],
-        { encoding: "utf8", input: statement },
-      );
+      const result = fixture.result(statement);
       if (expectFailure) {
         assert.notEqual(result.status, 0, `expected failure: ${statement}`);
         return result.stderr;
@@ -235,12 +207,6 @@ test(
       );
 
     try {
-      command("initdb", ["-D", data, "-A", "trust", "--no-locale"]);
-      command("pg_ctl", [
-        "-D", data, "-o", `-p ${port} -k ${cluster} -c listen_addresses=''`,
-        "-w", "start",
-      ], { stdio: "ignore" });
-      started = true;
       sql(BOOTSTRAP_SQL);
       sql(migration);
 
@@ -347,10 +313,7 @@ test(
       );
       service(`select id from transition_announcement('${fourth}',2,'partially_fail','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',null,'done4');`);
     } finally {
-      if (started) {
-        spawnSync(join(postgresBin, "pg_ctl"), ["-D", data, "-m", "fast", "stop"]);
-      }
-      await rm(cluster, { recursive: true, force: true });
+      fixture.dispose();
     }
   },
 );

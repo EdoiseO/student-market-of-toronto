@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
+import { createPostgresFixture, postgresAvailable } from "./helpers/postgres-fixture.mjs";
 
 const cutover = await readFile(
   new URL(
@@ -15,11 +12,7 @@ const cutover = await readFile(
 );
 const migrationDirectory = new URL("../supabase/migrations/", import.meta.url);
 const fullChainMigrationNames = (await readdir(migrationDirectory))
-  .filter(
-    (name) =>
-      name.endsWith(".sql") &&
-      name <= "20260817121321_stage8_advisor_hardening.sql",
-  )
+  .filter((name) => name.endsWith(".sql"))
   .sort();
 const fullChainMigrations = await Promise.all(
   fullChainMigrationNames.map(async (name) => ({
@@ -27,6 +20,21 @@ const fullChainMigrations = await Promise.all(
     sql: await readFile(new URL(name, migrationDirectory), "utf8"),
   })),
 );
+const demoMigrationName = "20260906160016_registered_demo_account_emails.sql";
+const pendingSeptemberNames = [
+  "20260906144154_current_moderation_read_authority.sql",
+  "20260906150000_browser_bound_password_recovery.sql",
+];
+const migrationOrders = [
+  { name:"fresh PostgreSQL applies every current repository migration in order", migrations:fullChainMigrations },
+  {
+    name:"already-live demo identity migration survives both older pending September migrations",
+    migrations:[
+      ...fullChainMigrations.filter((migration) => !pendingSeptemberNames.includes(migration.name)),
+      ...pendingSeptemberNames.map((name) => fullChainMigrations.find((migration) => migration.name === name)),
+    ],
+  },
+];
 const accountDeleteRoute = await readFile(
   new URL("../src/app/api/account/delete/route.js", import.meta.url),
   "utf8",
@@ -186,43 +194,17 @@ test("cutover retires only superseded writers and preserves current trusted path
   );
 });
 
-const postgresBin = [
-  process.env.POSTGRES_BIN,
-  "/opt/homebrew/opt/postgresql@16/bin",
-  "/usr/local/opt/postgresql@16/bin",
-]
-  .filter(Boolean)
-  .find((candidate) => existsSync(join(candidate, "postgres")));
-
 function createFunctionSql(signature) {
   return `create function ${signature} returns text language sql as $$ select 'ok'::text $$;`;
 }
 
 test(
   "PostgreSQL cutover denies direct writes and exact old RPCs while retained flows still execute",
-  { skip: !postgresBin, timeout: 30_000 },
-  async () => {
-    const cluster = await mkdtemp(join(tmpdir(), "smot-stage6-cutover-"));
-    const data = join(cluster, "data");
-    const port = 49_152 + Math.floor(Math.random() * 10_000);
-    let started = false;
-    const command = (name, args, options = {}) => {
-      const result = spawnSync(join(postgresBin, name), args, {
-        encoding: "utf8",
-        ...options,
-      });
-      assert.equal(result.status, 0, result.stderr || result.stdout);
-      return (result.stdout ?? "").trim();
-    };
+  { skip: !postgresAvailable, timeout: 30_000 },
+  async (t) => {
+    const fixture = createPostgresFixture(t);
     const sql = (statement, expectFailure = false) => {
-      const result = spawnSync(
-        join(postgresBin, "psql"),
-        [
-          "-X", "-qAt", "-h", cluster, "-p", String(port), "-d", "postgres",
-          "-v", "ON_ERROR_STOP=1",
-        ],
-        { encoding: "utf8", input: statement },
-      );
+      const result = fixture.result(statement);
       if (expectFailure) {
         assert.notEqual(result.status, 0, `expected failure: ${statement}`);
         return result.stderr;
@@ -232,13 +214,6 @@ test(
     };
 
     try {
-      command("initdb", ["-D", data, "-A", "trust", "--no-locale", "--encoding=UTF8"]);
-      command(
-        "pg_ctl",
-        ["-D", data, "-o", `-p ${port} -k ${cluster} -c listen_addresses=''`, "-w", "start"],
-        { stdio: "ignore" },
-      );
-      started = true;
       sql(`
         create role postgres superuser;
         create role anon nologin;
@@ -442,12 +417,7 @@ test(
         delete from public.listings where id='${parent}';`);
       assert.equal(sql(`select count(*) from public.listing_images where id='${child}';`), "0");
     } finally {
-      if (started) {
-        spawnSync(join(postgresBin, "pg_ctl"), ["-D", data, "-m", "immediate", "-w", "stop"], {
-          stdio: "ignore",
-        });
-      }
-      await rm(cluster, { recursive: true, force: true });
+      fixture.dispose();
     }
   },
 );
@@ -477,6 +447,7 @@ grant execute on function auth.role() to anon, authenticated, service_role;
 create table auth.users (
   id uuid primary key,
   email text unique,
+  deleted_at timestamptz,
   raw_app_meta_data jsonb not null default '{}',
   raw_user_meta_data jsonb not null default '{}',
   role text,
@@ -534,6 +505,11 @@ create table public.profiles (
   avatar_preset_id text,
   is_public boolean not null default true,
   created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create table public.profile_bios (
+  profile_id uuid primary key references public.profiles(id) on delete cascade,
+  bio text,
   updated_at timestamptz not null default now()
 );
 create table public.listings (
@@ -654,16 +630,17 @@ create table public.reports (
   updated_at timestamptz not null default now()
 );
 
+-- Model the deployed legacy helper faithfully; the current-role migration must replace it.
 create or replace function public.is_moderation_role() returns boolean
-language sql stable security definer set search_path = ''
+language sql stable security invoker set search_path = ''
 as $body$
-  select exists (
-    select 1 from auth.users account where account.id = auth.uid()
-      and lower(coalesce(account.raw_app_meta_data ->> 'role', '')) in ('admin', 'moderator')
-  )
+  select coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') in ('admin', 'moderator')
+    or coalesce(auth.jwt() -> 'app_metadata' -> 'roles', '[]'::jsonb) ?| array['admin', 'moderator']
 $body$;
 create or replace function private.toronto_school_name_for_email(text) returns text
 language sql immutable as $body$ select 'Toronto School'::text $body$;
+-- Match the deployed helper owner before applying its registry-backed replacement.
+alter function private.toronto_school_name_for_email(text) owner to postgres;
 create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = ''
 as $body$ begin
@@ -678,6 +655,7 @@ create or replace function public.before_user_created_validate_school_email(even
 returns jsonb language sql stable as $body$ select event $body$;
 
 alter table public.profiles enable row level security;
+alter table public.profile_bios enable row level security;
 alter table public.listings enable row level security;
 alter table public.listing_images enable row level security;
 alter table public.conversations enable row level security;
@@ -701,64 +679,63 @@ grant execute on all functions in schema public to authenticated, service_role;
 create publication supabase_realtime;
 `;
 
-test(
-  "fresh PostgreSQL applies the actual repository migration chain through Stage 8 hardening",
-  { skip: !postgresBin, timeout: 120_000 },
-  async () => {
-    const cluster = await mkdtemp(join(tmpdir(), "smot-stage6-full-chain-"));
-    const data = join(cluster, "data");
-    const port = 49_152 + Math.floor(Math.random() * 10_000);
-    let started = false;
-    const command = (name, args, options = {}) => {
-      const result = spawnSync(join(postgresBin, name), args, {
-        encoding: "utf8",
-        ...options,
-      });
-      assert.equal(result.status, 0, result.stderr || result.stdout);
-      return (result.stdout ?? "").trim();
-    };
+for (const migrationOrder of migrationOrders) test(
+  migrationOrder.name,
+  { skip: !postgresAvailable, timeout: 120_000 },
+  async (t) => {
+    const fixture = createPostgresFixture(t);
     const sql = (statement, label = "SQL") => {
-      const result = spawnSync(
-        join(postgresBin, "psql"),
-        [
-          "-X", "-qAt", "-h", cluster, "-p", String(port), "-d", "postgres",
-          "-v", "ON_ERROR_STOP=1",
-        ],
-        { encoding: "utf8", input: statement },
-      );
+      const result = fixture.result(statement);
       assert.equal(result.status, 0, `${label}: ${result.stderr || result.stdout}`);
       return result.stdout.trim();
     };
     const sqlFailure = (statement, pattern, label = "SQL failure") => {
-      const result = spawnSync(
-        join(postgresBin, "psql"),
-        [
-          "-X", "-qAt", "-h", cluster, "-p", String(port), "-d", "postgres",
-          "-v", "ON_ERROR_STOP=1",
-        ],
-        { encoding: "utf8", input: statement },
-      );
+      const result = fixture.result(statement);
       assert.notEqual(result.status, 0, `${label}: expected failure`);
       assert.match(result.stderr, pattern, label);
     };
 
     try {
-      command("initdb", ["-D", data, "-A", "trust", "--no-locale", "--encoding=UTF8"]);
-      command(
-        "pg_ctl",
-        ["-D", data, "-o", `-p ${port} -k ${cluster} -c listen_addresses=''`, "-w", "start"],
-        { stdio: "ignore" },
-      );
-      started = true;
       sql(FULL_CHAIN_BOOTSTRAP_SQL, "full-chain bootstrap");
-      for (const migration of fullChainMigrations) {
+      assert.ok(fullChainMigrationNames.includes(demoMigrationName));
+      for (const name of pendingSeptemberNames) assert.ok(fullChainMigrationNames.includes(name));
+      const demoUser = "12345678-1234-4234-8234-123456789012";
+      const demoEmail = `student-${demoUser}@example.com`;
+      const demoSnapshot = () => sql(`select jsonb_build_object(
+        'helper',(select jsonb_build_object('oid',oid,'owner',proowner,'acl',proacl,
+          'definition',pg_get_functiondef(oid)) from pg_proc
+          where oid='private.toronto_school_name_for_email(text)'::regprocedure),
+        'registry',(select jsonb_agg(to_jsonb(identity) order by user_id)
+          from private.demo_account_identities identity),
+        'trigger',(select pg_get_triggerdef(oid) from pg_trigger
+          where tgrelid='auth.users'::regclass and tgname='a0_guard_registered_demo_identity_email'));`);
+      let registeredSnapshot;
+      for (const migration of migrationOrder.migrations) {
         sql(migration.sql, migration.name);
+        if (migration.name === demoMigrationName) {
+          sql(`insert into auth.users(id,email,raw_user_meta_data,role)
+            values ('${demoUser}','synthetic-demo@georgebrown.ca',
+              '{"first_name":"Synthetic","last_name":"Student"}','authenticated');
+            insert into private.demo_account_identities(user_id,demo_email,school)
+            values ('${demoUser}','${demoEmail}','George Brown College');
+            update auth.users set email='${demoEmail}' where id='${demoUser}';`,
+          "synthetic registered identity after demo migration");
+          registeredSnapshot = demoSnapshot();
+        } else if (registeredSnapshot && pendingSeptemberNames.includes(migration.name)) {
+          assert.equal(demoSnapshot(),registeredSnapshot,`${migration.name} preserves the applied helper/registry/trigger`);
+        }
       }
+      assert.equal(demoSnapshot(),registeredSnapshot);
+      assert.equal(sql(`select private.toronto_school_name_for_email('${demoEmail}');`),"George Brown College");
+      assert.equal(sql(`select provolatile='s' and prosecdef and proconfig=array['search_path=""']
+        from pg_proc where oid='private.toronto_school_name_for_email(text)'::regprocedure;`),"t");
+      assert.equal(sql("select count(*) from pg_policies where schemaname='private' and tablename='demo_account_identities';"),"0");
 
-      assert.equal(
-        fullChainMigrationNames.at(-1),
-        "20260817121321_stage8_advisor_hardening.sql",
-      );
+      assert.ok(fullChainMigrationNames.includes("20260817121744_append_only_report_moderator_notes.sql"));
+      if (fullChainMigrationNames.includes("20260906144154_current_moderation_read_authority.sql")) {
+        assert.equal(sql("select to_regprocedure('public.is_moderation_role()') is null;"), "t");
+      }
+      assert.equal(fullChainMigrations.length, fullChainMigrationNames.length);
       assert.equal(
         sql("select has_function_privilege('service_role','public.transition_conversation_moderation_state(uuid,bigint,text,text,text,uuid,timestamptz,text,uuid,text)','execute');"),
         "f",
@@ -838,9 +815,12 @@ test(
 
       sqlFailure(`
         update auth.users
-        set email = 'seller@example.com'
+        set email = 'seller@unsupported.invalid'
         where id = '${seller}';
       `, /unsupported_toronto_school_email/, "unsupported Auth email changes are rejected");
+      sqlFailure(`
+        update auth.users set email='seller@example.com' where id='${seller}';
+      `, /demo_email_requires_registered_existing_account/, "reserved demo emails require a registered matching UUID");
       sql(`
         update auth.users
         set email = 'seller@yorku.ca'
@@ -884,13 +864,23 @@ test(
         );
       `, /listing_image_reservation_metadata_mismatch/, "reserved listing uploads reject size mismatches");
       sql(`
+        begin;
         set request.jwt.claims = '{"role":"authenticated","sub":"${seller}"}';
+        set storage.operation = 'storage.object.upload';
+        insert into storage.objects(bucket_id,name,owner_id,metadata)
+        values (
+          'listing-images','${reservedListingPath}','${seller}',
+          '{"mimetype":"image/webp","contentLength":375}'::jsonb
+        );
+        rollback;
+        set request.jwt.claims = '{"role":"service_role"}';
+        set storage.operation = 'storage.object.upload';
         insert into storage.objects(bucket_id,name,owner_id,metadata)
         values (
           'listing-images','${reservedListingPath}','${seller}',
           '{"mimetype":"image/webp","size":"100"}'::jsonb
         );
-      `, "reserved listing uploads accept exact metadata");
+      `, "reserved listing preflight and completion accept exact final metadata");
 
       sql(`
         insert into message_send_private.operations(
@@ -1098,12 +1088,7 @@ test(
         "closed:1",
       );
     } finally {
-      if (started) {
-        spawnSync(join(postgresBin, "pg_ctl"), ["-D", data, "-m", "immediate", "-w", "stop"], {
-          stdio: "ignore",
-        });
-      }
-      await rm(cluster, { recursive: true, force: true });
+      fixture.dispose();
     }
   },
 );
