@@ -741,6 +741,7 @@ export const translations = {
     adminRecentEnforcementEmpty: "No enforcement events are available yet.",
     adminRecentEnforcementUnavailable: "Recent enforcement could not load. Reload to try again.",
     viewAll: "View all",
+    notificationsLoadError: "Notifications could not be loaded.",
     loading: "Loading…",
     retry: "Retry",
     adminReportsRegistryDescription:
@@ -2205,6 +2206,7 @@ export const translations = {
     adminRecentEnforcementEmpty: "Aucun événement disciplinaire pour le moment.",
     adminRecentEnforcementUnavailable: "Les mesures récentes n’ont pas pu être chargées. Rechargez la page pour réessayer.",
     viewAll: "Tout afficher",
+    notificationsLoadError: "Impossible de charger les notifications.",
     loading: "Chargement…",
     retry: "Réessayer",
     adminReportsRegistryDescription:

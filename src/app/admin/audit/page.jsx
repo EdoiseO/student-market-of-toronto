@@ -5,7 +5,7 @@ import { MODERATION_ACTIONS } from "@/lib/moderation-policy.mjs";
 const PAGE_SIZE = 30;
 
 export default async function AdminAuditPage({ searchParams }) {
-  const { admin, supabase, language, t } = await requireAdminPageAction(MODERATION_ACTIONS.readAuditLog, "admin audit registry");
+  const { admin, supabase, language, t } = await requireAdminPageAction(MODERATION_ACTIONS.readAuditLog);
   const params = await searchParams;
   const page = Math.max(1, Number.parseInt(params?.page, 10) || 1);
   const from = (page - 1) * PAGE_SIZE;

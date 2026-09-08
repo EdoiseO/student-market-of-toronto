@@ -1,4 +1,3 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { AdminConversationRegistry } from "@/components/admin-conversation-registry";
@@ -16,22 +15,17 @@ import {
 } from "@/lib/moderation-policy.mjs";
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { translations } from "@/lib/translations";
-import { createClient } from "@/utils/supabase/server";
+import { getServerSession } from "@/lib/server-session";
 
 export default async function AdminConversationsPage({ searchParams }) {
   const query = await searchParams;
-  const cookieStore = await cookies();
+  const { cookieStore, user } = await getServerSession();
   const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
   const t = translations[language] || translations.en;
-  const supabase = createClient(cookieStore);
   const admin = createAdminClient();
   const filter = normalizeAdminConversationFilter(query?.filter);
   const search = normalizeAdminConversationSearch(query?.q);
   const page = normalizeAdminConversationPage(query?.page);
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   if (!user) {
     redirect("/login");

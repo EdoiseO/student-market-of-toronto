@@ -1,6 +1,5 @@
 import { AdminQueueHeader } from "@/components/admin-queue-header";
 import { ArrowLeft, ShieldAlert, Users } from "lucide-react";
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -17,7 +16,7 @@ import {
   isAuthUserBanned,
   isUserBanned,
 } from "@/lib/user-status";
-import { createClient } from "@/utils/supabase/server";
+import { getServerSession } from "@/lib/server-session";
 
 function getUserName(profile, t) {
   const profileName = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ").trim();
@@ -52,15 +51,10 @@ async function listUsersPage(admin, { page, query, role, perPage = 50 }) {
 }
 
 export default async function AdminUsersPage({ searchParams }) {
-  const cookieStore = await cookies();
+  const { cookieStore, user } = await getServerSession();
   const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
   const t = translations[language] || translations.en;
-  const supabase = createClient(cookieStore);
   const admin = createAdminClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   if (!user) {
     redirect("/login");

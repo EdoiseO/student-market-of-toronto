@@ -1,6 +1,5 @@
 import { getAdminQueueReturnHref } from "@/lib/admin-queue-navigation.mjs";
 import { ArrowLeft, Flag, MessageSquareWarning } from "lucide-react";
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -27,7 +26,7 @@ import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { loadReportConversationContext } from "@/lib/admin-report-context.mjs";
 import { getUserStatusRow, isAuthUserBanned, isUserBanned } from "@/lib/user-status";
 import { translations } from "@/lib/translations";
-import { createClient } from "@/utils/supabase/server";
+import { getServerSession } from "@/lib/server-session";
 
 const MODERATOR_NOTE_HISTORY_PAGE_SIZE = 10;
 const MODERATOR_NOTE_HISTORY_MAX_VISIBLE = 100;
@@ -49,17 +48,12 @@ export default async function AdminReportReviewPage({ params, searchParams }) {
       Number.parseInt(resolvedSearchParams?.notes, 10) || MODERATOR_NOTE_HISTORY_PAGE_SIZE,
     ),
   );
-  const cookieStore = await cookies();
+  const { cookieStore, supabase, user } = await getServerSession();
   const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
   const t = translations[language] || translations.en;
-  const supabase = createClient(cookieStore);
   const admin = createAdminClient();
   // Report data keeps the caller's RLS boundary, including role changes mid-request.
   const dataClient = supabase;
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   if (!user) {
     redirect("/login");

@@ -1,5 +1,4 @@
 import { adminUserHistoryHref, getAdminQueueReturnHref } from "@/lib/admin-queue-navigation.mjs";
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -17,7 +16,7 @@ import {
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { translations } from "@/lib/translations";
 import { getBanDisplayUntil, getUserStatusRow, isAuthUserBanned, isUserBanned } from "@/lib/user-status";
-import { createClient } from "@/utils/supabase/server";
+import { getServerSession } from "@/lib/server-session";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const HISTORY_PAGE_SIZE = 20;
@@ -35,12 +34,10 @@ export default async function AdminUserDetailPage({ params, searchParams }) {
   const queuePath = typeof query?.returnTo === "string" && /^\/admin\/users(?:[?#]|$)/.test(query.returnTo)
     ? "/admin/users" : "/admin/enforcement";
   const returnHref = getAdminQueueReturnHref(query?.returnTo, queuePath);
-  const cookieStore = await cookies();
+  const { cookieStore, user } = await getServerSession();
   const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
   const t = translations[language] ?? translations.en;
-  const supabase = createClient(cookieStore);
   const admin = createAdminClient();
-  const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   if (!admin) redirect("/admin/users");
   const accessUser = await getLatestAuthUser(admin, user.id, "admin user detail access");

@@ -1,17 +1,11 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { AlertTriangle, Ban, CircleAlert, Clock3, FileWarning, Gavel, MessageSquareOff, ShieldAlert } from "lucide-react";
 
+import { requireAdminPageAction } from "@/lib/admin-page-access";
 import { ClientFormattedDateTime } from "@/components/client-formatted-date-time";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getUserModerationRole } from "@/lib/moderation";
 import { MODERATION_ACTIONS, canPerformModerationAction } from "@/lib/moderation-policy.mjs";
-import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
-import { translations } from "@/lib/translations";
-import { getUserStatusRow, isUserBanned } from "@/lib/user-status";
-import { createClient } from "@/utils/supabase/server";
 
 const ATTENTION_LIMIT = 4;
 const TIMELINE_LIMIT = 10;
@@ -47,22 +41,7 @@ function MetricCard({ icon: Icon, label, metric, href }) {
 }
 
 export default async function AdminPage() {
-  const cookieStore = await cookies();
-  const language = cookieStore.get("language")?.value === "fr" ? "fr" : "en";
-  const t = translations[language] || translations.en;
-  const supabase = createClient(cookieStore);
-  const admin = createAdminClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
-  if (!admin) redirect("/");
-
-  const accessUser = await getLatestAuthUser(admin, user.id, "admin overview access");
-  const role = getUserModerationRole(accessUser);
-  if (!accessUser || !canPerformModerationAction(role, MODERATION_ACTIONS.viewDashboard)) redirect("/");
-  const actorStatus = await getUserStatusRow(admin, user.id);
-  if (actorStatus.error || actorStatus.available === false) redirect("/");
-  if (isUserBanned(actorStatus.data)) redirect("/banned");
+  const { admin, language, role, t } = await requireAdminPageAction(MODERATION_ACTIONS.viewDashboard);
 
   const canReadReports = canPerformModerationAction(role, MODERATION_ACTIONS.readReports);
   const canReadListings = canPerformModerationAction(role, MODERATION_ACTIONS.readListings);

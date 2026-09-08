@@ -1,4 +1,3 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { AdminEnforcementContent } from "@/components/admin-enforcement-content";
@@ -16,7 +15,7 @@ import {
 } from "@/lib/moderation-policy.mjs";
 import { createAdminClient, getLatestAuthUser } from "@/lib/supabase-admin";
 import { getUserStatusRow, isUserBanned } from "@/lib/user-status";
-import { createClient } from "@/utils/supabase/server";
+import { getServerSession } from "@/lib/server-session";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -40,14 +39,10 @@ async function getMatchingProfileIds(admin, query) {
 }
 
 export default async function AdminEnforcementPage({ searchParams }) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+  const { user } = await getServerSession();
   const admin = createAdminClient();
   const resolvedSearchParams = await searchParams;
   const filters = parseAdminEnforcementFilters(resolvedSearchParams);
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   if (!user) redirect("/login");
   if (!admin) {

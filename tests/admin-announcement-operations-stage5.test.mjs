@@ -108,7 +108,7 @@ test("user directory fetches one bounded server page instead of walking the auth
 });
 
 test("overview and registries use bounded, filtered, fail-closed moderation data", () => {
-  assert.match(overviewPage, /getUserStatusRow/);
+  assert.match(overviewPage, /requireAdminPageAction\(MODERATION_ACTIONS\.viewDashboard\)/);
   assert.match(overviewPage, /\.neq\("restrictions", "\{\}"\)/);
   assert.doesNotMatch(overviewPage, /\.neq\("restrictions", \{\}\)/);
   assert.match(overviewPage, /\.eq\("status", "inactive"\)\.not\("submitted_for_review_at", "is", null\)/);
