@@ -27,6 +27,12 @@
 AGENTS.md
 /logs/
 
+# Local assistant handoffs and dated working reports
+/HANDOFF.md
+/NEW_THREAD_PROMPT.md
+/docs/remediation-20??-??-??.md
+/docs/security/release-check-20??-??-??.md
+
 # debug
 npm-debug.log*
 yarn-debug.log*

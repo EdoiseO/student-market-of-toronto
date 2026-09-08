@@ -1,8 +1,8 @@
-# Isolated moderation-authority platform check
+# Moderation fixtures and legacy authorization checks
 
-This is a release gate, not a production probe. Native PostgreSQL regressions exercise real RLS and the migration chain, but do not verify Supabase Auth token issuance, PostgREST, Storage downloads, or URL signing. The harness must pass against a disposable Supabase deployment with the complete current schema and migration chain.
+This harness provisions isolated authorization fixtures and verifies retained-token Data API access. Its Storage assertions describe the legacy direct-download/signing model. After migration `20260907202430`, direct client Storage access is deliberately denied; use the [authenticated private-media checks](private-media-staging.md) for the current gateway. Do not interpret an incompatible legacy Storage assertion as a reason to restore direct download access.
 
-**7 September 2026 result: failed Storage revocation gate.** A free isolated project in Phillips Org now contains the production schema without production records, plus the four release migrations and synthetic fixtures. Moderator/participant positive controls, unrelated staff denials, bounded report context, and same-token Data API denials after committed demotion passed. The unchanged authenticated Storage URL returned `200`, `CF-Cache-Status: HIT`, and `Cache-Control: public, max-age=3600` after demotion. Separate requests with a fresh cache query and new URL signing were denied. Those diagnostics establish a narrower origin authorization result; they do not turn the strict same-URL assertion into a pass. See the [release check](release-check-2026-09-07.md).
+Native PostgreSQL tests do not establish hosted Auth, PostgREST or CDN behavior. A warmed Storage response can outlive a permission change; a fresh cache query or denied new signature does not prove revocation of the original URL. Follow the [deployment and cache-retirement procedure](../deployment.md) for release verification.
 
 The harness refuses production project `bmnfynufuqjwjmtlfdxf`, does not load project `.env` files, requires a target-specific acknowledgement, and creates only four accounts marked with a unique fixture run ID. It never prints keys, passwords, tokens, message bodies, or signed URLs. Auth admin creation confirms the synthetic email without sending an email.
 
@@ -54,7 +54,7 @@ The harness signs in synthetic users once and holds their real issued access tok
 - Participant access survives those changes.
 - A media URL issued before demotion remains usable during the run. This is a retained bearer capability. The harness does not measure its expiry or the lifetime of a cached response; signed-token expiry alone is not a verified cache-revocation deadline.
 
-The script emits a nonsecret JSON result. A failure is a failed release gate; retain the assertion and deployment versions for diagnosis. Do not change a denied read to an allowed expectation to get a pass.
+The script emits a nonsecret JSON result. Retain the assertion and deployment versions for diagnosis. A failed applicable authorization assertion blocks release; legacy Storage expectations must be interpreted against the schema version described above. Do not change a denied read to an allowed expectation to conceal a failure.
 
 Auth bans, application bans, deleted accounts, canonical role parsing, public/own bios, all action values, explicit notification column grants, unknown legacy dependencies, and rollback atomicity are covered in the native regression suite. A deployment-specific full rollout check should additionally exercise Auth/application ban transitions through the application's trusted administrator workflows and inspect the actual deployed catalog. This script does not claim browser route, Realtime delivery, downstream email, or existing signed-URL expiry timing coverage.
 

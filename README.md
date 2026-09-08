@@ -2,17 +2,15 @@
 
 A student marketplace for discovering items, managing listings, and arranging sales through listing-linked conversations. The application also includes moderation, reporting, account enforcement, and tools for reviewing listing photos and conversation evidence.
 
-[Live demo](https://student-market-of-toronto.vercel.app) · [Project case study](https://philliponofua.vercel.app/student-market.html) · [Release work: PR #76](https://github.com/EdoiseO/student-market-of-toronto/pull/76)
+[Live demo](https://student-market-of-toronto.vercel.app) · [Project case study](https://philliponofua.vercel.app/student-market.html)
 
 Built with **Next.js 16, React 19, Tailwind CSS 4, and Supabase** (Auth, PostgreSQL, Storage, and Realtime). Vercel hosts the application.
 
-## Release status
+## Demo status
 
-**7 September 2026:** this branch includes the mobile moderation redesign, clickable review photos, streamlined sign-in feedback, and the latest security remediations. Four database migrations and the production Auth redirect configuration are now applied and verified. The live application still serves the previous release; PR #76 has not been merged.
+The application is deployed, but its private-media database rollout is incomplete. Private attachments are temporarily unavailable. Avoid account deletion until that rollout is complete, because cleanup can partially run before the request fails. See the [deployment guide](docs/deployment.md) for the outstanding migration and cutover requirements.
 
-**Demo scope checkpoint — 7 September 2026:** custom SMTP, a branded sender, and general student-inbox delivery are **DELIBERATELY DEFERRED** for this demo release. The existing built-in sender supports the approved owner test inbox only; the recovery form explains this limitation without exposing the address or confirming whether an account exists. No email service, paid resource, or domain purchase is part of this release. Configure a suitable sender and verify institutional inbox delivery before real student onboarding.
-
-The latest candidate replaces signed private-image URLs with an authenticated, uncached media endpoint. **395 security tests**, the local production build, lint and **18 browser cases** passed after fullscreen-gallery fix `708605c`, also verified in iPhone Safari through Mirroring. Zoom, pan, reset and closing now work with the observed indirect input; direct touchscreen gestures, software-keyboard layout and landscape remain unverified. Hosted staging previously passed 35 final-candidate media checks, legacy Storage/optimizer URL retirement, 18 delivered HTTPS recovery checks, 19 account-state assertions and four retained-token Realtime phases. Current-head GitHub checks and independent PR approval remain release gates. Android hardware and screen-reader speech are not claimed. The new gateway migration is applied only in staging; production has not received this application update. See the [dated release check](docs/security/release-check-2026-09-07.md) for evidence, limits and the guarded production cutover.
+This is a demonstration project. General student-inbox email delivery is not enabled; Supabase's built-in Auth sender currently restricts recipients to organization-member inboxes. Custom SMTP and verified student-inbox recovery are prerequisites before opening the project to real student accounts.
 
 ## Product features
 
@@ -38,8 +36,6 @@ npm ci
 cp .env.example .env.local
 ```
 
-These commands check out the default branch. To work on the September release described above, check out `agent/redesign-message-media` before installing dependencies.
-
 Use an isolated development Supabase project with the complete application schema, policies, functions, Auth configuration, and Storage setup. **The tracked migrations extend an existing baseline; this repository does not yet provide a standalone empty-project bootstrap.** Creating the few tables named in the UI is insufficient. Obtain the baseline before setting up a new project, then reconcile and apply its pending migrations in order. The native test bootstrap is a synthetic fixture, not a deployable Supabase seed.
 
 An independent project also needs a reviewed target-specific configuration for `private.listing_image_public_url(text)`: the tracked definition contains the original project's Storage origin. Changing `.env.local` alone does not update that database function. Preserve historical migrations and make any required target adaptation explicitly.
@@ -54,7 +50,7 @@ The application uses these Storage buckets:
 
 Use the expected bucket policies and upload restrictions; making private message media public is incompatible with the application's access model.
 
-For an existing hosted deployment, read [migration reconciliation and demo identities](docs/security/registered-demo-identities.md) first. Migration `20260906160016_registered_demo_account_emails.sql` is already applied to the shared project and must retain its timestamp and private registry/helper. Do not replay it or blindly repair migration history. Keep operational account mappings and backups outside Git.
+For an existing hosted deployment, follow the [deployment guide](docs/deployment.md) and [demo identity contract](docs/security/registered-demo-identities.md). Reconcile live migration history before applying pending changes; keep historical SQL, the private demo registry and its school-validation helper intact. Keep operational account mappings and backups outside Git.
 
 ### 2. Configure environment variables
 
@@ -107,7 +103,7 @@ The security suite uses Node's test runner and disposable **PostgreSQL 16+** clu
 
 `REQUIRE_POSTGRES=1` makes missing database binaries a failure; without it, local native tests can skip. CI requires them and runs the suite serially on Ubuntu 24.04 and macOS 14 using Node 22. See the [fixture guide](tests/helpers/README.md) and [CI workflow](.github/workflows/security-tests.yml).
 
-After a successful build, `npm run start` serves the production build locally. Local tests do not replace the [isolated hosted authorization checks](docs/security/moderation-authority-staging.md) or actual email delivery verification.
+After a successful build, `npm run start` serves the production build locally. Local tests do not replace [hosted private-media checks](docs/security/private-media-staging.md), Realtime verification or actual email delivery tests.
 
 ## Architecture and routes
 
@@ -131,16 +127,17 @@ src/utils/supabase/      Browser, server, and session clients
 supabase/migrations/     Versioned SQL changes to the application baseline
 tests/                   Security and workflow regressions
 scripts/                 Isolated hosted verification tools
-docs/                    Recovery, remediation, and release documentation
+docs/                    Authentication, security, and deployment guides
 public/                  Static application assets
 ```
 
-## Implementation notes and documentation
+## Documentation
 
-Notification preferences are stored, but they do not by themselves establish a working marketplace email-delivery pipeline. The announcement worker currently supports in-app delivery only; Auth email is configured separately. Seller-sold notification delivery also remains unverified. Production still uses Supabase's restricted built-in Auth email sender. Custom SMTP, branded sending and general student recovery delivery are deliberately deferred for this demo and remain prerequisites before real student onboarding. The [release check](docs/security/release-check-2026-09-07.md) tracks the remaining hosted validation; do not infer deployment status from a passing local build or a preview screenshot.
+- [Deployment](docs/deployment.md): prerequisites, current rollout status and private-media cutover.
+- [Password recovery](docs/password-recovery.md): browser binding, Auth configuration and delivery verification.
+- [Private attachments](docs/security/private-message-media.md): authorization and caching design.
+- [Media relocation](docs/security/message-media-relocation.md): exact-inventory migration and cache retirement.
+- [Demo identities](docs/security/registered-demo-identities.md): immutable migration and school-validation contracts.
+- [Hosted media checks](docs/security/private-media-staging.md), [Realtime checks](docs/security/moderation-realtime-staging.md) and [browser/device checks](scripts/demo-browser-check/README.md): isolated verification procedures.
 
-- [Redesign and security remediation report](docs/remediation-2026-09-06.md): implementation scope, local evidence, and known limits.
-- [Password recovery](docs/password-recovery.md): browser binding, configuration, and delivery tests.
-- [Hosted moderation checks](docs/security/moderation-authority-staging.md): isolated fixtures and retained-token authorization verification.
-- [Registered demo identities](docs/security/registered-demo-identities.md): immutable migration history and login-fixture constraints.
-- [Project handoff](HANDOFF.md): dated operational checkpoints; the newest checkpoint takes precedence over historical notes.
+The announcement worker supports in-app delivery. Auth email is configured separately; saved notification preferences do not establish a marketplace email-delivery service. Seller-sold email delivery remains unverified.

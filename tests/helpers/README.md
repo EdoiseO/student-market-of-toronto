@@ -19,9 +19,11 @@ so legacy bootstraps may still create their simulated `postgres` role. A bootstr
 that requires `postgres` at initialization can request `{ username: "postgres" }`.
 Do not replace role-specific SQL assertions with calls as the fixture superuser.
 
-Native deadlines cover initdb, pg_ctl, and psql. Defaults are 15 seconds for startup
-and each shutdown attempt, 30 seconds for clients, 20 seconds for SQL statements,
-and 10 seconds for locks. Existing deliberate race delays fit inside these bounds.
+Native deadlines cover initdb, pg_ctl, and psql. Initialization, startup, and each
+shutdown attempt default to 15 seconds; clients use 30 seconds, SQL statements
+20 seconds, and locks 10 seconds. `initializationTimeoutMs` is independent of
+`startupTimeoutMs`, so injected controller timeouts do not interrupt initialization.
+Existing deliberate race delays fit inside these bounds.
 The helper terminates tracked clients, attempts fast then immediate shutdown, and
 retains the private directory with an error if its postmaster cannot be stopped.
 Never delete that retained directory before stopping the owned server.
