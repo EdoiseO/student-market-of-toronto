@@ -729,6 +729,8 @@ export const translations = {
     adminNeedsAttentionDescription:
       "The oldest unresolved items across the moderation workspaces.",
     adminNeedsAttentionEmpty: "Nothing needs immediate attention.",
+    adminNeedsAttentionPartial: "Some queues could not load. Showing the available items. Reload to try again.",
+    adminNeedsAttentionUnavailable: "The attention queue could not fully load. Reload to try again.",
     adminAttentionReport: "Report",
     adminAttentionListing: "Listing review",
     adminAttentionAppeal: "Appeal",
@@ -737,6 +739,7 @@ export const translations = {
     adminAttentionIndefiniteClose: "Conversation restricted until reopened",
     adminRecentEnforcement: "Recent enforcement",
     adminRecentEnforcementEmpty: "No enforcement events are available yet.",
+    adminRecentEnforcementUnavailable: "Recent enforcement could not load. Reload to try again.",
     viewAll: "View all",
     loading: "Loading…",
     retry: "Retry",
@@ -2190,6 +2193,8 @@ export const translations = {
     adminNeedsAttentionDescription:
       "Les éléments non résolus les plus anciens des espaces de modération.",
     adminNeedsAttentionEmpty: "Aucun élément ne nécessite une attention immédiate.",
+    adminNeedsAttentionPartial: "Certaines files n’ont pas pu être chargées. Les éléments disponibles sont affichés. Rechargez la page pour réessayer.",
+    adminNeedsAttentionUnavailable: "La file des éléments à traiter n’a pas pu être entièrement chargée. Rechargez la page pour réessayer.",
     adminAttentionReport: "Signalement",
     adminAttentionListing: "Examen d’annonce",
     adminAttentionAppeal: "Contestation",
@@ -2198,6 +2203,7 @@ export const translations = {
     adminAttentionIndefiniteClose: "Conversation restreinte jusqu’à sa réouverture",
     adminRecentEnforcement: "Mesures récentes",
     adminRecentEnforcementEmpty: "Aucun événement disciplinaire pour le moment.",
+    adminRecentEnforcementUnavailable: "Les mesures récentes n’ont pas pu être chargées. Rechargez la page pour réessayer.",
     viewAll: "Tout afficher",
     loading: "Chargement…",
     retry: "Réessayer",
