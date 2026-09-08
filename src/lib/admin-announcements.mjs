@@ -118,6 +118,10 @@ export function buildAnnouncementAudienceFilter(audienceType, rawFilter) {
   }
 }
 
+export function announcementRequiresAlwaysOn(category) {
+  return ["safety", "policy", "moderation"].includes(category);
+}
+
 export function validateAnnouncementPayload(input, { titleRequired = true } = {}) {
   const bodyValidation = validateAnnouncementMessage(input?.body ?? input?.message);
   if (!bodyValidation.ok) {
@@ -144,7 +148,7 @@ export function validateAnnouncementPayload(input, { titleRequired = true } = {}
   if (!category || !priority || !audienceType || !deliveryPolicy) {
     return { ok: false, error: "selection" };
   }
-  if (["safety", "policy", "moderation"].includes(category) && deliveryPolicy !== "always_on") {
+  if (announcementRequiresAlwaysOn(category) && deliveryPolicy !== "always_on") {
     return { ok: false, error: "delivery_policy" };
   }
 

@@ -2,11 +2,60 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  announcementRequiresAlwaysOn,
+  validateAnnouncementPayload,
+} from "../src/lib/admin-announcements.mjs";
+import {
   ANNOUNCEMENT_NOTIFICATION_TYPE,
   getEnabledNotificationRowTypes,
   isMessageNotificationType,
   normalizeNotificationRow,
 } from "../src/lib/notifications.js";
+
+function announcementPayload(category, deliveryPolicy) {
+  return {
+    title: "Campus update",
+    body: "Please review this update before arranging your next pickup.",
+    category,
+    priority: "normal",
+    audienceType: "all",
+    audienceFilter: {},
+    deliveryPolicy,
+  };
+}
+
+for (const category of ["safety", "policy", "moderation"]) {
+  test(`${category} announcements require always-on delivery in the shared rule and validator`, () => {
+    assert.equal(announcementRequiresAlwaysOn(category), true);
+    assert.deepEqual(
+      validateAnnouncementPayload(announcementPayload(category, "preference_aware")),
+      { ok: false, error: "delivery_policy" },
+    );
+
+    const accepted = validateAnnouncementPayload(announcementPayload(category, "always_on"));
+    assert.equal(accepted.ok, true);
+    assert.equal(accepted.value.category, category);
+    assert.equal(accepted.value.deliveryPolicy, "always_on");
+
+    // API normalization must not bypass the same rule used by the composer.
+    assert.deepEqual(
+      validateAnnouncementPayload(announcementPayload(` ${category.toUpperCase()} `, " PREFERENCE_AWARE ")),
+      { ok: false, error: "delivery_policy" },
+    );
+  });
+}
+
+for (const category of ["general", "maintenance"]) {
+  test(`${category} announcements continue to allow either delivery policy`, () => {
+    assert.equal(announcementRequiresAlwaysOn(category), false);
+    for (const deliveryPolicy of ["always_on", "preference_aware"]) {
+      const accepted = validateAnnouncementPayload(announcementPayload(category, deliveryPolicy));
+      assert.equal(accepted.ok, true);
+      assert.equal(accepted.value.category, category);
+      assert.equal(accepted.value.deliveryPolicy, deliveryPolicy);
+    }
+  });
+}
 
 test("announcement notices stay visible when ordinary message notifications are disabled", () => {
   const enabledTypes = getEnabledNotificationRowTypes({

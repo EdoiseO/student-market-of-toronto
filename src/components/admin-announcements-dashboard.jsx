@@ -20,6 +20,7 @@ import {
   ANNOUNCEMENT_MESSAGE_MAX_LENGTH,
   ANNOUNCEMENT_PRIORITIES,
   ANNOUNCEMENT_STATUSES,
+  announcementRequiresAlwaysOn,
 } from "@/lib/admin-announcements.mjs";
 
 const EMPTY_FORM = Object.freeze({
@@ -91,6 +92,7 @@ export function AdminAnnouncementsDashboard() {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState("");
   const operationRef = React.useRef(null);
+  const requiresAlwaysOn = announcementRequiresAlwaysOn(form.category);
 
   const load = React.useCallback(async (page = 1) => {
     setLoading(true); setError("");
@@ -108,7 +110,14 @@ export function AdminAnnouncementsDashboard() {
 
   React.useEffect(() => { const timeout = setTimeout(() => load(1), 180); return () => clearTimeout(timeout); }, [load]);
 
-  function setField(name, value) { operationRef.current = null; setForm((current) => ({ ...current, [name]: value })); }
+  function setField(name, value) {
+    operationRef.current = null;
+    setForm((current) => {
+      const next = { ...current, [name]: value };
+      if (announcementRequiresAlwaysOn(next.category)) next.deliveryPolicy = "always_on";
+      return next;
+    });
+  }
 
   async function request(method, payload) {
     setBusy(true);
@@ -139,7 +148,7 @@ export function AdminAnnouncementsDashboard() {
 
   function edit(announcement) {
     setEditing(announcement); operationRef.current = null;
-    setForm({ title: announcement.title, body: announcement.body, category: announcement.category, priority: announcement.priority, audienceType: announcement.audienceType, audienceValues: Object.values(announcement.audienceFilter ?? {}).flat().join(", "), deliveryPolicy: announcement.deliveryPolicy });
+    setForm({ title: announcement.title, body: announcement.body, category: announcement.category, priority: announcement.priority, audienceType: announcement.audienceType, audienceValues: Object.values(announcement.audienceFilter ?? {}).flat().join(", "), deliveryPolicy: announcementRequiresAlwaysOn(announcement.category) ? "always_on" : announcement.deliveryPolicy });
     document.getElementById("announcement-editor")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -151,18 +160,27 @@ export function AdminAnnouncementsDashboard() {
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(300px,.72fr)_minmax(0,1.28fr)]">
           <section id="announcement-editor" className="rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-5 lg:sticky lg:top-24" aria-labelledby="announcement-editor-title">
             <h2 id="announcement-editor-title" className="text-lg font-semibold">{editing ? t.adminAnnouncementEditDraft : t.adminAnnouncementCreateDraft}</h2>
-            <form className="mt-4 space-y-4" onSubmit={submitEditor}>
+            <form className="mt-3 space-y-3" onSubmit={submitEditor}>
               <div><Label htmlFor="announcement-title">{t.title}</Label><Input id="announcement-title" value={form.title} onChange={(event) => setField("title", event.target.value)} maxLength={160} required className="mt-1" /></div>
               <div><Label htmlFor="announcement-body">{t.announcementMessageLabel}</Label><Textarea id="announcement-body" value={form.body} onChange={(event) => setField("body", event.target.value)} maxLength={ANNOUNCEMENT_MESSAGE_MAX_LENGTH} required rows={6} className="mt-1 min-h-32 resize-y" /><p className="mt-1 text-right text-xs text-muted-foreground">{Array.from(form.body).length}/{ANNOUNCEMENT_MESSAGE_MAX_LENGTH}</p></div>
-              <div className="grid grid-cols-2 gap-3"><div><Label htmlFor="announcement-category">{t.category}</Label><NativeSelect id="announcement-category" value={form.category} onChange={(event) => setField("category", event.target.value)} className="mt-1">{ANNOUNCEMENT_CATEGORIES.map((value) => <NativeSelectOption key={value} value={value}>{value}</NativeSelectOption>)}</NativeSelect></div><div><Label htmlFor="announcement-priority">{t.adminAnnouncementPriority}</Label><NativeSelect id="announcement-priority" value={form.priority} onChange={(event) => setField("priority", event.target.value)} className="mt-1">{ANNOUNCEMENT_PRIORITIES.map((value) => <NativeSelectOption key={value} value={value}>{value}</NativeSelectOption>)}</NativeSelect></div></div>
-              <div><Label htmlFor="announcement-audience">{t.adminAnnouncementAudience}</Label><NativeSelect id="announcement-audience" value={form.audienceType} onChange={(event) => setField("audienceType", event.target.value)} className="mt-1">{ANNOUNCEMENT_AUDIENCE_TYPES.map((value) => <NativeSelectOption key={value} value={value}>{value}</NativeSelectOption>)}</NativeSelect></div>
-              {form.audienceType !== "all" ? <div><Label htmlFor="announcement-audience-values">{t.adminAnnouncementAudienceValues}</Label>{form.audienceType === "role" ? <NativeSelect id="announcement-audience-values" value={form.audienceValues} onChange={(event) => setField("audienceValues", event.target.value)} className="mt-1" required><NativeSelectOption value="">{t.adminAnnouncementChooseAudience}</NativeSelectOption>{ANNOUNCEMENT_AUDIENCE_ROLES.map((value) => <NativeSelectOption key={value} value={value}>{value}</NativeSelectOption>)}</NativeSelect> : <Input id="announcement-audience-values" value={form.audienceValues} onChange={(event) => setField("audienceValues", event.target.value)} placeholder={t.adminAnnouncementAudienceValuesPlaceholder} className="mt-1" required />}<p className="mt-1 text-xs text-muted-foreground">{t.adminAnnouncementAudienceHint}</p></div> : null}
-              <div><Label htmlFor="announcement-policy">{t.adminAnnouncementDeliveryPolicy}</Label><NativeSelect id="announcement-policy" value={form.deliveryPolicy} onChange={(event) => setField("deliveryPolicy", event.target.value)} className="mt-1">{ANNOUNCEMENT_DELIVERY_POLICIES.map((value) => <NativeSelectOption key={value} value={value}>{value}</NativeSelectOption>)}</NativeSelect><p className="mt-1 text-xs text-muted-foreground">{t.adminAnnouncementEmailUnavailable}</p></div>
+              <div className="grid grid-cols-2 gap-3"><div className="min-w-0"><Label htmlFor="announcement-category">{t.category}</Label><NativeSelect id="announcement-category" value={form.category} onChange={(event) => setField("category", event.target.value)} className="mt-1 w-full min-w-0">{ANNOUNCEMENT_CATEGORIES.map((value) => <NativeSelectOption key={value} value={value}>{t[`adminAnnouncementCategory_${value}`] ?? value}</NativeSelectOption>)}</NativeSelect></div><div className="min-w-0"><Label htmlFor="announcement-priority">{t.adminAnnouncementPriority}</Label><NativeSelect id="announcement-priority" value={form.priority} onChange={(event) => setField("priority", event.target.value)} className="mt-1 w-full min-w-0">{ANNOUNCEMENT_PRIORITIES.map((value) => <NativeSelectOption key={value} value={value}>{t[`adminAnnouncementPriority_${value}`] ?? value}</NativeSelectOption>)}</NativeSelect></div></div>
+              <div><Label htmlFor="announcement-audience">{t.adminAnnouncementAudience}</Label><NativeSelect id="announcement-audience" value={form.audienceType} onChange={(event) => setField("audienceType", event.target.value)} className="mt-1 w-full min-w-0">{ANNOUNCEMENT_AUDIENCE_TYPES.map((value) => <NativeSelectOption key={value} value={value}>{t[`adminAnnouncementAudience_${value}`] ?? value}</NativeSelectOption>)}</NativeSelect></div>
+              {form.audienceType !== "all" ? <div><Label htmlFor="announcement-audience-values">{t.adminAnnouncementAudienceValues}</Label>{form.audienceType === "role" ? <NativeSelect id="announcement-audience-values" value={form.audienceValues} onChange={(event) => setField("audienceValues", event.target.value)} className="mt-1 w-full min-w-0" required><NativeSelectOption value="">{t.adminAnnouncementChooseAudience}</NativeSelectOption>{ANNOUNCEMENT_AUDIENCE_ROLES.map((value) => <NativeSelectOption key={value} value={value}>{t[`adminAnnouncementRole_${value}`] ?? value}</NativeSelectOption>)}</NativeSelect> : <Input id="announcement-audience-values" value={form.audienceValues} onChange={(event) => setField("audienceValues", event.target.value)} placeholder={t.adminAnnouncementAudienceValuesPlaceholder} className="mt-1" required />}<p className="mt-1 text-xs text-muted-foreground">{t.adminAnnouncementAudienceHint}</p></div> : null}
+              <div>
+                <Label htmlFor="announcement-policy">{t.adminAnnouncementDeliveryPolicy}</Label>
+                <NativeSelect id="announcement-policy" aria-describedby="announcement-delivery-help" value={form.deliveryPolicy} onChange={(event) => setField("deliveryPolicy", event.target.value)} className="mt-1 w-full min-w-0">
+                  {ANNOUNCEMENT_DELIVERY_POLICIES.map((value) => <NativeSelectOption key={value} value={value} disabled={requiresAlwaysOn && value === "preference_aware"}>{t[`adminAnnouncementPolicy_${value}`] ?? value}</NativeSelectOption>)}
+                </NativeSelect>
+                <p id="announcement-delivery-help" className="mt-1 text-xs text-muted-foreground">
+                  {t.adminAnnouncementEmailUnavailable}{" "}
+                  {requiresAlwaysOn ? t.adminAnnouncementAlwaysOnRequired : form.deliveryPolicy === "preference_aware" ? t.adminAnnouncementPreferenceUnavailable : null}
+                </p>
+              </div>
               <div className="flex flex-col gap-2 sm:flex-row"><Button type="submit" value="create_draft" className="flex-1" disabled={busy}>{busy ? <LoaderCircle className="size-4 animate-spin" /> : null}{editing ? t.saveChanges : t.saveDraft}</Button>{!editing ? <Button type="submit" value="send" variant="outline" className="flex-1" disabled={busy}><Send className="size-4" />{t.adminAnnouncementSendNow}</Button> : <Button type="button" variant="outline" onClick={() => { setEditing(null); setForm(EMPTY_FORM); }}>{t.cancel}</Button>}</div>
             </form>
           </section>
 
-          <section className="min-w-0" aria-labelledby="announcement-history-title"><div className="flex flex-col gap-3 rounded-3xl border border-border bg-card p-4 sm:flex-row sm:items-end sm:justify-between"><div><h2 id="announcement-history-title" className="font-semibold">{t.adminAnnouncementHistory}</h2><p className="text-sm text-muted-foreground">{t.adminAnnouncementTotal.replace("{count}", String(pagination.total))}</p></div><div className="flex min-w-0 flex-col gap-2 sm:flex-row"><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t.adminAnnouncementSearchPlaceholder} aria-label={t.adminAnnouncementSearchPlaceholder} className="min-w-0 sm:w-56" /><NativeSelect value={status} onChange={(event) => setStatus(event.target.value)} aria-label={t.adminAnnouncementStatusFilter}><NativeSelectOption value="">{t.all}</NativeSelectOption>{ANNOUNCEMENT_STATUSES.map((value) => <NativeSelectOption key={value} value={value}>{statusLabel(value, t)}</NativeSelectOption>)}</NativeSelect></div></div>
+          <section className="min-w-0" aria-labelledby="announcement-history-title"><div className="flex flex-col gap-3 rounded-3xl border border-border bg-card p-4 xl:flex-row xl:items-end xl:justify-between"><div><h2 id="announcement-history-title" className="font-semibold">{t.adminAnnouncementHistory}</h2><p className="text-sm text-muted-foreground">{t.adminAnnouncementTotal.replace("{count}", String(pagination.total))}</p></div><div className="flex w-full min-w-0 items-center gap-2 xl:w-auto"><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t.adminAnnouncementSearchCompact} aria-label={t.adminAnnouncementSearchPlaceholder} className="min-w-0 flex-1 xl:w-56" /><NativeSelect value={status} onChange={(event) => setStatus(event.target.value)} aria-label={t.adminAnnouncementStatusFilter} className="w-32 shrink-0 [&_select]:truncate xl:w-auto"><NativeSelectOption value="">{t.all}</NativeSelectOption>{ANNOUNCEMENT_STATUSES.map((value) => <NativeSelectOption key={value} value={value}>{statusLabel(value, t)}</NativeSelectOption>)}</NativeSelect></div></div>
             <div className="mt-3 space-y-3">{loading ? <div className="flex min-h-48 items-center justify-center rounded-3xl border border-border bg-card"><LoaderCircle className="size-6 animate-spin" /><span className="sr-only">{t.loading}</span></div> : error ? <div role="alert" className="rounded-3xl border border-destructive/40 bg-card p-6 text-center"><p className="font-medium">{error}</p><Button type="button" variant="outline" className="mt-3" onClick={() => load(pagination.page)}>{t.retry}</Button></div> : announcements.length ? announcements.map((announcement) => <AnnouncementCard key={announcement.id} announcement={announcement} onAction={lifecycle} onEdit={edit} busy={busy} t={t} language={language} />) : <div className="rounded-3xl border border-dashed border-border bg-card px-5 py-12 text-center text-sm text-muted-foreground">{t.adminAnnouncementsEmpty}</div>}</div>
             {pagination.totalPages > 1 ? <nav aria-label={t.adminAnnouncementPagination} className="mt-4 flex items-center justify-between gap-3"><Button type="button" variant="outline" size="sm" disabled={loading || pagination.page <= 1} onClick={() => load(pagination.page - 1)}>{t.previousPage}</Button><p className="text-sm text-muted-foreground">{t.pageLabel} {pagination.page} / {pagination.totalPages}</p><Button type="button" variant="outline" size="sm" disabled={loading || pagination.page >= pagination.totalPages} onClick={() => load(pagination.page + 1)}>{t.nextPage}</Button></nav> : null}
           </section>
