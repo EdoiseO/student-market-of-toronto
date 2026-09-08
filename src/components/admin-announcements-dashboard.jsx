@@ -20,6 +20,7 @@ import {
   ANNOUNCEMENT_MESSAGE_MAX_LENGTH,
   ANNOUNCEMENT_PRIORITIES,
   ANNOUNCEMENT_STATUSES,
+  announcementRequiresAlwaysOn,
 } from "@/lib/admin-announcements.mjs";
 
 const EMPTY_FORM = Object.freeze({
@@ -91,6 +92,7 @@ export function AdminAnnouncementsDashboard() {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState("");
   const operationRef = React.useRef(null);
+  const requiresAlwaysOn = announcementRequiresAlwaysOn(form.category);
 
   const load = React.useCallback(async (page = 1) => {
     setLoading(true); setError("");
@@ -108,7 +110,14 @@ export function AdminAnnouncementsDashboard() {
 
   React.useEffect(() => { const timeout = setTimeout(() => load(1), 180); return () => clearTimeout(timeout); }, [load]);
 
-  function setField(name, value) { operationRef.current = null; setForm((current) => ({ ...current, [name]: value })); }
+  function setField(name, value) {
+    operationRef.current = null;
+    setForm((current) => {
+      const next = { ...current, [name]: value };
+      if (announcementRequiresAlwaysOn(next.category)) next.deliveryPolicy = "always_on";
+      return next;
+    });
+  }
 
   async function request(method, payload) {
     setBusy(true);
@@ -139,7 +148,7 @@ export function AdminAnnouncementsDashboard() {
 
   function edit(announcement) {
     setEditing(announcement); operationRef.current = null;
-    setForm({ title: announcement.title, body: announcement.body, category: announcement.category, priority: announcement.priority, audienceType: announcement.audienceType, audienceValues: Object.values(announcement.audienceFilter ?? {}).flat().join(", "), deliveryPolicy: announcement.deliveryPolicy });
+    setForm({ title: announcement.title, body: announcement.body, category: announcement.category, priority: announcement.priority, audienceType: announcement.audienceType, audienceValues: Object.values(announcement.audienceFilter ?? {}).flat().join(", "), deliveryPolicy: announcementRequiresAlwaysOn(announcement.category) ? "always_on" : announcement.deliveryPolicy });
     document.getElementById("announcement-editor")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -157,7 +166,16 @@ export function AdminAnnouncementsDashboard() {
               <div className="grid grid-cols-2 gap-3"><div className="min-w-0"><Label htmlFor="announcement-category">{t.category}</Label><NativeSelect id="announcement-category" value={form.category} onChange={(event) => setField("category", event.target.value)} className="mt-1 w-full min-w-0">{ANNOUNCEMENT_CATEGORIES.map((value) => <NativeSelectOption key={value} value={value}>{t[`adminAnnouncementCategory_${value}`] ?? value}</NativeSelectOption>)}</NativeSelect></div><div className="min-w-0"><Label htmlFor="announcement-priority">{t.adminAnnouncementPriority}</Label><NativeSelect id="announcement-priority" value={form.priority} onChange={(event) => setField("priority", event.target.value)} className="mt-1 w-full min-w-0">{ANNOUNCEMENT_PRIORITIES.map((value) => <NativeSelectOption key={value} value={value}>{t[`adminAnnouncementPriority_${value}`] ?? value}</NativeSelectOption>)}</NativeSelect></div></div>
               <div><Label htmlFor="announcement-audience">{t.adminAnnouncementAudience}</Label><NativeSelect id="announcement-audience" value={form.audienceType} onChange={(event) => setField("audienceType", event.target.value)} className="mt-1 w-full min-w-0">{ANNOUNCEMENT_AUDIENCE_TYPES.map((value) => <NativeSelectOption key={value} value={value}>{t[`adminAnnouncementAudience_${value}`] ?? value}</NativeSelectOption>)}</NativeSelect></div>
               {form.audienceType !== "all" ? <div><Label htmlFor="announcement-audience-values">{t.adminAnnouncementAudienceValues}</Label>{form.audienceType === "role" ? <NativeSelect id="announcement-audience-values" value={form.audienceValues} onChange={(event) => setField("audienceValues", event.target.value)} className="mt-1 w-full min-w-0" required><NativeSelectOption value="">{t.adminAnnouncementChooseAudience}</NativeSelectOption>{ANNOUNCEMENT_AUDIENCE_ROLES.map((value) => <NativeSelectOption key={value} value={value}>{t[`adminAnnouncementRole_${value}`] ?? value}</NativeSelectOption>)}</NativeSelect> : <Input id="announcement-audience-values" value={form.audienceValues} onChange={(event) => setField("audienceValues", event.target.value)} placeholder={t.adminAnnouncementAudienceValuesPlaceholder} className="mt-1" required />}<p className="mt-1 text-xs text-muted-foreground">{t.adminAnnouncementAudienceHint}</p></div> : null}
-              <div><Label htmlFor="announcement-policy">{t.adminAnnouncementDeliveryPolicy}</Label><NativeSelect id="announcement-policy" aria-describedby="announcement-delivery-help" value={form.deliveryPolicy} onChange={(event) => setField("deliveryPolicy", event.target.value)} className="mt-1 w-full min-w-0">{ANNOUNCEMENT_DELIVERY_POLICIES.map((value) => <NativeSelectOption key={value} value={value}>{t[`adminAnnouncementPolicy_${value}`] ?? value}</NativeSelectOption>)}</NativeSelect><p id="announcement-delivery-help" className="mt-1 text-xs text-muted-foreground">{t.adminAnnouncementEmailUnavailable}{form.deliveryPolicy === "preference_aware" ? <> {t.adminAnnouncementPreferenceUnavailable}</> : null}</p></div>
+              <div>
+                <Label htmlFor="announcement-policy">{t.adminAnnouncementDeliveryPolicy}</Label>
+                <NativeSelect id="announcement-policy" aria-describedby="announcement-delivery-help" value={form.deliveryPolicy} onChange={(event) => setField("deliveryPolicy", event.target.value)} className="mt-1 w-full min-w-0">
+                  {ANNOUNCEMENT_DELIVERY_POLICIES.map((value) => <NativeSelectOption key={value} value={value} disabled={requiresAlwaysOn && value === "preference_aware"}>{t[`adminAnnouncementPolicy_${value}`] ?? value}</NativeSelectOption>)}
+                </NativeSelect>
+                <p id="announcement-delivery-help" className="mt-1 text-xs text-muted-foreground">
+                  {t.adminAnnouncementEmailUnavailable}{" "}
+                  {requiresAlwaysOn ? t.adminAnnouncementAlwaysOnRequired : form.deliveryPolicy === "preference_aware" ? t.adminAnnouncementPreferenceUnavailable : null}
+                </p>
+              </div>
               <div className="flex flex-col gap-2 sm:flex-row"><Button type="submit" value="create_draft" className="flex-1" disabled={busy}>{busy ? <LoaderCircle className="size-4 animate-spin" /> : null}{editing ? t.saveChanges : t.saveDraft}</Button>{!editing ? <Button type="submit" value="send" variant="outline" className="flex-1" disabled={busy}><Send className="size-4" />{t.adminAnnouncementSendNow}</Button> : <Button type="button" variant="outline" onClick={() => { setEditing(null); setForm(EMPTY_FORM); }}>{t.cancel}</Button>}</div>
             </form>
           </section>

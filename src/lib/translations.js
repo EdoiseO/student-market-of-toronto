@@ -818,8 +818,10 @@ export const translations = {
     adminAnnouncementDeliveryPolicy: "Delivery policy",
     adminAnnouncementPolicy_always_on: "Always deliver",
     adminAnnouncementPolicy_preference_aware: "Respect preferences",
+    adminAnnouncementAlwaysOnRequired:
+      "This category requires Always deliver.",
     adminAnnouncementPreferenceUnavailable:
-      "Preference filtering is not active yet. This still delivers to everyone in the selected audience.",
+      "Preference filtering is not active yet. Notification preferences won’t affect this announcement.",
     adminAnnouncementEmailUnavailable:
       "Delivered in Messages and notifications. Email is off.",
     adminAnnouncementHistory: "Campaign history",
@@ -2305,8 +2307,10 @@ export const translations = {
     adminAnnouncementDeliveryPolicy: "Politique de livraison",
     adminAnnouncementPolicy_always_on: "Toujours envoyer",
     adminAnnouncementPolicy_preference_aware: "Respecter les préférences",
+    adminAnnouncementAlwaysOnRequired:
+      "Cette catégorie exige « Toujours envoyer ».",
     adminAnnouncementPreferenceUnavailable:
-      "Le filtrage selon les préférences n’est pas encore actif. Le communiqué sera envoyé à tous les destinataires sélectionnés.",
+      "Le filtrage selon les préférences n’est pas encore actif. Les préférences de notification ne s’appliqueront pas à ce communiqué.",
     adminAnnouncementEmailUnavailable:
       "Envoyé dans Messages et les notifications. L’envoi par courriel est désactivé.",
     adminAnnouncementHistory: "Historique des campagnes",
