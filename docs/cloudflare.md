@@ -9,7 +9,10 @@ The initial Worker is named `student-market-free-test`. It has no routes, cron t
 - Production Workers build and `cf deploy --prebuilt --dry-run` passed. Upload: 3422.46 KiB uncompressed, 881.23 KiB gzip, 165 static assets.
 - Local Workers runtime: homepage, login, registration, and public messaging shell return 200; `/dashboard` redirects to login; anonymous private media returns 401 with private/no-store headers; nonexistent page returns 404. Browser homepage renders public listings without console warnings/errors.
 - Local security suite: 332 passed, 9 failed, 37 skipped. Remaining failures involve Windows path/POSIX permission assumptions; PostgreSQL integration checks need the existing Linux/macOS CI. Do not describe this as a fully passing security suite.
-- These checks do not measure hosted CPU consumption or establish eligibility for the free plan. Hosted CPU/error measurements, authenticated flows, server-only secrets and database rollout verification remain outstanding.
+- Hosted free-plan test deployed successfully at https://student-market-free-test.edoisephillip2.workers.dev (version `5938cde0-d2b2-466b-9d88-5cae355af485`). No paid subscription or production domain was enabled.
+- A measured run of 32 anonymous requests across eight routes returned 24 successful pages, four expected login redirects and four expected private-media 401 responses, with no unexpected server errors. The browser rendered public listings and a listing detail page from Supabase.
+- **Free-plan suitability failed for the current SSR implementation:** 25 of 32 invocations exceeded the documented 10 ms CPU allowance. After the first request per route, homepage CPU was 64–88 ms, listing detail 55–85 ms, category 40–74 ms, search 42–73 ms and login 18–37 ms. This is sustained CPU consumption, not merely startup overhead. Cloudflare's temporary headroom explains why exceeding the allowance did not immediately produce errors; it is not a reliable production capacity guarantee.
+- Authenticated flows, server-only secrets and database rollout verification remain outstanding. Do not cut over production on the basis of this smoke test. Further rendering optimizations and another hosted CPU test, or explicit approval for a paid plan, are required before proceeding.
 
 ## Build
 
@@ -39,6 +42,7 @@ Once staging passes, deploy with production configuration, verify again, then ch
 
 - https://developers.cloudflare.com/workers/framework-guides/web-apps/nextjs/
 - https://developers.cloudflare.com/workers/platform/pricing/
+- https://developers.cloudflare.com/workers/platform/limits/
 - https://supabase.com/docs/guides/auth/redirect-urls
 
 Cloudflare currently recommends vinext, which is beta. Its static compatibility report found 17 supported checks and partial image support; hosted integration checks remain required. Costs depend on actual Worker CPU, traffic and any optional services; Supabase billing is separate.
