@@ -24,7 +24,7 @@ A chronological fresh setup and an incremental rollout can have different execut
 With the [native PostgreSQL prerequisites](../../tests/helpers/README.md) installed, run:
 
 ```sh
-REQUIRE_POSTGRES=1 node --test --test-concurrency=1 tests/registered-demo-identities.test.mjs tests/trusted-writer-cutover-stage6.test.mjs
+REQUIRE_POSTGRES=1 node --test --test-concurrency=1 tests/registered-demo-identities.test.mjs tests/trusted-writer-cutover.test.mjs
 ```
 
 The regressions also cover prepared statements, supported domains, wrong-UUID and fresh-signup denial, deleted accounts, private-table privileges, mapping constraints, ownership preservation and the immutable migration checksum.
