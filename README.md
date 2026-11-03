@@ -6,12 +6,6 @@ A student marketplace for discovering items, managing listings, and arranging sa
 
 Built with **Next.js 16, React 19, Tailwind CSS 4, and Supabase** (Auth, PostgreSQL, Storage, and Realtime). Vercel hosts the application.
 
-## Demo status
-
-The application is deployed, but its private-media database rollout is incomplete. Private attachments are temporarily unavailable. Avoid account deletion until that rollout is complete, because cleanup can partially run before the request fails. See the [deployment guide](docs/deployment.md) for the outstanding migration and cutover requirements.
-
-This is a demonstration project. General student-inbox email delivery is not enabled; Supabase's built-in Auth sender currently restricts recipients to organization-member inboxes. Custom SMTP and verified student-inbox recovery are prerequisites before opening the project to real student accounts.
-
 ## Product features
 
 - **Discover:** browse categories, search listings, view item photos and seller profiles, and save favourites.
@@ -141,3 +135,13 @@ public/                  Static application assets
 - [Hosted media checks](docs/security/private-media-staging.md), [Realtime checks](docs/security/moderation-realtime-staging.md) and [browser/device checks](scripts/demo-browser-check/README.md): isolated verification procedures.
 
 The announcement worker supports in-app delivery. Auth email is configured separately; saved notification preferences do not establish a marketplace email-delivery service. Seller-sold email delivery remains unverified.
+
+## Known limitations
+
+The deployed demo's private-media database rollout is incomplete, so private attachments are temporarily unavailable. Avoid account deletion until the rollout is complete: cleanup can partially run before the request fails. The [deployment guide](docs/deployment.md) describes the remaining migration and cutover work.
+
+General student-inbox email delivery is not enabled. Supabase's built-in Auth sender currently restricts recipients to organization-member inboxes; custom SMTP and verified student-inbox recovery are needed before opening registration to real student accounts.
+
+## How I built this
+
+I led a five-person team and built key parts of the marketplace, using AI coding assistants (ChatGPT/Codex and Claude) to speed up implementation and review. I am responsible for my design and implementation and can walk through the code.
