@@ -144,4 +144,4 @@ General student-inbox email delivery is not enabled. Supabase's built-in Auth se
 
 ## How I built this
 
-I led a five-person team and built key parts of the marketplace, using AI coding assistants (ChatGPT/Codex and Claude) to speed up implementation and review. I am responsible for my design and implementation and can walk through the code.
+I led a five-person team and built most of the marketplace, using AI coding assistants (ChatGPT/Codex and Claude) to speed up implementation and review. I am responsible for my design and implementation and can walk through the code.
